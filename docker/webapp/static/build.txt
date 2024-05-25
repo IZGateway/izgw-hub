@@ -1,0 +1,4 @@
+
+    Build: %{project.build.finalName}
+     Host: %{env.COMPUTERNAME}
+Timestamp: %{timestamp}

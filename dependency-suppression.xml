@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions
+    xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+    <suppress>
+        <notes>BC-FJA 1.0.2.4 is fixed</notes>
+        <packageUrl regex="true">^pkg:maven/org\.bouncycastle/bctls\-fips@.*$
+        </packageUrl>
+        <cve>CVE-2023-33202</cve>
+    </suppress>
+    <suppress>
+        <notes>IZ Gateway manages the dependencies of
+            bcpkix-fips-1.0.7.jar to
+            use bc-fips-1.0.2.4 which does not
+            have this vulnerability
+        </notes>
+        <packageUrl regex="true">^pkg:maven/org\.bouncycastle/bcpkix\-fips@.*$
+        </packageUrl>
+        <cpe>cpe:/a:bouncycastle:bouncy_castle_for_java</cpe>
+    </suppress>
+    <suppress>
+        <notes>IZ Gateway only uses RSA certificates</notes>
+        <packageUrl regex="true">^pkg:maven/org\.bouncycastle/bc\-fips@.*$
+        </packageUrl>
+        <vulnerabilityName>CVE-2024-29857</vulnerabilityName>
+    </suppress>
+    <suppress>
+        <notes>IZ Gateway does not use any JSSE APIs for use other than
+            with bc-fips which is a FIPS certified provider
+        </notes>
+        <packageUrl regex="true">^pkg:maven/org\.bouncycastle/bctls\-fips@.*$
+        </packageUrl>
+        <cve>CVE-2020-26939</cve>
+    </suppress>
+    <suppress>
+        <notes>BC-FJA 1.0.2.4 is fixed </notes>
+        <packageUrl regex="true">^pkg:maven/org\.bouncycastle/bc\-fips@.*$
+        </packageUrl>
+        <cve>CVE-2023-33202</cve>
+    </suppress>
+    <suppress>
+        <notes>BC-FJA 1.0.2.4 is fixed</notes>
+        <packageUrl regex="true">^pkg:maven/org\.bouncycastle/bcpkix\-fips@.*$
+        </packageUrl>
+        <cve>CVE-2020-26939</cve>
+    </suppress>
+</suppressions>

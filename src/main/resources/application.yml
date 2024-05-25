@@ -1,0 +1,431 @@
+spring:
+    autoconfigure:
+        exclude:
+            - org.springframework.boot.autoconfigure.websocket.servlet.WebSocketServletAutoConfiguration
+
+    main:
+        banner-mode: off
+        # Consider whether this should be turned off in production.
+        lazy-initialization: true
+    application:
+        name: IZ Gateway 2.0
+        fix-newlines: ${FIX_NEWLINES:true}
+        enable-status-check: ${STATUS_CHECK:true}
+        
+    datasource:
+        url: jdbc:mysql://${MYSQL_HOST:localhost}:${PHIZ_DATA_DB_PORT:3306}/${MYSQL_DB_NAME:phiz}
+        username: ${MYSQL_HUB_NAME}
+        password: ${MYSQL_HUB_PASS}
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        configuration:
+            minimum-pool-size: 4
+            maximum-pool-size: 10
+    jpa:
+        open-in-view: false
+        database-platform: org.hibernate.dialect.MySQL8Dialect
+        hibernate:
+            naming:
+                physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+
+    servlet:
+      multipart:
+        enabled: true
+        max-file-size: 15GB
+        max-request-size: 15GB
+        
+management:
+    metrics:
+        export:
+            simple:
+                enabled: false        
+    health:
+        defaults:
+            enabled: false
+             
+security:
+    enable-csrf: false            
+    enable-blacklist: true
+    enable-ocsp: false
+    # Set to the deployment path of the SSL
+    # For test and dev deployments, set SSL_SHARE environment variable to the location of the EFS File system in
+    # the AWS environment. 
+    ssl-path: ${SSL_SHARE:}conf/ssl
+
+springdoc:
+    swagger-ui:
+        path: /swagger/ui.html
+    api-docs:
+        path: /swagger/api-docs
+
+server:
+    hostname: ${PHIZ_SERVER_HOSTNAME:dev.izgateway.org}
+    protocol: https
+    port: ${PHIZ_SERVER_PORT:443} 
+    local-port: 9081
+    mode: ${PHIZ_MODE:prod}
+    maxRetries: 3
+    
+    ssl:
+        enabled: true
+        client-auth: need
+        enabled-protocols: 
+            - TLSv1.2
+            - TLSv1.3
+        ciphers:
+            - TLS_AES_256_GCM_SHA384
+            - TLS_AES_128_GCM_SHA256
+            - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+            - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+            - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+            - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+            - TLS_DHE_RSA_WITH_AES_256_GCM_SHA384
+            - TLS_DHE_DSS_WITH_AES_256_GCM_SHA384
+            - TLS_DHE_RSA_WITH_AES_128_GCM_SHA256
+            - TLS_DHE_DSS_WITH_AES_128_GCM_SHA256
+
+
+        
+        key-store: ${PHIZ_CRYPTO_STORE_KEY_TOMCAT_SERVER_FILE:${security.ssl-path}/awsdev_keystore.bcfks}
+        key-store-password: ${COMMON_PASS:}
+        key-store-provider: BCFIPS
+        key-store-type: bcfks
+
+        trust-store: ${PHIZ_CRYPTO_STORE_TRUST_TOMCAT_SERVER_FILE:${security.ssl-path}/awsdev_keystore.bcfks}
+        trust-store-password: ${COMMON_PASS:}
+        trust-store-provider: BCFIPS
+        trust-store-type: bcfks
+
+client:
+    contentType: text/xml
+    readTimeout: 60
+    connectTimeout: 15
+    maxBufferSize: 65536
+
+    ssl:
+        enabled: true
+        client-auth: need
+        enabled-protocols: 
+            - TLSv1.2
+            - TLSv1.3
+        ciphers:
+            - TLS_AES_256_GCM_SHA384
+            - TLS_AES_128_GCM_SHA256
+            - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+            - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+            - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+            - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+            - TLS_DHE_RSA_WITH_AES_256_GCM_SHA384
+            - TLS_DHE_DSS_WITH_AES_256_GCM_SHA384
+            - TLS_DHE_RSA_WITH_AES_128_GCM_SHA256
+            - TLS_DHE_DSS_WITH_AES_128_GCM_SHA256
+            
+        key-store: ${PHIZ_CRYPTO_STORE_KEY_WS_CLIENT_FILE:${security.ssl-path}/awsdev_keystore.bcfks}
+        key-store-password: ${COMMON_PASS:}
+        key-store-provider: BCFIPS
+        key-store-type: bcfks
+
+        trust-store: ${PHIZ_CRYPTO_STORE_TRUST_WS_CLIENT_FILE:${security.ssl-path}/izgw_client_trust.bcfks}
+        trust-store-password: ${COMMON_PASS:}
+        trust-store-provider: BCFIPS
+        trust-store-type: bcfks
+        
+ads:
+    version: ${PHIZ_WS_ADS_VERSION:V2023-09-01}
+    max-message-size-GB: 15
+    
+hub:
+    max-message-size: ${PHIZ_WS_IIS_HUB_MAX_MESSAGE_SIZE:65536}
+    max-retries: 3
+    status-check:
+        period: 5
+        exemptions: 
+          - fl
+        testing-endpoints:
+          - "404"
+          - down
+          - invalid
+          - reject
+    
+iis:
+    max-message-size: ${PHIZ_WS_IIS_MAX_MESSAGE_SIZE:32768}
+
+elastic:
+  api-key: ${ELASTIC_API_KEY:}
+  host: ${ELASTIC_HOST:https://audacioussearchtest.es.us-east-1.aws.found.io:9243}
+  index: ${ELASTIC_INDEX:izgw-dev-logstash}
+  
+#Management And Actuator Configuration
+#management:
+#    # Security is managed through AWS Environment
+#    security:
+#        enabled: false
+#    context-path: /manage
+#    port: 9081
+#    address: 127.0.0.1
+#    
+#endpoints:
+#    enabled: false
+
+logging:
+    file:
+        enabled: true
+    console:
+        pretty: ${PRETTY:false}
+        enabled: true
+    memory:
+        enabled: true
+        
+    heartbeat:
+        interval: 60
+        
+    level:
+        org:
+            apache:
+                tomcat:
+                    util:
+                        net:
+                            NioChannel: 
+                                handshake: DEBUG
+
+        
+soap:
+  faults:
+    DestinationConnectionFault:
+      ReadTimeout:
+        diagnostics: The IZ Gateway timed out waiting for the destination IIS to respond. The IIS may be overwhelmed with requests. Retry the request again later.
+        code: 10
+        summary: Read Timeout
+        retry: NORMAL
+  
+      ConnectTimeout:
+        diagnostics: The destination service is not responding to attempts to connect to the endpoint. Either the destination is not listening for 
+          TCP connections at this endpoint, or the connection attemptis blocked by a Firewall or other system. Verify connectivity (SYN, ACK, SYN-ACK) 
+          to the destination DNS address.
+        code: 11
+        summary: Connect Timeout
+        retry: CHECK_IIS_STATUS
+  
+      ConnectionRejected:
+        diagnostics: The destination service is actively rejecting attempts to connect to the endpoint. It may be blocked by a firewall, or the port 
+          may not be correctly configured in IZ Gateway. Verify connectivity (SYN, ACK, SYN-ACK) to the destination DNS address.
+        code: 12
+        summary: Connection Rejected
+        retry: CHECK_IIS_STATUS
+  
+      DNSResolutionError:
+        diagnostics: The TCP/IP Address of the destination IIS could not be resolved. This may be an intermittent DNS failure, or the destination 
+          address may not be registered in DNS. Verify that the destination address can be resolved before resending the message.
+        code: 13
+        summary: DNS Resolution Error
+        retry: CHECK_IIS_STATUS
+  
+      URISyntaxError:
+         diagnostics: The url configured for this endpoint is not valid.
+         code: 14
+         summary: URI Syntax Error
+         retry: CONTACT_SUPPORT
+  
+      NotHTTPS:
+        diagnostics: The url configured for this endpoint is not using https.
+        code: 15
+        summary: Not HTTPS
+        retry: CONTACT_SUPPORT
+  
+      DestinationConfigurationError:
+        diagnostics: The configuration of this endpoint is not valid.
+        code: 16
+        summary: Destination Configuration Error
+        retry: CONTACT_SUPPORT
+  
+      ProtocolException:
+        diagnostics: Unexpected protocol error.
+        code: 17
+        summary: Protocol Exception
+        retry: CONTACT_SUPPORT
+  
+      CircuitBreakerThrown:
+        diagnostics: This destination has been disabled due to too many recent failures. IZ Gateway will continue to monitor the status 
+          of this endpoint and renable it when it becomes available again.
+        code: 18
+        summary: Circuit Breaker Thrown
+        detail: Destination Unavailable
+        retry: CHECK_IIS_STATUS
+  
+      UnderMaintenance:
+        diagnostics: This destination is under maintenance
+        code: 19
+        summary: Under Maintenance
+        detail: Destination Is Under Maintenance
+        retry: CHECK_IIS_STATUS
+
+      WriteError:
+        diagnostics: There was an IO Error writing to the destination endpoint. This may indicate a problem with the networking infrastructure between 
+          IZ Gateway and the endpoint.
+        code: 20
+        summary: Write Error
+        detail: Error writing message to the destination endpoint
+        retry: NORMAL
+
+      ReadError:
+        diagnostics:  There was an IO Error reading from the destination endpoint. This may indicate a problem with the networking infrastructure between 
+          IZ Gateway and the endpoint.
+        code: 21
+        summary: Read Error
+        detail: Error reading message from the destination endpoint
+        retry: NORMAL
+        
+      TLSError:
+        diagnostics: There was an error establishing a secure connection between IZ Gateway and the destination endpoint. This can result from a problem with 
+          the endpoint certificate the endpoint acceptance of the IZ Gateway certificate or Certificate Authority, or the encryption being established between 
+          the two endpoints.
+        code: 22
+        summary: TLS Error
+        detail: Error establishing secure connection
+        retry: CONTACT_SUPPORT
+        
+    HubClientFault:
+      DestinationReturnedInvalidResponse:
+        diagnostics: The destination returned an invalid response to the SOAP message
+        code: 228
+        summary: Destination Returned Invalid Response
+        retry: CONTACT_SUPPORT
+  
+      CertificateError:
+        diagnostics: The server certificate presented by the IIS is not trusted by IZ Gateway. It may have expired, been revoked, or the 
+          certificate authority may not be trusted by IZ Gateway. Retry after verifying that the certificate has been updated by the IIS, 
+          or contact IZ Gateway support if the certificate chain is not trusted.
+        code: 221
+        summary: Certificate Error
+        retry: CHECK_IIS_STATUS
+  
+      DestinationThrewMessageTooLargeFault:
+        diagnostics: The message being sent is too large for the destination to process.
+        code: 224
+        summary: Destination Threw MessageTooLargeFault
+        retry: CORRECT_MESSAGE
+  
+      DestinationThrewSecurityFault:
+        diagnostics: The destination rejected the message because either the facilityId is incorrect, one of the MSH values representing 
+          the sender is incorrect, or IZ Gateway is configured with the wrong username and password. Contact the jurisdiction to verify 
+          the correct values to use for facilityId and in MSH headers and correct the problem if they are not. If the values being sent
+          are correct, contact support
+        code: 225
+        summary: Destination Threw SecurityFault
+        retry: CORRECT_MESSAGE
+        
+      DestinationThrewUnsupportedOperationFault:
+        diagnostics: The destination does not support this SOAP message type
+        code: 226
+        summary: Destination Threw UnsupportedOperationFault
+        retry: CONTACT_SUPPORT
+  
+      DestinationThrewFault:
+        diagnostics: The destination returned a generic fault. See the fault details.
+        code: 227
+        summary: Destination Threw Fault
+        retry: CONTACT_SUPPORT
+  
+      CannotCallIISDestination:
+         diagnostics: The destination could not be reached.
+         code: 223
+         summary: Cannot Call IIS Destination
+         retry: CONTACT_SUPPORT
+  
+      HTTPBadRequestError:
+        diagnostics: The Destination sent a 'Bad Request' HTTP Error code in response to the request. This is likely due to either an 
+          error in the inbound SOAP Message or in the integration at the IIS side.
+        code: 201
+        summary: HTTP Bad Request Error
+        retry: CHECK_IIS_STATUS
+  
+      HTTPAccessControlError:
+        diagnostics: The Destination sent an HTTP Error code indicating an access control failure in response to the request. This 
+          may be due to invalid credentials presented IZ Gateway or an invalid facility id presented in the HL7 Message by the sender. 
+          Verify the facility id with the destination IIS and if that fails,contact IZ Gateway support.
+        code: 202
+        summary: HTTP Access Control Error
+        retry: CORRECT_MESSAGE
+  
+      HTTPRequestTimeoutError:
+        diagnostics: The Destination endpoint reported a request timeout. This can be caused by a backlog of requests at the 
+          destination.
+        code: 203
+        summary: HTTP Request Timeout Error
+        retry: NORMAL
+  
+      HTTPNotFoundError:
+        diagnostics: The Destination endpoint reported that the requested endpoint was not found. The host server at the destination is 
+          running, but the endpoint url is not known. This can occur during IIS maintenance, or may also occur when there is a problem 
+          at the destination IIS.
+        code: 204
+        summary: HTTP Not Found Error
+        retry: CHECK_IIS_STATUS
+  
+      HTTPInternalServerErrorError:
+        diagnostics: The Destination reported an internal server HTTP Error code in response to the request. The destination may be 
+          offline for maintenance.
+        code: 205
+        summary: HTTP Internal Server Error Error
+        retry: CHECK_IIS_STATUS
+  
+      HTTPGatewayError:
+        diagnostics: The Destination sent an internal infrastructure HTTP Error code in response to the request. This error code usually 
+          indicates the destination is offline for maintenance.
+        code: 206
+        summary: HTTP Gateway Error
+        retry: CHECK_IIS_STATUS
+  
+      HTTPUnexpectedError:
+        diagnostics: The Destination sent an unexpected HTTP Error code. This error code do not make sense in the context of the IZ Gateway 
+          integration, and may be a result of misconfiguration in the destination IIS.
+        code: 207
+        summary: HTTP Unexpected Error
+        retry: CONTACT_SUPPORT
+  
+    SecurityFault:
+      SecurityException:
+        diagnostics: Security Exception
+        code: 60
+        summary: Security Exception
+        retry: CORRECT_MESSAGE
+  
+      SourceAttackException:
+        diagnostics: A message was sent containing code that appears to be trying to infect the receiver or downstream recipients. This source 
+          has been blocked and cannot send or receive messages to or from IZ Gateway until it has been cleared by support.
+        code: 61
+        summary: Source Attack Exception
+        detail: IZ Gateway received a message containing content suggesting the source of the message has been compromised
+        retry: CONTACT_SUPPORT
+  
+    MessageTooLargeFault:
+      RequestMessageTooLarge:
+        diagnostics: The Request is too large to process.
+        code: 30
+        summary: Request Message Too Large
+        retry: CORRECT_MESSAGE
+  
+      ResponseMessageTooLarge:
+        diagnostics: The Response is too large to process.
+        code: 31
+        summary: Response Message Too Large
+        retry: CONTACT_SUPPORT
+  
+    MetadataFault:
+      ErrorinMetadata:
+        diagnostics: An illegal value was provided for metadata
+        code: 70
+        summary: Error in Metadata
+        retry: CORRECT_MESSAGE
+        
+      MultipleErrorsinMetadata:
+        diagnostics: Illegal values were provided for metadata
+        code: 71
+        summary: Multiple Errors in Metadata
+        retry: CORRECT_MESSAGE
+  
+    UnsupportedOperationFault:
+      UnsupportedOperation:
+        diagnostics: An attempt was made to call an operation that is not supported by this application
+        code: 50
+        summary: Unsupported Operation
+        retry: CORRECT_MESSAGE

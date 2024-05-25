@@ -1,0 +1,34 @@
+version: '3.1'
+services:
+  phizmysql:
+    image: mysql:5.7
+    container_name: mysql
+    ports:
+      - '3306:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD}"
+      MYSQL_USER: "${MYSQL_USER}"
+      MYSQL_PASSWORD: "${MYSQL_PASSWORD}"
+      MYSQL_DATABASE: "${MYSQL_DATABASE}"
+    volumes:
+      - ./data:/docker-entrypoint-initdb.d
+    restart: always
+  phiz:
+    depends_on:
+      - phizmysql
+    image: iz-gateway:latest
+    container_name: iz-gateway
+    environment:
+      MYSQL_HOST: "${MYSQL_HOST}"
+      JAVA_TOOL_OPTIONS: "${JAVA_TOOL_OPTIONS}"
+      MYSQL_HUB_NAME: "${MYSQL_HUB_NAME}"
+      MYSQL_HUB_PASS: "${MYSQL_HUB_PASS}"
+      MYSQL_ADMIN_NAME: "${MYSQL_ADMIN_NAME}"
+      MYSQL_ADMIN_PASS: "${MYSQL_ADMIN_PASS}"
+      COMMON_PASS: "${COMMON_PASS}"
+      ELASTIC_API_KEY: "${ELASTIC_API_KEY}"
+    ports:
+      - '443:443'
+      - '8000:8000'
+      - '9081:9081'
+    restart: always

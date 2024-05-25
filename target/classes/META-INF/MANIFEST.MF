@@ -1,0 +1,7 @@
+Manifest-Version: 1.0
+Build-Jdk-Spec: 17
+Implementation-Title: IZ Gateway Hub 2.0
+Implementation-Version: 2.1.0-IGDD-1503_MD_IZG_Connection_issues-SNAPSHO
+ T
+Created-By: Maven Integration for Eclipse
+

@@ -1,0 +1,64 @@
+# Filebeat Inputs section
+# Add another item to the "filebeat.inputs" object.
+
+filebeat.inputs:
+  - type: "filestream"
+    id: izgw-filestream
+    enabled: true
+    paths:
+      - /usr/share/izgateway/logs/*.json
+    json.message_key: message
+    parsers:
+      - ndjson:
+          add_error_key: true
+          keys_under_root: true
+          message_key: message
+          overwrite_keys: true
+          expand_keys: true
+
+    processors:
+      - add_host_metadata: ~
+      - add_cloud_metadata: ~
+      - copy_fields:
+          fields:
+            - from: host.hostname.keyword
+              to: host.keyword
+          fail_on_error: false
+          ignore_missing: true
+      - add_fields:
+          target: 'cloud'
+          fields:
+            service: "${SERVICE_NAME:unknown}"
+            
+    # change tag to dev/onboard/prod for selected environment
+    tags: ["${ELASTIC_ENV_TAG:dev}"] # https://www.elastic.co/guide/en/beats/filebeat/7.14/configuration-general-options.html#_tags_21
+  - type: "filestream"
+    id: izgw-dnsmasq-filestream
+    enabled: true
+    paths:
+      - /var/log/dnsmasq.log
+    # change tag to dev/onboard/prod for selected environment
+    tags: [ "${ELASTIC_ENV_TAG:dev}" ] # https://www.elastic.co/guide/en/beats/filebeat/7.14/configuration-general-options.html#_tags_21
+  - type: "filestream"
+    id: izgw-backups
+    enabled: true
+    paths:
+     - /usr/share/izgateway/conf/backups/izgwbackup.log
+    tags: [ "${ELASTIC_ENV_TAG:dev}" ] # https://www.elastic.co/guide/en/beats/filebeat/7.14/configuration-general-options.html#_tags_21
+       
+# The Kibana section can be enabled to import dashboards and visualizations for specific Elastic Beats.
+# The ILM and Template settings are not recommended, as you should be controlling those from within Kibana and Elasticsearch itself.
+setup.ilm.enabled: false
+setup.template.enabled: false
+setup.kibana.enabled: false
+
+# Specifying cloud ID is the alternative to "output.elasticsearch.hosts" and is unique to Elastic Cloud.
+# cloud.id: "<environment cloud ID>"
+output.elasticsearch:
+  # Change to audacioussearch.es.us-east-1.aws.found.io:9243 for prod/onboarding/prr, leave as test for dev (APHL) / test (AINQ)
+  hosts: [ "${ELASTIC_HOST:https://audacioussearchtest.es.us-east-1.aws.found.io:9243}" ] # Set ELASTIC_HOST in environment
+  # Set index to izgw-{tag}-logstash datastream for selected environment
+  index: "${ELASTIC_INDEX:izgw-dev-logstash}" # Use izgw-prod12-logstash for production
+  api_key: "${ELASTIC_API_KEY}" # Set ELASTIC_API_KEY in environment
+  worker: 2
+  allow_older_versions: true

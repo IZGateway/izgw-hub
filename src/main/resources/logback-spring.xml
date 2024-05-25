@@ -1,0 +1,119 @@
+<configuration>
+    <!-- Disable logback startup reporting -->
+    <statusListener class="ch.qos.logback.core.status.NopStatusListener"/>
+    <springProperty name="logging.console.pretty" source="logging.console.pretty" />
+    <springProperty name="logging.console.enabled" source="logging.console.enabled" />
+    <springProperty name="logging.file.enabled" source="logging.file.enabled" />
+    <springProperty name="logging.memory.enabled" source="logging.memory.enabled" />
+    
+    <!-- Don't try to put these in application.yml, they don't work nicely there -->
+    <property name="logging.file.name" value="izgw.json" />
+    <property name="logging.file.path" value="logs" />
+
+    <!-- reset all previous level configurations of all j.u.l. loggers -->
+    <contextListener
+        class="ch.qos.logback.classic.jul.LevelChangePropagator">
+        <resetJUL>true</resetJUL>
+    </contextListener>
+
+    <!-- conversionRule conversionWord="exRoot" converterClass="gov.cdc.izgateway.logging.impl.RootCauseThrowableProxyConverter"/> 
+        <conversionRule conversionWord="xEventId" converterClass="gov.cdc.izgateway.logging.impl.EventIdMdcConverter"/ -->
+
+    <property resource="application.yml" scope="context" />
+
+    <appender name="file"
+        class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <encoder
+            class="net.logstash.logback.encoder.LogstashEncoder">
+            <!-- LogStash file reporting must never be pretty -->
+            <includeContext>false</includeContext>
+        </encoder>
+        <file>${logging.file.path}/${logging.file.name}</file>
+        <rollingPolicy
+            class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${logging.file.path}/${logging.file.name}-%d{yyyy-MM-dd}_%i.gz
+            </fileNamePattern>
+            <maxHistory>7</maxHistory>
+            <maxFileSize>2GB</maxFileSize>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+    </appender>
+    <appender name="console"
+        class="ch.qos.logback.core.ConsoleAppender">
+        <encoder
+            class="net.logstash.logback.encoder.LogstashEncoder">
+            <if
+                condition='"true".equals(p("logging.console.pretty"))'>
+                <then>
+                    <jsonGeneratorDecorator
+                        class="net.logstash.logback.decorate.PrettyPrintingJsonGeneratorDecorator" />
+                </then>
+            </if>
+            <includeContext>false</includeContext>
+        </encoder>
+    </appender>
+    <appender name="memory" class="gov.cdc.izgateway.logging.MemoryAppender" />
+
+    <!-- Logs to enable for BCFIPS debugging -->
+    <logger name="org.bouncycastle" level="INFO"/>
+    
+    <!-- Logs to Enable for debugging -->
+    <logger name="org.hibernate" level="WARN" /> <!-- Change from WARN to DEBUG for debugging -->
+    <logger name="org.hibernate.SQL" level="WARN" /> <!-- Change to DEBUG if needed for debugging -->
+    <logger name="org.hibernate.type" level="WARN" /> <!-- Change to TRACE if needed for ORM debugging -->
+    <logger name="org.springframework.cache" level="INFO" /><!-- Change 
+        from WARN to TRACE if needed for Cache debugging -->
+    <logger name="gov.cdc.izgateway.web.ws" level="INFO" /> <!-- Change from INFO to DEBUG for debugging -->
+    <logger name="org.springframework.transaction" level="INFO" /><!-- 
+        Change from INFO to TRACE for debugging -->
+    <logger name="gov.cdc.izgateway.service" level="INFO" /><!-- Change 
+        from INFO to DEBUG for debugging -->
+    <logger name="org.flywaydb" level="INFO" />
+    <!-- Loggers that should report at INFO for functional tracking -->
+    <logger name="gov.cdc.izgateway" level="INFO" />
+
+    <!-- Loggers that should report at WARN or ERROR (INFO is noise) -->
+    <logger name="org.apache" level="WARN" />
+    <logger name="org.springframework" level="WARN" />
+    <!-- Loggers that should only report at ERROR (WARN and INFO is noise) -->
+    <logger name="org.hibernate.orm.deprecation" level="ERROR" />
+    
+    <!-- Log TLS Errors on the server -->
+    <logger name="org.apache.tomcat.util.net.NioChannel.handshake" level="DEBUG"/>
+    
+    <!-- These two entries in java.security are not supported by BC-FIPS. 
+        Ignoring unsupported entry in 'jdk.certpath.disabledAlgorithms': SHA1 jdkCA 
+        & usage TLSServer Ignoring unsupported entry in 'jdk.tls.disabledAlgorithms': 
+        include jdk.disabled.namedCurves -->
+    <logger
+        name="org.bouncycastle.jsse.provider.DisabledAlgorithmConstraints"
+        level="ERROR" />
+
+    <!-- Enable BC Debug Logging by setting level to INFO/DEBUG/TRACE -->
+    <logger name="org.bouncycastle.jsse.provider" level="WARN" />
+
+    <!-- Define properties based on System or Environment setting (e.g., 
+        -Dvalue= in JVM startup args, or exactly as written below from environment) -->
+    <root level="WARN"></root>
+    <if condition='"true".equals(p("logging.file.enabled"))'>
+        <then>
+            <root>
+                <appender-ref ref="file" />
+            </root>
+        </then>
+    </if>
+    <if condition='"true".equals(p("logging.console.enabled"))'>
+        <then>
+            <root>
+                <appender-ref ref="console" />
+            </root>
+        </then>
+    </if>
+    <if condition='"true".equals(p("logging.memory.enabled"))'>
+        <then>
+            <root>
+                <appender-ref ref="memory" />
+            </root>
+        </then>
+    </if>
+</configuration>
