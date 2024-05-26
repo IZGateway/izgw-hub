@@ -13,3 +13,4 @@ izgw_client_trust.bcfks
 - Trust store used for outbound connections. 
 - Trusts dev.izgateway.org certificate 
 - Also trusts the various root CAs used for connections to IIS
+

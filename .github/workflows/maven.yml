@@ -49,8 +49,6 @@ jobs:
       run: |
           echo BASE_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout` >> $GITHUB_ENV
           echo COMPUTERNAME=`hostname` >> $GITHUB_ENV
-          npm install -g newman-reporter-junitfull
-          npm install -g xunit-viewer
           mkdir -p ~/.m2 \
           && cat << EOF > ~/.m2/toolchains.xml
           <?xml version="1.0" encoding="UTF8"?>
@@ -76,6 +74,30 @@ jobs:
                 </configuration>
             </toolchain>            
           </toolchains>
+          EOF
+          
+          cat << EOF > ~/.m2/settings.xml
+          <?xml version="1.0" encoding="UTF8"?>
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+            https://maven.apache.org/xsd/settings-1.0.0.xsd">
+            <localRepository>~/.m2/repository</localRepository>
+            <interactiveMode />
+            <usePluginRegistry />
+            <offline />
+            <servers>
+              <server>
+                <id>github</id>
+                <username>${{ env.GITHUB_ACTOR }}</username>
+                <password>${{ secrets.GITHUB_TOKEN }}</password>
+              </server>
+            </servers>
+            <mirrors />
+            <proxies />
+            <profiles />
+            <activeProfiles />
+          </settings>
           EOF
           
     - name: Sets env vars for push or pull request to release branch (default behavior)
@@ -207,7 +229,6 @@ jobs:
         name: build-failure
         path: .
 
-
     - name: Upload dependency check log
       uses: actions/upload-artifact@v4
       if: ${{ ! env.SKIP_DEPENDENCY_CHECK }}
@@ -321,7 +342,6 @@ jobs:
         docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
         docker tag $ECR_REGISTRY/$ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:good
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:good
-
           
     - name: Upload test logs 
       uses: actions/upload-artifact@v4
