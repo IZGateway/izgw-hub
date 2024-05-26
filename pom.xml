@@ -16,13 +16,11 @@
 	<description>IZ Gateway Hub</description>
 	<properties>
 		<buildno>${timestamp}</buildno>
-		<image.tag>${project.build.finalName}</image.tag>
 		<java.version>17</java.version>
 		<maven.build.timestamp.format>yyyyMMddHHmm</maven.build.timestamp.format>
 		<project.build.finalName>${project.artifactId}-${project.version}-${timestamp}</project.build.finalName>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.java.package>${project.groupId}</project.java.package>
-		<!-- 17 needs a certified encryption module -->
 		<timestamp>${maven.build.timestamp}</timestamp>
 	</properties>
 	<dependencies>
@@ -273,7 +271,7 @@
 						</goals>
 						<phase>install</phase>
 						<configuration>
-							<tag>${image.tag}-${buildno}</tag>
+							<tag>${project.build.finalName}</tag>
 						</configuration>
 					</execution>
 					<execution>
