@@ -238,7 +238,7 @@
 		</dependency>
 	</dependencies>
 	<build>
-		<finalName>${artifactId}-${version}-${buildno}</finalName>
+		<finalName>${image.tag}</finalName>
 		<pluginManagement>
 			<plugins>
 				<plugin>
@@ -315,99 +315,13 @@
 				</configuration>
 			</plugin>
 			<plugin>
-				<groupId>org.codehaus.mojo</groupId>
-				<artifactId>build-helper-maven-plugin</artifactId>
-				<version>3.6.0</version>
-				<executions>
-					<!-- Store the parsed POM Version, see https://www.mojohaus.org/build-helper-maven-plugin/parse-version-mojo.html
-						 This prepares for dynamic construction of the output jar file and image tags
-					 -->
-					<execution>
-						<id>parse-version</id>
-						<goals>
-							<goal>parse-version</goal>
-						</goals>
-						<configuration>
-							<propertyPrefix>v</propertyPrefix>
-						</configuration>
-					</execution>
-					<execution>
-						<id>set-build-name-parts1</id>
-						<goals>
-							<goal>regex-properties</goal>
-						</goals>
-						<configuration>
-							<regexPropertySettings>
-								<regexPropertySetting>
-									<name>qualifier1</name>
-									<value>-${v.qualifier}-${build.mode}-${buildno}</value>
-									<regex>^.*-RELEASE-.*$</regex>
-									<replacement>-RELEASE</replacement>
-									<failIfNoMatch>false</failIfNoMatch>
-								</regexPropertySetting>
-								<regexPropertySetting>
-									<name>izgw.version</name>
-									<value>-${v.majorVersion}.${v.minorVersion}.${v.incrementalVersion}</value>
-									<regex>-</regex>
-									<replacement>-</replacement>
-									<failIfNoMatch>false</failIfNoMatch>
-								</regexPropertySetting>
-							</regexPropertySettings>
-						</configuration>
-					</execution>
-					<execution>
-						<id>set-build-name-parts2</id>
-						<goals>
-							<goal>regex-property</goal>
-						</goals>
-						<configuration>
-							<name>qualifier2</name>
-							<value>${qualifier1}</value>
-							<regex>SNAPSHOT-SNAPSHOT</regex>
-							<replacement>SNAPSHOT</replacement>
-							<failIfNoMatch>false</failIfNoMatch>
-						</configuration>
-					</execution>
-					<execution>
-						<id>set-build-name</id>
-						<goals>
-							<goal>regex-property</goal>
-						</goals>
-						<configuration>
-							<name>image.name</name>
-							<!--
-								if ${project.version} = 2.1.0-IGDD-1000_Some_branch-SNAPSHOT
-								and ${build.mode} is SNAPSHOT
-								create image.name as izgw-hub-2.1.0-IGDD-1000_Some_branch-SNAPSHOT-buildno
-							
-								if ${project.version} = 2.1.0-IGDD-1000_Some_branch-SNAPSHOT
-								and ${build.mode} is RELEASE
-								create image.name as izgw-hub-2.1.0-RELEASE
-								
-								to create a snapshot build locally, run
-									mvn install 
-									the buildNo value will be set from the current timestamp
-								to create a snapshot build in CICD
-									mvn install -Dbuildno=${{github.run_number}}
-								to create a release build
-									mvn install -Dbuild.mode=RELEASE
-							-->
-							<value>${project.artifactId}${izgw.version}${qualifier2}</value>
-							<regex>-</regex>
-							<replacement>-</replacement>
-							<failIfNoMatch>false</failIfNoMatch>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
-			<plugin>
 				<groupId>com.spotify</groupId>
 				<artifactId>dockerfile-maven-plugin</artifactId>
 				<version>1.4.13</version>
 				<configuration>
 					<repository>iz-gateway</repository>
 					<buildArgs>
-						<JAR_FILENAME>${image.name}.jar</JAR_FILENAME>
+						<JAR_FILENAME>${image.tag}.jar</JAR_FILENAME>
 						<IZGW_VERSION>${project.version}</IZGW_VERSION>
 					</buildArgs>
 				</configuration>
@@ -420,7 +334,7 @@
 						</goals>
 						<phase>install</phase>
 						<configuration>
-							<tag>${image.name}</tag>
+							<tag>${image.tag}</tag>
 						</configuration>
 					</execution>
 					<execution>
