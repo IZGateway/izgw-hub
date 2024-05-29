@@ -217,10 +217,10 @@ jobs:
 
     - name: Tag, push and deploy image to Github Repository
       run: |
-        docker image tag iz-gateway:${{env.IMAGE_TAG}} ghcr.io/izgateway/izgateway2:${{env.IMAGE_TAG}}
-        docker image tag iz-gateway:${{env.IMAGE_TAG}} ghcr.io/izgateway/izgateway2:${{env.IMAGE_BRANCH_TAG}}
-        docker image tag iz-gateway:${{env.IMAGE_TAG}} ghcr.io/izgateway/izgateway2:latest
-        docker image push --all-tags ghcr.io/izgateway/izgateway2
+        docker image tag iz-gateway:${{env.IMAGE_TAG}} ghcr.io/izgateway/izgw-hub:${{env.IMAGE_TAG}}
+        docker image tag iz-gateway:${{env.IMAGE_TAG}} ghcr.io/izgateway/izgw-hub:${{env.IMAGE_BRANCH_TAG}}
+        docker image tag iz-gateway:${{env.IMAGE_TAG}} ghcr.io/izgateway/izgw-hub:latest
+        docker image push --all-tags ghcr.io/izgateway/izgw-hub
 
     - name: Upload build environment as artifact for failed build
       uses: actions/upload-artifact@v4
