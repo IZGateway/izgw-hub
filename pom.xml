@@ -15,15 +15,16 @@
 	<name>IZ Gateway Hub 2.0</name>
 	<description>IZ Gateway Hub</description>
 	<properties>
-		<buildno>${timestamp}</buildno>
-		<image.tag>${project.build.finalName}</image.tag>
-		<java.version>17</java.version>
 		<maven.build.timestamp.format>yyyyMMddHHmm</maven.build.timestamp.format>
-		<project.build.finalName>${project.artifactId}-${project.version}-${timestamp}</project.build.finalName>
+		<timestamp>${maven.build.timestamp}</timestamp>
+		<buildno>${timestamp}</buildno>
+		<build.mode>SNAPSHOT</build.mode>
+		<java.version>17</java.version>
+		<!-- use -Dbuild.mode=RELEASE to create a release build -->
+		<image.version>${project.version}</image.version>
+		<image.tag>${artifactId}-${version}-${buildno}</image.tag>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.java.package>${project.groupId}</project.java.package>
-		<!-- 17 needs a certified encryption module -->
-		<timestamp>${maven.build.timestamp}</timestamp>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -237,6 +238,7 @@
 		</dependency>
 	</dependencies>
 	<build>
+		<finalName>${image.tag}</finalName>
 		<pluginManagement>
 			<plugins>
 				<plugin>
@@ -253,68 +255,6 @@
 			</plugins>
 		</pluginManagement>
 		<plugins>
-			<plugin>
-				<groupId>com.spotify</groupId>
-				<artifactId>dockerfile-maven-plugin</artifactId>
-				<version>1.4.13</version>
-				<configuration>
-					<repository>iz-gateway</repository>
-					<buildArgs>
-						<JAR_FILENAME>${project.build.finalName}.jar</JAR_FILENAME>
-						<IZGW_VERSION>${project.version}</IZGW_VERSION>
-					</buildArgs>
-				</configuration>
-				<executions>
-					<execution>
-						<id>build-image</id>
-						<goals>
-							<goal>build</goal>
-							<goal>tag</goal>
-						</goals>
-						<phase>install</phase>
-						<configuration>
-							<tag>${image.tag}-${buildno}</tag>
-						</configuration>
-					</execution>
-					<execution>
-						<id>tag-latest</id>
-						<goals>
-							<goal>tag</goal>
-						</goals>
-						<phase>install</phase>
-						<configuration>
-							<tag>latest</tag>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
-			<plugin>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<configuration>
-					<source>17</source>
-					<target>17</target>
-					<annotationProcessorPaths>
-						<path>
-							<groupId>org.projectlombok</groupId>
-							<artifactId>lombok</artifactId>
-							<version>${lombok.version}</version>
-						</path>
-					</annotationProcessorPaths>
-				</configuration>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-dependency-plugin</artifactId>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-enforcer-plugin</artifactId>
-				<executions>
-					<execution>
-						<id>enforce-java-version</id>
-					</execution>
-				</executions>
-			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-resources-plugin</artifactId>
@@ -345,6 +285,20 @@
 				</executions>
 			</plugin>
 			<plugin>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<source>17</source>
+					<target>17</target>
+					<annotationProcessorPaths>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+							<version>${lombok.version}</version>
+						</path>
+					</annotationProcessorPaths>
+				</configuration>
+			</plugin>
+			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
@@ -359,6 +313,54 @@
 						<include>**/*Tests.java</include>
 					</includes>
 				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>com.spotify</groupId>
+				<artifactId>dockerfile-maven-plugin</artifactId>
+				<version>1.4.13</version>
+				<configuration>
+					<repository>iz-gateway</repository>
+					<buildArgs>
+						<JAR_FILENAME>${image.tag}.jar</JAR_FILENAME>
+						<IZGW_VERSION>${project.version}</IZGW_VERSION>
+					</buildArgs>
+				</configuration>
+				<executions>
+					<execution>
+						<id>build-image</id>
+						<goals>
+							<goal>build</goal>
+							<goal>tag</goal>
+						</goals>
+						<phase>install</phase>
+						<configuration>
+							<tag>${image.tag}</tag>
+						</configuration>
+					</execution>
+					<execution>
+						<id>tag-latest</id>
+						<goals>
+							<goal>tag</goal>
+						</goals>
+						<phase>install</phase>
+						<configuration>
+							<tag>latest</tag>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-enforcer-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>enforce-java-version</id>
+					</execution>
+				</executions>
 			</plugin>
 			<plugin>
 				<!-- Since all libraries are deliverable, this should in fact be

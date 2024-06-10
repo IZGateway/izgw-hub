@@ -1,6 +1,6 @@
-*/target/*
+target/**
 **/.mvn
-**/logs
-*/temp/*
+logs/**
+temp/**
 **/pom.xml.versionsBackup
 /target/
