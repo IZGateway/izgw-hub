@@ -9128,12 +9128,7 @@
 							}
 						}
 					]
-				}
-			]
-		},
-		{
-			"name": "Not Working",
-			"item": [
+				},
 				{
 					"name": "Mock IIS Tests",
 					"item": [
@@ -9144,54 +9139,7 @@
 									"listen": "test",
 									"script": {
 										"exec": [
-											"pm.test(\"Status code is 200\", function () {\r",
-											"    pm.response.to.have.status(200);\r",
-											"});\r",
-											"\r",
-											"pm.test(\"Response is As Expected\", function () {\r",
-											"    var response = utils.removeNS(xml2Json(responseBody));\r",
-											"    var header = response?.Envelope?.Header?.HubResponseHeader;\r",
-											"    try {\r",
-											"        pm.expect(header).to.not.be.eql(undefined);\r",
-											"        pm.expect(header).to.have.property('DestinationId');\r",
-											"        pm.expect(header).to.have.property('DestinationUri');\r",
-											"    } catch (err) {\r",
-											"        console.log({\"header\": header});\r",
-											"        throw err;\r",
-											"    }\r",
-											"    var hl7Message = response['Envelope']['Body']['SubmitSingleMessageResponse']['Hl7Message'];\r",
-											"    var request = xml2Json(pm.request.body);\r",
-											"    var expected = pm.collectionVariables.get(\"GoodResponse\");\r",
-											"    try {\r",
-											"        pm.expect(hl7Message.replaceAll('\\r','\\n')).to.be.eql(expected.replaceAll('\\r','\\n'));  // TODO: Raise the issue of CR's in content.\r",
-											"    } catch (err) {\r",
-											"        console.log(hl7Message, expected);\r",
-											"        throw err;\r",
-											"    }\r",
-											"});\r",
-											"\r",
-											"\r",
-											"utils.testSLA(pm, LONG_SLA);\r",
-											"\r",
-											"const interval = setTimeout(() => {}, 3000);\r",
-											"async function moreTests() {\r",
-											"    utils.getLogs(null, pm).then((logData) => {\r",
-											"        logs = logData.json();\r",
-											"        txData = utils.getTxData(logs);\r",
-											"        pm.test(\"Log does not contain HL7 Error\", function() {\r",
-											"            pm.expect(txData[0].transactionData.hasHL7Error).to.be.eql(false);\r",
-											"            pm.expect(txData[0].transactionData.hl7Error).to.be.eql(\"\");\r",
-											"        });\r",
-											"        pm.test(\"Log does not contain PHI\", function() {\r",
-											"            pm.expect(txData[0].transactionData.requestHL7Message).to.not.contain(\"\\nPID\");\r",
-											"            pm.expect(txData[0].transactionData.requestHL7Message).to.not.contain(\"\\nQPD\");\r",
-											"        });\r",
-											"        utils.testLogs(logs, pm, 250);\r",
-											"    });\r",
-											"}\r",
-											"\r",
-											"moreTests();\r",
-											"utils.checkNamespaces(pm);\r",
+											"utils.testHL7RSP(pm.response.text(), pm.request.body, [\"234820^^^MYEHR^MR\"], \"AA\", \"OK\", \"\");",
 											""
 										],
 										"type": "text/javascript",
@@ -9228,7 +9176,1027 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>{{GoodMessage}}</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M|1960-05-07|F|1663 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;\r\n      </urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{host}}"
+									],
+									"port": "{{port}}",
+									"path": [
+										"IISHubService"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "TC_MOCK_02: Query for matching patient, w/o Address, confirm one found with IZ history",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"utils.testHL7RSP(pm.response.text(), pm.request.body, [\"234820^^^MYEHR^MR\"], \"AA\", \"OK\", \"\");",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"utils.setup(pm, \"dev\");"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {
+									"host": true
+								}
+							},
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Host",
+										"value": "{{hostHeader}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/xml"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f9|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M|1960-05-07|F&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{host}}"
+									],
+									"port": "{{port}}",
+									"path": [
+										"IISHubService"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "TC_MOCK_03a: - Bad Street Address",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"utils.testHL7RSP(pm.response.text(), pm.request.body, [], \"AA\", \"NF\", \"\");",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"utils.setup(pm, \"dev\");"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {
+									"host": true
+								}
+							},
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Host",
+										"value": "{{hostHeader}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/xml"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M|1960-05-07|F|1664 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{host}}"
+									],
+									"port": "{{port}}",
+									"path": [
+										"IISHubService"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "TC_MOCK_03b:- Incorrect City",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"utils.testHL7RSP(pm.response.text(), pm.request.body, [], \"AA\", \"NF\", \"\");",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"utils.setup(pm, \"dev\");"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {
+									"host": true
+								}
+							},
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Host",
+										"value": "{{hostHeader}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/xml"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M|1960-05-07|F|1663 Persoon Ave^^Bobbyiston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{host}}"
+									],
+									"port": "{{port}}",
+									"path": [
+										"IISHubService"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "TC_MOCK_03c:- Incorrect Zip Code",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"utils.testHL7RSP(pm.response.text(), pm.request.body, [], \"AA\", \"NF\", \"\");",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"utils.setup(pm, \"dev\");"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {
+									"host": true
+								}
+							},
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Host",
+										"value": "{{hostHeader}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/xml"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M|1960-05-07|F|1663 Persoon Ave^^Williston^ND^58802^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{host}}"
+									],
+									"port": "{{port}}",
+									"path": [
+										"IISHubService"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "TC_MOCK_03d:- Incorrect State",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"utils.testHL7RSP(pm.response.text(), pm.request.body, [], \"AA\", \"NF\", \"\");",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"utils.setup(pm, \"dev\");"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {
+									"host": true
+								}
+							},
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Host",
+										"value": "{{hostHeader}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/xml"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M|1960-05-07|F|1663 Persoon Ave^^Williston^NC^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{host}}"
+									],
+									"port": "{{port}}",
+									"path": [
+										"IISHubService"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "TC_MOCK_04a: Query for matching patient, w/ incorrect DOB, confirm not found with IZ history",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"utils.testHL7RSP(pm.response.text(), pm.request.body, [], \"AA\", \"NF\", \"\");",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"utils.setup(pm, \"dev\");"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {
+									"host": true
+								}
+							},
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Host",
+										"value": "{{hostHeader}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/xml"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M|1961-05-07|F|1663 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{host}}"
+									],
+									"port": "{{port}}",
+									"path": [
+										"IISHubService"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "TC_MOCK_04b: Query for matching patient, w/ incorrect Name (within limits), confirm one found with IZ history",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"utils.testHL7RSP(pm.response.text(), pm.request.body, [\"234820^^^MYEHR^MR\"], \"AA\", \"OK\", \"\");",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"utils.setup(pm, \"dev\");"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {
+									"host": true
+								}
+							},
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Host",
+										"value": "{{hostHeader}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/xml"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarnAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnAIRA^^^^^M|1960-05-07|F|1663 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;\r\n</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{host}}"
+									],
+									"port": "{{port}}",
+									"path": [
+										"IISHubService"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "TC_MOCK_04c: Query for matching patient, w/ incorrect Name (exceeds limits), confirm NOT found with IZ history",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"utils.testHL7RSP(pm.response.text(), pm.request.body, [], \"AA\", \"NF\", \"\");",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"utils.setup(pm, \"dev\");"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {
+									"host": true
+								}
+							},
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Host",
+										"value": "{{hostHeader}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/xml"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarRA^MalkaAIRA^^^^L|CuyahoA^MarnyAIRA^^^^^M|1960-05-07|F|1663 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{host}}"
+									],
+									"port": "{{port}}",
+									"path": [
+										"IISHubService"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "TC_MOCK_05a: Query for multiple matching patients <= 3, confirm multiple multiple PID and NK1 segments returned",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"utils.testHL7RSP(pm.response.text(), pm.request.body, [\"235760a^^^MYEHR^MR\",\"235760b^^^MYEHR^MR\"], \"AA\", \"OK\", \"\");",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"utils.setup(pm, \"dev\");"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {
+									"host": true
+								}
+							},
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Host",
+										"value": "{{hostHeader}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/xml"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|||NavarroAIRA^ZadorAIRA^VaIdaAIRA^^^^L||2001-08-10|M&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{host}}"
+									],
+									"port": "{{port}}",
+									"path": [
+										"IISHubService"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "TC_MOCK_05b: Query for multiple matching patients > 3, confirm too many (TM) error returned",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"utils.testHL7RSP(pm.response.text(), pm.request.body, [], \"AA\", \"TM\", \"\");",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"utils.setup(pm, \"dev\");"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {
+									"host": true
+								}
+							},
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Host",
+										"value": "{{hostHeader}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/xml"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|||FagenAIRA^RudraniAIRA^^^^L||2021-01-02|F&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{host}}"
+									],
+									"port": "{{port}}",
+									"path": [
+										"IISHubService"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "TC_MOCK_06: Query for not-matching patient, conform not found return",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"utils.testHL7RSP(pm.response.text(), pm.request.body, [], \"AA\", \"NF\", \"\");",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"utils.setup(pm, \"dev\");"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {
+									"host": true
+								}
+							},
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Host",
+										"value": "{{hostHeader}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/xml"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|NotFoundAIRA^NotFoundAIRA^MalkaAIRA^^^^L|NotFoundAIRA^MarnyAIRA^^^^^M|1960-05-07|F|1663 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{host}}"
+									],
+									"port": "{{port}}",
+									"path": [
+										"IISHubService"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "TC_MOCK_07a: - Missing Sex",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"utils.testHL7RSP(pm.response.text(), pm.request.body, [], \"AE\", null, \"ERR||QPD^1^7|101^Required Field Missing^HL70357|E||||Missing Required QPD Parameter: Sex\");",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"utils.setup(pm, \"dev\");"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {
+									"host": true
+								}
+							},
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Host",
+										"value": "{{hostHeader}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/xml"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M|1960-05-07||1663 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{host}}"
+									],
+									"port": "{{port}}",
+									"path": [
+										"IISHubService"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "TC_MOCK_07b: - Missing Name",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"utils.testHL7RSP(pm.response.text(), pm.request.body, [], \"AE\", null, \"ERR||QPD^1^4|101^Required Field Missing^HL70357|E||||Missing Required QPD Parameter: Name\");",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"utils.setup(pm, \"dev\");"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {
+									"host": true
+								}
+							},
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Host",
+										"value": "{{hostHeader}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/xml"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|||1960-05-07|F|1663 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{host}}"
+									],
+									"port": "{{port}}",
+									"path": [
+										"IISHubService"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "TC_MOCK_07c: - Missing DOB",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"utils.testHL7RSP(pm.response.text(), pm.request.body, [], \"AE\", null, \"ERR||QPD^1^6|101^Required Field Missing^HL70357|E||||Missing Required QPD Parameter: Date of Birth\");",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"utils.setup(pm, \"dev\");"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {
+									"host": true
+								}
+							},
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Host",
+										"value": "{{hostHeader}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/xml"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M||F|1663 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{host}}"
+									],
+									"port": "{{port}}",
+									"path": [
+										"IISHubService"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "TC_MOCK_07d: - Missing Query Name",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"utils.testHL7RSP(pm.response.text(), pm.request.body, [], \"AE\", null, \"ERR||QPD^1^1|101^Required Field Missing^HL70357|E||||Missing Required QPD Parameter: Query Name\");",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"utils.setup(pm, \"dev\");"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {
+									"host": true
+								}
+							},
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Host",
+										"value": "{{hostHeader}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/xml"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD||37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M|1960-05-07|F|1663 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{host}}"
+									],
+									"port": "{{port}}",
+									"path": [
+										"IISHubService"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "TC_MOCK_08: Query for patient with missing QPD segment, confirm missing segment returned and 100 error code",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"utils.testHL7RSP(pm.response.text(), pm.request.body, [], \"AE\", null, \"ERR||QPD^1^1|100^Segment Sequence Error^HL70357|E||||Missing QPD Segment\");",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"utils.setup(pm, \"dev\");"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {
+									"host": true
+								}
+							},
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Host",
+										"value": "{{hostHeader}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/xml"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{host}}"
+									],
+									"port": "{{port}}",
+									"path": [
+										"IISHubService"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "TC_MOCK_09: Issue VXU for patient, confirm AR returned on message not supported and 200 error code",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"utils.testHL7RSP(pm.response.text(), pm.request.body, [], \"AE\", null, \"ERR||MSH^1^9|200^Unsupported Message Type^HL70357|E||||Mock does not handle VXU Messages\");",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"utils.setup(pm, \"dev\");"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {
+									"host": true
+								}
+							},
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Host",
+										"value": "{{hostHeader}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/xml"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||VXU^V04^VXU_V04|bd4ffcb7-8d37-4384-b642-add379877a2e|P|2.5.1|||ER|AL|||||Z22^CDCPHINVS&#x0d;PID|1||432155^^^dcs^MRS||FagenAIRA^SophoclesAIRA^JerrieAIRA^^^^L|FagenAIRA^SophoclesAIRA^^^^^M |1976-01-28|M||ASIAN|1760 Ve Marne Ln^^Fargo^ND^58104^^L||^PRN^PH^^^111^2320112|||||||||not HISPANIC&#x0d;NK1|1|FagenAIRA^SophoclesAIRA^^^^^L|MTH^Mom^HL70063|1760 Ve Marne Ln^^Fargo^ND^58104^^L &#x0d;ORC|RE||65930^DCS||||||20120113|^FagenAIRA^SophoclesAIRA||^FagenAIRA^SophoclesAIRA^^^^^^^ ^^^^^^^^^^^MD|||||||||Dabig Clinic System&#x0d;RXA|0|1|2004-05-15||08^08^CVX|.05|ml||01^historical^NIP001|||||||||||CP|A&#x0d;RXR|C28161^IM^NCIT^IM^^HL70162|RT^Right Thigh^HL70163&#x0d;OBX|1|CE|64994-7^Eligibility Status^LN|1|V02^Medicaid^HL70064||||||F||||||VXC40^vaccine level^CDCPHINVS&#x0d;OBX|2|DT|29769-7^VIS presented^LN|2|20120113||||||F&#x0d;OBX|3|CE|69764-9 ^Document type^LN|2|253088698300026411121116^Multivaccine VIS^cdcgs1vis||||||F &#x0d;ORC|RE||65949^DCS||||||20120113|^FagenAIRA^SophoclesAIRA||^FagenAIRA^SophoclesAIRA^^^^^^^ ^^^^^^^^^^^MD|||||||||Dabig Clinic System&#x0d;OBX|4|CE|64994-7^Eligibility Status^LN|1|V02^Medicaid^HL70064||||||F||||||VXC40^vaccine level^CDCPHINVS&#x0d;OBX|5|DT|29769-7^VIS presented^LN|2|20120113||||||F OBX|6|CE|69764-9^Eligibility Status^LN|2|253088698300026411121116^Multivaccine VIS^cdcgs1vis||||||F&#x0d;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
@@ -9244,9 +10212,119 @@
 							},
 							"response": []
 						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"packages": {},
+								"exec": [
+									"utils.testHl7Error = async function (pm, hl7Error) {\r",
+									"    utils.getLogs(null, pm).then((logData) => {\r",
+									"        logs = logData.json();\r",
+									"        txData = utils.getTxData(logs);\r",
+									"        pm.test(\"Log does not contain HL7 Error\", function() {\r",
+									"            pm.expect(txData[0].transactionData.hasHL7Error).to.be.eql(hl7Error != \"\");\r",
+									"        });\r",
+									"        pm.test(\"HL7 Error is '\" + hl7Error + \"'\", function() {\r",
+									"            pm.expect(txData[0].transactionData.hl7Error).to.be.eql(hl7Error);\r",
+									"        });\r",
+									"    });\r",
+									"}\r",
+									"\r",
+									"utils.parseHL7 = function (hl7Message) {\r",
+									"    hl7Message = hl7Message.replaceAll(\"&#x0d;\", \"\\r\");\r",
+									"    hl7Segments = hl7Message.split(/[\\r\\n]/);\r",
+									"    segments = new Object();\r",
+									"    for (seg of hl7Segments) {\r",
+									"        parts = seg.split(/\\|/);\r",
+									"        fields = { \"field\": parts, \"value\": seg };\r",
+									"        name = parts[0];\r",
+									"        if (segments[name] == undefined) {\r",
+									"            segments[name] = new Array();\r",
+									"        }\r",
+									"        segments[name].add(fields);\r",
+									"    }\r",
+									"    return segments;\r",
+									"}\r",
+									"\r",
+									"utils.testHL7RSP = function (resp, req, pids, ack, qak, hl7Error) {\r",
+									"    var hl7Response = utils.removeNS(xml2Json(resp));\r",
+									"    var hl7Message = hl7Response['Envelope']['Body']['SubmitSingleMessageResponse']['Hl7Message'];\r",
+									"    var segments = this.parseHL7(hl7Message);\r",
+									"\r",
+									"    pm.test(\"The PID segment(s) contains the expected Medical Record Number(s) [\" + pids + \"]\", function () {\r",
+									"        if (pids.length == 0) {\r",
+									"            pm.expect(segments?.PID).eql(undefined);\r",
+									"        } else {\r",
+									"            pm.expect(segments?.PID?.length).eql(pids.length);\r",
+									"        }\r",
+									"        for (i = 0; i < pids.length; i++) {\r",
+									"            pm.expect(segments?.PID[i].field[3]).eql(pids[i]);\r",
+									"        }\r",
+									"    });\r",
+									"\r",
+									"    // The MSA segment has an application acknowledgement code\r",
+									"    pm.test(\"There is 1 MSA segment and it has an \" + ack + \" in field 1\", function () {\r",
+									"        pm.expect(segments?.MSA?.[0]?.field[1]).eql(ack);\r",
+									"    });\r",
+									"\r",
+									"    if (ack == \"AA\") {\r",
+									"        // There is 1 QPD segment and it matches the initial QPD segment\r",
+									"        var request = this.removeNS(xml2Json(req));\r",
+									"        var hl7Request = request['Envelope']['Body']['SubmitSingleMessageRequest']['Hl7Message'];\r",
+									"        var requestQPD = utils.parseHL7(hl7Message)?.QPD?.[0];\r",
+									"        pm.test(\"There is 1 QPD segment and it matches the request QPD segment\", function () {\r",
+									"            pm.expect(segments?.QPD?.length).eql(1);\r",
+									"            pm.expect(segments?.QPD[0].value).eql(requestQPD.value);\r",
+									"        });\r",
+									"        // The QAK segment has the right response\r",
+									"        pm.test(\"There is 1 QAK segment and it has an \"+qak+\" in field 2\", function () {\r",
+									"            pm.expect(segments?.QAK?.[0]?.field[2]).eql(qak);\r",
+									"        });\r",
+									"    }\r",
+									"    if (hl7Error == \"\") {\r",
+									"        pm.test(\"There is no ERR segment\", function () {\r",
+									"            pm.expect(segments?.ERR?.[0]?.value).eql(undefined);\r",
+									"        });\r",
+									"    } else {\r",
+									"        pm.test(\"There is an ERR segment and the Segment is \" + hl7Error, function () {\r",
+									"            pm.expect(segments?.ERR[0].value).eql(hl7Error);\r",
+									"        });\r",
+									"\r",
+									"    }\r",
+									"    this.testHl7Error(pm, hl7Error);\r",
+									"}\r",
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"packages": {},
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"utils.testSLA(pm, LONG_SLA);\r",
+									"\r",
+									"const interval = setTimeout(() => {}, 3000);\r",
+									"\r",
+									""
+								]
+							}
+						}
 					]
 				}
 			]
+		},
+		{
+			"name": "Not Working",
+			"item": []
 		}
 	],
 	"event": [

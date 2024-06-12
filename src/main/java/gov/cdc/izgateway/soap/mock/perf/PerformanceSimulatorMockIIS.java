@@ -38,7 +38,8 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 	/** Test data is loaded from a text file containing one RSP message per patient per file line */ 
 	private static final Map<String, List<String>> immunizationData = initMock();
 
-	private static final int QUERY_TAG = 1;
+	private static final int QUERY_NAME = 1;
+	private static final int QUERY_TAG = 2;
 	private static final int PID_LIST = 3;
 	private static final int PATIENT_NAME = 4;
 	private static final int MOTHERS_MAIDEN_NAME = 5;
@@ -81,8 +82,8 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 		+ QPD_PART;
 	private static final String QUERY_ERROR
 		= "MSH|^~\\&amp;|TEST|MOCK|IZGW|IZGW|{{Message Timestamp}}|||ACK^Q11^ACK|{{Unique Message Identifier}}|P|2.5.1|||NE|NE|||||Z23^CDCPHINVS\r"
-		+ MSA_PART
-		+ "ERR||MSH^1^12|{{Error Code}}^{{Error Text}}^HL70357|E||||{{Display Text}}\r";
+		+ "MSA|AE|{{Original Message Control ID}}\r"
+		+ "ERR||{{Error Location}}|{{Error Code}}|E||||{{Error Message}}\r";
 	
 	private static String qakPart(String ack) {
 		return "QAK|{{QPD-2 value from QBP message}}|" + ack + "|{{QPD-1 value from QBP message}}\r";
@@ -120,7 +121,9 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 	}
 
 	private static class QueryException extends Exception {
-
+		private static String[] fieldNames = {
+			"", "Query Name", "Query Tag", "ID List", "Name", "Mother's Maiden Name", "Date of Birth", "Sex"
+		};
 		private static final long serialVersionUID = 1L;
 		private final int field;
 		private QueryException(int field) {
@@ -128,6 +131,12 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 		}
 		private int getField() {
 			return field;
+		}
+		public String getFieldName() {
+			if (field < 0 || field >= fieldNames.length) {
+				return null;
+			}
+			return fieldNames[field];
 		}
 	}
 
@@ -159,7 +168,7 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 		try {
 			qParts = getQueryParts(query);
 		} catch (QueryException e) {
-			return queryError(hl7RequestMessage, "QPD^1^" + Integer.toString(e.getField()), "101^Required Field Missing^HL70357", "Missing Required QPD Parameter");
+			return queryError(hl7RequestMessage, "QPD^1^" + Integer.toString(e.getField()), "101^Required Field Missing^HL70357", "Missing Required QPD Parameter: " + e.getFieldName());
 		}
 		
 		String dateOfBirth = qParts[DATE_OF_BIRTH];
@@ -215,21 +224,23 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 		/*
 		 * These are the query parts and their use: (R = required, O = optional, N = optional and NOT used)
 		 * 
-		 * 1. QueryTag					R
-		 * 2. PatientList				O
-		 * 3. PatientName 				R
-		 * 4. PatientMotherMaidenName	O 
-		 * 5. PatientDateofBirth		R
-		 * 6. PatientSex				R
-		 * 7. PatientAddress			O
-		 * 8. PatientHomePhone			O
-		 * 9. PatientMultipleBirthIndicator	N
-		 * 10. PatientBirthOrder		N
-		 * 11. ClientLastUpdatedDate	N
-		 * 12. ClientLastUpdateFacility	N
+		 * 1. Message Query Name		R
+		 * 2. QueryTag					R
+		 * 3. PatientList				O
+		 * 4. PatientName 				R
+		 * 5. PatientMotherMaidenName	O 
+		 * 6. PatientDateofBirth		R
+		 * 7. PatientSex				R
+		 * 8. PatientAddress			O
+		 * 9. PatientHomePhone			O
+		 * 10. PatientMultipleBirthIndicator	N
+		 * 11. PatientBirthOrder		N
+		 * 12. ClientLastUpdatedDate	N
+		 * 13. ClientLastUpdateFacility	N
 		 */
 		int fieldNo = 6;
 		if (qParts.length < PATIENT_SEX || 
+			StringUtils.isEmpty(qParts[fieldNo = QUERY_NAME]) ||  	// NOSONAR save last attempted matched field in fieldNo
 			StringUtils.isEmpty(qParts[fieldNo = QUERY_TAG]) ||  	// NOSONAR save last attempted matched field in fieldNo
 			StringUtils.isEmpty(qParts[fieldNo = PATIENT_NAME]) ||	// NOSONAR save last attempted matched field in fieldNo
 			StringUtils.isEmpty(qParts[fieldNo = DATE_OF_BIRTH]) ||	// NOSONAR save last attempted matched field in fieldNo
@@ -302,7 +313,7 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 			String nk1 = getSegment("NK1", d);
 			if (pid != null) {
 				newData.setLength(0);
-				newData.append("PID|").append(i).append(pid.substring(5)).append("\r");
+				newData.append("PID|").append(i+1).append(pid.substring(5)).append("\r");
 				if (nk1 != null) {
 					newData.append(nk1).append("\r");
 				}
@@ -394,6 +405,9 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 			return true;
 		}
 		for (String m: match.split("~")) {
+			if (m.isEmpty()) {
+				continue;
+			}
 			for (String v: value.split("~")) {
 				if (matchFunction.compare(m, v) == 0) {
 					return true;
@@ -430,6 +444,9 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 	private static int comparePhoneNumber(String value, String match) {
 		value = normalizePhoneNumber(value);
 		match = normalizePhoneNumber(match);
+		if (match.isEmpty()) {
+			return 0;
+		}
 		return StringUtils.compare(value, match);
 	}
 	
@@ -460,6 +477,9 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 	}
 
 	private static int compareNameStrings(String v, String m, int len) {
+		if (m.isEmpty()) {
+			return 0;
+		}
 		int l = Math.min(v.length(), m.length());
 		v = v.toUpperCase().substring(0, l);
 		m = m.toUpperCase().substring(0, l);
@@ -467,27 +487,61 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 		l = LevenshteinDistance.getDefaultInstance().apply(v, m);
 		return  l < len ? 0 : l;
 	}
+	
+	private static int compareStreetAddress(String v, String m, int len) {
+		if (m.isEmpty()) {
+			return 0;
+		}
+		String[] vParts = splitAlphaNumeric(v);
+		String[] mParts = splitAlphaNumeric(m);
+		int c = mParts[1].isEmpty() ? 0 : StringUtils.compare(vParts[1], mParts[1]);
+		if (c != 0) {
+			return c;
+		}
+		return compareNameStrings(vParts[0], mParts[0], len);
+	}
+	
+	private static String[] splitAlphaNumeric(String s) {
+		StringBuilder alpha = new StringBuilder();
+		StringBuilder numeric = new StringBuilder();
+		for (int i = 0; i < s.length(); i++) {
+			int c = s.charAt(i);
+			if (Character.isDigit(c)) {
+				numeric.append(c);
+			} else if (Character.isAlphabetic(c)) {
+				alpha.append(c);
+			} else {
+				numeric.append(c);
+				alpha.append(c);
+			}
+		}
+		String[] result = { alpha.toString(), numeric.toString() };
+		return result;
+	}
 
 	private static int compareAddrParts(String value, String match) {
-		String[] values = value.split("^");
-		String[] matches = match.split("^");
+		String[] values = value.split("\\^");
+		String[] matches = match.split("\\^");
 		
 		// Compare zip codes.
-		if (values.length > 4 && matches.length > 4) {
-			String v = values[4];
-			String m = matches[4];
-			int l = Math.min(v.length(), m.length());
-			v = v.substring(0, l);
-			m = m.substring(0, l);
-			int c = StringUtils.compare(v, m);
-			if (c != 0) return c;
-		}
-		for (int i = 3; i >= 0; i--) {
-			if (values.length <= i && matches.length <= i) {
+		for (int i = 4; i >= 0; i--) {
+			if (matches.length <= i || StringUtils.isEmpty(matches[i])) {
 				continue;
+			}
+			if (values.length <= i) {
+				return -1;
 			}
 			int c = 0;
 			switch (i) {
+			case 4:
+				// Compare zip code
+				String v = values[4];
+				String m = matches[4];
+				int l = Math.min(v.length(), m.length());
+				v = v.substring(0, l);
+				m = m.substring(0, l);
+				c = StringUtils.compare(v, m);
+				break;
 			case 3:
 				// Compare state
 				c = StringUtils.compareIgnoreCase(values[i], matches[i]);
@@ -498,7 +552,7 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 				break;
 			case 0:
 				// Compare Street address
-				c = compareNameStrings(values[0], matches[0], 5);
+				c = compareStreetAddress(values[0], matches[0], 5);
 				break;
 			default:
 				continue;
