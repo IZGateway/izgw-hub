@@ -78,8 +78,8 @@ public class DEXStorageSender extends RestfulFileSender implements FileSender {
 		
 	    private TusUpload getUploader(DataHandler data) throws IOException, MetadataFault {
 	        TusUpload u = new TusUpload();
-	        u.setMetadata(getMetadataAsMap(meta));
 			Map<String, String> metadataAsMap = getMetadataAsMap(meta);
+	        u.setMetadata(metadataAsMap);
 			metadataAsMap.put("filename", metadataAsMap.get("meta_ext_filename"));
 	        u.setInputStream(data.getInputStream());
 	        u.setSize(meta.getFileSize());
