@@ -125,7 +125,7 @@ public interface Metadata extends Serializable {
     		return "rsv-prevention";
 		case "covidallmonthlyvaccination":
 			return "covid-all-monthly-vaccination";
-		case "covidbridgeVaccination":
+		case "covidbridgevaccination":
 			return "covid-bridge-vaccination";
 		default:
 			return value;
