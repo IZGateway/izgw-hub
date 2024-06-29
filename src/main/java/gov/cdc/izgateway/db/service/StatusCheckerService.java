@@ -273,6 +273,10 @@ public class StatusCheckerService implements IStatusCheckerService {
 		lookForReset(dest, 0);
 	}
 	
+	public boolean isExempt(String destId) {
+		return config.getExempt().contains(destId);
+	}
+	
 	public void updateStatus(IEndpointStatus s, boolean wasCircuitBreakerThrown, Throwable reason) {
 		endpointStatusService.save(s);
         if (s.isCircuitBreakerThrown() != wasCircuitBreakerThrown) {
