@@ -23,7 +23,7 @@ Expected Date: Onboarding 5/28/2024, Production 6/11/2024
 IZ Gateway Hub 2.0.4 is a patch release to address the following issues:
 
 * Add namespace declarations for Fault elements in response messages.
->>>>>>> refs/remotes/origin/Release_v2.1.0-branch
+
 
 # IZ Gateway Release 2.0.3
 Expected Date: Onboarding 5/23/2024, Production 5/30/2024
