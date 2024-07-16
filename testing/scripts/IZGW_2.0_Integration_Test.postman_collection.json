@@ -265,8 +265,14 @@
 											"\r",
 											"pm.test(\"Contains WSDL definitions element\", function () {\r",
 											"    pm.expect(responseBody).to.match(/\\/(<[a-zA-Z0-9_]+:)?definitions/);\r",
-											"});"
-										],
+											"});",
+											"\r",
+											"pm.test(\"Contains proper WSDL location\", function () {\r",
+											"    var endpointLocation =  \"location=\\\"https://\" + pm.environment.get(\"host\") + \"/IISHubService\\\"\";\r",
+											"    pm.expect(responseBody).to.contain(endpointLocation);\r",
+											"});\r",
+											"\r"
+                                        ],
 										"type": "text/javascript"
 									}
 								},

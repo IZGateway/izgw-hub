@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>gov.cdc.izgw</groupId>
 	<artifactId>izgw-hub</artifactId>
-	<version>2.1.0-IGDD-1505_Refactor_Hub_and_Core-SNAPSHOT</version>
+	<version>2.1.0-1620_configure_wsdl_location-SNAPSHOT</version>
 	<packaging>jar</packaging>
 	<name>IZ Gateway Hub 2.0</name>
 	<description>IZ Gateway Hub</description>
@@ -30,7 +30,7 @@
 		<dependency>
 			<groupId>gov.cdc.izgw</groupId>
 			<artifactId>izgw-core</artifactId>
-			<version>2.1.0-IGDD-1546_Add_demo_data_to_Mock-SNAPSHOT</version>
+			<version>2.1.0-IGDD-1620_configure_wsdl_location-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>ca.uhn.hapi</groupId>
