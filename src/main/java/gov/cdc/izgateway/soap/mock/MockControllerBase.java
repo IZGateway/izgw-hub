@@ -48,7 +48,7 @@ public class MockControllerBase extends SoapControllerBase implements Initializi
 			if (r != null) {
 				return r;
 			}
-			return new ResponseEntity<>(p.getResponse(submitSingleMessage.getHl7Message()), HttpStatus.OK);
+			return new ResponseEntity<>(p.getResponse(submitSingleMessage), HttpStatus.OK);
 		}
 		return super.submitSingleMessage(submitSingleMessage, destinationId);
 	}

@@ -12,6 +12,7 @@ import gov.cdc.izgateway.soap.MockMessage;
 import gov.cdc.izgateway.soap.fault.Fault;
 import gov.cdc.izgateway.soap.fault.SecurityFault;
 import gov.cdc.izgateway.soap.fault.UnexpectedExceptionFault;
+import gov.cdc.izgateway.soap.message.SubmitSingleMessageRequest;
 import gov.cdc.izgateway.soap.message.SubmitSingleMessageResponse;
 import gov.cdc.izgateway.utils.ReflectionUtils;
 import gov.cdc.perf.histogram.ArrayHistogram;
@@ -261,7 +262,9 @@ abstract class AbstractPerformanceSimulator  implements PerformanceSimulatorInte
      * @param hl7RequestMessage The inbound message
      * @return An appropriate response
      */
-    public SubmitSingleMessageResponse getResponse(String hl7RequestMessage) {
+    @Override
+    public SubmitSingleMessageResponse getResponse(SubmitSingleMessageRequest requestMessage) {
+    	String hl7RequestMessage = requestMessage.getHl7Message();
         insertDelay();
         SubmitSingleMessageResponse result;
         String messageType = getMessageType(hl7RequestMessage);

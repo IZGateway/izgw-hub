@@ -78,6 +78,8 @@ import gov.cdc.izgateway.security.SSLImplementation;
 import gov.cdc.izgateway.security.ocsp.RevocationChecker;
 import gov.cdc.izgateway.service.IDestinationService;
 import gov.cdc.izgateway.service.IMessageHeaderService;
+import gov.cdc.izgateway.soap.mock.perf.PerformanceSimulatorMockIIS;
+import gov.cdc.izgateway.soap.mock.perf.PerformanceSimulatorMultiton;
 import gov.cdc.izgateway.soap.net.SoapMessageConverter;
 import gov.cdc.izgateway.soap.net.SoapMessageWriter;
 import gov.cdc.izgateway.status.StatusCheckScheduler;
@@ -262,6 +264,10 @@ public class Application implements WebMvcConfigurer {
         DataSourceProperties ds = ctx.getBean(DataSourceProperties.class);
         StatusCheckScheduler sc = ctx.getBean(StatusCheckScheduler.class);
         Application app = ctx.getBean(Application.class);
+    	new Thread(() -> {
+    		// Load Mock IIS in background
+    		PerformanceSimulatorMultiton.getInstance(PerformanceSimulatorMultiton.PERFORMANCE_PROFILE_MOCK_IIS);
+    	}).start();
         try {
             // Test for database connectivity and prefetch caches.
             List<IDestination> list = destinationService.getAllDestinations();
