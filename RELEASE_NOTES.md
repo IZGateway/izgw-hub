@@ -4,6 +4,12 @@ The IZ Gateway Hub 2.1.0 is in preparation for code sharing across IZ Gateway Hu
 * Split IZ Gateway into separate repositories for core capabilities [izgw-core](https://github.com/izgateway/izgw-core) and the
 IZ Gateway Hub [izgw-hub](https://github.com/izgateway/izgw-hub)
 
+# IZ Gateway Release 2.0.6
+Expected Date: Onboarding 6/27/2024, Production 6/27/2024
+IZ Gateway Hub 2.0.6 is a patch release to address the following issues:
+* Trim messages of trailing whitespace to fix \r\n problem
+* Do not throw circuit breaker on exempt endpoints
+
 # IZ Gateway Release 2.0.5
 Expected Date: Onboarding 6/18/2024, Production 6/18/2024
 IZ Gateway Hub 2.0.5 is an urgent patch release to address the following issues:
@@ -16,7 +22,6 @@ Expected Date: Onboarding 5/28/2024, Production 6/11/2024
 IZ Gateway Hub 2.0.4 is a patch release to address the following issues:
 
 * Add namespace declarations for Fault elements in response messages.
->>>>>>> refs/remotes/origin/Release_v2.1.0-branch
 
 # IZ Gateway Release 2.0.3
 Expected Date: Onboarding 5/23/2024, Production 5/30/2024

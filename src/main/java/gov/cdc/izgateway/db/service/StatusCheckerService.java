@@ -1,6 +1,7 @@
 package gov.cdc.izgateway.db.service;
 
 import gov.cdc.izgateway.configuration.AppProperties;
+import gov.cdc.izgateway.configuration.StatusCheckerConfiguration;
 import gov.cdc.izgateway.db.model.EndpointStatus;
 import gov.cdc.izgateway.logging.LoggingValve;
 import gov.cdc.izgateway.logging.RequestContext;
@@ -26,14 +27,11 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
 
 import gov.cdc.izgateway.utils.SystemUtils;
 import gov.cdc.izgateway.utils.X500Utils;
 import lombok.AccessLevel;
-import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -56,29 +54,12 @@ public class StatusCheckerService implements IStatusCheckerService {
 
     private static final int[]  CHECK_INTERVALS = { 15, 60, 120, 180, 240, 300, 600, 900 };
 
-    @Configuration
-    @Data
-    public static class StatusCheckerConfiguration {
-        /** Max number of retries to attempt before considering the request failed */
-        @Value("${hub.status-check.maxfailures:3}")
-    	private int maxFailuresBeforeCircuitBreaker;
-        /** Period between status checks */
-        @Value("${hub.status-check.period:5}")
-        private int statusCheckPeriodInMinutes;
-        /** List of endpoints exempt from status checks */
-        @Value("${hub.status-check.exemptions:fl}")
-        private List<String> exempt;
-        /** List of endpoints EXPECTED to fail */
-        @Value("${hub.status-check.failing-endpoints: 404,down,invalid,reject}")
-        private List<String> testingEndpoints;
-    }
-
-	public static interface ADSChecker {
+    public static interface ADSChecker {
 		public String check(String dest) throws Fault;
 	}
 
     @Getter
-    StatusCheckerConfiguration config;
+    private final StatusCheckerConfiguration config;
     private final MessageSender messageSender;
     private final IDestinationService destinationService;
 	private final ClientTlsSupport clientTlsSupport;
@@ -271,6 +252,10 @@ public class StatusCheckerService implements IStatusCheckerService {
 
 	public void lookForReset(IDestination dest) {
 		lookForReset(dest, 0);
+	}
+	
+	public boolean isExempt(String destId) {
+		return config.getExempt().contains(destId);
 	}
 	
 	public void updateStatus(IEndpointStatus s, boolean wasCircuitBreakerThrown, Throwable reason) {
