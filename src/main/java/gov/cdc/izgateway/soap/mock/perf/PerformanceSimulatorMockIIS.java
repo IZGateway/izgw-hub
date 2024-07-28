@@ -7,6 +7,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -36,6 +37,7 @@ import java.util.HashMap;
 @Slf4j
 public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterface {
 	/** Test data is loaded from a text file containing one RSP message per patient per file line */ 
+	private static final Map<String, String> dataById = new LinkedHashMap<>();
 	private static final Map<String, List<String>> immunizationData = initMock();
 
 	private static final int QUERY_NAME = 1;
@@ -81,7 +83,7 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 		+ qakPart("TM")
 		+ QPD_PART;
 	private static final String QUERY_ERROR
-		= "MSH|^~\\&amp;|TEST|MOCK|IZGW|IZGW|{{Message Timestamp}}|||ACK^Q11^ACK|{{Unique Message Identifier}}|P|2.5.1|||NE|NE|||||Z23^CDCPHINVS\r"
+		= "MSH|^~\\&amp;|TEST|MOCK|IZGW|IZGW|{{Message Timestamp}}||ACK^Q11^ACK|{{Unique Message Identifier}}|P|2.5.1|||NE|NE|||||Z23^CDCPHINVS\r"
 		+ "MSA|AE|{{Original Message Control ID}}\r"
 		+ "ERR||{{Error Location}}|{{Error Code}}|E||||{{Error Message}}\r";
 	
@@ -112,7 +114,9 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 				}
 				String dob = getField(pid, DOB);
 				List<String> l = map.computeIfAbsent(dob, k -> new ArrayList<>());
-				l.add(message.replace("&#x0d;", "\r"));
+				l.add(message);
+				String mrNo = getField(pid, ID_LIST);
+				dataById.put(mrNo, message);
 			}
 		} catch (IOException e) {
 			log.error("Error reading mock IIS data from " + MOCK_DATA_FILE, e);
@@ -171,8 +175,8 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 			return queryError(hl7RequestMessage, "QPD^1^" + Integer.toString(e.getField()), "101^Required Field Missing^HL70357", "Missing Required QPD Parameter: " + e.getFieldName());
 		}
 		
-		String dateOfBirth = qParts[DATE_OF_BIRTH];
-		List<String> data = immunizationData.get(dateOfBirth);
+		List<String> data = findRecords(qParts);
+		
 		if (data == null) {
 			return notFound(hl7RequestMessage);
 		}
@@ -188,6 +192,21 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 			return multipleMatches(data, hl7RequestMessage);
 		}
 		return tooManyMatches(hl7RequestMessage);
+	}
+
+	private List<String> findRecords(String[] qParts) {
+		List<String> data = null;
+		if (qParts.length > DATE_OF_BIRTH && !StringUtils.isEmpty(qParts[DATE_OF_BIRTH])) {
+			data = immunizationData.get(qParts[DATE_OF_BIRTH]);
+		} else {
+			String m = dataById.get(qParts[PID_LIST]);
+			if (m == null) {
+				data = null;
+			} else {
+				data = Collections.singletonList(m);
+			}
+		}
+		return data;
 	}
 	
 	private static String getSegment(String segment, String hl7RequestMessage) {
@@ -239,6 +258,11 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 		 * 13. ClientLastUpdateFacility	N
 		 */
 		int fieldNo = 6;
+		// If it Has a PID LIST, it's a good query
+		if (qParts.length > PID_LIST && !StringUtils.isEmpty(qParts[3])) {
+			return qParts;
+		}
+		// Otherwise it must have name, gender, and DOB 
 		if (qParts.length < PATIENT_SEX || 
 			StringUtils.isEmpty(qParts[fieldNo = QUERY_NAME]) ||  	// NOSONAR save last attempted matched field in fieldNo
 			StringUtils.isEmpty(qParts[fieldNo = QUERY_TAG]) ||  	// NOSONAR save last attempted matched field in fieldNo
