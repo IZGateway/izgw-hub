@@ -61,7 +61,7 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 	private static final int ADDR = 11;
 	private static final int HOME_PHONE = 13;
 	private static final int WORK_PHONE = 14;
-	private static final String MOCK_DATA_FILE = "RSP-Test-Messages.csv";
+	private static final String MOCK_DATA_FILE = "RSP-Test-Messages.hl7";
 
 	private static final String MSA_PART = "MSA|AA|{{Original Message Control ID}}\r";
 	private static final String QPD_PART = "QPD|{{Original QPD Parts}}";
@@ -103,10 +103,24 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 			InputStreamReader ir = new InputStreamReader(is, StandardCharsets.UTF_8);
 			BufferedReader br = new BufferedReader(ir);
 		) {
-			String message;
-			while ((message = br.readLine()) != null) {
+			String line;
+			while ((line = br.readLine()) != null) {
 				lines++;
-				message = message.replace("&#x0d;", "\r");
+				if (StringUtils.isBlank(line)) {
+					// Ignore empty lines.
+					continue;
+				}
+				StringBuilder b = new StringBuilder(line).append('\r');
+
+				while ((line = br.readLine()) != null) {
+					lines++;
+					if (StringUtils.isBlank(line)) {
+						break;
+					}
+					b.append(line).append('\r');
+				}
+				
+				String message = b.toString(); 
 				String pid = getSegment("PID", message);
 				if (pid == null) {
 					log.error("Bad RSP response message in {}({}): {}", MOCK_DATA_FILE, lines, message);
