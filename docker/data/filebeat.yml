@@ -1,6 +1,8 @@
+# Filebeat configuration
+path.data: /user/share/filebeat/data
+
 # Filebeat Inputs section
 # Add another item to the "filebeat.inputs" object.
-
 filebeat.inputs:
   - type: "filestream"
     id: izgw-filestream
