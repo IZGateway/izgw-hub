@@ -1,10 +1,10 @@
 {
 	"info": {
-		"_postman_id": "757d08d1-c636-43f9-a56b-ff3b6e5af1e9",
+		"_postman_id": "c575443f-b5cb-4014-b418-672c36170b2f",
 		"name": "IZGW 2.0 Integtration Test",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "940288",
-		"_collection_link": "https://cloudy-sunset-429868.postman.co/workspace/IZ-Gateway~a583eb4f-68db-4044-b8cf-d251024eca35/collection/940288-757d08d1-c636-43f9-a56b-ff3b6e5af1e9?action=share&source=collection_link&creator=940288"
+		"_collection_link": "https://cloudy-sunset-429868.postman.co/workspace/IZ-Gateway~a583eb4f-68db-4044-b8cf-d251024eca35/collection/940288-c575443f-b5cb-4014-b418-672c36170b2f?action=share&source=collection_link&creator=940288"
 	},
 	"item": [
 		{
@@ -8162,7 +8162,7 @@
 											"formdata": [
 												{
 													"key": "facilityId",
-													"value": "MAA",
+													"value": "XXA",
 													"type": "text"
 												},
 												{
@@ -8182,7 +8182,7 @@
 												},
 												{
 													"key": "filename",
-													"value": "MAA_20230331_20230415_Z.zip",
+													"value": "XXA_20230331_20230415_Z.zip",
 													"type": "text"
 												}
 											]
@@ -8278,7 +8278,7 @@
 											"formdata": [
 												{
 													"key": "facilityId",
-													"value": "ARA",
+													"value": "XXA",
 													"type": "text"
 												},
 												{
@@ -8298,7 +8298,7 @@
 												},
 												{
 													"key": "filename",
-													"value": "MonthlyAllCOVID_ARA_2022SEP.csv",
+													"value": "MonthlyAllCOVID_XXA_2022SEP.csv",
 													"type": "text",
 													"disabled": true
 												}
@@ -8395,7 +8395,7 @@
 											"formdata": [
 												{
 													"key": "facilityId",
-													"value": "ARA",
+													"value": "XXA",
 													"type": "text"
 												},
 												{
@@ -8415,7 +8415,7 @@
 												},
 												{
 													"key": "filename",
-													"value": "MonthlyBridgeCOVID_ARA_2022SEP.csv",
+													"value": "MonthlyBridgeCOVID_XXA_2022SEP.csv",
 													"type": "text"
 												}
 											]
@@ -8511,7 +8511,7 @@
 											"formdata": [
 												{
 													"key": "facilityId",
-													"value": "ARA",
+													"value": "XXA",
 													"type": "text"
 												},
 												{
@@ -8531,7 +8531,7 @@
 												},
 												{
 													"key": "filename",
-													"value": "MonthlyRSV_ARA_2022SEP.csv",
+													"value": "MonthlyRSV_XXA_2022SEP.csv",
 													"type": "text"
 												}
 											]
@@ -8627,7 +8627,7 @@
 											"formdata": [
 												{
 													"key": "facilityId",
-													"value": "ARA",
+													"value": "XXA",
 													"type": "text"
 												},
 												{
@@ -8647,7 +8647,7 @@
 												},
 												{
 													"key": "filename",
-													"value": "MonthlyRSV_ARA_2022SEP.csv",
+													"value": "MonthlyRSV_XXA_2022SEP.csv",
 													"type": "text"
 												}
 											]
@@ -8743,7 +8743,7 @@
 											"formdata": [
 												{
 													"key": "facilityId",
-													"value": "ARA",
+													"value": "XXA",
 													"type": "text"
 												},
 												{
@@ -8763,7 +8763,7 @@
 												},
 												{
 													"key": "filename",
-													"value": "MonthlyFlu_ARA_2022SEP.csv",
+													"value": "MonthlyFlu_XXA_2022SEP.csv",
 													"type": "text"
 												}
 											]
@@ -8863,7 +8863,7 @@
 											"formdata": [
 												{
 													"key": "facilityId",
-													"value": "MAA",
+													"value": "XXA",
 													"type": "text"
 												},
 												{
@@ -8979,7 +8979,7 @@
 											"formdata": [
 												{
 													"key": "facilityId",
-													"value": "MAA",
+													"value": "XXA",
 													"type": "text"
 												},
 												{
@@ -8999,7 +8999,7 @@
 												},
 												{
 													"key": "filename",
-													"value": "RIA_16M.xxx",
+													"value": "XXA_16M.xxx",
 													"type": "text"
 												}
 											]
