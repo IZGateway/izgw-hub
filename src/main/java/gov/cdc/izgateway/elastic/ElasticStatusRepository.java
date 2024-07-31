@@ -41,9 +41,16 @@ import lombok.extern.slf4j.Slf4j;
 
 import javax.net.ssl.HttpsURLConnection;
 
+/**
+ * A repository collecting data from a Search of an Elastic index.
+ * 
+ * Technically, this is a @@Repository rather than a @@Component, but Spring wraps 
+ * repositories with proxies that make it harder to debug the code, and they
+ * aren't needed here.
+ * 
+ * @author Audacious Inquiry
+ */
 @Slf4j
-// Technically, this is a repository, but Spring wraps repositories with proxies that make
-// it harder to debug the code.
 @Component
 public class ElasticStatusRepository extends ElasticRepository implements EndpointStatusRepository {
 	private static final Duration QUARTER_HOUR = Duration.ofMinutes(15);
@@ -59,6 +66,12 @@ public class ElasticStatusRepository extends ElasticRepository implements Endpoi
     
 	private final IDestinationService destinationService;
 
+	/**
+	 * Create a new ElasticStatusRepository
+	 * 
+	 * @param config The configuration for the elastic search service
+	 * @param destinationService	The destination service this works with
+	 */
 	@Autowired
 	public ElasticStatusRepository(ElasticConfiguration config, IDestinationService destinationService) {
 		super(config, STATUS_QUERY);
@@ -118,7 +131,7 @@ public class ElasticStatusRepository extends ElasticRepository implements Endpoi
 	
 	/**
 	 * Request status from ElasticSearch
-	 * @return 
+	 * @return  true if refreshed, false otherwise
 	 */
 	public boolean refresh() {
 		boolean refreshed = false;
@@ -181,6 +194,7 @@ public class ElasticStatusRepository extends ElasticRepository implements Endpoi
 		private String errorSummary;
 		private String errorDetail;
 		private String destVersion;
+		private String tag;
 		public ParsedResponse(long histogramTime, String destId, int count, boolean hasError, long latestTxTime, long firstTxTime) {
 			timeRange = histogramTime;
 			destinationId = destId;
@@ -276,6 +290,14 @@ public class ElasticStatusRepository extends ElasticRepository implements Endpoi
 		public void setDestVersion(String value) {
 			destVersion = value;
 		}
+		
+		public String getTag() {
+			return tag;
+		}
+		
+		public void setTag(String value) {
+			tag = value;
+		}
 
 	}
 	
@@ -367,6 +389,9 @@ public class ElasticStatusRepository extends ElasticRepository implements Endpoi
 	
     /**
      *	Bridges the diagnostic lookup in the repository.
+     * @param faultName The name of the fault
+     * @param faultCode The code for the fault
+     * @return The diagnostic for the fault
      */
     public String getDiagnostics(String faultName, String faultCode) {
         FaultSupport s = MessageSupport.getTemplate(faultCode, faultName);
@@ -499,6 +524,10 @@ public class ElasticStatusRepository extends ElasticRepository implements Endpoi
 		value = getTopValue("destVersion", statusBucket);
 		if (!StringUtils.isEmpty(value)) {
 			p.setDestVersion(value);
+		}
+		value = getTopValue("tags", statusBucket);
+		if (!StringUtils.isEmpty(value)) {
+			p.setTag(value);
 		}
 	}
 
