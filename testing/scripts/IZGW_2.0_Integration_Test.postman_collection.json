@@ -8299,8 +8299,7 @@
 												{
 													"key": "filename",
 													"value": "MonthlyAllCOVID_XXA_2022SEP.csv",
-													"type": "text",
-													"disabled": true
+													"type": "text"
 												}
 											]
 										},
