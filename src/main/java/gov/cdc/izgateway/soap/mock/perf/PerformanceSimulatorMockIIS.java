@@ -61,7 +61,8 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 	private static final int ADDR = 11;
 	private static final int HOME_PHONE = 13;
 	private static final int WORK_PHONE = 14;
-	private static final String MOCK_DATA_FILE = "RSP-Test-Messages.hl7";
+	/** The mock data file resource containing immunization messages uses for the mock */
+	public static final String MOCK_DATA_FILE = "RSP-Test-Messages.hl7";
 
 	private static final String MSA_PART = "MSA|AA|{{Original Message Control ID}}\r";
 	private static final String QPD_PART = "QPD|{{Original QPD Parts}}";
