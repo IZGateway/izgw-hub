@@ -360,17 +360,16 @@ public class ElasticStatusRepository extends ElasticRepository implements Endpoi
 	private IEndpointStatus convertToStatus(ParsedResponse r) {
 		IEndpointStatus s = newEndpointStatus();
 
-        IDestination destination = destinationService.findByDestId(r.destinationId);
-        if ( destination == null) {
+        IDestination d = destinationService.findByDestId(r.destinationId);
+        if (d == null) {
+        	// This can occur when status result from elastic has a destination in
+        	// it that is no longer active.
             log.warn("Destination not found for {}.", r.destinationId);
             return null;
         }
 
 		s.setDestId(r.destinationId);
-		IDestination d = destinationService.findByDestId(r.destinationId);
-		if (d != null) {
-			s.setJurisdictionId(d.getJurisdictionId());
-		}
+		s.setJurisdictionId(d.getJurisdictionId());
 		if (r.isAvailable()) {
 			s.setStatus(IEndpointStatus.CONNECTED);
 		} else if (r.isCircuitBroken(maxFailuresBeforeCircuitBreaker)) {
