@@ -9696,7 +9696,7 @@
 									"listen": "test",
 									"script": {
 										"exec": [
-											"utils.testHL7RSP(pm.response.text(), pm.request.body, [\"235760a^^^MYEHR^MR\",\"235760b^^^MYEHR^MR\"], \"AA\", \"OK\", \"\");",
+											"utils.testHL7RSP(pm.response.text(), pm.request.body, [\"100041514^^^MYEHR^MR\",\"100041533^^^MYEHR^MR\"], \"AA\", \"OK\", \"\");",
 											""
 										],
 										"type": "text/javascript",
