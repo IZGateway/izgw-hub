@@ -3,7 +3,7 @@ package gov.cdc.izgateway.mock.perf;
 import gov.cdc.izgateway.soap.SoapControllerBase;
 import gov.cdc.izgateway.soap.mock.MockController2014;
 
-public class TestMockBase {
+class TestMockBase {
 
     protected final SoapControllerBase service;
     TestMockBase() {

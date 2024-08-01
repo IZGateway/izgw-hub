@@ -1,6 +1,7 @@
 package gov.cdc.izgateway.ads;
 
 import java.text.ParseException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -114,9 +115,10 @@ class ParsedFilename {
 		if (end != null && end.before(start)) {
 			errors.add(String.format("Dates (%s %s) are invalid, start is after submission date.", period, submissionDate));
 		}
-		
-		Date now = new Date();
-		if ((start != null && now.before(start)) || (end != null && now.before(end))) {
+
+		// Fix for Pacific Island Metadata Issue: IGDD-1644 
+		Date tomorrow = new Date(System.currentTimeMillis() + Duration.ofDays(1).toMillis());
+		if ((start != null && tomorrow.before(start)) || (end != null && tomorrow.before(end))) {
 			if (end == null) {
 				errors.add(String.format("Date (%s) invalid, it cannot be after today", period));
 			} else {

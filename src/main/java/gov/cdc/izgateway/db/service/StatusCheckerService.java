@@ -140,6 +140,9 @@ public class StatusCheckerService implements IStatusCheckerService {
         String status = null;
         try {
         	IDestination destination = destinationService.findByDestId(d.getDestId());
+        	if (destination == null) {
+        		return null; // Nobody to send to.
+        	}
             ConnectivityTestResponse cr = messageSender.sendConnectivityTest(destination, ct);
             if (cr.getEchoBack() == null) {
                 status = "No Echo";

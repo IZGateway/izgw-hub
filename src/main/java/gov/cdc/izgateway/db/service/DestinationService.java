@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import gov.cdc.izgateway.db.model.Destination;
 import gov.cdc.izgateway.db.repository.DestinationRepository;
+import gov.cdc.izgateway.logging.markers.Markers2;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.service.IDestinationService;
 import gov.cdc.izgateway.utils.SystemUtils;
@@ -20,6 +21,14 @@ import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Destination Service provides access to the Destination Repository.
+ * 
+ * This is a rather thin wrapper around the JPA repository.
+ * 
+ * @author Audacious Inquiry
+ *
+ */
 @Slf4j
 @Service
 public class DestinationService implements InitializingBean, IDestinationService {
@@ -79,6 +88,10 @@ public class DestinationService implements InitializingBean, IDestinationService
 
     }
     
+    /**
+     * Construct a service using the specified repository
+     * @param destinationRepository the repository
+     */
     public DestinationService(DestinationRepository destinationRepository) {
         this.destinationRepository = destinationRepository;
     }
@@ -101,14 +114,21 @@ public class DestinationService implements InitializingBean, IDestinationService
 
 	@Override
 	public void saveAndFlush(IDestination dest) {
-		if (dest instanceof Destination d) {
-			dest = destinationRepository.saveAndFlush(d);
-		} else {
-			Destination d = new Destination(dest);
-			dest = destinationRepository.saveAndFlush(d);
+		try {
+			if (dest instanceof Destination d) {
+				dest = destinationRepository.saveAndFlush(d);
+			} else {
+				Destination d = new Destination(dest);
+				dest = destinationRepository.saveAndFlush(d);
+			}
+			// Update the cache
+			cache.put(dest.getDestId(), dest);
+		} catch (Exception ex) {
+			log.error(Markers2.append(ex), "Unexpected {}: {}", ex.getClass().getSimpleName(), ex.getMessage());
+			// Force a reread
+			refresh();
+			throw ex;
 		}
-		// Update the cache
-		cache.put(dest.getDestId(), dest);
 	}
 	
 	private static String resolvedUrl(String uri, String protocol, String hostname, int port) {
