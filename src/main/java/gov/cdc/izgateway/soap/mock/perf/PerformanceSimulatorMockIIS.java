@@ -107,8 +107,8 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 			String line;
 			while ((line = br.readLine()) != null) {
 				lines++;
-				if (StringUtils.isBlank(line)) {
-					// Ignore empty lines.
+				if (StringUtils.isBlank(line) || line.startsWith("#")) {
+					// Ignore empty lines and comments
 					continue;
 				}
 				StringBuilder b = new StringBuilder(line).append('\r');
