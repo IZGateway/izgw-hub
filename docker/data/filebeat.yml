@@ -1,5 +1,5 @@
 # Filebeat configuration
-path.data: /user/share/filebeat/data
+path.data: /usr/share/filebeat/data
 
 # Filebeat Inputs section
 # Add another item to the "filebeat.inputs" object.

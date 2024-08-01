@@ -1,4 +1,4 @@
-path.data: /user/share/metricbeat/data
+path.data: /usr/share/metricbeat/data
 #============================= Metricbeat Modules =============================
 metricbeat.modules:
   - module: system

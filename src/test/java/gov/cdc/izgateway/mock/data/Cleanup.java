@@ -17,7 +17,7 @@ class Cleanup {
 	public static void main(String ... args) throws IOException {
 		cleanup();
 	}
-	static void cleanup()throws IOException {
+	static void cleanup() throws IOException {
 		String filename = PerformanceSimulatorMockIIS.MOCK_DATA_FILE;
 		try (BufferedReader r = new BufferedReader(
 				new InputStreamReader(Cleanup.class.getClassLoader().getResourceAsStream(filename), 
