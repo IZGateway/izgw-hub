@@ -190,6 +190,7 @@ public class ADSController implements ADSChecker {
     private void startLogging(Metadata meta) {
     	TransactionData tData = RequestContext.getTransactionData();
         tData.setMessageId(meta == null ? null : meta.getExtObjectKey());
+    	tData.getSource().setFacilityId(meta == null ? null : meta.getJurisdiction());
         tData.setMessageType(MessageType.SUBMIT_FILE);
         tData.setRequestPayloadType(RequestPayloadType.fromString(meta == null ? null : meta.getExtEvent()));
     }
