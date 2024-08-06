@@ -1,0 +1,141 @@
+name: Schedule Performance Test
+
+on:
+  schedule:
+    - cron : '00 22 * * MON'
+
+# Uncomment these lines to test changes to this file
+#
+  pull_request:
+    paths:
+      - '**/performance.yml'
+  
+# Enable manual trigger      
+  workflow_dispatch:
+  
+# Ensure only one build changes dev environment at the same time    
+concurrency: dev
+      
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Tag, push and deploy image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_DEV_REPOSITORY: izgateway-dev-phiz-web-ws
+          ECR_TEST_REPOSITORY: izgateway-test-phiz-web-ws
+        working-directory: ./phiz-web-ws
+        run: |
+          echo docker pull image from dev to test repo
+          docker pull $ECR_REGISTRY/$ECR_DEV_REPOSITORY:good
+          docker image tag $ECR_REGISTRY/$ECR_DEV_REPOSITORY:good $ECR_REGISTRY/$ECR_TEST_REPOSITORY:latest
+          echo docker push image from dev ecr repo to test ecr repo
+          docker image push --all-tags $ECR_REGISTRY/$ECR_TEST_REPOSITORY
+          echo deploy image to test and mock ecs services
+          # There should be ONLY 1 test nodes running. We only need results against one!
+          aws ecs update-service --cluster izgateway-dev-izgateway-services --service izgateway-test-service --force-new-deployment --enable-execute-command --desired-count 1 | jq ".service.deployments[].id"
+          # Two mock nodes running should be sufficient to handle the performance
+          aws ecs update-service --cluster izgateway-dev-izgateway-services --service izgateway-mock-service --force-new-deployment --enable-execute-command --desired-count 2 | jq ".service.deployments[].id"
+      - name: Wait for reload of task to complete
+        run: |
+          aws ecs wait services-stable --cluster izgateway-dev-izgateway-services --service izgateway-test-service
+          aws ecs wait services-stable --cluster izgateway-dev-izgateway-services --service izgateway-mock-service
+          
+  verify:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+
+      - uses: actions/checkout@v4
+      - name: Set up Tools
+        shell: bash
+        run: |
+          npm install -g newman-reporter-junitfull
+
+      # Include warmup in Verify b/c we must warm up server on which verification
+      # is performed.  B/c Each stage runs in a separate virtual server, and our cluster
+      # ensures requests are sticky based on IP Address, this ensures that requests for warmup and verification
+      # go to the same server.
+
+      - name: Setup certs and Run Warm Up for Functional Testing
+        working-directory: ./e2e/testdata
+        env:
+          TESTING_PASS: ${{ secrets.TESTING_PASS }}
+          TESTING_CERT: ${{ secrets.TESTING_CERT }}
+          TESTING_KEY: ${{ secrets.TESTING_KEY }}
+        run: |
+          mkdir ~/.izgw
+          echo "$TESTING_CERT" > ~/.izgw/newman.pem
+          echo "$TESTING_KEY" > ~/.izgw/newman.key
+          
+          startTime=$(date +%s);
+          newman run ../collections/IZGW_Integration_Test.postman_collection.json --folder "Smoke Test" -n 4 \
+            "--environment" ../env/test.postman_environment.json \
+            "--ssl-extra-ca-certs" ../certs/izgwroot.pem \
+            "--ssl-client-cert" ~/.izgw/newman.pem \
+            "--ssl-client-key" ~/.izgw/newman.key \
+            "--ssl-client-passphrase" $TESTING_PASS \
+            "--insecure" -x > /dev/null || true
+          endTime=$(date +%s);
+          WARMUP=$(($endTime-$startTime));
+          echo Warmed up for $WARMUP seconds
+          [ $WARMUP -gt 60 ]        
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+               
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+    
+      - name: Create ECS task and run Performance Test
+        env:
+          ECS_CLUSTER: arn:aws:ecs:us-east-1:357442695278:cluster/izgateway-dev-izgateway-services
+          ECS_TASK_DEFINITION: arn:aws:ecs:us-east-1:357442695278:task-definition/izgateway-performance-test:5
+        run: |
+          aws ecs run-task --enable-execute-command --cluster $ECS_CLUSTER --task-definition $ECS_TASK_DEFINITION --launch-type="FARGATE" --count=1 --network-configuration '{ "awsvpcConfiguration": { "assignPublicIp":"ENABLED", "securityGroups": ["sg-0673ad74bd304fe8f"], "subnets": ["subnet-0b578d6894e6b268e","subnet-06ea4bec23da90945"]}}'
+
+  email_notification:
+    if: always()
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+    - name: Get file name
+      run: |
+        NOW=$(date +"%Y-%m-%d")
+        echo $NOW
+        echo reportLocation=jmeter-$NOW >> $GITHUB_ENV
+
+    - name: Set failure status
+      run: echo reportStatus=Completed >> $GITHUB_ENV
+      
+    - name: send email on completion success or failure of the job (note, we cannot detect failure of Jmeter run)
+      uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: email-smtp.us-east-1.amazonaws.com
+        server_port: 465
+        secure: true
+        username: ${{secrets.MAIL_USERNAME}}
+        password: ${{secrets.MAIL_PASSWORD}}
+        subject: Weekly Performance Test ${{ env.reportStatus }} Report ${{github.repository}}${{github.computername}}
+        to: kboone@ainq.com,weckels@ainq.com,pcahill@ainq.com
+        cc: devops@izgateway.opsgenie.net
+        from: GithubActionNotification <GithubActionNotification@izgateway.org>
+        body: Scheduled Performance Test ${{ env.reportStatus }}. Please find the link for the performance test report.
+              https://izgateway-performance-test-results.s3.amazonaws.com/${{env.reportLocation}}/jmeterresult.zip
