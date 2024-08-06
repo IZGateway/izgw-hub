@@ -17,6 +17,11 @@ import gov.cdc.izgateway.model.IAccessControl;
 import gov.cdc.izgateway.model.MappableEntity;
 
 
+/**
+ * Supports Access Controls with a set of Access Control Entries
+ *
+ * @author Audacious Inquiry
+ */
 @SuppressWarnings("serial")
 @Entity
 @IdClass(AccessControlId.class)
@@ -25,6 +30,9 @@ import gov.cdc.izgateway.model.MappableEntity;
 @AllArgsConstructor
 @NoArgsConstructor
 public class AccessControl  implements Serializable, IAccessControl {
+	/**
+	 * Provides easy access to the Map class for Swagger documentation
+	 */
 	public static class Map extends MappableEntity<AccessControl>{}
 
     @Id
@@ -43,12 +51,19 @@ public class AccessControl  implements Serializable, IAccessControl {
     @Schema(description = "True if member can be in name for category")
     private boolean allowed;
     
+    /**
+     * Create a new access control entry.
+     * @param category The category of the access control entry
+     * @param name	The name of the entry
+     * @param member Members of the entry
+     */
     public AccessControl(String category, String name, String member) {
     	this(category, name, member, true);
     }
     
+    @Override
     public String toString() {
     	return String.format("%s: %s %s %s", category, name, 
-    			allowed ? " allows access to " : " does not allow access to ", member);
+    			allowed ? "allows access to" : "does not allow access to", member);
     }
 }

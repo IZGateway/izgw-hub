@@ -68,16 +68,26 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 import javax.net.ssl.HttpsURLConnection;
 
+/**
+ * This class provides APIs to manage information in the database.
+ * 
+ * @author Audacious Inquiry
+ *
+ */
 @Slf4j
 @RestController
 @CrossOrigin
 @RolesAllowed({ Roles.ADMIN, Roles.OPERATIONS })
 @RequestMapping({ "/rest"})
 @Lazy(false)
-
 public class DbController {
 	private static final long DEFAULT_MAINT_PERIOD = TimeUnit.MINUTES.toMillis(30);
 
+	/**
+	 * Configuration for the DB Controller.
+	 * 
+	 * @author Audacious Inquiry
+	 */
 	@Configuration
 	@Getter
 	public static class DbControllerConfiguration {
@@ -86,6 +96,15 @@ public class DbController {
 		private final IAccessControlService accessControlService;
 		private final IJurisdictionService jurisdictionService;
 		private final ICertificateStatusService certificateStatusService;
+		/**
+		 * Construct a new DB Controller Configuration
+		 * 
+		 * @param messageHeaderService	The service supporting message headers
+		 * @param destinationService	The service supporting with destinations
+		 * @param accessControlService	The service supporting access controls
+		 * @param jurisdictionService	The service supporting jurisdictions
+		 * @param certificateStatusService	The service supporting certificate status
+		 */
 		@Autowired
 		public DbControllerConfiguration(
 				final IMessageHeaderService messageHeaderService,
@@ -112,6 +131,13 @@ public class DbController {
 	private final IHostRepository hostService;
 	private final DbControllerConfiguration configuration;
 
+	/**
+	 * Construct a new DBController class.
+	 * 
+	 * @param hostService	The service use to access running hosts
+	 * @param config	The configuration providing access to db services
+	 * @param registry	The access control registry managing these APIs
+	 */
 	@Autowired
 	public DbController(
 		IHostRepository hostService,
@@ -126,6 +152,12 @@ public class DbController {
 	private void refresh() {
 		configuration.refresh();
 	}
+	/**
+	 * Report on content in the MessageHeader records in the system configuration.
+	 * 
+	 * @param include	The list of headers headers to match
+	 * @return	A map containing the header information.
+	 */
 	@Operation(summary = "Get Message Header Info entries",
 			description = "Returns the Message Header Values for HL7 Message for all endpoints")
 	@ApiResponse(responseCode = "200", description = "The Message Header information values", 
@@ -137,13 +169,19 @@ public class DbController {
 		IMessageHeader.Map result = new IMessageHeader.Map();
 		Stream<IMessageHeader> all = configuration.getMessageHeaderService().getAllMessageHeaders().stream();
 		if (!StringUtils.isEmpty(include)) {
-			List<String> includes = Arrays.asList(include.split("[\\s,;]"));
+			List<String> includes = Arrays.asList(include.split("[\\s,;]+"));
 			all = all.filter(h -> includes.contains(h.getMsh()));
 		}
 		all.forEach(h -> result.put(h.getMsh(), h));
 		return result;
 	}
 
+	/**
+	 * Get Message Header Info entry for a given endpoint
+	 * 
+	 * @param id The MSH3 or MSH4 value to retrieve an entry for
+	 * @return	The message header record for the specified MSH value.
+	 */
 	@Operation(summary = "Get Message Header Info entry for a given endpoint",
 			description = "Returns the Message Header Values for HL7 Message for the given MSH3 or MSH4 value")
 	@ApiResponse(responseCode = "200", description = "The Message Header information values", 

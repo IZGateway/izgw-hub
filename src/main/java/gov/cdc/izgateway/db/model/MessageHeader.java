@@ -14,18 +14,33 @@ import io.swagger.v3.oas.annotations.StringToClassMapItem;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 
+/**
+ * 
+ * Message header captures information associated with message header values
+ * including the destination identifier, the jurisdiction, and the type of 
+ * sender.  It also allows usernames, passwords, and facility identifiers
+ * to be associated with jurisdictions pointing to the mock endpoint.
+ *  
+ * @author Audacious Inquiry
+ *
+ */
 @SuppressWarnings("serial")
 @Entity
 @Table(name = "messageheaderinfo")
 @Data
 @Schema(description="Mappings from Message Header values to sources")
 public class MessageHeader implements Serializable, IMessageHeader {
+	/**
+	 * An alias for the message header map supporting Swagger 
+	 * documentation of this resource.
+	 */
 	@Schema(properties= {
 			@StringToClassMapItem(key="AKIIS", value=Destination.class),
 			@StringToClassMapItem(key="IZGW", value=Destination.class),
 			@StringToClassMapItem(key="MDIIS", value=Destination.class),
 			@StringToClassMapItem(key="WIR", value=Destination.class)
 		})
+	
 	public static class Map extends MappableEntity<MessageHeader>{}
     @Id
     @Column(name = "msh",nullable = false)
@@ -56,8 +71,15 @@ public class MessageHeader implements Serializable, IMessageHeader {
     @Schema(description="The facility identifier for this source", hidden=true)
     private String facilityId;
 
+    /**
+     * Create a new MessageHeader
+     */
     public MessageHeader() {
     }
+    /**
+     * Create a new message header that copies what is in another MessageHeader
+     * @param that	The other message header
+     */
 	public MessageHeader(IMessageHeader that) {
 		this.setDestId(that.getDestId());
 		this.setFacilityId(that.getFacilityId());
