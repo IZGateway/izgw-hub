@@ -17,7 +17,7 @@ import gov.cdc.izgateway.security.oauth.OAuthException;
 import gov.cdc.izgateway.soap.fault.FaultSupport;
 import gov.cdc.izgateway.soap.fault.UnexpectedExceptionFault;
 import gov.cdc.izgateway.soap.fault.UnknownDestinationFault;
-
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -53,12 +53,16 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
 
+/**
+ * This is a Mock File Upload Controller that duplicates the API supplied by the CDC DEX endpoint.
+ * 
+ * @author Audacious Inquiry
+ */
 @Slf4j
 @RestController
 @RolesAllowed({ Roles.INTERNAL, Roles.ADMIN })
 @RequestMapping({"/rest"})
 @Lazy(false)
-
 public class DexFileUploadController {
 
     private final Path appUploadDirectory;
@@ -70,10 +74,19 @@ public class DexFileUploadController {
 
     private ExternalTokenStore tokenStore = new ExternalTokenStore(null, null, null);
     
+    /**
+     * An exception to throw on a failure to authenticate 
+     * @author Audacious Inquiry
+     */
     @SuppressWarnings("serial")
     public static class AuthenticationException extends Exception {
         private final ErrorObject err;
         private final String token;
+        /**
+         * Construct a new AuthenticationException
+         * @param err	The error object
+         * @param token	The token that it applied to
+         */
         public AuthenticationException(ErrorObject err, String token) {
             super("Authentication Error");
             this.err = err;
@@ -89,6 +102,12 @@ public class DexFileUploadController {
         }
     }
 
+    /**
+     * Create a new Upload Controller
+     * @param dexConfig	The configuration for DEX
+     * @param registry	Access control
+     * @param tlsSupport	TLS configuration
+     */
     public DexFileUploadController(DexConfiguration dexConfig, AccessControlRegistry registry, ClientTlsSupport tlsSupport) {
     	config = dexConfig;
         tusUploadDirectory = Path.of(dexConfig.getTusUploadDirectory());
@@ -138,7 +157,21 @@ public class DexFileUploadController {
     	}
 	}
 
+	/**
+	 * Handle OAuth requests for the controller.
+	 * 
+	 * @param servletRequest	The servlet request
+	 * @param username	The username
+	 * @param password	The password
+	 * @param refreshToken	The refresh token
+	 * @param grantType	The grant type requested
+	 * @param contentType	The content type of the request
+	 * @return	The requested access token reported in json format.
+	 * 
+	 * @throws OAuthException If the token was not valid
+	 */
 	@RequestMapping(value = { "/upload/oauth", "/upload/oauth/refresh" }, method = { RequestMethod.POST, RequestMethod.GET})
+    @Operation(hidden=true)
     public ResponseEntity<AccessToken> handleOauthPost(
     	HttpServletRequest servletRequest,
     	@RequestParam(required=false) String username,
@@ -150,7 +183,6 @@ public class DexFileUploadController {
     ) throws OAuthException {
         // Disable Logging
     	RequestContext.disableTransactionDataLogging();
-
         if (!config.isUsingQueryParameters() && !"application/x-www-form-urlencoded".equals(contentType)) {
             throw new HTTPException(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE);
         }
@@ -265,8 +297,15 @@ public class DexFileUploadController {
     }
 
     
+    /**
+     * Handle an upload request
+     * @param servletRequest	The request
+     * @param servletResponse	The response
+     * @throws Exception	If any errors occur
+     */
     @RequestMapping(value = { "/upload/dex", "/upload/dex/**" }, method = { RequestMethod.POST, RequestMethod.PATCH,
         RequestMethod.HEAD, RequestMethod.DELETE, RequestMethod.GET, RequestMethod.OPTIONS })
+    @Operation(hidden=true)
     public void upload(HttpServletRequest servletRequest, HttpServletResponse servletResponse) throws Exception {
         // Disable Logging
         RequestContext.disableTransactionDataLogging();

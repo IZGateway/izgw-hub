@@ -44,10 +44,10 @@ public class StatusController {
     }
 
     @Operation(summary = "Get the status history",
-            description = "Returns the status of the destinations")
+            description = "Returns the status history of the destinations")
     @ApiResponse(responseCode = "200", description = "Success",
             content = @Content(mediaType = "application/json",
-                    schema = @Schema(implementation= EndpointStatus.class)
+                    schema = @Schema(implementation= EndpointStatus.Map.class)
             )
     )
     @GetMapping("/statushistory")
@@ -85,7 +85,14 @@ public class StatusController {
         return t;
     }
     
-	@GetMapping("/statushistory/{id}")
+    @Operation(summary = "Get the status history for a destination",
+            description = "Returns the status history of the destination")
+    @ApiResponse(responseCode = "200", description = "Success",
+            content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation= EndpointStatus.class)
+            )
+    )
+    @GetMapping("/statushistory/{id}")
 	public List<IEndpointStatus> searchStatusHistoryById(
 			@PathVariable String id,
 			@RequestParam(name = "count", defaultValue = "1") int count) {
@@ -106,6 +113,9 @@ public class StatusController {
 	 * @param servletResp
 	 * @param id          The destination whose history should be removed.
 	 */
+    @Operation(summary = "Delete the status history for a destination",
+            description = "Delete the status history of the destination")
+    @ApiResponse(responseCode = "204", description = "Success", content = @Content)
 	@DeleteMapping("/statushistory/{id}")
 	@ResponseStatus(value = HttpStatus.NO_CONTENT)
 	@RolesAllowed(Roles.ADMIN)
@@ -117,6 +127,12 @@ public class StatusController {
 	}
     
     @GetMapping("/status")
+    @Operation(summary = "Get the status for all destinations", 
+    	description = "Check the status of all destinations")
+    @ApiResponse(responseCode = "200", description = "Success", 
+   		content = @Content(mediaType = "application/json",
+   			schema = @Schema(implementation=EndpointStatus.Map.class))
+  	)
 	public Map<String, IEndpointStatus> getStatus() {
     	destinationService.refresh();
 		List<IDestination> l = destinationService.getAllDestinations();
@@ -128,6 +144,12 @@ public class StatusController {
 
 	
 	@GetMapping("/status/{id}")
+    @Operation(summary = "Get the status for the destination", 
+		description = "Check the status of the destination")
+	@ApiResponse(responseCode = "200", description = "Success", 
+		content = @Content(mediaType = "application/json",
+			schema = @Schema(implementation=EndpointStatus.class))
+	)
 	public IEndpointStatus getStatusById(@PathVariable String id) {
 		IDestination d = destinationService.findByDestId(id);
 		if (d == null) {

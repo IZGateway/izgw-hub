@@ -33,7 +33,7 @@ import java.util.TreeMap;
 @SuppressWarnings("serial")
 @JsonPropertyOrder({"destId", "destType", "destTypeId", "destUri", "destVersion", "status", "statusAt", "statusBy", "detail", "diagnostics", "retryStrategy"})
 public class EndpointStatus implements IEndpoint, Serializable, IEndpointStatus {
-	public static class Map extends TreeMap<String, MessageHeader>{}
+	public static class Map extends TreeMap<String, EndpointStatus>{}
 
 	@JsonIgnore
 	@Schema(description="The identifier of this status record", hidden=true)

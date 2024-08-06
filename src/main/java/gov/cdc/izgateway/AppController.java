@@ -70,16 +70,21 @@ public class AppController {
 	 */
 	@Operation(summary = "Get the health status of the application",
 			description = "Returns the health status of the application")
-	  	@ApiResponse(responseCode = "200", description = "Success", 
-	  		content = @Content(mediaType = "application/json",
-	  			schema = @Schema(implementation=Health.class)
-	  	)
+	@ApiResponse(responseCode = "200", description = "Success", 
+		content = @Content(mediaType = "application/json",
+			schema = @Schema(implementation=Health.class))
 	)
 	@GetMapping("/health")
 	public Health getHealth() {
 		return HealthService.getHealth();
 	}
 	
+	@Operation(summary = "Get application resource utilization",
+			description = "Returns metrics on memory and CPU performance")
+	@ApiResponse(responseCode = "200", description = "Success", 
+		content = @Content(mediaType = "application/json",
+			schema = @Schema(implementation=Utilization.class))
+	)
 	@GetMapping("/utilization")
 	public Utilization getUtilization() {
 		return UtilizationService.getMostRecent();

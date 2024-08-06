@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import gov.cdc.izgateway.common.ResourceNotFoundException;
 import gov.cdc.izgateway.configuration.AppProperties;
+import gov.cdc.izgateway.db.model.EndpointStatus;
 import gov.cdc.izgateway.db.service.StatusCheckerService.ADSChecker;
 import gov.cdc.izgateway.logging.RequestContext;
 import gov.cdc.izgateway.logging.event.EventIdMdcConverter;
@@ -21,6 +22,10 @@ import gov.cdc.izgateway.security.oauth.ExternalTokenStore;
 import gov.cdc.izgateway.service.IAccessControlService;
 import gov.cdc.izgateway.service.IDestinationService;
 import gov.cdc.izgateway.soap.fault.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.activation.DataHandler;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.servlet.http.HttpServletRequest;
@@ -127,6 +132,11 @@ public class ADSController implements ADSChecker {
      * @throws MessageTooLargeFault If the destination has reached its space limits
      */
     @GetMapping("/ads/{destinationId}/status") 
+    @Operation(summary = "Get the status of the ADS endpoint recipient",
+	    description = "Returns the URI of the ADS recipient if it is available, or a 40X error if it is not.")
+    @ApiResponse(responseCode = "200", description = "Success", content = @Content)
+    @ApiResponse(responseCode = "400", description = "Failure", content = @Content)
+    
     public String getDestinationStatus(
         @RequestHeader(name="X-Message-ID", required=false) String xMessageId,
         @RequestHeader(name="X-Request-ID", required=false) String xRequestId,
@@ -148,6 +158,10 @@ public class ADSController implements ADSChecker {
     
     @DeleteMapping("/ads/{destinationId}/clearTokens") 
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Reset token cache for the specified destination.",
+    	description = "Clears the cache of OAuth tokens for the destination.")
+    @ApiResponse(responseCode = "200", description = "Success", content = @Content)
+
     public void clearTokens(
         @RequestHeader(name="X-Message-ID", required=false) String xMessageId,
         @RequestHeader(name="X-Request-ID", required=false) String xRequestId,
@@ -166,6 +180,9 @@ public class ADSController implements ADSChecker {
 	}
 	
     @GetMapping("/ads/{destinationId}/status/{tguid}") 
+    @Operation(summary = "Get the status of the specified upload",
+	description = "Gets the upload status for the specified request")
+    @ApiResponse(responseCode = "200", description = "Success", content = @Content)
     public Object getSubmissionStatus(
         @RequestHeader(name="X-Message-ID", required=false) String xMessageId,
         @RequestHeader(name="X-Request-ID", required=false) String xRequestId,
@@ -215,6 +232,7 @@ public class ADSController implements ADSChecker {
             "application/x-zip-compressed" 
         }
     )
+    @Operation(hidden = true)
     public ResponseEntity<Resource> getFile( 
         @PathVariable String destinationId,
         @RequestHeader(name="X-Message-ID", required=false) String xMessageId,
@@ -246,6 +264,7 @@ public class ADSController implements ADSChecker {
     }
     
     @DeleteMapping(value = "/ads/{destinationId}")
+    @Operation(hidden = true)
     public ResponseEntity<String> deleteFile( 
         @RequestHeader(name="X-Message-ID", required=false) String xMessageId,
         @RequestHeader(name="X-Request-ID", required=false) String xRequestId,
@@ -359,7 +378,8 @@ public class ADSController implements ADSChecker {
 
     /** Saved submission form */
     private static String submissionForm = null;
-    @GetMapping(value = "/submitFile", produces = MediaType.TEXT_HTML_VALUE) 
+    @GetMapping(value = "/submitFile", produces = MediaType.TEXT_HTML_VALUE)
+    @Operation(summary = "Display the form for browser based uploads")
     public static String getSubmissionForm() {
     	InputStream is = null;
     	
@@ -388,16 +408,43 @@ public class ADSController implements ADSChecker {
     }
     
     @PostMapping(value = "/ads/{destinationId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Upload an ADS submission and metadata", 
+    	description = "This is the primary IZGW Upload API endpoint. It accepts a file upload for "
+    			+ "the given period containing either a Routine Vaccination Report in CSV format, "
+    			+ "or a ZIP file for Routine Immunization reporting for a given jurisdiction (facility).")
+    @ApiResponse(
+    	responseCode = "200", 
+    	description = "success", 
+    	content = @Content(
+    		mediaType="application/json",
+    		schema=@Schema(implementation=Metadata.class)
+    	)
+    )
     public Metadata postADSFile(
-        @PathVariable String destinationId,
+    	@Schema(description="The destination id. Use dex to submit to CDC or dex-dev for testing.", allowableValues= {"dex", "dex-dev"})
+    	@PathVariable String destinationId,
         @RequestHeader(name="X-Message-ID", required=false) String xMessageId,
         @RequestHeader(name="X-Request-ID", required=false) String xRequestId,
         @RequestHeader(name="X-Correlation-ID", required=false) String xCorrelationId,
-        @RequestParam("facilityId") String facilityId,
+        @RequestParam("facilityId")
+        @Schema(
+        	description="The submitting jurisdiction in scA format where sc = the jurisidiction state code (e.g., MAA for Massachusetts). XXA can be used for testing",
+        	pattern="[A-Z][A-Z]A"
+        )
+        String facilityId,
+        @Schema(description="The type of report", 
+        	allowableValues={
+        		"covidAllMonthlyVaccination", "covidbridgeVaccination", "influenzaVaccination",
+        		"rsvPrevention", "routineImmunization"
+        	}
+        )
         @RequestParam("reportType") String reportType,
+        @Schema(description="The file to upload, either a CSV file for RVR submissions, or a .ZIP file for Routine Immunization Reporting")
         @RequestParam("file") MultipartFile file,
+        @Schema(description="The period in YYYY-MMM format for RVR files, or YYYYQ# for RI files")
         @RequestParam("period") String period,
         @RequestParam(required = false) String filename,
+        @Schema(description="Set to true to skip validation")
         @RequestParam(defaultValue = "false") boolean force
     ) throws Fault {
         String messageId = null;

@@ -136,7 +136,7 @@ public class LogController implements InitializingBean {
 				status.setStatus(IEndpointStatus.CONNECTED);
 				clearMaintenance(clear);
 			}
-			accessControlService.removeUserFromGroup(RequestContext.getSourceInfo().getCommonName(), Roles.BLACKLIST);
+			accessControlService.removeUserFromBlacklist(RequestContext.getSourceInfo().getCommonName());
 		}
 	}
 	

@@ -84,6 +84,7 @@ public interface AccessControlRepository extends JpaRepository<AccessControl, Ac
 			accessControl.getMember(),
 			accessControl.isAllowed() ? 0x7F : 0x7E
 		);
+		flush();
 		return accessControl;
 	}
 }
