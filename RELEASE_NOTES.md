@@ -3,6 +3,11 @@ The IZ Gateway Hub 2.1.0 is in preparation for code sharing across IZ Gateway Hu
 
 * Split IZ Gateway into separate repositories for core capabilities [izgw-core](https://github.com/izgateway/izgw-core) and the
 IZ Gateway Hub [izgw-hub](https://github.com/izgateway/izgw-hub)
+* Update access control table to support multiple environments and certificate blacklisting
+* Fix two NPEs in Message Sender
+* Added Security Checks on Message Sending to Verify Endpoint is for correct Environment
+* Fixed issue with filebeat and metricbeat race condition on startup
+* Address data validation for ADS uploads from distant timezones
 
 # IZ Gateway Release 2.0.6
 Expected Date: Onboarding 6/27/2024, Production 6/27/2024
@@ -23,7 +28,7 @@ Expected Date: Onboarding 5/28/2024, Production 6/11/2024
 IZ Gateway Hub 2.0.4 is a patch release to address the following issues:
 
 * Add namespace declarations for Fault elements in response messages.
->>>>>>> refs/remotes/origin/Release_v2.1.0-branch
+
 
 # IZ Gateway Release 2.0.3
 Expected Date: Onboarding 5/23/2024, Production 5/30/2024

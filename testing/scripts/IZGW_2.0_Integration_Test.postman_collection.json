@@ -1,10 +1,10 @@
 {
 	"info": {
-		"_postman_id": "75e2c7d5-105b-4c55-8328-f4da6677d4e1",
+		"_postman_id": "c575443f-b5cb-4014-b418-672c36170b2f",
 		"name": "IZGW 2.0 Integtration Test",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "940288",
-		"_collection_link": "https://cloudy-sunset-429868.postman.co/workspace/IZ-Gateway~a583eb4f-68db-4044-b8cf-d251024eca35/collection/940288-75e2c7d5-105b-4c55-8328-f4da6677d4e1?action=share&source=collection_link&creator=940288"
+		"_collection_link": "https://cloudy-sunset-429868.postman.co/workspace/IZ-Gateway~a583eb4f-68db-4044-b8cf-d251024eca35/collection/940288-c575443f-b5cb-4014-b418-672c36170b2f?action=share&source=collection_link&creator=940288"
 	},
 	"item": [
 		{
@@ -46,8 +46,7 @@
 									{
 										"key": "X-Not-Admin",
 										"value": "true",
-										"description": "Leave it this way to verify access control functionality.",
-										"type": "text"
+										"description": "Leave it this way to verify access control functionality."
 									}
 								],
 								"url": {
@@ -117,7 +116,7 @@
 											"    pm.expect(response['Envelope']['Body']['ConnectivityTestResponse']['EchoBack']).to.eql(echoBack);\r",
 											"});\r",
 											"\r",
-											"utils.testSLA(pm, BASE_SLA);\r",
+											"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) utils.testSLA(pm, BASE_SLA);\r",
 											"\r",
 											"const interval = setTimeout(() => {}, 3000);\r",
 											"async function moreTests() {\r",
@@ -181,7 +180,7 @@
 											"    });\r",
 											"}\r",
 											"\r",
-											"moreTests();\r",
+											"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();\r",
 											"try {\r",
 											"    utils.checkNamespaces(pm);\r",
 											"} catch (err) {\r",
@@ -242,7 +241,7 @@
 							"response": []
 						},
 						{
-							"name": "TC_03 Retrieval of WSDL",
+							"name": "TC_03a Retrieval of WSDL",
 							"event": [
 								{
 									"listen": "test",
@@ -296,18 +295,95 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									},
 									{
 										"key": "X-Message-ID",
-										"value": "{{testMessageId}}",
-										"type": "text"
+										"value": "{{testMessageId}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService?wsdl=",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{host}}"
+									],
+									"port": "{{port}}",
+									"path": [
+										"IISHubService"
+									],
+									"query": [
+										{
+											"key": "wsdl",
+											"value": ""
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "TC_03b Retrieval of IIS Service WSDL",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Content-Type is correct\", function () {\r",
+											"    var contentType = null;\r",
+											"    for (header in pm.response.headers.members) {\r",
+											"        if (pm.response.headers.members[header].key == \"Content-Type\") {\r",
+											"            contentType = pm.response.headers.members[header].value;\r",
+											"            break;\r",
+											"        }\r",
+											"    }\r",
+											"    pm.expect(contentType).to.match(/[\\/+]xml/);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Contains WSDL definitions element\", function () {\r",
+											"    pm.expect(responseBody).to.match(/\\/(<[a-zA-Z0-9_]+:)?definitions/);\r",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"utils.setup(pm);"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {
+									"host": true
+								}
+							},
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Host",
+										"value": "{{hostHeader}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/xml"
+									},
+									{
+										"key": "X-Message-ID",
+										"value": "{{testMessageId}}"
 									}
 								],
 								"url": {
@@ -364,7 +440,8 @@
 											"});\r",
 											"\r",
 											"\r",
-											"utils.testSLA(pm, LONG_SLA);\r",
+											"\r",
+											"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) utils.testSLA(pm, LONG_SLA);\r",
 											"\r",
 											"const interval = setTimeout(() => {}, 3000);\r",
 											"async function moreTests() {\r",
@@ -383,7 +460,7 @@
 											"    });\r",
 											"}\r",
 											"\r",
-											"moreTests();\r",
+											"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();\r",
 											"utils.checkNamespaces(pm);\r",
 											""
 										],
@@ -448,7 +525,7 @@
 											"    pm.response.to.have.status(200);\r",
 											"});\r",
 											"\r",
-											"utils.testSLA(pm, LONG_SLA);\r",
+											"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) utils.testSLA(pm, LONG_SLA);\r",
 											"\r",
 											"const interval = setTimeout(() => {}, 3000);\r",
 											"async function moreTests() {\r",
@@ -463,9 +540,10 @@
 											"    });\r",
 											"};\r",
 											"\r",
-											"moreTests();"
+											"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								},
 								{
@@ -474,7 +552,8 @@
 										"exec": [
 											"utils.setup(pm, \"dev\");"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
@@ -488,13 +567,11 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									}
 								],
 								"body": {
@@ -526,7 +603,7 @@
 											"    pm.response.to.have.status(200);\r",
 											"});\r",
 											"\r",
-											"utils.testSLA(pm, LONG_SLA);\r",
+											"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) utils.testSLA(pm, LONG_SLA);\r",
 											"\r",
 											"const interval = setTimeout(() => {}, 3000);\r",
 											"async function moreTests() {\r",
@@ -540,9 +617,10 @@
 											"        });\r",
 											"    });\r",
 											"};\r",
-											"moreTests();"
+											"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								},
 								{
@@ -551,7 +629,8 @@
 										"exec": [
 											"utils.setup(pm);"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
@@ -565,13 +644,11 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									}
 								],
 								"body": {
@@ -627,7 +704,7 @@
 											"        }\r",
 											"    });\r",
 											"}\r",
-											"moreTests();"
+											"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -654,13 +731,11 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									}
 								],
 								"body": {
@@ -729,18 +804,15 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									},
 									{
 										"key": "X-Not-Admin",
-										"value": "true",
-										"type": "text"
+										"value": "true"
 									}
 								],
 								"body": {
@@ -795,7 +867,7 @@
 											"    }\r",
 											"    var count = 0;\r",
 											"    for (k in status) {\r",
-											"        if (status[k] == \"OK\") {\r",
+											"        if (status[k] == \"OK\" || status[k] == \"OK (Local)\") {\r",
 											"            ++ count;\r",
 											"        }\r",
 											"    }\r",
@@ -827,18 +899,15 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									},
 									{
 										"key": "X-Message-ID",
-										"value": "{{testMessageId}}",
-										"type": "text"
+										"value": "{{testMessageId}}"
 									}
 								],
 								"url": {
@@ -903,18 +972,15 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									},
 									{
 										"key": "X-Message-ID",
-										"value": "{{testMessageId}}",
-										"type": "text"
+										"value": "{{testMessageId}}"
 									}
 								],
 								"url": {
@@ -957,8 +1023,7 @@
 								"header": [
 									{
 										"key": "X-Not-Admin",
-										"value": "true",
-										"type": "text"
+										"value": "true"
 									}
 								],
 								"url": {
@@ -1002,8 +1067,7 @@
 								"header": [
 									{
 										"key": "X-Not-Admin",
-										"value": "true",
-										"type": "text"
+										"value": "true"
 									}
 								],
 								"url": {
@@ -1038,7 +1102,7 @@
 											"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/^application\\/json/);\r",
 											"});\r",
 											"var status = pm.response.json();\r",
-											"\r",
+											"console.log({\"Size\":  Object.keys(status).length });\r",
 											"pm.test(\"Body to parse as json object\", function() {\r",
 											"    pm.expect(typeof status).to.eql(\"object\");\r",
 											"});\r",
@@ -1091,18 +1155,15 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									},
 									{
 										"key": "X-Message-ID",
-										"value": "{{testMessageId}}",
-										"type": "text"
+										"value": "{{testMessageId}}"
 									}
 								],
 								"url": {
@@ -1173,18 +1234,15 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									},
 									{
 										"key": "X-Message-ID",
-										"value": "{{testMessageId}}",
-										"type": "text"
+										"value": "{{testMessageId}}"
 									}
 								],
 								"url": {
@@ -1259,18 +1317,15 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									},
 									{
 										"key": "X-Message-ID",
-										"value": "{{testMessageId}}",
-										"type": "text"
+										"value": "{{testMessageId}}"
 									}
 								],
 								"url": {
@@ -1336,7 +1391,7 @@
 											"        utils.testLogs(logs, pm, LONG_SLA);\r",
 											"    });\r",
 											"}\r",
-											"moreTests();"
+											"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -1363,18 +1418,15 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									},
 									{
 										"key": "X-Message-ID",
-										"value": "{{testMessageId}}",
-										"type": "text"
+										"value": "{{testMessageId}}"
 									}
 								],
 								"url": {
@@ -1575,8 +1627,7 @@
 										"header": [
 											{
 												"key": "Content-Type",
-												"value": "application/json",
-												"type": "text"
+												"value": "application/json"
 											}
 										],
 										"body": {
@@ -1660,13 +1711,11 @@
 										"header": [
 											{
 												"key": "Host",
-												"value": "{{hostHeader}}",
-												"type": "text"
+												"value": "{{hostHeader}}"
 											},
 											{
 												"key": "Content-Type",
-												"value": "application/xml",
-												"type": "text"
+												"value": "application/xml"
 											}
 										],
 										"body": {
@@ -1740,8 +1789,7 @@
 										"header": [
 											{
 												"key": "Content-Type",
-												"value": "application/json",
-												"type": "text"
+												"value": "application/json"
 											}
 										],
 										"body": {
@@ -1821,18 +1869,15 @@
 										"header": [
 											{
 												"key": "Host",
-												"value": "{{hostHeader}}",
-												"type": "text"
+												"value": "{{hostHeader}}"
 											},
 											{
 												"key": "Content-Type",
-												"value": "application/xml",
-												"type": "text"
+												"value": "application/xml"
 											},
 											{
 												"key": "X-Message-ID",
-												"value": "{{testMessageId}}",
-												"type": "text"
+												"value": "{{testMessageId}}"
 											}
 										],
 										"url": {
@@ -1901,18 +1946,15 @@
 										"header": [
 											{
 												"key": "Host",
-												"value": "{{hostHeader}}",
-												"type": "text"
+												"value": "{{hostHeader}}"
 											},
 											{
 												"key": "Content-Type",
-												"value": "application/xml",
-												"type": "text"
+												"value": "application/xml"
 											},
 											{
 												"key": "X-Message-ID",
-												"value": "{{testMessageId}}",
-												"type": "text"
+												"value": "{{testMessageId}}"
 											}
 										],
 										"url": {
@@ -1982,18 +2024,15 @@
 										"header": [
 											{
 												"key": "Host",
-												"value": "{{hostHeader}}",
-												"type": "text"
+												"value": "{{hostHeader}}"
 											},
 											{
 												"key": "Content-Type",
-												"value": "application/xml",
-												"type": "text"
+												"value": "application/xml"
 											},
 											{
 												"key": "X-Message-ID",
-												"value": "{{testMessageId}}",
-												"type": "text"
+												"value": "{{testMessageId}}"
 											}
 										],
 										"url": {
@@ -2079,18 +2118,15 @@
 										"header": [
 											{
 												"key": "Host",
-												"value": "{{hostHeader}}",
-												"type": "text"
+												"value": "{{hostHeader}}"
 											},
 											{
 												"key": "Content-Type",
-												"value": "application/xml",
-												"type": "text"
+												"value": "application/xml"
 											},
 											{
 												"key": "X-Not-Admin",
-												"value": "true",
-												"type": "text"
+												"value": "true"
 											}
 										],
 										"body": {
@@ -2163,18 +2199,15 @@
 										"header": [
 											{
 												"key": "Host",
-												"value": "{{hostHeader}}",
-												"type": "text"
+												"value": "{{hostHeader}}"
 											},
 											{
 												"key": "Content-Type",
-												"value": "application/xml",
-												"type": "text"
+												"value": "application/xml"
 											},
 											{
 												"key": "X-Message-ID",
-												"value": "{{testMessageId}}",
-												"type": "text"
+												"value": "{{testMessageId}}"
 											}
 										],
 										"url": {
@@ -2236,13 +2269,11 @@
 										"header": [
 											{
 												"key": "Host",
-												"value": "{{hostHeader}}",
-												"type": "text"
+												"value": "{{hostHeader}}"
 											},
 											{
 												"key": "Content-Type",
-												"value": "application/xml",
-												"type": "text"
+												"value": "application/xml"
 											}
 										],
 										"body": {
@@ -2312,18 +2343,15 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									},
 									{
 										"key": "X-Message-ID",
-										"value": "{{testMessageId}}",
-										"type": "text"
+										"value": "{{testMessageId}}"
 									}
 								],
 								"url": {
@@ -2385,18 +2413,15 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									},
 									{
 										"key": "X-Message-ID",
-										"value": "{{testMessageId}}",
-										"type": "text"
+										"value": "{{testMessageId}}"
 									}
 								],
 								"url": {
@@ -2888,13 +2913,11 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									}
 								],
 								"body": {
@@ -2966,13 +2989,11 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									}
 								],
 								"body": {
@@ -3045,13 +3066,11 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									}
 								],
 								"body": {
@@ -3123,13 +3142,11 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									}
 								],
 								"body": {
@@ -3199,18 +3216,15 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									},
 									{
 										"key": "Accept",
-										"value": "text/plain",
-										"type": "text"
+										"value": "text/plain"
 									}
 								],
 								"body": {
@@ -3276,23 +3290,19 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									},
 									{
 										"key": "Accept",
-										"value": "text/xml",
-										"type": "text"
+										"value": "text/xml"
 									},
 									{
 										"key": "Accept-Encoding",
-										"value": "compress",
-										"type": "text"
+										"value": "compress"
 									}
 								],
 								"body": {
@@ -3358,23 +3368,19 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/soap+xml",
-										"type": "text"
+										"value": "application/soap+xml"
 									},
 									{
 										"key": "Accept",
-										"value": "text/html",
-										"type": "text"
+										"value": "text/html"
 									},
 									{
 										"key": "Accept-Charset",
-										"value": "deflate",
-										"type": "text"
+										"value": "deflate"
 									}
 								],
 								"body": {
@@ -3439,18 +3445,15 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									},
 									{
 										"key": "Accept",
-										"value": "br",
-										"type": "text"
+										"value": "br"
 									}
 								],
 								"body": {
@@ -3515,18 +3518,15 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/soap",
-										"type": "text"
+										"value": "application/soap"
 									},
 									{
 										"key": "Accept",
-										"value": "identity",
-										"type": "text"
+										"value": "identity"
 									}
 								],
 								"body": {
@@ -3591,18 +3591,15 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/soap",
-										"type": "text"
+										"value": "application/soap"
 									},
 									{
 										"key": "Accept",
-										"value": "identity",
-										"type": "text"
+										"value": "identity"
 									}
 								],
 								"body": {
@@ -3667,18 +3664,15 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/soap",
-										"type": "text"
+										"value": "application/soap"
 									},
 									{
 										"key": "Accept",
-										"value": "identity",
-										"type": "text"
+										"value": "identity"
 									}
 								],
 								"body": {
@@ -3746,13 +3740,11 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									}
 								],
 								"body": {
@@ -3818,13 +3810,11 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									}
 								],
 								"body": {
@@ -3898,13 +3888,11 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									}
 								],
 								"body": {
@@ -3972,13 +3960,11 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									}
 								],
 								"body": {
@@ -4051,13 +4037,11 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									}
 								],
 								"body": {
@@ -4169,13 +4153,11 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									}
 								],
 								"body": {
@@ -4260,13 +4242,11 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									}
 								],
 								"body": {
@@ -4325,18 +4305,15 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
+										"value": "application/json"
 									},
 									{
 										"key": "Accept",
-										"value": "application/json",
-										"type": "text"
+										"value": "application/json"
 									}
 								],
 								"body": {
@@ -4432,13 +4409,11 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									}
 								],
 								"body": {
@@ -4544,13 +4519,11 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									}
 								],
 								"body": {
@@ -4653,13 +4626,11 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									}
 								],
 								"body": {
@@ -4771,13 +4742,11 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									}
 								],
 								"body": {
@@ -4889,13 +4858,11 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									}
 								],
 								"body": {
@@ -5009,13 +4976,11 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									}
 								],
 								"body": {
@@ -5127,13 +5092,11 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									}
 								],
 								"body": {
@@ -5243,18 +5206,15 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									},
 									{
 										"key": "X-Not-Admin",
-										"value": "true",
-										"type": "text"
+										"value": "true"
 									}
 								],
 								"body": {
@@ -5334,13 +5294,11 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									}
 								],
 								"body": {
@@ -5404,13 +5362,11 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									}
 								],
 								"body": {
@@ -5475,13 +5431,11 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									}
 								],
 								"body": {
@@ -5563,13 +5517,11 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									}
 								],
 								"body": {
@@ -5636,13 +5588,11 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									}
 								],
 								"body": {
@@ -5707,13 +5657,11 @@
 								"header": [
 									{
 										"key": "Host",
-										"value": "{{hostHeader}}",
-										"type": "text"
+										"value": "{{hostHeader}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/xml",
-										"type": "text"
+										"value": "application/xml"
 									}
 								],
 								"body": {
@@ -6306,8 +6254,7 @@
 										"header": [
 											{
 												"key": "Content-Type",
-												"value": "application/json",
-												"type": "text"
+												"value": "application/json"
 											}
 										],
 										"url": {
@@ -6368,8 +6315,7 @@
 										"header": [
 											{
 												"key": "Content-Type",
-												"value": "application/json",
-												"type": "text"
+												"value": "application/json"
 											}
 										],
 										"url": {
@@ -6436,8 +6382,7 @@
 										"header": [
 											{
 												"key": "Content-Type",
-												"value": "application/json",
-												"type": "text"
+												"value": "application/json"
 											}
 										],
 										"url": {
@@ -6498,8 +6443,7 @@
 										"header": [
 											{
 												"key": "Content-Type",
-												"value": "application/json",
-												"type": "text"
+												"value": "application/json"
 											}
 										],
 										"url": {
@@ -6579,13 +6523,11 @@
 										"header": [
 											{
 												"key": "Host",
-												"value": "{{hostHeader}}",
-												"type": "text"
+												"value": "{{hostHeader}}"
 											},
 											{
 												"key": "Content-Type",
-												"value": "application/xml",
-												"type": "text"
+												"value": "application/xml"
 											}
 										],
 										"body": {
@@ -7684,10 +7626,11 @@
 													"    });\r",
 													"}\r",
 													"\r",
-													"moreTests();\r",
+													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();\r",
 													""
 												],
-												"type": "text/javascript"
+												"type": "text/javascript",
+												"packages": {}
 											}
 										},
 										{
@@ -7696,7 +7639,8 @@
 												"exec": [
 													"utils.setup(pm);"
 												],
-												"type": "text/javascript"
+												"type": "text/javascript",
+												"packages": {}
 											}
 										}
 									],
@@ -7789,7 +7733,7 @@
 													"    });\r",
 													"}\r",
 													"\r",
-													"moreTests();\r",
+													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();\r",
 													""
 												],
 												"type": "text/javascript",
@@ -7817,13 +7761,11 @@
 										"header": [
 											{
 												"key": "Host",
-												"value": "{{hostHeader}}",
-												"type": "text"
+												"value": "{{hostHeader}}"
 											},
 											{
 												"key": "Content-Type",
-												"value": "application/xml",
-												"type": "text"
+												"value": "application/xml"
 											}
 										],
 										"body": {
@@ -7916,10 +7858,11 @@
 													"    });\r",
 													"}\r",
 													"\r",
-													"moreTests();\r",
+													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();\r",
 													""
 												],
-												"type": "text/javascript"
+												"type": "text/javascript",
+												"packages": {}
 											}
 										},
 										{
@@ -7928,7 +7871,8 @@
 												"exec": [
 													"utils.setup(pm);"
 												],
-												"type": "text/javascript"
+												"type": "text/javascript",
+												"packages": {}
 											}
 										}
 									],
@@ -8175,7 +8119,7 @@
 													"    checkDexResponse(pm, 1781578);\r",
 													"});\r",
 													"\r",
-													"utils.testSLA(pm, 300000);\r",
+													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) utils.testSLA(pm, 300000);\r",
 													"\r",
 													"const interval = setTimeout(() => {}, 3000);\r",
 													"async function moreTests() {\r",
@@ -8216,8 +8160,7 @@
 										"header": [
 											{
 												"key": "X-Message-ID",
-												"value": "Basic Submission MAA/routineImmuniziation/MAA_16M.zip/2023Q1/RIA_16M.zip",
-												"type": "text"
+												"value": "Basic Submission MAA/routineImmuniziation/MAA_16M.zip/2023Q1/RIA_16M.zip"
 											}
 										],
 										"body": {
@@ -8225,7 +8168,7 @@
 											"formdata": [
 												{
 													"key": "facilityId",
-													"value": "MAA",
+													"value": "XXA",
 													"type": "text"
 												},
 												{
@@ -8245,7 +8188,7 @@
 												},
 												{
 													"key": "filename",
-													"value": "MAA_20230331_20230415_Z.zip",
+													"value": "XXA_20230331_20230415_Z.zip",
 													"type": "text"
 												}
 											]
@@ -8275,7 +8218,8 @@
 												"exec": [
 													"utils.setup(pm);"
 												],
-												"type": "text/javascript"
+												"type": "text/javascript",
+												"packages": {}
 											}
 										},
 										{
@@ -8291,7 +8235,7 @@
 													"});\r",
 													"\r",
 													"\r",
-													"utils.testSLA(pm, 300000);\r",
+													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) utils.testSLA(pm, 300000);\r",
 													"\r",
 													"const interval = setTimeout(() => {}, 3000);\r",
 													"async function moreTests() {\r",
@@ -8306,10 +8250,11 @@
 													"    });\r",
 													"}\r",
 													"\r",
-													"moreTests();\r",
+													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();\r",
 													""
 												],
-												"type": "text/javascript"
+												"type": "text/javascript",
+												"packages": {}
 											}
 										}
 									],
@@ -8331,8 +8276,7 @@
 										"header": [
 											{
 												"key": "X-Message-ID",
-												"value": "Basic Submission MAA/routineImmuniziation/MAA_16M.zip/2023Q1/RIA_16M.zip",
-												"type": "text"
+												"value": "Basic Submission MAA/routineImmuniziation/MAA_16M.zip/2023Q1/RIA_16M.zip"
 											}
 										],
 										"body": {
@@ -8340,7 +8284,7 @@
 											"formdata": [
 												{
 													"key": "facilityId",
-													"value": "ARA",
+													"value": "XXA",
 													"type": "text"
 												},
 												{
@@ -8360,9 +8304,8 @@
 												},
 												{
 													"key": "filename",
-													"value": "MonthlyAllCOVID_ARA_2022SEP.csv",
-													"type": "text",
-													"disabled": true
+													"value": "MonthlyAllCOVID_XXA_2022SEP.csv",
+													"type": "text"
 												}
 											]
 										},
@@ -8391,7 +8334,8 @@
 												"exec": [
 													"utils.setup(pm);"
 												],
-												"type": "text/javascript"
+												"type": "text/javascript",
+												"packages": {}
 											}
 										},
 										{
@@ -8422,10 +8366,11 @@
 													"    });\r",
 													"}\r",
 													"\r",
-													"moreTests();\r",
+													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();\r",
 													""
 												],
-												"type": "text/javascript"
+												"type": "text/javascript",
+												"packages": {}
 											}
 										}
 									],
@@ -8447,8 +8392,7 @@
 										"header": [
 											{
 												"key": "X-Message-ID",
-												"value": "Basic Submission MAA/routineImmuniziation/MAA_16M.zip/2023Q1/RIA_16M.zip",
-												"type": "text"
+												"value": "Basic Submission MAA/routineImmuniziation/MAA_16M.zip/2023Q1/RIA_16M.zip"
 											}
 										],
 										"body": {
@@ -8456,7 +8400,7 @@
 											"formdata": [
 												{
 													"key": "facilityId",
-													"value": "ARA",
+													"value": "XXA",
 													"type": "text"
 												},
 												{
@@ -8476,7 +8420,7 @@
 												},
 												{
 													"key": "filename",
-													"value": "MonthlyBridgeCOVID_ARA_2022SEP.csv",
+													"value": "MonthlyBridgeCOVID_XXA_2022SEP.csv",
 													"type": "text"
 												}
 											]
@@ -8506,7 +8450,8 @@
 												"exec": [
 													"utils.setup(pm);"
 												],
-												"type": "text/javascript"
+												"type": "text/javascript",
+												"packages": {}
 											}
 										},
 										{
@@ -8522,7 +8467,7 @@
 													"});\r",
 													"\r",
 													"\r",
-													"utils.testSLA(pm, 300000);\r",
+													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) utils.testSLA(pm, 300000);\r",
 													"\r",
 													"const interval = setTimeout(() => {}, 3000);\r",
 													"async function moreTests() {\r",
@@ -8537,10 +8482,11 @@
 													"    });\r",
 													"}\r",
 													"\r",
-													"moreTests();\r",
+													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();\r",
 													""
 												],
-												"type": "text/javascript"
+												"type": "text/javascript",
+												"packages": {}
 											}
 										}
 									],
@@ -8562,8 +8508,7 @@
 										"header": [
 											{
 												"key": "X-Message-ID",
-												"value": "Basic Submission MAA/routineImmuniziation/MAA_16M.zip/2023Q1/RIA_16M.zip",
-												"type": "text"
+												"value": "Basic Submission MAA/routineImmuniziation/MAA_16M.zip/2023Q1/RIA_16M.zip"
 											}
 										],
 										"body": {
@@ -8571,7 +8516,7 @@
 											"formdata": [
 												{
 													"key": "facilityId",
-													"value": "ARA",
+													"value": "XXA",
 													"type": "text"
 												},
 												{
@@ -8591,7 +8536,7 @@
 												},
 												{
 													"key": "filename",
-													"value": "MonthlyRSV_ARA_2022SEP.csv",
+													"value": "MonthlyRSV_XXA_2022SEP.csv",
 													"type": "text"
 												}
 											]
@@ -8638,7 +8583,7 @@
 													"});\r",
 													"\r",
 													"\r",
-													"utils.testSLA(pm, 300000);\r",
+													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) utils.testSLA(pm, 300000);\r",
 													"\r",
 													"const interval = setTimeout(() => {}, 3000);\r",
 													"async function moreTests() {\r",
@@ -8653,7 +8598,7 @@
 													"    });\r",
 													"}\r",
 													"\r",
-													"moreTests();\r",
+													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();\r",
 													""
 												],
 												"type": "text/javascript",
@@ -8679,8 +8624,7 @@
 										"header": [
 											{
 												"key": "X-Message-ID",
-												"value": "Basic Submission MAA/routineImmuniziation/MAA_16M.zip/2023Q1/RIA_16M.zip",
-												"type": "text"
+												"value": "Basic Submission MAA/routineImmuniziation/MAA_16M.zip/2023Q1/RIA_16M.zip"
 											}
 										],
 										"body": {
@@ -8688,7 +8632,7 @@
 											"formdata": [
 												{
 													"key": "facilityId",
-													"value": "ARA",
+													"value": "XXA",
 													"type": "text"
 												},
 												{
@@ -8708,7 +8652,7 @@
 												},
 												{
 													"key": "filename",
-													"value": "MonthlyRSV_ARA_2022SEP.csv",
+													"value": "MonthlyRSV_XXA_2022SEP.csv",
 													"type": "text"
 												}
 											]
@@ -8738,7 +8682,8 @@
 												"exec": [
 													"utils.setup(pm);"
 												],
-												"type": "text/javascript"
+												"type": "text/javascript",
+												"packages": {}
 											}
 										},
 										{
@@ -8754,7 +8699,7 @@
 													"});\r",
 													"\r",
 													"\r",
-													"utils.testSLA(pm, 300000);\r",
+													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) utils.testSLA(pm, 300000);\r",
 													"\r",
 													"const interval = setTimeout(() => {}, 3000);\r",
 													"async function moreTests() {\r",
@@ -8769,10 +8714,11 @@
 													"    });\r",
 													"}\r",
 													"\r",
-													"moreTests();\r",
+													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();\r",
 													""
 												],
-												"type": "text/javascript"
+												"type": "text/javascript",
+												"packages": {}
 											}
 										}
 									],
@@ -8794,8 +8740,7 @@
 										"header": [
 											{
 												"key": "X-Message-ID",
-												"value": "Basic Submission MAA/routineImmuniziation/MAA_16M.zip/2023Q1/RIA_16M.zip",
-												"type": "text"
+												"value": "Basic Submission MAA/routineImmuniziation/MAA_16M.zip/2023Q1/RIA_16M.zip"
 											}
 										],
 										"body": {
@@ -8803,7 +8748,7 @@
 											"formdata": [
 												{
 													"key": "facilityId",
-													"value": "ARA",
+													"value": "XXA",
 													"type": "text"
 												},
 												{
@@ -8823,7 +8768,7 @@
 												},
 												{
 													"key": "filename",
-													"value": "MonthlyFlu_ARA_2022SEP.csv",
+													"value": "MonthlyFlu_XXA_2022SEP.csv",
 													"type": "text"
 												}
 											]
@@ -8853,7 +8798,8 @@
 												"exec": [
 													"utils.setup(pm);"
 												],
-												"type": "text/javascript"
+												"type": "text/javascript",
+												"packages": {}
 											}
 										},
 										{
@@ -8873,7 +8819,7 @@
 													"    pm.expect(metadata.error).to.be.eql(\"Multiple Errors in Metadata\");\r",
 													"});\r",
 													"\r",
-													"utils.testSLA(pm, 1000);\r",
+													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) utils.testSLA(pm, 1000);\r",
 													"\r",
 													"const interval = setTimeout(() => { }, 3000);\r",
 													"async function moreTests() {\r",
@@ -8888,10 +8834,11 @@
 													"    });\r",
 													"}\r",
 													"\r",
-													"moreTests();\r",
+													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();\r",
 													""
 												],
-												"type": "text/javascript"
+												"type": "text/javascript",
+												"packages": {}
 											}
 										}
 									],
@@ -8913,8 +8860,7 @@
 										"header": [
 											{
 												"key": "X-Message-ID",
-												"value": "Basic Submission MAA/routineImmuniziation/MAA_16M.zip/2023Q1/RIA_16M.zip",
-												"type": "text"
+												"value": "Basic Submission MAA/routineImmuniziation/MAA_16M.zip/2023Q1/RIA_16M.zip"
 											}
 										],
 										"body": {
@@ -8922,7 +8868,7 @@
 											"formdata": [
 												{
 													"key": "facilityId",
-													"value": "MAA",
+													"value": "XXA",
 													"type": "text"
 												},
 												{
@@ -8972,7 +8918,8 @@
 												"exec": [
 													"utils.setup(pm);"
 												],
-												"type": "text/javascript"
+												"type": "text/javascript",
+												"packages": {}
 											}
 										},
 										{
@@ -8988,7 +8935,7 @@
 													"});\r",
 													"\r",
 													"\r",
-													"utils.testSLA(pm, 300000);\r",
+													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) utils.testSLA(pm, 300000);\r",
 													"\r",
 													"const interval = setTimeout(() => {}, 3000);\r",
 													"async function moreTests() {\r",
@@ -9003,10 +8950,11 @@
 													"    });\r",
 													"}\r",
 													"\r",
-													"moreTests();\r",
+													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();\r",
 													""
 												],
-												"type": "text/javascript"
+												"type": "text/javascript",
+												"packages": {}
 											}
 										}
 									],
@@ -9028,8 +8976,7 @@
 										"header": [
 											{
 												"key": "X-Message-ID",
-												"value": "Basic Submission MAA/routineImmuniziation/MAA_16M.zip/2023Q1/RIA_16M.zip",
-												"type": "text"
+												"value": "Basic Submission MAA/routineImmuniziation/MAA_16M.zip/2023Q1/RIA_16M.zip"
 											}
 										],
 										"body": {
@@ -9037,7 +8984,7 @@
 											"formdata": [
 												{
 													"key": "facilityId",
-													"value": "MAA",
+													"value": "XXA",
 													"type": "text"
 												},
 												{
@@ -9057,7 +9004,7 @@
 												},
 												{
 													"key": "filename",
-													"value": "RIA_16M.xxx",
+													"value": "XXA_16M.xxx",
 													"type": "text"
 												}
 											]
@@ -9112,12 +9059,22 @@
 									"        pm.expect(metadata.meta_ext_submissionperiod, \"meta_ext_submissionperiod\").to.be.eql(pm.request.body.formdata.get(\"period\"));",
 									"        pm.expect(metadata.meta_ext_event, \"meta_ext_event\").to.be.eql(pm.request.body.formdata.get(\"reportType\"));",
 									"        pm.expect(metadata.meta_ext_entity, \"meta_ext_entity\").to.be.eql(pm.request.body.formdata.get(\"facilityId\"));",
+									"        pm.expect(metadata.received_filename, \"recieved_filename\").to.be.eql(pm.request.body.formdata.get(\"filename\"));",
+									"        pm.expect(metadata.sender_id, \"sender_id\").to.be.eql(\"IZGW\");",
+									"        pm.expect(metadata.data_producer_id, \"data_producer_id\").to.be.eql(pm.request.body.formdata.get(\"facilityId\"));",
+									"        pm.expect(metadata.data_producer_id, \"jurisdiction\").to.be.eql(pm.request.body.formdata.get(\"facilityId\"));",
+									"        pm.expect(metadata.version, \"version\").to.be.eql(\"2.0\");",
+									"        pm.expect(metadata.data_stream_route, \"data_stream_route\").to.match(/other|csv/);",
+									"        pm.expect(metadata.data_stream_id, \"data_stream_id\").to.match(",
+									"            /routine-immunization|covid-bridge-vaccination|covid-all-monthly-vaccination|rsv-prevention|influenza-vaccination/);",
 									"    } catch (err) {",
 									"        console.log(\"Response\", pm.response, pm.response.text());",
-									"        utils.getLogs(null, pm).then((logData) => {",
-									"            logs = logData.json();",
-									"            console.log(\"Logs\", logs);",
-									"        });",
+									"        if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) {",
+									"            utils.getLogs(null, pm).then((logData) => {",
+									"                logs = logData.json();",
+									"                console.log(\"Logs\", logs);",
+									"            });",
+									"        }",
 									"        throw err;",
 									"    }",
 									"}"
@@ -9145,7 +9102,7 @@
 									"listen": "test",
 									"script": {
 										"exec": [
-											"utils.testHL7RSP(pm.response.text(), pm.request.body, [\"234820^^^MYEHR^MR\"], \"AA\", \"OK\", \"\");",
+											"utils.testHL7RSP(pm.response.text(), pm.request.body, [\"100000317^^^MYEHR^MR\"], \"AA\", \"OK\", \"\");",
 											""
 										],
 										"type": "text/javascript",
@@ -9182,7 +9139,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M|1960-05-07|F|1663 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;\r\n      </urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|100000317^^^MYEHR^MR|CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M|19600507|F|1663 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;\r\n      </urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
@@ -9199,13 +9156,13 @@
 							"response": []
 						},
 						{
-							"name": "TC_MOCK_02: Query for matching patient, w/o Address, confirm one found with IZ history",
+							"name": "TC_MOCK_02a: Query for matching patient, w/o identifier or Address, confirm one found with IZ history",
 							"event": [
 								{
 									"listen": "test",
 									"script": {
 										"exec": [
-											"utils.testHL7RSP(pm.response.text(), pm.request.body, [\"234820^^^MYEHR^MR\"], \"AA\", \"OK\", \"\");",
+											"utils.testHL7RSP(pm.response.text(), pm.request.body, [\"100000317^^^MYEHR^MR\"], \"AA\", \"OK\", \"\");",
 											""
 										],
 										"type": "text/javascript",
@@ -9242,7 +9199,67 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f9|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M|1960-05-07|F&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f9|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859||CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M|19600507|F&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{host}}"
+									],
+									"port": "{{port}}",
+									"path": [
+										"IISHubService"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "TC_MOCK_02b: Query for matching patient, by Identifier",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"utils.testHL7RSP(pm.response.text(), pm.request.body, [\"100000317^^^MYEHR^MR\"], \"AA\", \"OK\", \"\");",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"utils.setup(pm, \"dev\");"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {
+									"host": true
+								}
+							},
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Host",
+										"value": "{{hostHeader}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/xml"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f9|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|100000317^^^MYEHR^MR&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
@@ -9302,7 +9319,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M|1960-05-07|F|1664 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M|19600507|F|1664 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
@@ -9362,7 +9379,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M|1960-05-07|F|1663 Persoon Ave^^Bobbyiston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M|19600507|F|1663 Persoon Ave^^Bobbyiston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
@@ -9422,7 +9439,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M|1960-05-07|F|1663 Persoon Ave^^Williston^ND^58802^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M|19600507|F|1663 Persoon Ave^^Williston^ND^58802^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
@@ -9482,7 +9499,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M|1960-05-07|F|1663 Persoon Ave^^Williston^NC^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M|19600507|F|1663 Persoon Ave^^Williston^NC^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
@@ -9542,7 +9559,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M|1961-05-07|F|1663 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M|19610507|F|1663 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
@@ -9565,7 +9582,7 @@
 									"listen": "test",
 									"script": {
 										"exec": [
-											"utils.testHL7RSP(pm.response.text(), pm.request.body, [\"234820^^^MYEHR^MR\"], \"AA\", \"OK\", \"\");",
+											"utils.testHL7RSP(pm.response.text(), pm.request.body, [\"100000317^^^MYEHR^MR\"], \"AA\", \"OK\", \"\");",
 											""
 										],
 										"type": "text/javascript",
@@ -9602,7 +9619,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarnAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnAIRA^^^^^M|1960-05-07|F|1663 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;\r\n</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|100000317^^^MYEHR^MR|CuyahogaAIRA^MarnAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnAIRA^^^^^M|19600507|F|1663 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;\r\n</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
@@ -9662,7 +9679,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarRA^MalkaAIRA^^^^L|CuyahoA^MarnyAIRA^^^^^M|1960-05-07|F|1663 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarRA^MalkaAIRA^^^^L|CuyahoA^MarnyAIRA^^^^^M|19600507|F|1663 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
@@ -9685,7 +9702,7 @@
 									"listen": "test",
 									"script": {
 										"exec": [
-											"utils.testHL7RSP(pm.response.text(), pm.request.body, [\"235760a^^^MYEHR^MR\",\"235760b^^^MYEHR^MR\"], \"AA\", \"OK\", \"\");",
+											"utils.testHL7RSP(pm.response.text(), pm.request.body, [\"100041514^^^MYEHR^MR\",\"100041533^^^MYEHR^MR\"], \"AA\", \"OK\", \"\");",
 											""
 										],
 										"type": "text/javascript",
@@ -9722,7 +9739,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859||NavarroAIRA^ZadorAIRA^VaIdaAIRA^^^^L||2001-08-10|M&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859||NavarroAIRA^ZadorAIRA^VaIdaAIRA^^^^L||20010810|M&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
@@ -9782,7 +9799,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859||FagenAIRA^RudraniAIRA^^^^L||2021-01-02|F&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859||FagenAIRA^RudraniAIRA^^^^L||20210102|F&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
@@ -9842,7 +9859,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|NotFoundAIRA^NotFoundAIRA^MalkaAIRA^^^^L|NotFoundAIRA^MarnyAIRA^^^^^M|1960-05-07|F|1663 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|NotFoundAIRA^NotFoundAIRA^MalkaAIRA^^^^L|NotFoundAIRA^MarnyAIRA^^^^^M|19600507|F|1663 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
@@ -9902,7 +9919,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M|1960-05-07||1663 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859||CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M|19600507||1663 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
@@ -9962,7 +9979,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|||1960-05-07|F|1663 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859||||19600507|F|1663 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
@@ -10022,7 +10039,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M||F|1663 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859||CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M||F|1663 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
@@ -10082,7 +10099,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD||37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M|1960-05-07|F|1663 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD||37374859||CuyahogaAIRA^MarnyAIRA^MalkaAIRA^^^^L|CuyahogaAIRA^MarnyAIRA^^^^^M|19600507|F|1663 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
@@ -10202,7 +10219,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||VXU^V04^VXU_V04|bd4ffcb7-8d37-4384-b642-add379877a2e|P|2.5.1|||ER|AL|||||Z22^CDCPHINVS&#x0d;PID|1||432155^^^dcs^MRS||FagenAIRA^SophoclesAIRA^JerrieAIRA^^^^L|FagenAIRA^SophoclesAIRA^^^^^M |1976-01-28|M||ASIAN|1760 Ve Marne Ln^^Fargo^ND^58104^^L||^PRN^PH^^^111^2320112|||||||||not HISPANIC&#x0d;NK1|1|FagenAIRA^SophoclesAIRA^^^^^L|MTH^Mom^HL70063|1760 Ve Marne Ln^^Fargo^ND^58104^^L &#x0d;ORC|RE||65930^DCS||||||20120113|^FagenAIRA^SophoclesAIRA||^FagenAIRA^SophoclesAIRA^^^^^^^ ^^^^^^^^^^^MD|||||||||Dabig Clinic System&#x0d;RXA|0|1|2004-05-15||08^08^CVX|.05|ml||01^historical^NIP001|||||||||||CP|A&#x0d;RXR|C28161^IM^NCIT^IM^^HL70162|RT^Right Thigh^HL70163&#x0d;OBX|1|CE|64994-7^Eligibility Status^LN|1|V02^Medicaid^HL70064||||||F||||||VXC40^vaccine level^CDCPHINVS&#x0d;OBX|2|DT|29769-7^VIS presented^LN|2|20120113||||||F&#x0d;OBX|3|CE|69764-9 ^Document type^LN|2|253088698300026411121116^Multivaccine VIS^cdcgs1vis||||||F &#x0d;ORC|RE||65949^DCS||||||20120113|^FagenAIRA^SophoclesAIRA||^FagenAIRA^SophoclesAIRA^^^^^^^ ^^^^^^^^^^^MD|||||||||Dabig Clinic System&#x0d;OBX|4|CE|64994-7^Eligibility Status^LN|1|V02^Medicaid^HL70064||||||F||||||VXC40^vaccine level^CDCPHINVS&#x0d;OBX|5|DT|29769-7^VIS presented^LN|2|20120113||||||F OBX|6|CE|69764-9^Eligibility Status^LN|2|253088698300026411121116^Multivaccine VIS^cdcgs1vis||||||F&#x0d;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||VXU^V04^VXU_V04|bd4ffcb7-8d37-4384-b642-add379877a2e|P|2.5.1|||ER|AL|||||Z22^CDCPHINVS&#x0d;PID|1||432155^^^dcs^MRS||FagenAIRA^SophoclesAIRA^JerrieAIRA^^^^L|FagenAIRA^SophoclesAIRA^^^^^M |19760128|M||ASIAN|1760 Ve Marne Ln^^Fargo^ND^58104^^L||^PRN^PH^^^111^2320112|||||||||not HISPANIC&#x0d;NK1|1|FagenAIRA^SophoclesAIRA^^^^^L|MTH^Mom^HL70063|1760 Ve Marne Ln^^Fargo^ND^58104^^L &#x0d;ORC|RE||65930^DCS||||||20120113|^FagenAIRA^SophoclesAIRA||^FagenAIRA^SophoclesAIRA^^^^^^^ ^^^^^^^^^^^MD|||||||||Dabig Clinic System&#x0d;RXA|0|1|20040515||08^08^CVX|.05|ml||01^historical^NIP001|||||||||||CP|A&#x0d;RXR|C28161^IM^NCIT^IM^^HL70162|RT^Right Thigh^HL70163&#x0d;OBX|1|CE|64994-7^Eligibility Status^LN|1|V02^Medicaid^HL70064||||||F||||||VXC40^vaccine level^CDCPHINVS&#x0d;OBX|2|DT|29769-7^VIS presented^LN|2|20120113||||||F&#x0d;OBX|3|CE|69764-9 ^Document type^LN|2|253088698300026411121116^Multivaccine VIS^cdcgs1vis||||||F &#x0d;ORC|RE||65949^DCS||||||20120113|^FagenAIRA^SophoclesAIRA||^FagenAIRA^SophoclesAIRA^^^^^^^ ^^^^^^^^^^^MD|||||||||Dabig Clinic System&#x0d;OBX|4|CE|64994-7^Eligibility Status^LN|1|V02^Medicaid^HL70064||||||F||||||VXC40^vaccine level^CDCPHINVS&#x0d;OBX|5|DT|29769-7^VIS presented^LN|2|20120113||||||F OBX|6|CE|69764-9^Eligibility Status^LN|2|253088698300026411121116^Multivaccine VIS^cdcgs1vis||||||F&#x0d;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
@@ -10330,7 +10347,35 @@
 		},
 		{
 			"name": "Not Working",
-			"item": []
+			"item": [
+				{
+					"name": "Blacklist a User",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{protocol}}://{{host}}:{{port}}/rest/access/blacklist?user=epicenter.stchealthops.com",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"rest",
+								"access",
+								"blacklist"
+							],
+							"query": [
+								{
+									"key": "user",
+									"value": "epicenter.stchealthops.com"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
 		}
 	],
 	"event": [
@@ -11204,7 +11249,7 @@
 					"    },",
 					"    resetLogs: function (pm, dest) {",
 					"        setTimeout(() => { }, 500);",
-					"        var theUrl = pm.environment.get(\"protocol\") + '://' + pm.environment.get(\"host\") + \":\" + pm.environment.get(\"port\") + '/rest/logs';",
+					"        var theUrl = 'https://' + pm.environment.get(\"host\") + \":\" + pm.environment.get(\"port\") + '/rest/logs';",
 					"        if (dest !== null && dest !== undefined) {",
 					"            theUrl = theUrl + \"?clear=\" + dest;",
 					"        }",

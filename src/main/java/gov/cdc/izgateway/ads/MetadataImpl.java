@@ -13,6 +13,11 @@ import gov.cdc.izgateway.model.IDestination;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * Primary implementation for the Metadata interface used by the ADS Service
+ * 
+ * @author Audacious Inquiry
+ */
 @Slf4j
 @Data
 public class MetadataImpl implements Metadata {
@@ -35,10 +40,17 @@ public class MetadataImpl implements Metadata {
 	private String eventId;
 	@JsonIgnore
     private transient IDestination destination;
-    
+
+	/**
+	 * Create a new metadata imlementation.
+	 */
     public MetadataImpl() {
     }
     
+	/**
+	 * Copy an existing metadata into a new one.
+	 * @param resp	The existing metadata
+	 */
     public MetadataImpl(Metadata resp) {
         if (resp == null) {
             return;
@@ -64,6 +76,11 @@ public class MetadataImpl implements Metadata {
         }
     }
 
+    /**
+     * Set metadata fields by name
+     * @param name	The field name
+     * @param value The field value
+     */
 	public void set(String name, String value) {
 		// TODO: Make this work from annotations
 		switch (name) {
@@ -125,6 +142,10 @@ public class MetadataImpl implements Metadata {
 
 	private static final List<String> MONTHS = Arrays.asList("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC");
 	private static final List<String> QUARTERS = Arrays.asList("Q1", "Q2", "Q3", "Q4");
+	/**
+	 * Get the specified period in a Calendar class 
+	 * @return	A calendar representing the reporting period date. 
+	 */
 	@JsonIgnore
 	public Calendar getPeriodAsCalendar() {
 		Calendar metaDate = Calendar.getInstance();
@@ -143,7 +164,10 @@ public class MetadataImpl implements Metadata {
 				month = MONTHS.indexOf(StringUtils.right(period.toUpperCase(), 3));
 			}
 		}
-		
+		// Set to first of month because if you run this based on "today"
+		// and today happens to be 7/31, but your actual month is September, when
+		// you change month to 9, then 9/31 will roll over to 10/1.
+		metaDate.set(Calendar.DATE, 1);
 		if (year >= 0) {
 			metaDate.set(Calendar.YEAR, year);
 		}

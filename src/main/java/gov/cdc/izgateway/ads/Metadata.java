@@ -3,6 +3,8 @@ package gov.cdc.izgateway.ads;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.FastDateFormat;
 
 import java.io.Serializable;
@@ -66,6 +68,16 @@ public interface Metadata extends Serializable {
 	public static final String RFC2616_DATE_FORMAT_PATTERN = "EEE, dd MMM yyyy HH:mm:ss zzz";
 	public static final FastDateFormat RFC2616_DATE_FORMAT = FastDateFormat.getInstance(RFC2616_DATE_FORMAT_PATTERN);
 
+	/*
+	 * version	New field
+	 *	DEX required	Add field
+	 *  Allowed value: 2.0
+	 */
+	@JsonProperty("version")
+	default String getVersion() {
+		return "2.0";
+	}
+	
     @JsonProperty("meta_destination_id")
     String getDestinationId();
     void setDestinationId(String destId);
@@ -73,7 +85,16 @@ public interface Metadata extends Serializable {
     @JsonProperty("meta_ext_source")
     String getExtSource();
     void setExtSource(String extSource);
-    
+    /*
+     * sender_id	New field
+     * DEX required	Add field
+     * Allowed value: IZGW
+     */
+    @JsonProperty("sender_id")
+    default String getSenderId() {
+    	return getExtSource();
+    }
+
     @JsonProperty("meta_ext_sourceversion")
     String getExtSourceVersion();
     void setExtSourceVersion(String extSourceVersion);
@@ -81,10 +102,56 @@ public interface Metadata extends Serializable {
     @JsonProperty("meta_ext_event")
     String getExtEvent();
     void setExtEvent(String extEvent);
+
+    /*
+     * data_stream_id	New field
+	 * DEX required	Add field
+	 * Allowed values:
+	 * -	routine-immunization
+	 * -	influenza-vaccination
+	 * -	rsv-prevention
+	 * -	covid-all-monthly-vaccination
+	 * -	covid-bridge-vaccination
+	 */
+    @JsonProperty("data_stream_id")
+    default String getDataStreamId() {
+    	String value = getExtEvent();
+    	switch (value.toLowerCase()) {
+		case "routineimmunization":
+    		return "routine-immunization";
+		case "influenzavaccination":
+    		return "influenza-vaccination";
+		case "rsvprevention":
+    		return "rsv-prevention";
+		case "covidallmonthlyvaccination":
+			return "covid-all-monthly-vaccination";
+		case "covidbridgevaccination":
+			return "covid-bridge-vaccination";
+		default:
+			return value;
+    	}
+    }
     
     @JsonProperty("meta_ext_entity")
     String getExtEntity();
     void setExtEntity(String extEntity);
+    /* 
+     * data_producer_id	New field
+     * DEX required	Add field
+     * Allowed values: use existing values for meta_ext_entity
+     */
+    @JsonProperty("data_producer_id")
+    default String getDataProducerId() {
+    	return getExtEntity();
+    }
+    /* jurisdiction	New field
+     * DEX required	Add field
+     * Allowed values: use existing values for meta_ext_entity
+     */
+    @JsonProperty("jurisdiction")
+    default String getJurisdiction() {
+    	return getExtEntity();
+    }
     
     @JsonProperty("meta_username")
     String getUsername();
@@ -97,6 +164,30 @@ public interface Metadata extends Serializable {
     @JsonProperty("meta_ext_filename")
     String getFilename();
     void setFilename(String filename);
+    /*
+     * received_filename	New field
+     * DEX required	Add field
+     * Allowed value: original filename uploaded
+     */
+    @JsonProperty("received_filename")
+    default String getReceivedFilename() {
+    	return getFilename();
+    }
+    /*
+     * data_stream_route	New field
+     * DEX required	Add field
+     * Allowed values:
+     * -	csv for CSV files
+     * -	other for all other file types
+     */
+    @JsonProperty("data_stream_route") 
+    default String getDataStreamRoute() {
+    	String v = StringUtils.defaultString(getFilename());
+    	if (v.toLowerCase().endsWith(".csv")) {
+    		return "csv";
+    	}
+    	return "other";
+    }
     
     @JsonProperty("meta_ext_submissionperiod")
     String getPeriod();

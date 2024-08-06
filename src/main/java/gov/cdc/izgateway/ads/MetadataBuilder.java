@@ -23,6 +23,9 @@ import java.util.UUID;
 public class MetadataBuilder {
 	private static final String MONTH_PATTERN = "(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)";
     private static final String PERIOD_PATTERN = "^\\d{4}(Q[1-4]|-" + MONTH_PATTERN + "|((-\\d{2}){1,2}))$";
+    /**
+     * This is the facility id assigned to IZ Gateway by NDLP.
+     */
     public static final String FACILITY_IZG = "IZG";
     private MetadataImpl meta = new MetadataImpl();
     private List<String> errors = new ArrayList<>();
@@ -32,10 +35,18 @@ public class MetadataBuilder {
 	private boolean metadataValidationEnabled = true;
     private static final String DEFAULT_SCHEMA_VERSION = "1.0";
 	
+    /**
+     * Create a new MetadataBuider.
+     */
     public MetadataBuilder() {
         meta.setExtSource("IZGW");
     }
 
+    /**
+     * Return the built metadata object.
+     * @return the built metadata object.
+     * @throws MetadataFault if any errors were founding during the building process.
+     */
     public MetadataImpl build() throws MetadataFault {
         meta.setSchemaVersion(DEFAULT_SCHEMA_VERSION);
         meta.setEventId(MDC.get(EventIdMdcConverter.EVENT_ID_MDC_KEY));
@@ -45,14 +56,27 @@ public class MetadataBuilder {
         throw new MetadataFault(meta, errors.toArray(new String[0]));
     }
     
+    /**
+     * Returns true if there were any errors while building.
+     * @return true if there were any errors while building
+     */
     public boolean hasErrors() {
         return !errors.isEmpty();
     }
     
+    /**
+     * Get the list of errors found in the metadata.
+     * @return the list of errors found in the metadata
+     */
     public List<String> getErrors() {
         return errors;
     }
 
+    /**
+     * Set the report type
+     * @param reportType the report type
+     * @return The metadata builder.
+     */
     public MetadataBuilder setReportType(String reportType){
         meta.setExtEvent(reportType);
         if (StringUtils.isBlank(reportType)) {
@@ -62,6 +86,11 @@ public class MetadataBuilder {
         return this;
     }
 
+    /**
+     * Set the period associated with the report
+     * @param period the period associated with the report, in the form YYYY-MMM or YYYYQ[1-4]
+     * @return	The metadata builder
+     */
     public MetadataBuilder setPeriod(String period) {
         meta.setPeriod(period);
         if (StringUtils.isBlank(period)) {
@@ -78,6 +107,13 @@ public class MetadataBuilder {
         return this;
     }
 
+    /**
+     * Set the filename of the report
+     * The filename structure is well defined for each report type and is used
+     * to valid metadata parameters.
+     * @param filename	The filename.
+     * @return	The MetadataBuilder
+     */
     public MetadataBuilder setFilename(String filename) {
     	filename = filename.trim();
         meta.setFilename(filename);
@@ -134,6 +170,12 @@ public class MetadataBuilder {
 		}
 	}
 
+    /**
+     * Set the route identifier
+     * @param dests	A reference to the destination service to validate routes
+     * @param routeId	The route
+     * @return	The MetadataBuilder
+     */
     public MetadataBuilder setRouteId(IDestinationService dests, String routeId) {
         meta.setRouteId(routeId);
         if (StringUtils.isBlank(routeId)) {
@@ -154,6 +196,12 @@ public class MetadataBuilder {
         return this;
     }
 
+    /**
+     * Set the provenance of the report
+     * @param facilityId	The facility identifier
+     * @param transactionData	The source of user metadata (it has the certificate name), and IP address
+     * @return	The MetadataBuilder
+     */
     public MetadataBuilder setProvenance(String facilityId, TransactionData transactionData) {
         meta.setUsername(transactionData.getSource().getCommonName());
         meta.setIpAddress(transactionData.getSource().getIpAddress());
@@ -181,16 +229,31 @@ public class MetadataBuilder {
         return this;
     }
     
+    /**
+     * Set the intended destination for the report.
+     * @param destinationId the intended destination for the report
+     * @return The MetadataBuilder
+     */
     public MetadataBuilder setDestinationId(String destinationId) {
         meta.setDestinationId(destinationId);
         return this;
     }
 
+    /**
+     * Set the file size
+     * @param size the file size
+     * @return The MetadataBuilder
+     */
     public MetadataBuilder setFileSize(long size) {
         meta.setFileSize(size);
         return this;
     }
 
+    /**
+     * Get the destination for the upload
+     *  
+     * @return The MetadataBuilder
+     */
     public String getDestUrl() {
         return destUrl;
     }

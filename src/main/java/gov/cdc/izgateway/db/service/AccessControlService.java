@@ -11,6 +11,7 @@ import gov.cdc.izgateway.db.model.AccessControl;
 import gov.cdc.izgateway.db.model.AccessControlId;
 import gov.cdc.izgateway.db.repository.AccessControlRepository;
 import gov.cdc.izgateway.model.IAccessControl;
+import gov.cdc.izgateway.security.Roles;
 import gov.cdc.izgateway.service.IAccessControlRegistry;
 import gov.cdc.izgateway.service.IAccessControlService;
 import lombok.extern.slf4j.Slf4j;
@@ -30,11 +31,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Implements the IAccessControlService for IZ Gateway.
+ * 
+ * @author Audacious Inquiry
+ */
 @Slf4j
 @Service
 public class AccessControlService implements InitializingBean, IAccessControlService {
-	@Deprecated(since="2.0", forRemoval=true)
-	private static final String ENDPOINT_CATEGORY = "endpointByUser";
 
 	private static final int MAX_CACHE_SIZE = 1000;
 	private static final int REDUCE_QTY = 200;
@@ -59,6 +63,11 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 	@Value("${security.enable-blacklist:true}")
 	private boolean blacklistEnabled;
 
+    /**
+     * Create a new AccessControlService
+     * @param accessControlRepository	The repository for accessing access control entries in the database
+     * @param registry	The registry for managing access control to methods
+     */
     @Autowired
     public AccessControlService(AccessControlRepository accessControlRepository, IAccessControlRegistry registry) {
         this.accessControlRepository = accessControlRepository;
@@ -97,9 +106,6 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
         	case ROUTE_CATEGORY:
         		mapToUpdate = newAllowedRoutesByEvent;
         		break;
-        	case ENDPOINT_CATEGORY:  // NOSONAR: We just deprecated this in 2.0
-        		// Don't report an exception.
-        		continue;
         	default:
         		log.error("Unrecognized category {} in AccessControls", control.getCategory());
         		continue;
@@ -270,6 +276,12 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 		return allowed;
     }
 
+	/**
+	 * Determing if a URL path matches an access control rule path
+	 * @param path	The URL path
+	 * @param rulePath	The path in the access control rule
+	 * @return true if the two match
+	 */
 	public static boolean pathsMatch(String path, String rulePath) {
 	    if (path.endsWith(rulePath)) {
 	        return true;
@@ -385,8 +397,8 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 	}
 
 	@Override
-	public IAccessControl removeUserFromGroup(String user, String group) {
-		Optional<AccessControl> accessControl = accessControlRepository.findById(new AccessControlId(IAccessControlService.GROUP_CATEGORY, group, user));
+	public IAccessControl removeUserFromBlacklist(String user) {
+		Optional<AccessControl> accessControl = accessControlRepository.findById(new AccessControlId(IAccessControlService.GROUP_CATEGORY, Roles.BLACKLIST, user));
 		// If an update is necessary.
 		if (!accessControl.isEmpty()) {
 			// Save the results and refresh the cache.
@@ -398,11 +410,11 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 	}
 	
 	@Override
-	public IAccessControl addUserToGroup(String user, String group) {
+	public IAccessControl addUserToBlacklist(String user) {
 		AccessControl accessControl = 
 			accessControlRepository
-				.findById(new AccessControlId(IAccessControlService.GROUP_CATEGORY, group, user))
-				.orElse(new AccessControl(IAccessControlService.GROUP_CATEGORY, group, user, false));
+				.findById(new AccessControlId(IAccessControlService.GROUP_CATEGORY, Roles.BLACKLIST, user))
+				.orElse(new AccessControl(IAccessControlService.GROUP_CATEGORY, Roles.BLACKLIST, user, false));
 		
 		// If an update is necessary.
 		if (!accessControl.isAllowed()) {
