@@ -371,7 +371,6 @@ jobs:
         ssh-key: ${{secrets.ACTIONS_KEY}}
 
     - name: Copy Documentation to Docs
-      working-directory: ./izgw-hub
       shell: bash
       run: |
         # Create the tag
