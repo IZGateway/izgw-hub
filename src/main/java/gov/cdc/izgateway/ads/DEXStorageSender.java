@@ -287,19 +287,12 @@ public class DEXStorageSender extends RestfulFileSender implements FileSender {
      * https://stackoverflow.com/questions/56039341/get-declared-fields-of-java-lang-reflect-fields-in-jdk12
      */
     
-    private static final VarHandle MODIFIERS;
-
-    static {
-      try {
-        var lookup = MethodHandles.privateLookupIn(Field.class, MethodHandles.lookup());
-        MODIFIERS = lookup.findVarHandle(Field.class, "modifiers", int.class);
-      } catch (IllegalAccessException | NoSuchFieldException ex) {
-        throw new ServiceConfigurationError("Cannot access Field.modifiers", ex);
-      }
-    }
-    
     private static void hackThePatch() {  
+        VarHandle MODIFIERS = null;
     	try {
+            var lookup = MethodHandles.privateLookupIn(Field.class, MethodHandles.lookup());
+            MODIFIERS = lookup.findVarHandle(Field.class, "modifiers", int.class);
+            
     		String[] methods = { "PATCH" };
             Field methodsField = HttpURLConnection.class.getDeclaredField("methods");
             

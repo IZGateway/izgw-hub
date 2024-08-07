@@ -9,6 +9,11 @@ IZ Gateway Hub [izgw-hub](https://github.com/izgateway/izgw-hub)
 * Fixed issue with filebeat and metricbeat race condition on startup
 * Address data validation for ADS uploads from distant timezones
 
+# IZ Gateway Release 2.0.7
+Expected Date: Onboarding 7/17/2024, Production 7/17/2024
+IZ Gateway Hub 2.0.7 is a patch release to address the following issue:
+* Correct endpoint in WSDL
+
 # IZ Gateway Release 2.0.6
 Expected Date: Onboarding 6/27/2024, Production 6/27/2024
 IZ Gateway Hub 2.0.6 is a patch release to address the following issues:

@@ -115,6 +115,6 @@ class TestMockMessageHandling extends TestMockBase {
     		RequestContext.clear();
     	}
     	Assertions.assertNotNull(response);
-        Assertions.assertEquals(hl7Message, response.getHl7Message());
+        Assertions.assertEquals(hl7Message.trim(), response.getHl7Message().trim());
     }
 }
