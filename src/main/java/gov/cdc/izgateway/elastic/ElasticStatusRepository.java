@@ -145,7 +145,7 @@ public class ElasticStatusRepository extends ElasticRepository implements Endpoi
 			cache = m;
 			refreshed = true;
 		} catch (IOException | NoSuchAlgorithmException e) {
-			log.error("Exception initializing status service: {}", e.getMessage(), e);
+			log.error("Exception refreshing status service: {}", e.getMessage(), e);
 		}
 		return refreshed;
 	}
