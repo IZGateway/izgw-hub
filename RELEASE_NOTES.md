@@ -1,3 +1,7 @@
+# IZ Gateway Release 2.1.1
+The IZ Gateway Hub 2.1.1 patch release adds access control capabilities for destinations.
+
+
 # IZ Gateway Release 2.1.0
 The IZ Gateway Hub 2.1.0 is in preparation for code sharing across IZ Gateway Hub and the IZ Gateway Transformation Service.
 
