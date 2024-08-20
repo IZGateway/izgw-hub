@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import gov.cdc.izgateway.ads.ADSController;
 import gov.cdc.izgateway.configuration.SenderConfig;
+import gov.cdc.izgateway.db.service.AccessControlService;
 import gov.cdc.izgateway.db.service.DestinationService;
 import gov.cdc.izgateway.logging.RequestContext;
 import gov.cdc.izgateway.logging.info.DestinationInfo;
@@ -57,6 +58,7 @@ public class HubController extends SoapControllerBase {
 	private int serverPort;
 	@Value("${server.protocol:https}")
 	private String serverProtocol;
+	private AccessControlService accessControlService;
 	
 	@Autowired 
 	public HubController(
@@ -66,6 +68,7 @@ public class HubController extends SoapControllerBase {
 		MessageSender messageSender,
 		ADSController adsController,
 		AccessControlRegistry registry,
+		AccessControlService accessControlService,
 		SenderConfig hubConfig
 	) {
 		// The base schema for HUB messages is still the iis-2014 schema, with the exception of HubHeader and certain faults.
@@ -74,6 +77,7 @@ public class HubController extends SoapControllerBase {
 		this.endpointStatusService = endpointStatusService;
 		this.messageSender = messageSender;
 		this.adsController = adsController;
+		this.accessControlService = accessControlService;
 		setMaxMessageSize(hubConfig.getMaxMessageSize());
 		registry.register(this);
 	}
@@ -117,11 +121,49 @@ public class HubController extends SoapControllerBase {
 		return result;
 	}
 	
+	private boolean isAdministrator() {
+		return RequestContext.getRoles().contains(Roles.ADMIN) && !RequestContext.getRoles().contains(Roles.NOT_ADMIN_HEADER);
+	}
+	
+	/**
+	 * Checks to see if a user can send to the destination.
+	 * The method allows access controls to be set on a destination to allow or prohibit users 
+	 * access to a specific destination.  If no access controls have been set up, then users
+	 * are simply expected to follow policy, but there is no other enforcement.
+	 * 
+	 * Checks to see an access control group exists for the specified destination.
+	 * 1. If none does, simply returns.
+	 * 
+	 * 2. If the user has the ADMIN role, also returns.
+	 * 
+	 * 3. Otherwise, checks to see if the user is a member of the group given by the destination name, and if
+	 * they are, returns.
+	 * 
+	 * 4. If they are not a member, this method throws a security fault notifying the user that they 
+	 * cannot send messages to the specified group.
+	 * 
+	 * @throws SecurityFault if the user is not permitted to access the destination.
+	 */
+	private void checkAccess(String destGroup) throws SecurityFault {
+		destGroup = StringUtils.upperCase(destGroup);
+		if (!accessControlService.groupExists(destGroup)) {
+			return;
+		}
+		if (isAdministrator()) {
+			return;
+		}
+		
+		if (!accessControlService.isMemberOf(RequestContext.getSourceInfo().getCommonName(), destGroup)) {
+			throw SecurityFault.generalSecurity("Source is not permitted to send to destination", destGroup, null);
+		}
+	}
+	
 	@Override
 	protected ResponseEntity<?> submitSingleMessage(SubmitSingleMessageRequest submitSingleMessage, String destinationId) throws Fault {
 		IDestination dest = getDestination(destinationId);
 		logDestination(dest);
-		
+
+		checkAccess(destinationId);
 		IEndpointStatus s = endpointStatusService.getEndpointStatus(dest);
 		boolean wasCircuitBreakerThrown = s.isCircuitBreakerThrown();
 
