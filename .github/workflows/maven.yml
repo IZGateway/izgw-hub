@@ -231,7 +231,7 @@ jobs:
 
     - name: Upload dependency check log
       uses: actions/upload-artifact@v4
-      if: ${{ ! env.SKIP_DEPENDENCY_CHECK }}
+      if: ${{ always() }}
       with:
         name: DependencyCheck
         path: ./target/dependency-check-report.*
