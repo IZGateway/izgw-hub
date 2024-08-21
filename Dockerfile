@@ -60,7 +60,7 @@ COPY docker/data/lib/*.jar lib/
 # Ensure we only use NIST certified publicly available BC-FIPS packages
 ADD docker/data/bc-fips-1.0.2.5.jar bc-fips-1.0.2.5.jar
 ADD docker/data/bcpkix-fips-1.0.7.jar bcpkix-fips-1.0.7.jar
-ADD docker/data/bctls-fips-2.0.19.jar bctls-fips-2.0.19.jar
+ADD docker/data/bctls-fips-1.0.19.jar bctls-fips-1.0.19.jar
 
 ADD docker/fatjar-run.sh run1.sh
 ADD docker/izgwdb.sh izgwdb1.sh
