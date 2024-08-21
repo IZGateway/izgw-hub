@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>gov.cdc.izgw</groupId>
 	<artifactId>izgw-hub</artifactId>
-	<version>2.1.1-IZGW-RELEASE</version>
+	<version>2.1.1-izgw-hub-SNAPSHOT</version>
 	<packaging>jar</packaging>
 	<name>IZ Gateway Hub 2.0</name>
 	<description>IZ Gateway Hub</description>
@@ -25,6 +25,8 @@
 		<image.tag>${project.artifactId}-${project.version}-${buildno}</image.tag>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.java.package>${project.groupId}</project.java.package>
+		<spring-security.version>6.3.2</spring-security.version>
+		<spring.version>6.1.12</spring.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -151,6 +153,7 @@
 			<groupId>org.apache.httpcomponents</groupId>
 			<artifactId>httpcore</artifactId>
 		</dependency>
+		<!-- if you change any of the three BC components below, be sure to update Dockerfile to use same versions -->
 		<dependency>
 			<groupId>org.bouncycastle</groupId>
 			<!-- add -debug to get debug jars -->
