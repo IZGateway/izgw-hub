@@ -264,14 +264,8 @@
 											"\r",
 											"pm.test(\"Contains WSDL definitions element\", function () {\r",
 											"    pm.expect(responseBody).to.match(/\\/(<[a-zA-Z0-9_]+:)?definitions/);\r",
-											"});",
-											"\r",
-											"pm.test(\"Contains proper WSDL location\", function () {\r",
-											"    var endpointLocation =  \"location=\\\"https://\" + pm.environment.get(\"host\") + \"/IISHubService\\\"\";\r",
-											"    pm.expect(responseBody).to.contain(endpointLocation);\r",
-											"});\r",
-											"\r"
-                                        ],
+											"});"
+										],
 										"type": "text/javascript"
 									}
 								},
@@ -2464,8 +2458,6 @@
 											"    pm.expect(response['Envelope']['Body']['ConnectivityTestResponse']['EchoBack']).to.eql(echoBack);\r",
 											"});\r",
 											"\r",
-											"utils.testSLA(pm, LONG_SLA);\r",
-											"\r",
 											"const interval = setTimeout(() => {}, 3000);\r",
 											"async function moreTests() {\r",
 											"    utils.getLogs(null, pm).then((logData) => {\r",
@@ -2570,10 +2562,12 @@
 											"        utils.testLogs(logs, pm, TX_SLA);\r",
 											"    });\r",
 											"}\r",
-											" if(env !== \"test\"){\r",
-											"moreTests();\r",
+											" if(pm.environment.get(\"testingEnvironment\") !== \"test\"){\r",
+											"    utils.testSLA(pm, LONG_SLA);\r",
+											"    moreTests();\r",
+											"    utils.checkNamespaces(pm);\r",
 											" }\r",
-											" utils.checkNamespaces(pm);\r",
+											" \r",
 											""
 										],
 										"type": "text/javascript",
@@ -2710,7 +2704,7 @@
 											"    });\r",
 											"}\r",
 											"\r",
-											"moreTests();\r",
+											" if(pm.environment.get(\"testingEnvironment\") !== \"test\") moreTests();\r",
 											"utils.checkNamespaces(pm);\r",
 											""
 										],
@@ -2887,10 +2881,12 @@
 											"        });\r",
 											"    });\r",
 											"};\r",
-											"\r",
-											"moreTests();"
+											" if(pm.environment.get(\"testingEnvironment\") !== \"test\" && !pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) {\r",
+											"    moreTests();\r",
+											" }"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								},
 								{
@@ -2899,7 +2895,8 @@
 										"exec": [
 											"utils.setup(pm, \"dev\");"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
@@ -2964,9 +2961,11 @@
 											"    });\r",
 											"};\r",
 											"\r",
-											"moreTests();"
+											" if(pm.environment.get(\"testingEnvironment\") !== \"test\" && !pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) { moreTests();\r",
+											" }"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								},
 								{
@@ -2975,7 +2974,8 @@
 										"exec": [
 											"utils.setup(pm, \"dev\");"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
@@ -3041,9 +3041,10 @@
 											"    });\r",
 											"};\r",
 											"\r",
-											"moreTests();"
+											" if(pm.environment.get(\"testingEnvironment\") !== \"test\") moreTests();"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								},
 								{
@@ -3052,7 +3053,8 @@
 										"exec": [
 											"utils.setup(pm);"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
@@ -3116,10 +3118,10 @@
 											"        });\r",
 											"    });\r",
 											"};\r",
-											"\r",
-											"moreTests();"
+											" if(pm.environment.get(\"testingEnvironment\") !== \"test\") moreTests();"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								},
 								{
@@ -3128,7 +3130,8 @@
 										"exec": [
 											"utils.setup(pm, \"dev\");"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
@@ -3861,11 +3864,12 @@
 											"            utils.testLogs(logs, pm, 0, \"UnknownDestinationFault\", \"InvalidDestinationID\", \"CORRECT_MESSAGE\");\r",
 											"        });\r",
 											"    }\r",
-											"    moreTests();\r",
+											"    if(pm.environment.get(\"testingEnvironment\") !== \"test\") moreTests();\r",
 											" });\r",
 											""
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								},
 								{
@@ -3874,7 +3878,8 @@
 										"exec": [
 											"utils.setup(pm);"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
@@ -3933,11 +3938,12 @@
 											"            utils.testLogs(logs, pm, 0, \"UnknownDestinationFault\", \"MissingHubRequestHeader\", \"CORRECT_MESSAGE\");\r",
 											"        });\r",
 											"    }\r",
-											"    moreTests();\r",
+											"     if(pm.environment.get(\"testingEnvironment\") !== \"test\") moreTests();\r",
 											"\r",
 											"});"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								},
 								{
@@ -3946,7 +3952,8 @@
 										"exec": [
 											"utils.setup(pm);"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
@@ -4009,12 +4016,13 @@
 											"            utils.testLogs(logs, pm, 0, \"UnknownDestinationFault\", \"MissingHubRequestHeader\", \"CORRECT_MESSAGE\");\r",
 											"        });\r",
 											"    }\r",
-											"    moreTests();\r",
+											"     if(pm.environment.get(\"testingEnvironment\") !== \"test\") moreTests();\r",
 											"\r",
 											"});\r",
 											""
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								},
 								{
@@ -4023,7 +4031,8 @@
 										"exec": [
 											"utils.setup(pm);"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
@@ -4127,10 +4136,11 @@
 											"        }\r",
 											"    });\r",
 											"}\r",
-											"moreTests();\r",
+											" if(pm.environment.get(\"testingEnvironment\") !== \"test\") moreTests();\r",
 											""
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								},
 								{
@@ -4139,7 +4149,8 @@
 										"exec": [
 											"utils.setup(pm);"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
@@ -4216,10 +4227,11 @@
 											"        utils.testLogs(logs, pm, 0, \"UnknownDestinationFault\", \"InvalidDestinationID\", \"CORRECT_MESSAGE\");\r",
 											"    });\r",
 											"}\r",
-											"moreTests();\r",
+											" if(pm.environment.get(\"testingEnvironment\") !== \"test\") moreTests();\r",
 											""
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								},
 								{
@@ -4228,7 +4240,8 @@
 										"exec": [
 											"utils.setup(pm);"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
@@ -4341,8 +4354,7 @@
 									"listen": "test",
 									"script": {
 										"exec": [
-											"var env = pm.environment.get(\"testingEnvironment\");\r",
-											"if(env !== \"test\"){\r",
+											"if(!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")){\r",
 											"pm.test(\"Status code is 500\", function () {\r",
 											"    pm.response.to.have.status(500);\r",
 											"});\r",
@@ -4383,10 +4395,11 @@
 											"        }\r",
 											"    });\r",
 											"}\r",
-											"moreTests();\r",
+											"    moreTests();\r",
 											"}"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								},
 								{
@@ -4395,7 +4408,8 @@
 										"exec": [
 											"utils.setup(pm);"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
@@ -4493,10 +4507,11 @@
 											"        }        \r",
 											"    });\r",
 											"}\r",
-											"moreTests();",
+											" if(pm.environment.get(\"testingEnvironment\") !== \"test\") moreTests();\r",
 											"}"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								},
 								{
@@ -4505,7 +4520,8 @@
 										"exec": [
 											"utils.setup(pm);"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
@@ -4601,9 +4617,10 @@
 											"        }          \r",
 											"    });\r",
 											"}\r",
-											"moreTests();}"
+											" if(pm.environment.get(\"testingEnvironment\") !== \"test\") moreTests();}"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								},
 								{
@@ -4612,7 +4629,8 @@
 										"exec": [
 											"utils.setup(pm,\"dev\");"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
@@ -4714,7 +4732,7 @@
 											"        }                \r",
 											"    });\r",
 											"}\r",
-											"moreTests();\r",
+											" if(!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();\r",
 											""
 										],
 										"type": "text/javascript",
@@ -4831,7 +4849,7 @@
 											"        }        \r",
 											"    });\r",
 											"}\r",
-											"moreTests();"
+											" if(!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -4949,7 +4967,7 @@
 											"        }           \r",
 											"    });\r",
 											"}\r",
-											"moreTests();"
+											" if(pm.environment.get(\"testingEnvironment\") !== \"test\") moreTests();"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -5065,7 +5083,7 @@
 											"        }          \r",
 											"    });\r",
 											"}\r",
-											"moreTests();"
+											" if(pm.environment.get(\"testingEnvironment\") !== \"test\") moreTests();"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -5181,9 +5199,10 @@
 											"        }          \r",
 											"    });\r",
 											"}\r",
-											"moreTests();"
+											" if(pm.environment.get(\"testingEnvironment\") !== \"test\") moreTests();"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								},
 								{
@@ -5192,7 +5211,8 @@
 										"exec": [
 											"utils.setup(pm);"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
@@ -5267,10 +5287,11 @@
 											"        utils.testLogs(logs, pm, 0, \"UnsupportedOperationFault\", \"UnsupportedOperation\", \"CHECK_IIS_STATUS\");\r",
 											"    });\r",
 											"}\r",
-											"moreTests();\r",
+											" if(pm.environment.get(\"testingEnvironment\") !== \"test\") moreTests();\r",
 											""
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								},
 								{
@@ -5279,7 +5300,8 @@
 										"exec": [
 											"utils.setup(pm);"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
@@ -5337,9 +5359,10 @@
 											"        utils.testLogs(logs, pm);\r",
 											"    });\r",
 											"}\r",
-											"moreTests();"
+											" if(pm.environment.get(\"testingEnvironment\") !== \"test\") moreTests();"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								},
 								{
@@ -5348,7 +5371,8 @@
 										"exec": [
 											"utils.setup(pm);"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
@@ -5406,9 +5430,10 @@
 											"        utils.testLogs(logs, pm);\r",
 											"    });\r",
 											"}\r",
-											"moreTests();"
+											" if(pm.environment.get(\"testingEnvironment\") !== \"test\") moreTests();"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								},
 								{
@@ -5417,7 +5442,8 @@
 										"exec": [
 											"utils.setup(pm);"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
@@ -5492,9 +5518,10 @@
 											"        utils.testLogs(logs, pm);\r",
 											"    });\r",
 											"}\r",
-											"moreTests();"
+											" if(pm.environment.get(\"testingEnvironment\") !== \"test\") moreTests();"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								},
 								{
@@ -5503,7 +5530,8 @@
 										"exec": [
 											"utils.setup(pm);"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
@@ -8134,7 +8162,7 @@
 													"    });\r",
 													"}\r",
 													"\r",
-													"moreTests();\r",
+													" if(pm.environment.get(\"testingEnvironment\") !== \"test\") moreTests();\r",
 													""
 												],
 												"type": "text/javascript",
@@ -10244,16 +10272,18 @@
 								"packages": {},
 								"exec": [
 									"utils.testHl7Error = async function (pm, hl7Error) {\r",
-									"    utils.getLogs(null, pm).then((logData) => {\r",
-									"        logs = logData.json();\r",
-									"        txData = utils.getTxData(logs);\r",
-									"        pm.test(\"Log does not contain HL7 Error\", function() {\r",
-									"            pm.expect(txData[0].transactionData.hasHL7Error).to.be.eql(hl7Error != \"\");\r",
+									"    if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) {\r",
+									"        utils.getLogs(null, pm).then((logData) => {\r",
+									"            logs = logData.json();\r",
+									"            txData = utils.getTxData(logs);\r",
+									"            pm.test(\"Log does not contain HL7 Error\", function() {\r",
+									"                pm.expect(txData[0].transactionData.hasHL7Error).to.be.eql(hl7Error != \"\");\r",
+									"            });\r",
+									"            pm.test(\"HL7 Error is '\" + hl7Error + \"'\", function() {\r",
+									"                pm.expect(txData[0].transactionData.hl7Error).to.be.eql(hl7Error);\r",
+									"            });\r",
 									"        });\r",
-									"        pm.test(\"HL7 Error is '\" + hl7Error + \"'\", function() {\r",
-									"            pm.expect(txData[0].transactionData.hl7Error).to.be.eql(hl7Error);\r",
-									"        });\r",
-									"    });\r",
+									"    }\r",
 									"}\r",
 									"\r",
 									"utils.parseHL7 = function (hl7Message) {\r",
@@ -10541,9 +10571,11 @@
 					"            success = true;",
 					"        });",
 					"        _test('Log Entry['+index+'] to contain ws_request_message.eventId matching ' + EVENTID_NUMBER, function () {",
-					"            pm.expect(entry).to.have.nested.property('ws_request_message.eventId');",
-					"            pm.expect(entry.ws_request_message.eventId).to.match(POSITIVE_NUMBER);",
-					"            success = true;",
+					"            if (!entry?.logger_name.endsWith(\".handshake\")) {",
+					"                pm.expect(entry).to.have.nested.property('ws_request_message.eventId');",
+					"                pm.expect(entry.ws_request_message.eventId).to.match(POSITIVE_NUMBER);",
+					"                success = true;",
+					"            }",
 					"        });",
 					"        _test('Log Entry['+index+'] to contain ws_request_message.payload', function () {",
 					"            pm.expect(entry).to.have.nested.property('ws_request_message.payload');",

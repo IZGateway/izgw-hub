@@ -66,7 +66,7 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 
 	private static final String MSA_PART = "MSA|AA|{{Original Message Control ID}}\r";
 	private static final String QPD_PART = "QPD|{{Original QPD Parts}}";
-	private static final String MSH_PART = "MSH|^~\\&amp;|TEST|MOCK|IZGW|IZGW|{{Message Timestamp}}||RSP^K11^RSP_K11|{{Unique Message Identifier}}|P|2.5.1|||NE|NE|||||Z33^CDCPHINVS\r";
+	private static final String MSH_PART = "MSH|^~\\&|TEST|MOCK|IZGW|IZGW|{{Message Timestamp}}||RSP^K11^RSP_K11|{{Unique Message Identifier}}|P|2.5.1|||NE|NE|||||Z33^CDCPHINVS\r";
 	
 	private static final String QUERY_NOT_FOUND 
 		= MSH_PART
