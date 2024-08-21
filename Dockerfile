@@ -31,9 +31,6 @@ WORKDIR /
 RUN rm -f /filebeat/filebeat.yml && cp /usr/share/izgateway/filebeat.yml /filebeat/ 
 RUN rm -f /metricbeat/metricbeat.yml && cp /usr/share/izgateway/metricbeat.yml /metricbeat/
     
-# Install NPM
-RUN npm install -g npm@8.19.2
-
 #Rename default dnsmasq file to make sure dnsmasq does not read its entries
 RUN mv /etc/dnsmasq.conf /etc/dnsmasq.conf.bkup
 RUN echo 'cache-size=10000' > /etc/dnsmasq.conf
