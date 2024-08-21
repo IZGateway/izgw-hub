@@ -171,6 +171,12 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 		}
 	}
 	
+	/**
+	 * Returns true if user is a member of the specified group
+	 * @param user	The user
+	 * @param group	The group
+	 * @return true if the user is a member
+	 */
 	public boolean userInGroup(String user, String group) {
 		if (OPEN_TO_ANY.equals(group) || "*".equals(group)) {
 			return true;
@@ -197,13 +203,13 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 	/**
 	 * Groups are simple names following the pattern [0-9]*[a-zA-Z]+[a-zA-Z0-9]*.
 	 * In other words, they must contain only letters or digits, and must contain
-	 * at least one letter.
+	 * at least one letter, and cannot be named "localhost".
 	 * 
 	 * @param	member	The pattern to check for a group name
 	 * @return	True if this is a group name, false for a user name pattern or a serial number
 	 */
 	private static final boolean isGroup(String member) {
-		return !StringUtils.contains(member, '.') && !StringUtils.isNumeric(member);
+		return !StringUtils.contains(member, '.') && !StringUtils.isNumeric(member) && !"localhost".equals(member);
 	}
 
     @Override
