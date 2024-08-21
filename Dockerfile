@@ -81,7 +81,7 @@ RUN keytool -keystore cacerts -storepass changeit -noprompt -trustcacerts -impor
 RUN keytool -importkeystore -srckeystore cacerts -srcstoretype JKS -srcstorepass changeit \
       -destkeystore jssecacerts -deststorepass changeit -deststoretype BCFKS -providername BCFIPS \
       -provider org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider \
-      -providerpath /usr/share/izgateway/bc-fips-1.0.2.4.jar
+      -providerpath /usr/share/izgateway/bc-fips-1.0.2.5.jar
 
 WORKDIR /usr/share/izgateway/
 
