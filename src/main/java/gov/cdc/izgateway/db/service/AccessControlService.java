@@ -123,6 +123,15 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
         log.debug("AccessControl Refreshed");
     }
 	
+	/**
+	 * Return true if a group exists for the specified group name.
+	 * @param groupName	The name of the group
+	 * @return	true if this group exists.
+	 */
+	public boolean groupExists(String groupName) {
+		return allowedUsersByGroup.get(groupName) != null;
+	}
+	
 	@Override
 	public Map<String, TreeSet<String>> getUserRoles() {
 		Set<String> users = new TreeSet<>();
@@ -162,7 +171,7 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 		}
 	}
 	
-	private boolean userInGroup(String user, String group) {
+	public boolean userInGroup(String user, String group) {
 		if (OPEN_TO_ANY.equals(group) || "*".equals(group)) {
 			return true;
 		}

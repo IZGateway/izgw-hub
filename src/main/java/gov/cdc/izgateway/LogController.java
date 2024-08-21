@@ -10,6 +10,7 @@ import gov.cdc.izgateway.security.AccessControlRegistry;
 import gov.cdc.izgateway.security.Roles;
 import gov.cdc.izgateway.service.IAccessControlService;
 import gov.cdc.izgateway.service.impl.EndpointStatusService;
+import gov.cdc.izgateway.soap.fault.SecurityFault;
 import gov.cdc.izgateway.service.IDestinationService;
 import gov.cdc.izgateway.utils.ListConverter;
 import io.swagger.v3.oas.annotations.Operation;
@@ -57,7 +58,7 @@ import jakarta.servlet.http.HttpServletResponse;
 // applies to the SOAP Stack.  Once we apply it to the full HTTP stack, we will have to provide
 // SECURE mechanism for clearing the blacklisted state of the testing user.  It cannot be said
 // to have been applied to the full stack until this loophole is resolved.
-@RolesAllowed({ Roles.ADMIN, Roles.OPERATIONS, Roles.BLACKLIST })
+@RolesAllowed({ Roles.ADMIN, Roles.OPERATIONS })
 @RequestMapping({"/rest"})
 @Lazy(false)
 public class LogController implements InitializingBean {
@@ -122,9 +123,15 @@ public class LogController implements InitializingBean {
 	@ApiResponse(responseCode = "204", description = "Reset the logs", content = @Content)
 	@DeleteMapping("/logs")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
+	@RolesAllowed({ Roles.ADMIN, Roles.OPERATIONS, Roles.BLACKLIST })
 	public void deleteLogs(HttpServletRequest servletReq,
 			@Parameter(required = false, description="If true, reset the specified endpoint, clearing maintenance")
-			@RequestParam(required = false) String clear) {
+			@RequestParam(required = false) String clear) throws SecurityFault {
+		if (!RequestContext.getRoles().contains(Roles.ADMIN) && !RequestContext.getRoles().contains(Roles.OPERATIONS)) {
+			throw SecurityFault
+				.generalSecurity("Delete log attempt by inappropriate role", 
+						RequestContext.getRoles().toString(), null);
+		}
 		if (logData != null) {
 			logData.reset();
 		}

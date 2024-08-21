@@ -7,6 +7,7 @@ import gov.cdc.izgateway.logging.LoggingValve;
 import gov.cdc.izgateway.logging.RequestContext;
 import gov.cdc.izgateway.logging.event.EventId;
 import gov.cdc.izgateway.logging.event.TransactionData;
+import gov.cdc.izgateway.logging.event.TransactionData.MessageType;
 import gov.cdc.izgateway.logging.info.DestinationInfo;
 import gov.cdc.izgateway.logging.info.HostInfo;
 import gov.cdc.izgateway.logging.info.SourceInfo;
@@ -193,6 +194,8 @@ public class StatusCheckerService implements IStatusCheckerService {
         TransactionData tData = new TransactionData(new Date(), statusCheckerEventId);
         RequestContext.setTransactionData(tData);
         setDestinationInfoFromDestination(RequestContext.getDestinationInfo(), dest);
+        tData.setMessageType(MessageType.CONNECTIVITY_TEST);
+
         try {
 
             String requestUri = "/rest/status/" + dest.getDestId();
