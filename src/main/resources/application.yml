@@ -32,6 +32,14 @@ spring:
         enabled: true
         max-file-size: 15GB
         max-request-size: 15GB
+
+amazon:
+	aws:
+		accesskey: ${AWS_ACCESS_KEY:key}
+		secretkey: ${AWS_SECRET_KEY:key2}
+		
+	dynamodb:
+		endpoint: http://localhost:8000/
         
 management:
     metrics:
