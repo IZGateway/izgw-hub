@@ -25,6 +25,8 @@
 		<image.tag>${project.artifactId}-${project.version}-${buildno}</image.tag>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.java.package>${project.groupId}</project.java.package>
+		<spring-security.version>6.3.3</spring-security.version>
+		<spring.version>6.1.12</spring.version>
 	</properties>
 	<dependencies>
 		<dependency>
