@@ -1,7 +1,10 @@
 FROM ghcr.io/izgateway/alpine-node-openssl-fips:latest
 
 RUN apk update
+RUN apk upgrade --no-cache
 RUN apk add --no-cache openjdk17-jre mariadb-client mariadb-connector-c-dev 
+RUN npm upgrade -g
+RUN npm outdated -g
 
 # Define arguments (set in izgateway pom.xml)
 ARG JAR_FILENAME
@@ -28,9 +31,6 @@ WORKDIR /
 RUN rm -f /filebeat/filebeat.yml && cp /usr/share/izgateway/filebeat.yml /filebeat/ 
 RUN rm -f /metricbeat/metricbeat.yml && cp /usr/share/izgateway/metricbeat.yml /metricbeat/
     
-# Install NPM
-RUN npm install -g npm@8.19.2
-
 #Rename default dnsmasq file to make sure dnsmasq does not read its entries
 RUN mv /etc/dnsmasq.conf /etc/dnsmasq.conf.bkup
 RUN echo 'cache-size=10000' > /etc/dnsmasq.conf
@@ -55,9 +55,9 @@ ADD target/$JAR_FILENAME app.jar
 COPY docker/data/lib/*.jar lib/
 
 # Ensure we only use NIST certified publicly available BC-FIPS packages
-ADD docker/data/bc-fips-1.0.2.4.jar bc-fips-1.0.2.4.jar
+ADD docker/data/bc-fips-1.0.2.5.jar bc-fips-1.0.2.5.jar
 ADD docker/data/bcpkix-fips-1.0.7.jar bcpkix-fips-1.0.7.jar
-ADD docker/data/bctls-fips-1.0.16.jar bctls-fips-1.0.16.jar
+ADD docker/data/bctls-fips-1.0.19.jar bctls-fips-1.0.19.jar
 
 ADD docker/fatjar-run.sh run1.sh
 ADD docker/izgwdb.sh izgwdb1.sh
@@ -78,7 +78,7 @@ RUN keytool -keystore cacerts -storepass changeit -noprompt -trustcacerts -impor
 RUN keytool -importkeystore -srckeystore cacerts -srcstoretype JKS -srcstorepass changeit \
       -destkeystore jssecacerts -deststorepass changeit -deststoretype BCFKS -providername BCFIPS \
       -provider org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider \
-      -providerpath /usr/share/izgateway/bc-fips-1.0.2.4.jar
+      -providerpath /usr/share/izgateway/bc-fips-1.0.2.5.jar
 
 WORKDIR /usr/share/izgateway/
 

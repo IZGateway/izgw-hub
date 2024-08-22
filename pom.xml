@@ -151,6 +151,7 @@
 			<groupId>org.apache.httpcomponents</groupId>
 			<artifactId>httpcore</artifactId>
 		</dependency>
+		<!-- if you change any of the three BC components below, be sure to update Dockerfile to use same versions -->
 		<dependency>
 			<groupId>org.bouncycastle</groupId>
 			<!-- add -debug to get debug jars -->
