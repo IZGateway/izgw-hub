@@ -32,12 +32,6 @@ spring:
         enabled: true
         max-file-size: 15GB
         max-request-size: 15GB
-
-# Disable hibernate enhancement changes in 6.x
-hibernate:
-    enhancer:
-        enableLazyInitialization: false
-        enableDirtyTracking: false
         
 management:
     metrics:

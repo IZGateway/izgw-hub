@@ -66,22 +66,11 @@ then
 fi
 
 # Have to externalize bc-fips jars
-java $JAVA_OPTS $JAVA_TOOL_OPTS -javaagent:lib/aspectjweaver-1.9.6.jar -javaagent:lib/spring-instrument-5.3.8.jar \
+java $JAVA_OPTS $JAVA_TOOL_OPTS -javaagent:lib/aspectjweaver-1.9.22.1.jar -javaagent:lib/spring-instrument-6.1.12.jar \
    -XX:+CreateCoredumpOnCrash -cp ./bc-fips-1.0.2.5.jar:./bcpkix-fips-1.0.7.jar:./bctls-fips-1.0.19.jar \
-   --add-opens jdk.management/com.sun.management.internal=ALL-UNNAMED \
-   --add-opens java.base/java.lang=ALL-UNNAMED \
-   --add-opens java.base/java.lang.invoke=ALL-UNNAMED \
-   --add-opens java.base/java.io=ALL-UNNAMED \
-   --add-opens java.base/java.util=ALL-UNNAMED \
-   --add-opens java.base/javax.net.ssl=ALL-UNNAMED \
-   --add-opens java.base/java.util.concurrent=ALL-UNNAMED \
-   --add-opens java.rmi/sun.rmi.transport=ALL-UNNAMED \
-   --add-opens jdk.management/com.sun.management.internal=ALL-UNNAMED \
-   --add-opens java.base/java.io=ALL-UNNAMED \
-   --add-opens java.base/sun.security.internal.spec=ALL-UNNAMED \
-   --add-opens java.base/java.lang.reflect=ALL-UNNAMED \
-   --add-opens java.base/java.net=ALL-UNNAMED \
-   --add-opens java.base/sun.reflect.annotation=ALL-UNNAMED \
+	--add-opens=java.base/java.lang.reflect=ALL-UNNAMED \ 
+	--add-opens=java.base/java.net=ALL-UNNAMED \
+	--add-opens=jdk.management/com.sun.management.internal=ALL-UNNAMED \
    -Dorg.bouncycastle.fips.approved_only=true \
    -Dorg.bouncycastle.jsse.client.dh.unrestrictedGroups=true \
    -Djavax.net.ssl.trustStorePassword=changeit \
