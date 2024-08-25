@@ -26,6 +26,10 @@ spring:
         hibernate:
             naming:
                 physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+            temp:
+                use_jdbc_metadata_defaults: false
+            hbm2ddl:
+                auto: none
 
     servlet:
       multipart:
@@ -33,12 +37,6 @@ spring:
         max-file-size: 15GB
         max-request-size: 15GB
 
-hibernate:
-    temp:
-        use_jdbc_metadata_defaults: false
-    hbm2ddl:
-        auto: none
-                
 management:
     metrics:
         export:
