@@ -1,10 +1,11 @@
-package gov.cdc.izgateway.dynamodb;
+package gov.cdc.izgateway.dynamodb.model;
 
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbIgnore;
 import org.apache.commons.lang3.StringUtils;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -15,6 +16,7 @@ import com.fasterxml.jackson.annotation.JsonFormat.Shape;
 import gov.cdc.izgateway.common.Constants;
 import gov.cdc.izgateway.common.HasDestinationUri;
 import gov.cdc.izgateway.db.service.JurisdictionService;
+import gov.cdc.izgateway.dynamodb.DynamoDbEntity;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.model.IDestinationId;
 import gov.cdc.izgateway.model.IEndpoint;
@@ -26,13 +28,23 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.io.Serializable;
 import java.util.Date;
 
+/**
+ * A Destination stored in a Dynamo Database
+ * @author Audacious Inquiry
+ *
+ */
+@DynamoDbBean
 @SuppressWarnings("serial")
-@Entity
-@Table(name = "destinations")
 @JsonPropertyOrder({ "destId", "destType", "destUri", "destVersion", "facilityId", "msh3", "msh4", "msh5", "msh6",
 		"msh22", "rxa11" })
 @Data
-public class Destination implements IEndpoint, Serializable, HasDestinationUri, IDestination {
+@EqualsAndHashCode(callSuper=false)
+public class Destination extends DynamoDbEntity implements IEndpoint, Serializable, HasDestinationUri, IDestination {
+	/**
+	 * A destination id.
+	 * A composite of the destination endpoint identifier, and the environment id (a.k.a., destination type). 
+	 * @author Audacious Inquiry
+	 */
 	@Schema(properties= {
 		@StringToClassMapItem(key="ak", value=Destination.class),
 		@StringToClassMapItem(key="dev", value=Destination.class),
@@ -42,16 +54,17 @@ public class Destination implements IEndpoint, Serializable, HasDestinationUri, 
 		@StringToClassMapItem(key="md_c", value=Destination.class),
 		@StringToClassMapItem(key="wy", value=Destination.class)
 	})
-	@Embeddable
 	@Data
 	@AllArgsConstructor
 	@NoArgsConstructor
 	public static class DestinationId implements Serializable, IDestinationId {
-		@Column(name = "dest_id")
 		private String destId;
-		@Column(name = "dest_type")
 		private int destType;
 
+		/**
+		 * Create a new destination identifier from an existing one. 
+		 * @param id
+		 */
 		public DestinationId(IDestinationId id) {
 			this.destId = id.getDestId();
 			this.destType = id.getDestType();
@@ -61,7 +74,6 @@ public class Destination implements IEndpoint, Serializable, HasDestinationUri, 
 		public DestinationId copy() {
 			return new DestinationId(destId, destType);
 		}
-		
 
 		@Override
 		public void setDestType(String destType) {
@@ -76,9 +88,13 @@ public class Destination implements IEndpoint, Serializable, HasDestinationUri, 
 		public void setDestType(int destType) {
 			this.destType = destType;
 		}
+		
+		@Override
+		public String toString() {
+			return String.format("%d#%s", destType, destId);
+		}
 	}
 
-	@EmbeddedId
 	@Schema(hidden = true)
 	private DestinationId id = new DestinationId();
 	public void setId(IDestinationId id) {
@@ -88,76 +104,72 @@ public class Destination implements IEndpoint, Serializable, HasDestinationUri, 
 			this.id = new DestinationId(id);
 		}
 	}
+	@DynamoDbIgnore
+	public DestinationId getId() {
+		return this.id;
+	}
 	
-	@Column(name = "dest_uri")
 	@Schema(description = "The destination endpoint URL", pattern=ID_PATTERN)
 	private String destUri;// NOT NULL
 
-	@Column(name = "username")
 	@JsonIgnore
 	@Schema(description = "The destination endpoint username", hidden=true)
 	private String username;
 
-	@Column(name = "password")
 	@JsonIgnore
 	@Schema(description = "The destination endpoint password", hidden=true)
 	private String password;
 
-	@Column(name = "dest_version")
 	@Schema(description = "The schema or protocol version for use with the endpoint", 
 		hidden=true, pattern="2011|2014|V2022-12-31|DEX1.0")
 	private String destVersion;
 
-	@Column(name = "jurisdiction_id")
 	@JsonIgnore
 	@Schema(description = "The jurisdiction responsible for the endpoint", hidden=true)
 	private int jurisdictionId;
 
-	@Column(name = "maint_reason")
 	@Schema(description = "The reason for destination maintenance")
 	private String maintReason;
 
 	@Schema(description = "The start of the maintenance period")
-	@Column(name = "maint_start")
 	@JsonFormat(shape = Shape.STRING, pattern = Constants.TIMESTAMP_FORMAT)
 	private Date maintStart;
 
-	@Column(name = "maint_end")
 	@Schema(description = "The end of the maintenance period, or null if unspecified")
 	private Date maintEnd;
 
-	@Column(name = "facility_id")
 	@Schema(description = "The identifier of the facility to use with test messages for this endpoint")
 	private String facilityId;
 
-	@Column(name = "MSH3")
 	@Schema(description = "The MSH3 value to use with test messages for this endpoint")
 	private String msh3;
 	
-	@Column(name = "MSH4")
 	@Schema(description = "The MSH4 value to use with test messages for this endpoint")
 	private String msh4;
 	
-	@Column(name = "MSH5")
 	@Schema(description = "The MSH5 value to use with test messages for this endpoint")
 	private String msh5;
 	
-	@Column(name = "MSH6")
 	@Schema(description = "The MSH6 value to use with test messages for this endpoint")
 	private String msh6;
 	
-	@Column(name = "MSH22")
 	@Schema(description = "The MSH22 value to use with test messages for this endpoint")
 	private String msh22;
 	
-	@Column(name = "RXA11")
 	@Schema(description = "The RXA11 value to use with test messages for this endpoint")
 	private String rxa11;
 
+	/**
+	 * Create a new Destination
+	 */
 	public Destination() {
 		id.setDestType(SystemUtils.getDestType());
 	}
 
+	/**
+	 * Create a new Destination as a copy of an existing one.
+	 * @param that The destination to make a copy of
+	 */
 	public Destination(IDestination that) {
 		if (that.getId() instanceof DestinationId did) {
 			this.id = did;
@@ -181,11 +193,17 @@ public class Destination implements IEndpoint, Serializable, HasDestinationUri, 
 		this.rxa11 = that.getRxa11();
 	}
 	
+	/**
+	 * Create an example for Swagger documentation
+	 * @param destId	The example name
+	 * @return	An example destition
+	 */
 	public static Destination getExample(String destId) {
 		Destination dest = new Destination();
 		dest.id.setDestId(destId);
 		dest.destUri = "https://example.com/dev/IISService";
 		dest.destVersion = "2011";
+		// This is for documentation, not an exposure of private credentials
 		dest.username = "username";
 		dest.password = "password";
 		dest.jurisdictionId = 1;
@@ -202,6 +220,10 @@ public class Destination implements IEndpoint, Serializable, HasDestinationUri, 
 		return dest;
 	}
 
+	/**
+	 * The destination type name.
+	 */
+	@DynamoDbIgnore
 	@Schema(description = "The type of destination")
 	public String getDestType() {
 		return SystemUtils.getDestTypes().get(id.getDestType()-1);
@@ -217,12 +239,14 @@ public class Destination implements IEndpoint, Serializable, HasDestinationUri, 
 		this.id.setDestType(destType);
 	}
 
+	@DynamoDbIgnore
 	@Schema(description = "The IIS or other name for the jurisdiction")
 	public String getJurisdictionName() {
 		IJurisdiction j = JurisdictionService.getInstance().getJurisdiction(jurisdictionId);
 		return j == null ? null : j.getName();
 	}
 
+	@DynamoDbIgnore
 	@Schema(description = "A description of the jurisdiction (typically the state or other name)")
 	public String getJurisdictionDesc() {
 		IJurisdiction j = JurisdictionService.getInstance().getJurisdiction(jurisdictionId);
@@ -230,6 +254,7 @@ public class Destination implements IEndpoint, Serializable, HasDestinationUri, 
 	}
 
 	@Override
+	@DynamoDbIgnore
 	@JsonIgnore
 	public boolean isUnderMaintenance() {
 		Date now = new Date();
@@ -240,6 +265,7 @@ public class Destination implements IEndpoint, Serializable, HasDestinationUri, 
 	}
 	
 	@Override
+	@DynamoDbIgnore
 	@JsonIgnore
 	public String getMaintenanceDetail() {
 		String detail = String.format("Destination %s in %s under maintenance from %tc until ", getDestId(),
@@ -267,12 +293,15 @@ public class Destination implements IEndpoint, Serializable, HasDestinationUri, 
 	}
 
 	@Override
+	@DynamoDbIgnore
 	@JsonIgnore
 	@Schema(description = "True if this destination supports the original CDC 2011 Protocol", hidden=true)
 	public boolean is2011() {
 		return "2011".equals(destVersion);
 	}
+
 	@Override
+	@DynamoDbIgnore
 	@JsonIgnore
 	@Schema(description = "True if this destination supports the IZ Gateway 2014 Protocol", hidden=true)
 	public boolean is2014() {
@@ -280,6 +309,7 @@ public class Destination implements IEndpoint, Serializable, HasDestinationUri, 
 	}
 	
 	@Override
+	@DynamoDbIgnore
 	@JsonIgnore
 	@Schema(description = "True if this destination supports the IZ Gateway Hub Protocol", hidden=true)
 	public boolean isHub() {
@@ -287,6 +317,7 @@ public class Destination implements IEndpoint, Serializable, HasDestinationUri, 
 	}
 	
 	@Override
+	@DynamoDbIgnore
 	@JsonIgnore
 	@Schema(description = "True if this destination supports the CDC DEX Protocol", hidden=true)
 	public boolean isDex() {
@@ -305,5 +336,10 @@ public class Destination implements IEndpoint, Serializable, HasDestinationUri, 
 	@Override
 	public String getDestinationUri() {
 		return getDestUri();
+	}
+
+	@Override
+	public String primaryId() {
+		return id.toString();
 	}
 }

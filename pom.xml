@@ -54,9 +54,9 @@
 			<artifactId>logback-core</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>com.amazonaws</groupId>
-			<artifactId>aws-java-sdk-dynamodb</artifactId>
-			<version>1.12.714</version>
+		    <groupId>software.amazon.awssdk</groupId>
+		    <artifactId>dynamodb-enhanced</artifactId>
+		    <version>2.27.10</version>
 		</dependency>
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
@@ -77,11 +77,6 @@
             <version>0.2.0</version>
             <optional>true</optional>
         </dependency -->
-		<dependency>
-			<groupId>com.github.derjust</groupId>
-			<artifactId>spring-data-dynamodb</artifactId>
-			<version>5.1.0</version>
-		</dependency>
 		<dependency>
 			<groupId>com.mysql</groupId>
 			<artifactId>mysql-connector-j</artifactId>
@@ -218,10 +213,6 @@
 		<dependency>
 			<groupId>org.springframework.data</groupId>
 			<artifactId>spring-data-jpa</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.data</groupId>
-			<artifactId>spring-data-commons</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.projectlombok</groupId>

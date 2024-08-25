@@ -1,10 +1,11 @@
-package gov.cdc.izgateway.dynamodb;
+package gov.cdc.izgateway.dynamodb.model;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 import gov.cdc.izgateway.common.Constants;
 import gov.cdc.izgateway.db.service.JurisdictionService;
+import gov.cdc.izgateway.dynamodb.DynamoDbEntity;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.model.IEndpoint;
 import gov.cdc.izgateway.model.IEndpointStatus;
@@ -14,8 +15,10 @@ import gov.cdc.izgateway.utils.SystemUtils;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AccessLevel;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbIgnore;
 
 import com.fasterxml.jackson.annotation.JsonFormat.Shape;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -30,14 +33,22 @@ import java.util.TreeMap;
  */
 @Schema(description="This class reports on the status of a destination at a given point in time.")
 @Data
+@EqualsAndHashCode(callSuper=false)
 @SuppressWarnings("serial")
 @JsonPropertyOrder({"destId", "destType", "destTypeId", "destUri", "destVersion", "status", "statusAt", "statusBy", "detail", "diagnostics", "retryStrategy"})
-public class EndpointStatus implements IEndpoint, Serializable, IEndpointStatus {
+public class EndpointStatus extends DynamoDbEntity implements IEndpoint, Serializable, IEndpointStatus {
+	/**
+	 * Map of statushistory entities reported by /statushistory API 
+	 * @author Audacious Inquiry
+	 */
 	public static class Map extends TreeMap<String, EndpointStatus>{}
 
 	@JsonIgnore
 	@Schema(description="The identifier of this status record", hidden=true)
     private int statusId;
+	public int getStatusId() {
+		return statusId;
+	}
     
 	@Schema(description="The identifier of destination")
     private String destId;
@@ -68,7 +79,18 @@ public class EndpointStatus implements IEndpoint, Serializable, IEndpointStatus 
 	@Schema(description="The identifier of the jurisdiction for this endpoint", hidden=true)
 	private int jurisdictionId;
 
-	public EndpointStatus() { }
+	/**
+	 * Create a new EndpointStatus entity.
+	 */
+	public EndpointStatus() { 
+		destType = SystemUtils.getDestType();
+	}
+	
+	
+	/**
+	 * Copy an EndpointStatus entity.
+	 * @param that	The entity to copy
+	 */
 	public EndpointStatus(EndpointStatus that) { 
 		statusId = that.statusId;
 		destId = that.destId;
@@ -84,6 +106,11 @@ public class EndpointStatus implements IEndpoint, Serializable, IEndpointStatus 
 		status = that.status;
 	}
 
+	/**
+	 * Create an endpoint status entity from a destination.
+	 * 
+	 * @param dest	The destination to copy from
+	 */
 	public EndpointStatus(IDestination dest) {
 		this();
 		if (dest == null) {
@@ -120,12 +147,14 @@ public class EndpointStatus implements IEndpoint, Serializable, IEndpointStatus 
 	 */
 	@Override
 	@JsonIgnore
+	@DynamoDbIgnore
 	@Schema(hidden=true)
 	public boolean isConnected() {
 		return CONNECTED.equalsIgnoreCase(status);
 	}
 	
 	@Override
+	@DynamoDbIgnore
 	@JsonIgnore
 	@Schema(hidden=true)
 	public boolean isCircuitBreakerThrown() {
@@ -141,6 +170,7 @@ public class EndpointStatus implements IEndpoint, Serializable, IEndpointStatus 
 	 * @return true if the destination is connected.
 	 */
 	@Override
+	@DynamoDbIgnore
 	@JsonIgnore
 	@Schema(hidden=true)
 	public boolean isAvailable() {
@@ -148,7 +178,8 @@ public class EndpointStatus implements IEndpoint, Serializable, IEndpointStatus 
 				RetryStrategy.CORRECT_MESSAGE.toString().equalsIgnoreCase(retryStrategy);
 	}
 	
-	@Schema(description="THe environment the destination is being used in")
+	@Schema(description="The environment the destination is being used in")
+	@DynamoDbIgnore
 	public String getDestType() {
 		return SystemUtils.getDestTypes().get(destType-1);
 	}
@@ -164,15 +195,19 @@ public class EndpointStatus implements IEndpoint, Serializable, IEndpointStatus 
 	}
 	
 	@JsonIgnore
-	@Schema(description="The identifiier for the jurisdiction responsible for the endpoint", hidden=true)
+	@Schema(description="The identifier for the jurisdiction responsible for the endpoint", hidden=true)
 	public int getJurisdictionId() {
 		return jurisdictionId;
 	}
+	
+	@DynamoDbIgnore
 	@Schema(description="Returns the name of the jurisdiction responsible for the endpoint")
 	public String getJurisdictionName() {
 		IJurisdiction j = JurisdictionService.getInstance().getJurisdiction(jurisdictionId);
 		return j == null ? null : j.getName();
 	}
+	
+	@DynamoDbIgnore
 	@Schema(description="Returns the description of the jurisdiction responsible for the endpoint")
 	public String getJurisdictionDesc() {
 		IJurisdiction j = JurisdictionService.getInstance().getJurisdiction(jurisdictionId);
@@ -186,5 +221,15 @@ public class EndpointStatus implements IEndpoint, Serializable, IEndpointStatus 
         setDiagnostics(null);
         setRetryStrategy(null);
         return getStatus();
+	}
+
+	@Override
+	public String primaryId() {
+		return String.format("%d#%tFT%tH", destType, statusAt, statusAt);
+	}
+	
+	@Override
+	public String sortKey() {
+		return Integer.toString(statusId);
 	}
 }

@@ -1,20 +1,28 @@
-package gov.cdc.izgateway.dynamodb;
+package gov.cdc.izgateway.dynamodb.model;
 
+import gov.cdc.izgateway.dynamodb.DynamoDbEntity;
 import gov.cdc.izgateway.model.IJurisdiction;
 import gov.cdc.izgateway.model.MappableEntity;
 import io.swagger.v3.oas.annotations.StringToClassMapItem;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
+/**
+ * An entity to get jurisdiction information
+ * 
+ * @author Audacious Inquiry
+ *
+ */
 @SuppressWarnings("serial")
-@Entity
-@Table(name="jurisdiction")
 @Data
-public class Jurisdiction implements IJurisdiction {
+@EqualsAndHashCode(callSuper=false)
+public class Jurisdiction extends DynamoDbEntity implements IJurisdiction {
+	/**
+	 * A map of jurisdictions.
+	 * 
+	 * @author Audacious Inquiry
+	 */
 	@Schema(properties= {
 			@StringToClassMapItem(key="Alaska", value=Destination.class),
 			@StringToClassMapItem(key="CDC", value=Destination.class),
@@ -24,17 +32,23 @@ public class Jurisdiction implements IJurisdiction {
 		})
 	public static class Map extends MappableEntity<Jurisdiction>{}
 
-    @Id
-    @Column(name="jurisdiction_id")
     @Schema(description="The identifier of the jurisdiction.")
 	private int jurisdictionId;
+    public int getJurisdictionId() {
+    	return jurisdictionId;
+    }
+    
     @Schema(description="The name of the jurisdiction.")
-    @Column(name="name")
 	private String name;
+    
     @Schema(description="The description of the jurisdiction.")
-    @Column(name="description")
 	private String description;
+    
     @Schema(description="The prefix to use for destinations managed by this jurisdiction.")
-    @Column(name="dest_prefix")
 	private String prefix;
+    
+	@Override
+	public String primaryId() {
+		return Integer.toString(jurisdictionId);
+	}
 }
