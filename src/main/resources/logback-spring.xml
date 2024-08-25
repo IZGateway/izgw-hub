@@ -60,7 +60,7 @@
     <!-- Logs to Enable for debugging -->
     <logger name="org.hibernate" level="WARN" /> <!-- Change from WARN to DEBUG for debugging -->
     <logger name="org.hibernate.SQL" level="WARN" /> <!-- Change to DEBUG if needed for debugging -->
-    <logger name="org.hibernate.type" level="WARN" /> <!-- Change to TRACE if needed for ORM debugging -->
+    <logger name="org.hibernate.type" level="TRACE" /> <!-- Change to TRACE if needed for ORM debugging -->
     <logger name="org.springframework.cache" level="INFO" /><!-- Change 
         from WARN to TRACE if needed for Cache debugging -->
     <logger name="gov.cdc.izgateway.web.ws" level="INFO" /> <!-- Change from INFO to DEBUG for debugging -->
