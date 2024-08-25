@@ -66,7 +66,7 @@ then
 fi
 
 # Have to externalize bc-fips jars
-java $JAVA_OPTS $JAVA_TOOL_OPTS -javaagent:lib/aspectjweaver-1.9.22.1.jar -javaagent:lib/spring-instrument-6.1.12.jar \
+java $JAVA_OPTS $JAVA_TOOL_OPTS \
    -XX:+CreateCoredumpOnCrash -cp ./bc-fips-1.0.2.5.jar:./bcpkix-fips-1.0.7.jar:./bctls-fips-1.0.19.jar \
 	--add-opens=java.base/java.lang.reflect=ALL-UNNAMED \
     --add-opens=java.base/java.net=ALL-UNNAMED \
