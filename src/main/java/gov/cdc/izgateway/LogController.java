@@ -129,7 +129,7 @@ public class LogController implements InitializingBean {
 			@RequestParam(required = false) String clear) throws SecurityFault {
 		if (!RequestContext.getRoles().contains(Roles.ADMIN) && !RequestContext.getRoles().contains(Roles.OPERATIONS)) {
 			throw SecurityFault
-				.generalSecurity("Delete log attempt by inappropriate role", 
+				.generalSecurity("Delete Log Attempt By Role", 
 						RequestContext.getRoles().toString(), null);
 		}
 		if (logData != null) {
