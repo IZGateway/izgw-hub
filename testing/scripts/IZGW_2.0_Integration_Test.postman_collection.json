@@ -509,6 +509,114 @@
 							"response": []
 						},
 						{
+							"name": "TC_89a Logging Test: Logged Message in Dev",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Response is As Expected\", function () {\r",
+											"    var response = utils.removeNS(xml2Json(responseBody));\r",
+											"    var header = response?.Envelope?.Header?.HubResponseHeader;\r",
+											"    try {\r",
+											"        pm.expect(header).to.not.be.eql(undefined);\r",
+											"        pm.expect(header).to.have.property('DestinationId');\r",
+											"        pm.expect(header).to.have.property('DestinationUri');\r",
+											"    } catch (err) {\r",
+											"        console.log({\"header\": header});\r",
+											"        throw err;\r",
+											"    }\r",
+											"    var hl7Message = response['Envelope']['Body']['SubmitSingleMessageResponse']['Hl7Message'];\r",
+											"    var request = xml2Json(pm.request.body);\r",
+											"    var expected = pm.collectionVariables.get(\"GoodResponse\");\r",
+											"    try {\r",
+											"        pm.expect(hl7Message.replaceAll('\\r','\\n')).to.be.eql(expected.replaceAll('\\r','\\n'));  // TODO: Raise the issue of CR's in content.\r",
+											"    } catch (err) {\r",
+											"        console.log(hl7Message, expected);\r",
+											"        throw err;\r",
+											"    }\r",
+											"});\r",
+											"\r",
+											"\r",
+											"\r",
+											"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) utils.testSLA(pm, LONG_SLA);\r",
+											"\r",
+											"const interval = setTimeout(() => {}, 3000);\r",
+											"async function moreTests() {\r",
+											"    utils.getLogs(null, pm).then((logData) => {\r",
+											"        logs = logData.json();\r",
+											"        txData = utils.getTxData(logs);\r",
+											"        pm.test(\"Log does not contain HL7 Error\", function() {\r",
+											"            pm.expect(txData[0].transactionData.hasHL7Error).to.be.eql(false);\r",
+											"            pm.expect(txData[0].transactionData.hl7Error).to.be.eql(\"\");\r",
+											"        });\r",
+											"        pm.test(\"Log does not contain PHI\", function() {\r",
+											"            pm.expect(txData[0].transactionData.requestHL7Message).to.not.contain(\"\\nPID\");\r",
+											"            pm.expect(txData[0].transactionData.requestHL7Message).to.not.contain(\"\\nQPD\");\r",
+											"        });\r",
+											"        utils.testLogs(logs, pm, 250);\r",
+											"    });\r",
+											"}\r",
+											"\r",
+											"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();\r",
+											"utils.checkNamespaces(pm);\r",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"utils.setup(pm, \"dev\");"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {
+									"host": true
+								}
+							},
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Host",
+										"value": "{{hostHeader}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/xml"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>{{GoodMessage}}</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{host}}"
+									],
+									"port": "{{port}}",
+									"path": [
+										"IISHubService"
+									]
+								}
+							},
+							"response": []
+						},
+						{
 							"name": "TC_ACK03 Error Handling IIS wants to Warn a Sender of an issue. No Error level problems with Message",
 							"event": [
 								{
@@ -734,7 +842,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IRIS IIS|IRIS|TEST|TC_21D|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS|SIISCLIENT28374|\r\nQPD|Z34^Request Immunization History^CDCPHINVS|20210330093013LA231|LAMASM77BF4BA6^^^IZGATEWAYTEST&amp;2.16.840.1.113883.40.1&amp;ISO^MR|Johnson^James^Andrew^^^^L|Leung^Jen^^^^^M|20160414|M|Main Street&amp;&amp;123^^New Orleans^LA^70115^^L|^PRN^PH^^^555^5551111|Y|1</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IRIS IIS|IRIS|TEST|TC_21D|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS|SIISCLIENT28374|\r\nQPD|Z34^Request Immunization History^CDCPHINVS|20210330093013LA231|LAMASM77BF4BA6^^^IZGATEWAYTEST&amp;2.16.840.1.113883.40.1&amp;ISO^MR|JohnsonIZG^James^Andrew^^^^L|Leung^Jen^^^^^M|20160414|M|Main Street&amp;&amp;123^^New Orleans^LA^70115^^L|^PRN^PH^^^555^5551111|Y|1</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
@@ -8603,7 +8711,7 @@
 											"script": {
 												"exec": [
 													"// Disable while DEX Staging is down.\r",
-													"if (false) {\r",
+													"if (true) {\r",
 													"    pm.test(\"Status code is 200\", function () {\r",
 													"        pm.response.to.have.status(200);\r",
 													"    });\r",
@@ -10479,7 +10587,7 @@
 					"",
 					"function checkForPHI(caseName, value, pm) {",
 					"    var failure = false;",
-					"    pm.test('Logger-TC06/07' + caseName + 'Verify HL7 content in logs does not contain PII', function() {",
+					"    pm.test('Logger-TC06/07' + caseName + ' Verify HL7 content in logs does not contain PII', function() {",
 					"        if (value == null) {",
 					"            return;",
 					"        }",
@@ -10811,7 +10919,9 @@
 					"            pm.expect(entry.transactionData.hl7Error).to.match(HL7ERROR);",
 					"            success = true;",
 					"        });",
-					"        checkForPHI('a', entry.transactionData.hl7Error, pm);",
+					"        if (entry.transactionData?.prod == true) {",
+					"            checkForPHI('a', entry.transactionData.hl7Error, pm);",
+					"        }",
 					"",
 					"        _test('Log Entry['+index+'] to contain transactionData.messageId', function () {",
 					"            pm.expect(entry).to.have.nested.property('transactionData.messageId');",
@@ -10861,7 +10971,9 @@
 					"                pm.expect(entry.transactionData.requestHL7Message).to.match(HL7REQMESSAGE);",
 					"                success = true;",
 					"            });",
-					"            checkForPHI('b', entry.transactionData.requestHL7Message, pm);",
+					"            if (entry?.transactionData?.prod == true) {",
+					"                checkForPHI('b', entry.transactionData.requestHL7Message, pm);",
+					"            }",
 					"            _test('Logging-TC_10/11 Log Entry['+index+'] to contain transactionData.requestPayloadType matching VXU|QBP|Other', function () {",
 					"                pm.expect(entry).to.have.nested.property('transactionData.requestPayloadType');",
 					"                pm.expect(entry.transactionData.requestPayloadType).to.match(/^VXU|QBP|ADS|Other$/);",
@@ -10883,7 +10995,9 @@
 					"                pm.expect(entry.transactionData.responseHL7Message).to.match(HL7ERROR);",
 					"                success = true;",
 					"            });",
-					"            checkForPHI('c', entry.transactionData.responseHL7Message, pm);",
+					"            if (entry.transactionData?.prod == true) {",
+					"                checkForPHI('c', entry.transactionData.responseHL7Message, pm);",
+					"            }",
 					"        }",
 					"        _test('Log Entry['+index+'] to contain transactionData.responsePayloadSize matching [0-9]*', function () {",
 					"            pm.expect(entry).to.have.nested.property('transactionData.responsePayloadSize');",
@@ -11518,25 +11632,28 @@
 					"        }",
 					"        if(env !== \"test\"){",
 					"        try {",
-					"            for (entry of logs) {",
+					"            for (var entry of logs) {",
 					"                testLogEntry(entry, pm, count++);",
-					"            }",
-					"            for (entry of txData) {",
-					"                pm.test(\"Check Service Type\", function() {",
-					"                    pm.expect(entry.transactionData.serviceType).to.match(/Mock|Gateway/);",
-					"                    if (entry.requestUri == \"/IISHubService\" || entry.requestUri.includes(\"/rest/\")) {",
-					"                        pm.expect(entry.transactionData.serviceType).to.eql(\"Gateway\");",
-					"                    } else {",
-					"                        pm.expect(entry.transactionData.serviceType).to.eql(\"Mock\");",
-					"                    }",
-					"                });",
 					"            }",
 					"            logTestingCompleted = true;",
 					"        } catch (error) {",
-					"            pm.test(\"Testing log entry \" + (count + 1) + \" of \" + logs.length, function () {",
-					"                pm.expect(error, error.message).to.be.eql(null);",
+					"            pm.test(\"Testing log entry \" + count + \" of \" + logs.length, function () {",
+					"                    console.log(logs[count-1]);",
+					"                    pm.expect(error, error.message).to.be.eql(null);",
+					"                }",
+					"            );",
+					"        }",
+					"        for (entry of txData) {",
+					"            pm.test(\"Check Service Type\", function() {",
+					"                pm.expect(entry.transactionData.serviceType).to.match(/Mock|Gateway/);",
+					"                if (entry?.requestUri == \"/IISHubService\" || entry?.requestUri.includes(\"/rest/\")) {",
+					"                    pm.expect(entry?.transactionData?.serviceType).to.eql(\"Gateway\");",
+					"                } else {",
+					"                    pm.expect(entry?.transactionData?.serviceType).to.eql(\"Mock\");",
+					"                }",
 					"            });",
 					"        }",
+					"",
 					"        pm.test(\"Tested \" + logs.length + \" log entries\", function () {",
 					"            pm.expect(count).to.be.eql(logs.length);",
 					"            pm.expect(logTestingCompleted).to.be.eql(true, \"Log Testing Completed\");",
@@ -11563,7 +11680,7 @@
 	"variable": [
 		{
 			"key": "GoodMessage",
-			"value": "MSH|^~\\&amp;|IRIS IIS|IRIS|TEST|TC_04|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS|SIISCLIENT28374|\nQPD|Z34^Request Immunization History^CDCPHINVS|20210330093013LA231|LAMASM77BF4BA6^^^IZGATEWAYTEST&amp;2.16.840.1.113883.40.1&amp;ISO^MR|Johnson^James^Andrew^^^^L|Leung^Jen^^^^^M|20160414|M|Main Street&amp;&amp;123^^New Orleans^LA^70115^^L|^PRN^PH^^^555^5551111|Y|1",
+			"value": "MSH|^~\\&amp;|IRIS IIS|IRIS|TEST|TC_04|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS|SIISCLIENT28374|\nQPD|Z34^Request Immunization History^CDCPHINVS|20210330093013LA231|LAMASM77BF4BA6^^^IZGATEWAYTEST&amp;2.16.840.1.113883.40.1&amp;ISO^MR|JohnsonIZG^James^Andrew^^^^L|Leung^Jen^^^^^M|20160414|M|Main Street&amp;&amp;123^^New Orleans^LA^70115^^L|^PRN^PH^^^555^5551111|Y|1",
 			"type": "string"
 		},
 		{
