@@ -27,6 +27,7 @@ public class MetadataImpl implements Metadata {
     private String extSource;
     private String extSourceVersion;
     private String extEvent;
+    private String extEventType;
     private String extEntity;
     private String username;
     private String filename;
@@ -60,6 +61,7 @@ public class MetadataImpl implements Metadata {
         extSource = resp.getExtSource();
         extSourceVersion = resp.getExtSourceVersion();
         extEvent = resp.getExtEvent();
+        extEventType = resp.getExtEventType();
         extEntity = resp.getExtEntity();
         username = resp.getUsername(); 
         ipAddress = resp.getIpAddress();
@@ -95,6 +97,9 @@ public class MetadataImpl implements Metadata {
 			break;
 		case "meta_ext_event":
 			setExtEvent(value);
+			break;
+		case "meta_ext_event_type":
+			setExtEventType(value);
 			break;
 		case "meta_ext_entity":
 			setExtEntity(value);

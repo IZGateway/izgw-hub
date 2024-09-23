@@ -23,6 +23,7 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import org.apache.http.Header;
 import org.apache.http.HttpHeaders;
+import org.apache.http.client.HttpResponseException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
@@ -156,8 +157,11 @@ public abstract class RestfulFileSender implements FileSender {
                 throw new HTTPException(responseCode);
             }
             return con;
-        } catch (io.tus.java.client.ProtocolException | URISyntaxException e) {
-           throw HubClientFault.invalidMessage(e, route, 0, null, null);
+        } catch (URISyntaxException e) {
+        	throw HubClientFault.invalidMessage(e, route, 0, null, null);
+        } catch (io.tus.java.client.ProtocolException e) {
+        	throw HubClientFault.invalidMessage(e, route, 0, 
+        		IOUtils.toInputStream(e.getMessage(), StandardCharsets.UTF_8), null);
         } catch (MalformedURLException e) {
             throw new MetadataFault(meta, e, FILENAME_INVALID);
         } catch (IOException e) {
@@ -216,9 +220,11 @@ public abstract class RestfulFileSender implements FileSender {
 				throw new UnsupportedOperationException();
 			}
 	        return getSubmissionStatus(con);
-		} catch (URISyntaxException | IOException e) {
+		} catch (HttpResponseException ex) {
+			throw HubClientFault.httpError(route, ex.getStatusCode(), ex.getMessage());
+        } catch (URISyntaxException | IOException e) {
 			throw HubClientFault.invalidMessage(e, route, 0, null, null);
-        }
+        } 
     }
 
 	protected abstract String getSubmissionStatus(HttpURLConnection con) throws IOException;

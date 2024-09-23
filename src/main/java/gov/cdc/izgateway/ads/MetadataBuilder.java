@@ -12,8 +12,11 @@ import org.slf4j.MDC;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -72,13 +75,29 @@ public class MetadataBuilder {
         return errors;
     }
 
+    private static final Set<String> DEX_REPORT_TYPES = new LinkedHashSet<>(Arrays.asList(
+    		"covidallmonthlyvaccination",
+    		"influenzavaccination",
+    		"routineimmunization",
+    		"rsvprevention"
+    		));
+    static final String GENERIC = "genericImmunization";
     /**
      * Set the report type
      * @param reportType the report type
      * @return The metadata builder.
      */
-    public MetadataBuilder setReportType(String reportType){
-        meta.setExtEvent(reportType);
+    public MetadataBuilder setReportType(String reportType) {
+    	// If it's one of the original report types, set it
+    	// on meta_ext_event as well as meta_ext_event_type
+    	if (DEX_REPORT_TYPES.contains(reportType.toLowerCase())) {
+    		meta.setExtEvent(reportType);
+    	} else {
+    		meta.setExtEvent(GENERIC);
+    		// Force V2 if Generic is used.
+    		meta.setExtSourceVersion(Metadata.DEX_VERSION2);
+    	}
+        meta.setExtEventType(reportType);
         if (StringUtils.isBlank(reportType)) {
             errors.add("Report Type must be present and not empty");
             return this;
@@ -154,7 +173,8 @@ public class MetadataBuilder {
 		if (!pf.getEntityId().equalsIgnoreCase(meta.getExtEntity())) {
 			errors.add(String.format("Entity ID (%s) does not match Entity (%s) in filename (%s)", meta.getExtEntity(), pf.getEntityId(), meta.getFilename()));
 		}
-		if (!pf.getFiletype().equalsIgnoreCase(meta.getExtEvent())) {
+		// Filetype validation isn't relevant when type is genericImmunization. These could be anything and we won't know.
+		if (!GENERIC.equalsIgnoreCase(meta.getExtEvent()) && !pf.getFiletype().equalsIgnoreCase(meta.getExtEvent())) {
 			errors.add(String.format("File type (%s) does not match file type (%s) in filename (%s)", meta.getExtEvent(), pf.getFiletype(), meta.getFilename()));
 		}
 		Calendar cal = Calendar.getInstance();
@@ -181,6 +201,8 @@ public class MetadataBuilder {
         if (StringUtils.isBlank(routeId)) {
             errors.add("Route ID must be present and not empty");
         }
+        // Ensure that some value is set in ExtSourceVersion 
+        meta.setExtSourceVersion(Metadata.DEX_VERSION1);
         IDestination dest = dests.findByDestId(routeId.trim().toLowerCase());
         meta.setDestination(dest);
         if (dest == null) {
@@ -192,6 +214,16 @@ public class MetadataBuilder {
             meta.setRouteId(dest.getDestId());
             destUrl = dest.getDestUri();
             setDestinationId("ndlp");
+            // Set the value for ExtSourceVersion based on version of DEX Endpoint
+	        switch (dest.getDestVersion()) {
+	        case ADSController.IZGW_ADS_VERSION1:
+	        	meta.setExtSourceVersion(Metadata.DEX_VERSION1);
+	        	break;
+	        default:
+	        case ADSController.IZGW_ADS_VERSION2:
+	        	meta.setExtSourceVersion(Metadata.DEX_VERSION2);
+	        	break;
+	        }
         }
         return this;
     }

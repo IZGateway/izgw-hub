@@ -51,7 +51,7 @@ class ParsedFilename {
 	}
 	
 	private void parseRiverFilename() {
-		filetype = checkRiverFilename(filename, parts);
+		filetype = checkRiverFilename(parts);
 		entityId = parts.length > 1 ? parts[1] : "";
 		period = parts.length > 2 ? parts[2] : "";
 		date = checkPeriod("yyyyMMM");
@@ -81,21 +81,19 @@ class ParsedFilename {
 			date = checkPeriod("yyyyMMdd");
 		}
 	}
-	private String checkRiverFilename(String filename, String[] parts) {
+	private String checkRiverFilename(String[] parts) {
 		// Monthly files
 		filetype = parts.length > 0 ? parts[0] : "";
-		 if (StringUtils.containsIgnoreCase(filetype, "flu")) {
-		     filetype = "influenzaVaccination";
-		 } else if (StringUtils.containsIgnoreCase(filetype, "rsv")) {
-			 filetype = "rsvPrevention";
-		 } else if (StringUtils.containsIgnoreCase(filetype, "bridge")) {
-			 filetype = "covidbridgeVaccination";
-		 } else if (StringUtils.containsIgnoreCase(filetype, "all")) {
-			 filetype = "covidallMonthlyVaccination";
-		 } else {
-		     errors.add(String.format("Filename (%s) is invalid. It does not match any valid submission type.", filename));
-		 }
-		 return filetype;
+		if (StringUtils.containsIgnoreCase(filetype, "flu")) {
+		    filetype = "influenzaVaccination";
+		} else if (StringUtils.containsIgnoreCase(filetype, "rsv")) {
+			filetype = "rsvPrevention";
+		} else if (StringUtils.containsIgnoreCase(filetype, "all")) {
+			filetype = "covidallMonthlyVaccination";
+		} else {
+		    filetype = "genericImmunization";
+		}
+		return filetype;
 	}
 	
 	private Date parseDate(String dateString, String format) {
