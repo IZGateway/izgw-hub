@@ -237,6 +237,12 @@ public interface Metadata extends Serializable {
     Date getUploadedDate();
     void setUploadedDate(Date uploadedDate);
     
+    @JsonProperty("meta_ext_file_timestamp")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = RFC2616_DATE_FORMAT_PATTERN)
+    default Date getFileTimestamp() {
+    	return getUploadedDate();
+    }
+    
     @JsonProperty("izgw_event_id")
     String getEventId();
     void setEventId(String eventId);

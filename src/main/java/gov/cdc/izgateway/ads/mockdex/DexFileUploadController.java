@@ -66,7 +66,7 @@ import java.util.TreeMap;
 @Slf4j
 @RestController
 @RolesAllowed({ Roles.INTERNAL, Roles.ADMIN })
-@RequestMapping({"/rest"})
+@RequestMapping({"/rest/upload"})
 @Lazy(false)
 public class DexFileUploadController {
 
@@ -184,7 +184,7 @@ public class DexFileUploadController {
 	 * 
 	 * @throws OAuthException If the token was not valid
 	 */
-	@RequestMapping(value = { "/upload/oauth", "/upload/oauth/refresh" }, method = { RequestMethod.POST, RequestMethod.GET})
+	@RequestMapping(value = { "/oauth", "/oauth/refresh" }, method = { RequestMethod.POST, RequestMethod.GET})
     @Operation(hidden=true)
     public ResponseEntity<AccessToken> handleOauthPost(
     	HttpServletRequest servletRequest,
@@ -336,7 +336,7 @@ public class DexFileUploadController {
      * @param servletResponse	The response
      * @throws Exception	If any errors occur
      */
-    @RequestMapping(value = { "/upload/dex", "/upload/dex/**" }, method = { RequestMethod.POST, RequestMethod.PATCH,
+    @RequestMapping(value = { "/dex", "/dex/**" }, method = { RequestMethod.POST, RequestMethod.PATCH,
         RequestMethod.HEAD, RequestMethod.DELETE, RequestMethod.GET, RequestMethod.OPTIONS })
     @Operation(hidden=true)
     public void upload(HttpServletRequest servletRequest, HttpServletResponse servletResponse) throws Exception {
