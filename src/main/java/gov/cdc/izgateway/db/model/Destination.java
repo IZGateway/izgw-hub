@@ -12,6 +12,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonFormat.Shape;
 
+import gov.cdc.izgateway.ads.ADSController;
 import gov.cdc.izgateway.common.Constants;
 import gov.cdc.izgateway.common.HasDestinationUri;
 import gov.cdc.izgateway.db.service.JurisdictionService;
@@ -105,7 +106,7 @@ public class Destination implements IEndpoint, Serializable, HasDestinationUri, 
 
 	@Column(name = "dest_version")
 	@Schema(description = "The schema or protocol version for use with the endpoint", 
-		hidden=true, pattern="2011|2014|V2022-12-31|DEX1.0")
+		hidden=true, pattern="2011|2014|V2022-12-31|DEX1.0|DEX2.0")
 	private String destVersion;
 
 	@Column(name = "jurisdiction_id")
@@ -290,7 +291,7 @@ public class Destination implements IEndpoint, Serializable, HasDestinationUri, 
 	@JsonIgnore
 	@Schema(description = "True if this destination supports the CDC DEX Protocol", hidden=true)
 	public boolean isDex() {
-		return "DEX1.0".equals(destVersion);
+		return ADSController.IZGW_ADS_VERSION1.equals(destVersion) || ADSController.IZGW_ADS_VERSION2.equals(destVersion);
 	}
 
 	@JsonIgnore
