@@ -51,8 +51,6 @@ COPY docker/data/*.der /usr/lib/jvm/java-17-openjdk/jre/lib/security/
 WORKDIR /usr/share/izgateway/
 # Add jar and run script
 ADD target/$JAR_FILENAME app.jar
-# And essential JAR files for run script
-COPY docker/data/lib/*.jar lib/
 
 # Ensure we only use NIST certified publicly available BC-FIPS packages
 ADD docker/data/bc-fips-1.0.2.5.jar bc-fips-1.0.2.5.jar
