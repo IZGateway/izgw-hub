@@ -69,12 +69,13 @@ import javax.xml.ws.http.HTTPException;
 @Slf4j
 @RestController
 @CrossOrigin
-@RolesAllowed({Roles.OPEN, Roles.ADMIN})
+@RolesAllowed({Roles.ADS, Roles.ADMIN})
 @RequestMapping({"/rest"})
 @Lazy(false)
 public class ADSController implements ADSChecker {
     private static final List<String> METADATA_FIELDNAMES = getMetadataFieldNames();
-    private static final String IZGW_ADS_VERSION = "DEX1.0";
+    public static final String IZGW_ADS_VERSION1 = "DEX1.0";
+    public static final String IZGW_ADS_VERSION2 = "DEX2.0";
     
     public interface Execute<T> {
 
@@ -90,9 +91,6 @@ public class ADSController implements ADSChecker {
     @Data
     public static class ADSControllerConfiguration {
         private final String mode;
-        @Value("${ads.version:V2023-09-01}")
-    	private String adsSourceVersion;
-    	
         private final IAccessControlService accessControls;
         private final IDestinationService dests;
         private final DEXStorageSender dexFileSender;
@@ -179,7 +177,7 @@ public class ADSController implements ADSChecker {
 		return getDestinationStatus(null, null, null, dest);
 	}
 	
-    @GetMapping("/ads/{destinationId}/status/{tguid}") 
+    @GetMapping(value = "/ads/{destinationId}/info/{tguid}", produces = { "application/json" }) 
     @Operation(summary = "Get the status of the specified upload",
 	description = "Gets the upload status for the specified request")
     @ApiResponse(responseCode = "200", description = "Success", content = @Content)
@@ -288,7 +286,7 @@ public class ADSController implements ADSChecker {
     }
 
     private RestfulFileSender getSender(IDestination route) {
-        if (IZGW_ADS_VERSION.equals(route.getDestVersion())) {
+        if (route.isDex()) {
             return config.getDexFileSender();
         }
         return null;
@@ -326,6 +324,8 @@ public class ADSController implements ADSChecker {
         Optional<String> normalizedReportType = config.getAccessControls().getEventTypes().stream().filter(e -> e.equalsIgnoreCase(reportType)).findFirst();
         if (normalizedReportType.isPresent()) {
             m.setReportType(normalizedReportType.get());
+        } else if (reportType.equalsIgnoreCase(MetadataBuilder.GENERIC)) {
+            m.setReportType(MetadataBuilder.GENERIC);
         } else {
 	    	m.getErrors().add(reportType + " is not a valid reportType value. This must be one of " + config.getAccessControls().getEventTypes());
 	        m.setReportType(reportType);
@@ -434,8 +434,8 @@ public class ADSController implements ADSChecker {
         String facilityId,
         @Schema(description="The type of report", 
         	allowableValues={
-        		"covidAllMonthlyVaccination", "covidbridgeVaccination", "influenzaVaccination",
-        		"rsvPrevention", "routineImmunization"
+        		"covidAllMonthlyVaccination", "influenzaVaccination",
+        		"rsvPrevention", "routineImmunization", "farmerFlu"
         	}
         )
         @RequestParam("reportType") String reportType,
@@ -469,8 +469,8 @@ public class ADSController implements ADSChecker {
 	        log.info(Markers2.append("Source", RequestContext.getSourceInfo()), "New ADS request ({} b) read in {} s",
 	        		meta.getFileSize(), (now - RequestContext.getTransactionData().getStartTime()) / 1000);
 	        meta.setUploadedDate(new Date(System.currentTimeMillis()));
-	        verifyRouting(meta.getDestination());
-	        meta.setExtSourceVersion(config.getAdsSourceVersion());
+	        IDestination dest = meta.getDestination(); 
+	        verifyRouting(dest);
     	} catch (MetadataFault f) {
 	    	startLogging(f.getMeta());
 	    	throw logException(null, f);
@@ -494,20 +494,21 @@ public class ADSController implements ADSChecker {
     }
     
     private void verifyRouting(IDestination iDestination) throws UnknownDestinationFault {
-        String version = iDestination.getDestVersion();
-        if (IZGW_ADS_VERSION.equals(version)) {
+        if (iDestination.isDex()) {
             return;
         }
         throw UnknownDestinationFault.invalidDestination(iDestination.getDestId(), 
-        	String.format("This destination is using version %s of the ADS API, it should be using: %s", version, IZGW_ADS_VERSION)
+        	String.format("This destination is using version %s of the ADS API, it should be using: %s or %s", iDestination.getDestVersion(), 
+        			IZGW_ADS_VERSION1, IZGW_ADS_VERSION2)
         );
 	}
 
 	private void checkDestinationAndEvent(MetadataImpl meta) throws MetadataFault {
         String destinationId = meta.getRouteId();
-        String reportType = meta.getExtEvent();
+        String reportType = meta.getExtEventType();
         
-        if (!config.getAccessControls().getEventTypes().stream().anyMatch(e -> e.equalsIgnoreCase(reportType))) {
+        if (!config.getAccessControls().getEventTypes().stream().anyMatch(e -> e.equalsIgnoreCase(reportType))
+        ) {
             throw new MetadataFault(meta, String.format("The %s report type is not valid, it must be one of %s", reportType, config.getAccessControls().getEventTypes()));
         }
 

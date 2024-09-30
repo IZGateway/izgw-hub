@@ -26,6 +26,10 @@ spring:
         hibernate:
             naming:
                 physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+            temp:
+                use_jdbc_metadata_defaults: false
+            hbm2ddl:
+                auto: none
 
     servlet:
       multipart:

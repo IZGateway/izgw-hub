@@ -154,7 +154,7 @@ public class HubController extends SoapControllerBase {
 		}
 		
 		if (!accessControlService.isMemberOf(RequestContext.getSourceInfo().getCommonName(), destGroup)) {
-			throw SecurityFault.generalSecurity("Source is not permitted to send to destination", destGroup, null);
+			throw SecurityFault.generalSecurity("Source Not Allowed", destGroup, null);
 		}
 	}
 	

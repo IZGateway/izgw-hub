@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
 
 @RestController
 @CrossOrigin
-@RolesAllowed({Roles.OPEN, Roles.ADMIN})
+@RolesAllowed({Roles.USERS, Roles.ADMIN})
 @RequestMapping({"/rest"})
 @Lazy(false)
 public class StatusController {
