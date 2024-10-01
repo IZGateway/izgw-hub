@@ -77,6 +77,7 @@ public interface AccessControlRepository extends JpaRepository<AccessControl, Ac
      * @param group The group to add the user to
      * @return The stored access control entry
      */
+    @Transactional
 	default AccessControl addUserToGroup(String user, String group) { 
 		AccessControl accessControl = 
 				findById(new AccessControlId(IAccessControlService.GROUP_CATEGORY, group, user))
@@ -96,10 +97,11 @@ public interface AccessControlRepository extends JpaRepository<AccessControl, Ac
 		return accessControl;
 	}
 	
+    @Transactional
 	default AccessControl removeUserFromGroup(String user, String group) { 
 		AccessControl accessControl = 
 				findById(new AccessControlId(IAccessControlService.GROUP_CATEGORY, group, user))
-				.orElse(null);
+				.orElse(new AccessControl(IAccessControlService.GROUP_CATEGORY, group, user, false));
 		// If an update is necessary.
 		if (accessControl != null && accessControl.isAllowed()) {
 			delete(accessControl);

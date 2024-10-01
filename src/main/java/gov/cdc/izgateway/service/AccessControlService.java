@@ -8,7 +8,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestMethod;
 
 import gov.cdc.izgateway.db.model.AccessControl;
-import gov.cdc.izgateway.db.model.AccessControlId;
 import gov.cdc.izgateway.model.IAccessControl;
 import gov.cdc.izgateway.repository.IAccessControlRepository;
 import gov.cdc.izgateway.security.Roles;
@@ -21,7 +20,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -93,9 +91,6 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
         cachedControlDecisions.clear();
         
         List<IAccessControl> controls = new ArrayList<>(accessControlRepository.findAll());
-        // Add the server itself to the internal group.
-        AccessControl self = new AccessControl(GROUP_CATEGORY, "internal", serverName);
-        controls.add(self);
         for (IAccessControl control: controls) {
         	Map<String, Map<String, Boolean>> mapToUpdate = null;
         	switch (control.getCategory()) {
@@ -114,8 +109,10 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
         			control.getName(),
         			k -> new LinkedHashMap<>()
         		);
-				group.put(control.getMember(), control.isAllowed());
-			}
+			group.put(control.getMember(), control.isAllowed());
+		}
+        // Add the server itself to the internal group.
+        newAllowedUsersByGroup.computeIfAbsent(Roles.INTERNAL, k -> new LinkedHashMap<>()).put(serverName, true);
         allowedUsersByGroup = newAllowedUsersByGroup;
         allowedRoutesByEvent = newAllowedRoutesByEvent;
         usersInRoles = getUserRoles();
@@ -412,20 +409,19 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 
 	@Override
 	public IAccessControl removeUserFromBlacklist(String user) {
-		accessControlRepository.removeUserFromGroup(user, Roles.BLACKLIST);
-		Optional<? extends IAccessControl> accessControl = accessControlRepository.findById(new AccessControlId(IAccessControlService.GROUP_CATEGORY, Roles.BLACKLIST, user));
-		// If an update is necessary.
-		if (!accessControl.isEmpty()) {
-			// Save the results and refresh the cache.
-			accessControlRepository.delete(accessControl.get());
+		try {
+			return accessControlRepository.removeUserFromGroup(user, Roles.BLACKLIST);
+		} finally {
 			refresh();
-			return accessControl.get();
 		}
-		return null;
 	}
 	
 	@Override
 	public IAccessControl addUserToBlacklist(String user) {
-		return accessControlRepository.addUserToGroup(user, Roles.BLACKLIST);
+		try {
+			return accessControlRepository.addUserToGroup(user, Roles.BLACKLIST);
+		} finally {
+			refresh();
+		}
 	}
 }
