@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import gov.cdc.izgateway.db.model.CertificateStatus;
+import gov.cdc.izgateway.repository.ICertificateStatusRepository;
 
 /*
  * PhizRevocationChecker runs in a separate thread that won't
@@ -14,6 +15,6 @@ import gov.cdc.izgateway.db.model.CertificateStatus;
  */
 @Repository
 @Transactional
-public interface CertificateStatusRepository extends JpaRepository<CertificateStatus, Integer> {
+public interface CertificateStatusRepository extends JpaRepository<CertificateStatus, Integer>, ICertificateStatusRepository {
     CertificateStatus findByCertificateId(String certificateId);
 }

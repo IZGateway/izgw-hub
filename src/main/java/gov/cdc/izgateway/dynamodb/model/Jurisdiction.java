@@ -49,6 +49,6 @@ public class Jurisdiction extends DynamoDbEntity implements IJurisdiction {
     
 	@Override
 	public String primaryId() {
-		return Integer.toString(jurisdictionId);
+		return  String.format("%s#%d", getClass().getSimpleName(), jurisdictionId);
 	}
 }

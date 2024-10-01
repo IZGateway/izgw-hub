@@ -4,13 +4,13 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 import gov.cdc.izgateway.common.Constants;
-import gov.cdc.izgateway.db.service.JurisdictionService;
 import gov.cdc.izgateway.dynamodb.DynamoDbEntity;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.model.IEndpoint;
 import gov.cdc.izgateway.model.IEndpointStatus;
 import gov.cdc.izgateway.model.IJurisdiction;
 import gov.cdc.izgateway.model.RetryStrategy;
+import gov.cdc.izgateway.service.JurisdictionService;
 import gov.cdc.izgateway.utils.SystemUtils;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AccessLevel;
@@ -224,12 +224,12 @@ public class EndpointStatus extends DynamoDbEntity implements IEndpoint, Seriali
 	}
 
 	@Override
-	public String primaryId() {
-		return String.format("%d#%tFT%tH", destType, statusAt, statusAt);
+	public String sortKey() {
+		return String.format("%tFT%tH", statusAt, statusAt);
 	}
 	
 	@Override
-	public String sortKey() {
-		return Integer.toString(statusId);
+	public String primaryId() {
+		return String.format("%s#%s#%d", getClass().getSimpleName(), destId, destType);
 	}
 }

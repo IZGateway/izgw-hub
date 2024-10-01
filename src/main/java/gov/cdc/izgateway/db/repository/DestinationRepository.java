@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import gov.cdc.izgateway.db.model.Destination;
 import gov.cdc.izgateway.db.model.Destination.DestinationId;
+import gov.cdc.izgateway.repository.IDestinationRepository;
 import gov.cdc.izgateway.utils.SystemUtils;
 
 /**
@@ -20,7 +21,7 @@ import gov.cdc.izgateway.utils.SystemUtils;
  *	from its own environment.  This is VERY simple partitioning.
  */
 @Repository
-public interface DestinationRepository extends JpaRepository<Destination, DestinationId>{
+public interface DestinationRepository extends JpaRepository<Destination, DestinationId>, IDestinationRepository {
 	/**
 	 * Asks SpringJPA to construct the query by dest_type.
 	 * 

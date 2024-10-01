@@ -20,6 +20,11 @@ public class Group extends DynamoDbEntity {
 	
 	@Override
 	public String primaryId() {
-		return String.format("%d#%s", environment, name);
+		return String.format("%s#%d", getClass().getSimpleName(), environment);
+	}
+	
+	@Override
+	public String sortKey() {
+		return name;
 	}
 }

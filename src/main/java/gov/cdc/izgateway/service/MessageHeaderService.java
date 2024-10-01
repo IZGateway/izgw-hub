@@ -1,4 +1,4 @@
-package gov.cdc.izgateway.dynamodb.service;
+package gov.cdc.izgateway.service;
 
 import net.logstash.logback.util.StringUtils;
 
@@ -6,10 +6,8 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import gov.cdc.izgateway.db.model.MessageHeader;
-import gov.cdc.izgateway.db.repository.MessageHeaderInfoRepository;
 import gov.cdc.izgateway.model.IMessageHeader;
-import gov.cdc.izgateway.service.IMessageHeaderService;
+import gov.cdc.izgateway.repository.IMessageHeaderRepository;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -25,14 +23,14 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class MessageHeaderService implements InitializingBean, IMessageHeaderService {
 
-    private final MessageHeaderInfoRepository messageHeaderInfoRepository;
+    private final IMessageHeaderRepository messageHeaderInfoRepository;
     private Map<String, IMessageHeader> cache = Collections.emptyMap();
     private List<IMessageHeader> list = Collections.emptyList();
 
     @Value("${data.cache.timeToLive:300}")
     private int refreshPeriod;
     
-    public MessageHeaderService(MessageHeaderInfoRepository messageHeaderInfoRepository) {
+    public MessageHeaderService(IMessageHeaderRepository messageHeaderInfoRepository) {
         this.messageHeaderInfoRepository = messageHeaderInfoRepository;
     }
     
@@ -112,12 +110,7 @@ public class MessageHeaderService implements InitializingBean, IMessageHeaderSer
 
 	@Override
 	public IMessageHeader saveAndFlush(IMessageHeader h) {
-		if (h instanceof MessageHeader h1) {
-			h = messageHeaderInfoRepository.saveAndFlush(h1);
-		} else {
-			MessageHeader h1 = new MessageHeader(h);
-			h = messageHeaderInfoRepository.saveAndFlush(h1);
-		}
+		h = messageHeaderInfoRepository.saveAndFlush(h);
 		// Update cache
 		if (cache.get(h.getMsh()) != null) {
 			cache.put(h.getMsh(), h);

@@ -21,7 +21,9 @@ public abstract class DynamoDbEntity {
 	 * Implement this method to return the primary id of the entity.
 	 * @return	The primary key of the entity.
 	 */
-	public abstract String primaryId();
+	public String primaryId() {
+		return getClass().getSimpleName();
+	}
 	
 	/**
 	 * Override this method to return the sort key of the entity.
@@ -54,6 +56,4 @@ public abstract class DynamoDbEntity {
 		}
 		return StringUtils.joinWith("#", getClass().getSimpleName(), sortKey);
 	}
-	
-
 }

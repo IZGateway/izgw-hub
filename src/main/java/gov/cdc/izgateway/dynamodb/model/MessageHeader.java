@@ -88,6 +88,10 @@ public class MessageHeader extends DynamoDbEntity implements Serializable, IMess
 	}
 	@Override
 	public String primaryId() {
+		return getClass().getSimpleName();
+	}
+	@Override
+	public String sortKey() {
 		return msh;
 	}
 }
