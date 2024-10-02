@@ -79,7 +79,6 @@ import gov.cdc.izgateway.security.ocsp.RevocationChecker;
 import gov.cdc.izgateway.service.IDestinationService;
 import gov.cdc.izgateway.service.IMessageHeaderService;
 import gov.cdc.izgateway.service.MessageHeaderService;
-import gov.cdc.izgateway.soap.mock.perf.PerformanceSimulatorMockIIS;
 import gov.cdc.izgateway.soap.mock.perf.PerformanceSimulatorMultiton;
 import gov.cdc.izgateway.soap.net.SoapMessageConverter;
 import gov.cdc.izgateway.soap.net.SoapMessageWriter;
