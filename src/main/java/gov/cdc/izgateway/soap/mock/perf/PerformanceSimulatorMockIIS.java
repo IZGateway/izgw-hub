@@ -84,7 +84,7 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 		+ qakPart("TM")
 		+ QPD_PART;
 	private static final String QUERY_ERROR
-		= "MSH|^~\\&amp;|TEST|MOCK|IZGW|IZGW|{{Message Timestamp}}||ACK^Q11^ACK|{{Unique Message Identifier}}|P|2.5.1|||NE|NE|||||Z23^CDCPHINVS\r"
+		= "MSH|^~\\&|TEST|MOCK|IZGW|IZGW|{{Message Timestamp}}||ACK^Q11^ACK|{{Unique Message Identifier}}|P|2.5.1|||NE|NE|||||Z23^CDCPHINVS\r"
 		+ "MSA|AE|{{Original Message Control ID}}\r"
 		+ "ERR||{{Error Location}}|{{Error Code}}|E||||{{Error Message}}\r";
 	
@@ -253,6 +253,9 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 		return fields.length > fieldNo ? fields[fieldNo] : "";
 	}
 
+	private static int[] REQUIRED_FIELDS = {
+			QUERY_NAME, QUERY_TAG, PATIENT_NAME, DATE_OF_BIRTH
+	};
 	private static String[] getQueryParts(String query) throws QueryException {
 		String[] qParts = query.split("\\|");
 		/*
@@ -264,7 +267,7 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 		 * 4. PatientName 				R
 		 * 5. PatientMotherMaidenName	O 
 		 * 6. PatientDateofBirth		R
-		 * 7. PatientSex				R
+		 * 7. PatientSex				O  // Previously Required, changed due to FAST IDI and SME guidance
 		 * 8. PatientAddress			O
 		 * 9. PatientHomePhone			O
 		 * 10. PatientMultipleBirthIndicator	N
@@ -272,21 +275,15 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 		 * 12. ClientLastUpdatedDate	N
 		 * 13. ClientLastUpdateFacility	N
 		 */
-		int fieldNo = 6;
 		// If it Has a PID LIST, it's a good query
 		if (qParts.length > PID_LIST && !StringUtils.isEmpty(qParts[3])) {
 			return qParts;
 		}
-		// Otherwise it must have name, gender, and DOB 
-		if (qParts.length < PATIENT_SEX || 
-			StringUtils.isEmpty(qParts[fieldNo = QUERY_NAME]) ||  	// NOSONAR save last attempted matched field in fieldNo
-			StringUtils.isEmpty(qParts[fieldNo = QUERY_TAG]) ||  	// NOSONAR save last attempted matched field in fieldNo
-			StringUtils.isEmpty(qParts[fieldNo = PATIENT_NAME]) ||	// NOSONAR save last attempted matched field in fieldNo
-			StringUtils.isEmpty(qParts[fieldNo = DATE_OF_BIRTH]) ||	// NOSONAR save last attempted matched field in fieldNo
-			StringUtils.isEmpty(qParts[fieldNo = PATIENT_SEX])		// NOSONAR save last attempted matched field in fieldNo
-		) {
-			// fieldNo is set above by side effects and will be the value of the first field making the expression true
-			throw new QueryException(fieldNo);
+		
+		for (int field: REQUIRED_FIELDS) {
+			if (qParts.length < field || StringUtils.isEmpty(qParts[field])) {
+				throw new QueryException(field);
+			}
 		}
 		return qParts;
 	}

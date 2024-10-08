@@ -5,12 +5,12 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.3.2</version>
+		<version>3.3.4</version>
 		<relativePath />
 	</parent>
 	<groupId>gov.cdc.izgw</groupId>
 	<artifactId>izgw-hub</artifactId>
-	<version>2.1.1-IZGW-RELEASE</version>
+	<version>2.2.0-IZGW-SNAPSHOT</version>
 	<packaging>jar</packaging>
 	<name>IZ Gateway Hub 2.0</name>
 	<description>IZ Gateway Hub</description>
@@ -32,7 +32,7 @@
 		<dependency>
 			<groupId>gov.cdc.izgw</groupId>
 			<artifactId>izgw-core</artifactId>
-			<version>2.1.1-izgw-core-SNAPSHOT</version>
+			<version>2.1.3-izgw-core-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>ca.uhn.hapi</groupId>
@@ -54,9 +54,9 @@
 			<artifactId>logback-core</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>com.amazonaws</groupId>
-			<artifactId>aws-java-sdk-dynamodb</artifactId>
-			<version>1.12.714</version>
+		    <groupId>software.amazon.awssdk</groupId>
+		    <artifactId>dynamodb-enhanced</artifactId>
+		    <version>2.27.10</version>
 		</dependency>
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
@@ -77,11 +77,6 @@
             <version>0.2.0</version>
             <optional>true</optional>
         </dependency -->
-		<dependency>
-			<groupId>com.github.derjust</groupId>
-			<artifactId>spring-data-dynamodb</artifactId>
-			<version>5.1.0</version>
-		</dependency>
 		<dependency>
 			<groupId>com.mysql</groupId>
 			<artifactId>mysql-connector-j</artifactId>
@@ -201,7 +196,6 @@
 		<dependency>
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-web</artifactId>
-			<version>[6.1.12,)</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -218,10 +212,6 @@
 		<dependency>
 			<groupId>org.springframework.data</groupId>
 			<artifactId>spring-data-jpa</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.data</groupId>
-			<artifactId>spring-data-commons</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.projectlombok</groupId>

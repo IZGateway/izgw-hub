@@ -2,7 +2,6 @@ package gov.cdc.izgateway.ads;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import gov.cdc.izgateway.db.service.StatusCheckerService;
 import gov.cdc.izgateway.logging.RequestContext;
 import gov.cdc.izgateway.logging.event.TransactionData;
 import gov.cdc.izgateway.logging.info.HostInfo;
@@ -10,6 +9,7 @@ import gov.cdc.izgateway.logging.markers.Markers2;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.security.ClientTlsSupport;
 import gov.cdc.izgateway.service.IDestinationService;
+import gov.cdc.izgateway.service.StatusCheckerService;
 import gov.cdc.izgateway.soap.fault.*;
 import gov.cdc.izgateway.utils.*;
 import jakarta.activation.DataHandler;
@@ -23,6 +23,7 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import org.apache.http.Header;
 import org.apache.http.HttpHeaders;
+import org.apache.http.client.HttpResponseException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
@@ -156,8 +157,11 @@ public abstract class RestfulFileSender implements FileSender {
                 throw new HTTPException(responseCode);
             }
             return con;
-        } catch (io.tus.java.client.ProtocolException | URISyntaxException e) {
+        } catch (URISyntaxException e) {
            throw HubClientFault.invalidMessage(e, route, 0, null, null);
+        } catch (io.tus.java.client.ProtocolException e) {
+        	throw HubClientFault.invalidMessage(e, route, 0, 
+        		IOUtils.toInputStream(e.getMessage(), StandardCharsets.UTF_8), null);
         } catch (MalformedURLException e) {
             throw new MetadataFault(meta, e, FILENAME_INVALID);
         } catch (IOException e) {
@@ -216,6 +220,8 @@ public abstract class RestfulFileSender implements FileSender {
 				throw new UnsupportedOperationException();
 			}
 	        return getSubmissionStatus(con);
+		} catch (HttpResponseException ex) {
+			throw HubClientFault.httpError(route, ex.getStatusCode(), ex.getMessage());
 		} catch (URISyntaxException | IOException e) {
 			throw HubClientFault.invalidMessage(e, route, 0, null, null);
         }

@@ -34,11 +34,11 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import gov.cdc.izgateway.Application;
 import gov.cdc.izgateway.db.model.CertificateStatus;
 import gov.cdc.izgateway.db.repository.CertificateStatusRepository;
-import gov.cdc.izgateway.db.service.CertificateStatusService;
 import gov.cdc.izgateway.model.ICertificateStatus;
 import gov.cdc.izgateway.security.ocsp.CertificateStatusType;
 import gov.cdc.izgateway.security.ocsp.RevocationChecker;
 import gov.cdc.izgateway.security.ocsp.RevocationChecker.SslLocation;
+import gov.cdc.izgateway.service.CertificateStatusService;
 import gov.cdc.izgateway.service.ICertificateStatusService;
 import gov.cdc.izgateway.utils.X500Utils;
 import lombok.extern.slf4j.Slf4j; 
