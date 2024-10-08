@@ -37,7 +37,7 @@ public interface DestinationRepository extends JpaRepository<Destination, Destin
 	List<Destination> findAllByDestTypeId(int destType);
 
 	/**
-	 * Override the JPA default implementation with findAllByDestinationIdTypeId
+	 * Override the JPA default implementation with findAllByDestIdTypeId
 	 * 
 	 * @return The list of destinations for this instances environment
 	 */

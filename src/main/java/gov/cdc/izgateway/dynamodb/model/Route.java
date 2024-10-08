@@ -21,6 +21,6 @@ public class Route extends DynamoDbEntity {
 	
 	@Override
 	public String primaryId() {
-		return String.format("%d#%s", environment, name);
+		return getEnvironment() + "#" + name;
 	}
 }

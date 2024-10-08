@@ -40,7 +40,6 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.web.embedded.tomcat.TomcatConnectorCustomizer;
 import org.springframework.boot.web.embedded.tomcat.TomcatContextCustomizer;
 import org.springframework.boot.web.embedded.tomcat.TomcatProtocolHandlerCustomizer;
@@ -50,8 +49,6 @@ import org.springframework.boot.web.servlet.ServletContextInitializer;
 import org.springframework.context.ApplicationContextException;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
-import org.springframework.context.annotation.Profile;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -66,8 +63,6 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.servlet.config.annotation.ContentNegotiationConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-
-import com.zaxxer.hikari.HikariDataSource;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -105,8 +100,6 @@ import lombok.extern.slf4j.Slf4j;
         )
 )
 @SpringBootApplication
-@EntityScan(basePackages={"gov.cdc.izgateway.db.model"})
-@EnableJpaRepositories(basePackages={"gov.cdc.izgateway.db.repository"})
 public class Application implements WebMvcConfigurer {
 	private static final Map<String, byte[]> staticPages = new TreeMap<>();
 	private static final String BUILD_FILE = "build.txt";
@@ -348,27 +341,7 @@ public class Application implements WebMvcConfigurer {
 	@Value("${server.local-port:9081}") 
 	private int additionalPort;
 	
-	@Bean
-	@Primary
-	@ConfigurationProperties("spring.datasource")
-	@Profile("!test")
-	public DataSourceProperties dataSourceProperties() {
-		return new DataSourceProperties();
-	}
-
-
-	@Bean
-	@ConfigurationProperties("spring.datasource.configuration")
-	public HikariDataSource dataSource(DataSourceProperties properties) {
-		try {
-			log.info("Initializing Data Source: {}", properties.getUrl());
-			return properties.initializeDataSourceBuilder().type(HikariDataSource.class).build();
-		} finally {
-			log.info("Database initialized");
-		}
-	}
-	
-    @Override
+	@Override
     public void configureMessageConverters(List<HttpMessageConverter<?>> messageConverters) {
     	SoapMessageConverter smc = new SoapMessageConverter(SoapMessageConverter.INBOUND); 
     	smc.setHub(true);

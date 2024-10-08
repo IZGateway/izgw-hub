@@ -224,12 +224,7 @@ public class EndpointStatus extends DynamoDbEntity implements IEndpoint, Seriali
 	}
 
 	@Override
-	public String sortKey() {
-		return String.format("%tFT%tH", statusAt, statusAt);
-	}
-	
-	@Override
 	public String primaryId() {
-		return String.format("%s#%s#%d", getClass().getSimpleName(), destId, destType);
+		return String.format("%tFT%tH", statusAt, statusAt);
 	}
 }

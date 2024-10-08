@@ -71,7 +71,7 @@ public class DestinationService implements InitializingBean, IDestinationService
     
     @Override
 	public void refresh() {
-        list = Collections.unmodifiableList(destinationRepository.findAll());
+        list = Collections.unmodifiableList(destinationRepository.findAllByDestTypeId(SystemUtils.getDestType()));
         Map<String, IDestination> map = new LinkedHashMap<>();
         // Initialize new cache
         for (IDestination dest: list) {
