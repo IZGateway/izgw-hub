@@ -3,6 +3,7 @@ package gov.cdc.izgateway.dynamodb.repository;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
 
 import gov.cdc.izgateway.dynamodb.DynamoDbRepository;
 import gov.cdc.izgateway.dynamodb.model.Destination;
@@ -15,6 +16,7 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
  * 
  * @author Audacious Inquiry
  */
+@Repository
 public class DestinationRepository extends DynamoDbRepository<Destination> implements IDestinationRepository {
 	/**
 	 * Construct a new DestinationRepository from the DynamoDb enhanced client.
@@ -30,15 +32,13 @@ public class DestinationRepository extends DynamoDbRepository<Destination> imple
 	}
 
 	@Override
-	public void saveAndFlush(IDestination dest) {
+	public Destination saveAndFlush(IDestination dest) {
 		if (dest == null) {
 			throw new NullPointerException("Entity cannot be null");
 		}
 		if (dest instanceof Destination d) {
-			this.saveAndFlush(d);
-		} else {
-			Destination d = new Destination(dest);
-			this.saveAndFlush(d);
-		}
+			return saveAndFlush(d);
+		} 
+		return saveAndFlush(new Destination(dest));
 	}
 }

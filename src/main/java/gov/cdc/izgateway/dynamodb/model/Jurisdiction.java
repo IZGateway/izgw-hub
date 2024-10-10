@@ -32,6 +32,23 @@ public class Jurisdiction extends DynamoDbEntity implements IJurisdiction {
 		})
 	public static class Map extends MappableEntity<Jurisdiction>{}
 
+	/**
+	 * Create a new Jurisdiction
+	 */
+	public Jurisdiction() {
+	}
+	/**
+	 * Create a copy from an existing Jurisdiction
+	 *  
+	 * @param that	The jurisdiction to copy.
+	 */
+	public Jurisdiction(IJurisdiction that) {
+		this.description = that.getDescription();
+		this.jurisdictionId = that.getJurisdictionId();
+		this.name = that.getName();
+		this.prefix = that.getPrefix();
+	}
+	
     @Schema(description="The identifier of the jurisdiction.")
 	private int jurisdictionId;
     public int getJurisdictionId() {

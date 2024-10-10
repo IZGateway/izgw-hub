@@ -21,7 +21,7 @@ import software.amazon.awssdk.utils.StringUtils;
  * These are the clients that are used to access any DynamoDB repositories
  * @author Audacious Inquiry
  */
-@ConditionalOnExpression("'${spring.database:}'.equals('dynamodb') or '${spring.database:}'.equals('migrate')")
+@ConditionalOnExpression("'${spring.database:}'.equalsIgnoreCase('dynamodb') or '${spring.database:}'.equalsIgnoreCase('migrate')")
 @Configuration
 @NoArgsConstructor
 @Slf4j
@@ -58,15 +58,5 @@ public class DynamoDbConfig {
                 .extensions(VersionedRecordExtension.builder().build())
                 .dynamoDbClient(ddbc)
                 .build();
-    }
-    
-    /**
-     * Get the DynamoDbRespository for Destinations
-     * @param client	The enhanced client.
-     * @return	The DestinationRepository
-     */
-    @Bean
-    public IDestinationRepository destinationService(DynamoDbEnhancedClient client) {
-    	return new DestinationRepository(client);
     }
 }

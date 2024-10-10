@@ -12,16 +12,8 @@ import gov.cdc.izgateway.model.IAccessControlId;
  *  
  * @author Audacious Inquiry
  */
-public interface IAccessControlRepository {
-
-	List<? extends IAccessControl> findAll();
-
-	Optional<? extends IAccessControl> findById(IAccessControlId accessControlId);
-
+public interface IAccessControlRepository extends IRepository<IAccessControl> {
 	void delete(IAccessControl iAccessControl);
-	IAccessControl saveAndFlush(IAccessControl iAccessControl);
-
 	IAccessControl addUserToGroup(String user, String group);
 	IAccessControl removeUserFromGroup(String user, String group);
-
 }

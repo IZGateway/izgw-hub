@@ -16,7 +16,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.Getter;
 import lombok.Setter;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbIgnore;
 
@@ -52,7 +51,7 @@ public class EndpointStatus extends DynamoDbEntity implements IEndpoint, Seriali
     
 	@Schema(description="The identifier of destination")
     private String destId;
-	@Getter(AccessLevel.NONE)
+
 	@Setter(AccessLevel.NONE)
     private int destType = SystemUtils.getDestType();
 	
@@ -91,19 +90,19 @@ public class EndpointStatus extends DynamoDbEntity implements IEndpoint, Seriali
 	 * Copy an EndpointStatus entity.
 	 * @param that	The entity to copy
 	 */
-	public EndpointStatus(EndpointStatus that) { 
-		statusId = that.statusId;
-		destId = that.destId;
-		destType = that.destType;
-		statusAt = that.statusAt;
-		statusBy = that.statusBy;
-		detail = that.detail;
-		retryStrategy = that.retryStrategy;
-		destUri = that.destUri;
-		diagnostics = that.diagnostics;
-		jurisdictionId = that.jurisdictionId;
-		destVersion = that.destVersion;
-		status = that.status;
+	public EndpointStatus(IEndpointStatus that) { 
+		statusId = that.getStatusId();
+		destId = that.getDestId();
+		destType = that.getDestTypeId();
+		statusAt = that.getStatusAt();
+		statusBy = that.getStatusBy();
+		detail = that.getDetail();
+		retryStrategy = that.getRetryStrategy();
+		destUri = that.getDestUri();
+		diagnostics = that.getDiagnostics();
+		jurisdictionId = that.getJurisdictionId();
+		destVersion = that.getDestVersion();
+		status = that.getStatus();
 	}
 
 	/**

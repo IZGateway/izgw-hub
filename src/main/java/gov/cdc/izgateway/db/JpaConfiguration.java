@@ -25,7 +25,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @ConditionalOnExpression(
-		  "'${spring.database:}'.equals('') or '${spring.database:}'.equals('jpa') or '${spring.database:}'.equals('migrate')"
+		  "'${spring.database:}'.equals('') or '${spring.database:}'.equalsIgnoreCase('jpa') or '${spring.database:}'.equalsIgnoreCase('migrate')"
 		)
 @Configuration
 @EntityScan(basePackages={"gov.cdc.izgateway.db.model"})

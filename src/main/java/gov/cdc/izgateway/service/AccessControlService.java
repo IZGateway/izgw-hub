@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestMethod;
 
-import gov.cdc.izgateway.db.model.AccessControl;
 import gov.cdc.izgateway.model.IAccessControl;
 import gov.cdc.izgateway.repository.IAccessControlRepository;
 import gov.cdc.izgateway.security.Roles;

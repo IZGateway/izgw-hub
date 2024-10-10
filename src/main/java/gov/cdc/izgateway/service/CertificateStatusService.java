@@ -37,7 +37,6 @@ public class CertificateStatusService implements ICertificateStatusService {
 
 	@Override
 	public void refresh() {
-		// Do nothing, since no refresh needed on this one.
 	}
 
 	@Override

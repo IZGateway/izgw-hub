@@ -29,7 +29,7 @@ import gov.cdc.izgateway.model.MappableEntity;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class AccessControl  implements Serializable, IAccessControl {
+public class AccessControl implements Serializable, IAccessControl {
 	/**
 	 * Provides easy access to the Map class for Swagger documentation
 	 */

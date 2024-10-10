@@ -22,7 +22,6 @@ import software.amazon.awssdk.enhanced.dynamodb.model.QueryConditional;
  * @param <T>
  */
 @Slf4j
-@Repository
 public class DynamoDbRepository<T extends DynamoDbEntity> {
 	/**
 	 * The table name for the repository of entities.  Because we are using a single table 
