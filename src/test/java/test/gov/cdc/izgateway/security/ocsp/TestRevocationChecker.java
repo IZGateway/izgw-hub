@@ -66,6 +66,7 @@ import lombok.extern.slf4j.Slf4j;
 		"spring.jpa.defer-datasource-initialization=false",
 		"hibernate.hbm2ddl.auto=create-drop",
 		"spring.sql.init.mode=always",
+		"spring.database=jpa",
 		// Uncomment these to test with your local JDBC Database 
 //		"spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver",
 //		"spring.datasource.url=jdbc:mysql://localhost:3306/phiz",
