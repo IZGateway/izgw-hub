@@ -39,7 +39,7 @@ spring:
 
 amazon:
     dynamodb:
-        endpoint: ${AWS_DYNAMODB_HOST:http://localhost:8000/}
+        endpoint: # Set to http://localhost:8000/ to use local DynamoDb instance for testing
          
 management:
     metrics:
