@@ -158,10 +158,10 @@ public abstract class RestfulFileSender implements FileSender {
             }
             return con;
         } catch (URISyntaxException e) {
-           throw HubClientFault.invalidMessage(e, route, 0, null, null);
+           throw HubClientFault.invalidMessage(e, route, 0, null);
         } catch (io.tus.java.client.ProtocolException e) {
         	throw HubClientFault.invalidMessage(e, route, 0, 
-        		IOUtils.toInputStream(e.getMessage(), StandardCharsets.UTF_8), null);
+        		IOUtils.toInputStream(e.getMessage(), StandardCharsets.UTF_8));
         } catch (MalformedURLException e) {
             throw new MetadataFault(meta, e, FILENAME_INVALID);
         } catch (IOException e) {
@@ -223,7 +223,7 @@ public abstract class RestfulFileSender implements FileSender {
 		} catch (HttpResponseException ex) {
 			throw HubClientFault.httpError(route, ex.getStatusCode(), ex.getMessage());
 		} catch (URISyntaxException | IOException e) {
-			throw HubClientFault.invalidMessage(e, route, 0, null, null);
+			throw HubClientFault.invalidMessage(e, route, 0, null);
         }
     }
 
@@ -421,11 +421,11 @@ public abstract class RestfulFileSender implements FileSender {
             if (con == null) {
                 //check if the Connect Exception is ActiveReject or Timeout
                 checkException(route, elapsedTimeIIS, ObjectUtils.defaultIfNull(ExceptionUtils.getRootCause(e), e), null);
-                throw HubClientFault.invalidMessage(e, route, 0, null, null);
+                throw HubClientFault.invalidMessage(e, route, 0, null);
             }
             
             InputStream is = con.getErrorStream();
-            throw HubClientFault.invalidMessage(e, route, 0, is, null);
+            throw HubClientFault.invalidMessage(e, route, 0, is);
         }
     }
     
@@ -516,6 +516,6 @@ public abstract class RestfulFileSender implements FileSender {
 	        // This is an unexpected exception in the response.
 	        log.error(Markers2.append(rootCause), "Unexpected Exception: {}", rootCause.getMessage(), rootCause);
 	    }
-	    throw HubClientFault.invalidMessage(rootCause, routing, statusCode, error, null);
+	    throw HubClientFault.invalidMessage(rootCause, routing, statusCode, error);
 	}
 }

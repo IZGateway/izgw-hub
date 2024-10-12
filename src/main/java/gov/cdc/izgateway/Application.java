@@ -7,6 +7,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.security.Security;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceConfigurationError;
@@ -114,6 +115,9 @@ public class Application implements WebMvcConfigurer {
 	private boolean fixNewlines;
 	@Value("${spring.application.enable-status-check:false}")
 	private boolean statusCheck;
+	
+	@Value("${spring.database:jpa")
+	private String databaseType;
 	
     // Heartbeat needs it's own thread in order to not be blocked by other background tasks.
     private static ScheduledExecutorService he = 
@@ -251,9 +255,13 @@ public class Application implements WebMvcConfigurer {
 	private static void checkApplication(ConfigurableApplicationContext ctx) {
         IDestinationService destinationService = ctx.getBean(IDestinationService.class);
         serverName = destinationService.getServerName();
-        serverMode = ctx.getBean(AppProperties.class).getServerMode();
+        AppProperties props = ctx.getBean(AppProperties.class); 
+        serverMode = props.getServerMode();
         IMessageHeaderService messageHeaderService = ctx.getBean(MessageHeaderService.class);
         DataSourceProperties ds = ctx.getBean(DataSourceProperties.class);
+        if (Arrays.asList("jpa", "migrate").contains(props.getDatabaseType())) {
+        	HealthService.setDatabase(ds.getUrl());
+        }
         StatusCheckScheduler sc = ctx.getBean(StatusCheckScheduler.class);
         Application app = ctx.getBean(Application.class);
     	new Thread(() -> {

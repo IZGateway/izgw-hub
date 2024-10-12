@@ -1,15 +1,20 @@
 package gov.cdc.izgateway.dynamodb;
 import lombok.extern.slf4j.Slf4j;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import java.time.Duration;
+import java.util.Date;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+
+import gov.cdc.izgateway.db.repository.MySqlRepositoryFactory;
+import gov.cdc.izgateway.dynamodb.model.Event;
 import gov.cdc.izgateway.dynamodb.repository.AccessControlRepository;
 import gov.cdc.izgateway.dynamodb.repository.CertificateStatusRepository;
 import gov.cdc.izgateway.dynamodb.repository.DestinationRepository;
+import gov.cdc.izgateway.dynamodb.repository.EventRepository;
 import gov.cdc.izgateway.dynamodb.repository.JurisdictionRepository;
 import gov.cdc.izgateway.dynamodb.repository.MessageHeaderRepository;
 import gov.cdc.izgateway.repository.IAccessControlRepository;
@@ -18,7 +23,19 @@ import gov.cdc.izgateway.repository.IDestinationRepository;
 import gov.cdc.izgateway.repository.IJurisdictionRepository;
 import gov.cdc.izgateway.repository.IMessageHeaderRepository;
 import gov.cdc.izgateway.repository.IRepository;
+import gov.cdc.izgateway.repository.RepositoryFactory;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
+import software.amazon.awssdk.regions.providers.DefaultAwsRegionProviderChain;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.AttributeDefinition;
+import software.amazon.awssdk.services.dynamodb.model.BillingMode;
+import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.KeySchemaElement;
+import software.amazon.awssdk.services.dynamodb.model.KeyType;
+import software.amazon.awssdk.services.dynamodb.model.ListTablesRequest;
+import software.amazon.awssdk.services.dynamodb.model.ListTablesResponse;
+import software.amazon.awssdk.services.dynamodb.model.ResourceInUseException;
+import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
 
 /**
  * Creates the necessary Beans for DynamoDB repository access
@@ -27,132 +44,200 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
  */
 @ConditionalOnExpression("'${spring.database:}'.equalsIgnoreCase('dynamodb') or '${spring.database:}'.equalsIgnoreCase('migrate')")
 @Configuration
+@Primary
 @Slf4j
-public class DynamoDbRepositoryFactory {
+public class DynamoDbRepositoryFactory implements RepositoryFactory {
 
 	private final DynamoDbEnhancedClient client;
-	private final boolean isMigration;
+	// Used to check for existence of the database
+	private final DynamoDbClient ddbClient;
+	private EventRepository eventRepository;
+	private MySqlRepositoryFactory migrationFactory;
+	private AccessControlRepository acr;
+	private CertificateStatusRepository csr;
+	private DestinationRepository dr;
+	private JurisdictionRepository jr;
+	private MessageHeaderRepository mhr;
 
 	/**
 	 * Create the factory for DynamoDb Repositories
 	 * @param client The Enhanced Client to use to access the repository
-	 * @param database The type of database initialization to create
+	 * @param migrationFactory The factory to use to access other (MySql) databases to support migration.
 	 */
 	public DynamoDbRepositoryFactory(
 		@Autowired DynamoDbEnhancedClient client, 
-		@Value("${spring.database:}") String database
+		@Autowired DynamoDbClient ddbClient,
+		@Autowired(required=false) MySqlRepositoryFactory migrationFactory
 	) {
 		this.client = client;
-		this.isMigration = "migrate".equalsIgnoreCase(database);
+		this.ddbClient = ddbClient;
+		this.migrationFactory = migrationFactory;
+		this.eventRepository = new EventRepository(client);
+		
+		if (!ensureDbExists()) {
+			migrateAllDbs();
+		} else {
+			log.info("Connected to existing {} in {}", DynamoDbRepository.TABLE_NAME, 
+					DefaultAwsRegionProviderChain.builder().build().getRegion());
+		}
+	}
+
+	private boolean ensureDbExists() {
+		ListTablesRequest lgtr = ListTablesRequest.builder().build();
+		boolean failed = false;
+		while (true) {
+			ListTablesResponse response = ddbClient.listTables(lgtr);
+			if (response.hasTableNames() && response.tableNames().stream().anyMatch(DynamoDbRepository.TABLE_NAME::equals)) {
+				return true;
+			}
+			CreateTableRequest.Builder cgtr = CreateTableRequest.builder();
+			cgtr.tableName(DynamoDbRepository.TABLE_NAME)
+				//.deletionProtectionEnabled(true)
+				.billingMode(BillingMode.PAY_PER_REQUEST)
+				.keySchema(
+					KeySchemaElement.builder().attributeName("entityType").keyType(KeyType.HASH).build(),
+					KeySchemaElement.builder().attributeName("sortKey").keyType(KeyType.RANGE).build()
+				)
+				.attributeDefinitions(
+					AttributeDefinition.builder().attributeName("entityType").attributeType(ScalarAttributeType.S).build(),
+					AttributeDefinition.builder().attributeName("sortKey").attributeType(ScalarAttributeType.S).build()
+				);
+			try {
+				ddbClient.createTable(cgtr.build());
+				break;
+			} catch (ResourceInUseException rex) {
+				if (failed) {
+					log.error("Cannot create an existing database");
+					throw rex;
+				}
+				failed = true;
+			}
+		}
+		log.warn("DynamoDb Table for {} does not exist, creating it", DynamoDbRepository.TABLE_NAME);
+		Event event = new Event(Event.CREATED);
+		eventRepository.store(event);
+		return false;
+	}
+
+	private void migrateAllDbs() {
+		if (migrationFactory != null) {
+			migrateTo(migrationFactory.accessControlRepository(), acr = new AccessControlRepository(client));
+			// Migrating the CertificateStatus repository is not required. Any unchecked certificate will be rechecked.
+			migrateTo(migrationFactory.jurisdictionRepository(), jr = new JurisdictionRepository(client));
+			migrateTo(migrationFactory.destinationRepository(), dr = new DestinationRepository(client));
+			migrateTo(migrationFactory.messageHeaderRepository(), mhr = new MessageHeaderRepository(client));
+		}
 	}
 	
     /**
      * Get the DynamoDbRepository for Access Controls
      * @return	The AccessControlRepository
      */
-    @Bean
-    @ConditionalOnExpression("'${spring.database:}'.equalsIgnoreCase('dynamodb')")
     public IAccessControlRepository accessControlRepository() {
-    	return newAccessControlRepository(client);
+		if (acr == null) {
+    		acr = new AccessControlRepository(client);
+    	}
+    	return acr;
     }
-
-    private static IAccessControlRepository newAccessControlRepository(DynamoDbEnhancedClient client2) {
-		return new AccessControlRepository(client2);
-	}
 
 	/**
      * Get the DynamoDbRepository for Certificate Status
      * @return	The CertificateStatusRepository
      */
-    @Bean
-    @ConditionalOnExpression("'${spring.database:}'.equalsIgnoreCase('dynamodb')")
     public ICertificateStatusRepository certificateStatusRepository() {
-    	return newCertificateStatusRepository(client);
+    	if (csr == null) {
+    		csr = new CertificateStatusRepository(client);
+    	}
+    	return csr;
     }
 
     
-    private static ICertificateStatusRepository newCertificateStatusRepository(DynamoDbEnhancedClient client2) {
-		return new CertificateStatusRepository(client2);
-	}
-
 	/**
      * Get the DynamoDbRepository for Destinations
      * @return	The DestinationRepository
      */
-    @Bean
-    @ConditionalOnExpression("'${spring.database:}'.equalsIgnoreCase('dynamodb')")
     public IDestinationRepository destinationRepository() {
-    	return newDestinationRepository(client);
+    	if (dr == null) {
+    		dr = new DestinationRepository(client);
+    	}
+    	return dr;
     }
-
-    private static IDestinationRepository newDestinationRepository(DynamoDbEnhancedClient client2) {
-		return new DestinationRepository(client2);
-	}
 
 	/**
      * Get the DynamoDbRepository for Jurisdictions
      * @return	The JurisdictionRepository
      */
-    @Bean
-    @ConditionalOnExpression("'${spring.database:}'.equalsIgnoreCase('dynamodb')")
     public IJurisdictionRepository jurisdictionRepository() {
-    	return newJurisdictionRepository(client);
+    	if (jr == null) {
+    		jr = new JurisdictionRepository(client);
+    	}
+    	return jr;
     }
-
-    private static IJurisdictionRepository newJurisdictionRepository(DynamoDbEnhancedClient client2) {
-		return new JurisdictionRepository(client2) ;
-	}
 
 	/**
      * Get the DynamoDbRepository for Message Headers
      * @return	The MessageHeaderRepository
      */
-    @Bean
-    @ConditionalOnExpression("'${spring.database:}'.equalsIgnoreCase('dynamodb')")
     public IMessageHeaderRepository messageHeaderRepository() {
-    	return newMessageHeaderRepository(client);
+    	if (mhr == null) {
+    		mhr = new MessageHeaderRepository(client);
+    	}
+    	return mhr;
     }
     
-    private static IMessageHeaderRepository newMessageHeaderRepository(DynamoDbEnhancedClient client2) {
-		return new MessageHeaderRepository(client2);
+    /**
+     * Get the event repository.  As this is new with DynamoDb support,
+     * no migration is necessary.
+     * 
+     * @return	The event repository.
+     */
+    public EventRepository eventRepository() {
+    	return eventRepository;
+    }
+    
+	private <T, R extends IRepository<T>> R migrateTo(R source, R dest) {
+		if (source == null) {
+			return dest;
+		}
+		Event event = startMigrationEvent(dest);
+		if (event == null) {
+			return dest;
+		}
+		// We don't really need to check for concurrency here
+		// because two migrating servers should do the same exact thing.
+		for (T e: source.findAll()) {
+			dest.store(e);
+		}
+		event.setCompleted(new Date());
+		eventRepository.store(event);
+		log.info("Migration complete for {}", dest.getClass().getSimpleName());
+		return dest;
 	}
 
-	public static <T extends IRepository> T migrate(T source, DynamoDbEnhancedClient client) {
-    	if (source instanceof DynamoDbRepository) {
-    		return source;
-    	}
-    	
-    	if (source instanceof IAccessControlRepository acr) {
-    		IAccessControlRepository dest = newAccessControlRepository(client);
-    		return copy(acr, dest);
-    	} 
-    	if (source instanceof ICertificateStatusRepository csr) {
-    		ICertificateStatusRepository dest = newCertificateStatusRepository(client);
-    		return copy(csr, dest);
-    	} 
-    	if (source instanceof IDestinationRepository dr) {
-    		IDestinationRepository dest = newDestinationRepository(client);
-    		return copy(dr, dest);
-    	} 
-    	if (source instanceof IJurisdictionRepository jr) {
-    		IJurisdictionRepository dest = newJurisdictionRepository(client);
-    		return copy(jr, dest);
-    	} 
-    	
-    	if (source instanceof IMessageHeaderRepository mhr) {
-    		IMessageHeaderRepository dest = newMessageHeaderRepository(client);
-    		return copy(mhr, dest);
-    	}
-    	// Figure out which kind of repository we need and get it.
-    	// Check for an existing migration already done.
-    	// Do the migration to the new repository
-    	// return the new repository
-    }
-
-	private static <T> IRepository<T> copy(IRepository<T> source, IRepository<T> dest) {
-		for (T e: source.findAll()) {
-			dest.saveAndFlush(e);
+	private Event startMigrationEvent(IRepository<?> dest) {
+		String eventTarget = dest.getClass().getName();
+		Duration waitFor = Duration.ofMinutes(5);
+		Duration waitPeriod = Duration.ofSeconds(10);
+		while (eventRepository.hasEventStarted(Event.MIGRATION, eventTarget)) {
+			if (eventRepository.hasEventFinished(Event.MIGRATION, eventTarget)) {
+				return null;
+			}
+			if (waitFor.toSeconds() <= 0) {
+				// If we are done waiting, retry the migration by this server
+				log.warn("Migration incomplete by: {}", eventRepository.findByNameAndTarget(Event.MIGRATION, eventTarget));
+				break;
+			}
+			try {
+				Thread.sleep(waitPeriod.toMillis());
+			} catch (InterruptedException e1) {
+				Thread.currentThread().interrupt();
+			}
+			waitFor = waitFor.minus(waitPeriod);
 		}
-		return dest;
+		// If we get to this stage, we've either waited long enough for a started event to complete
+		// or it hasn't started yet.  So, we'll say that migration is needed.  It is still POSSIBLE
+		// that two servers could try to migrate the data after this call.
+		Event event = new Event(Event.MIGRATION);
+		return eventRepository.store(event);
 	}
 }

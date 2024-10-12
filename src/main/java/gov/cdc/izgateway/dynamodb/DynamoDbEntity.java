@@ -1,7 +1,6 @@
 package gov.cdc.izgateway.dynamodb;
 
-import lombok.Getter;
-import lombok.Setter;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbAttribute;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbPartitionKey;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSortKey;
@@ -23,15 +22,52 @@ public abstract class DynamoDbEntity {
 	 * @return The partition key for this object.
 	 */
 	@DynamoDbPartitionKey
-	public final String entityType() {
+	@DynamoDbAttribute("entityType")
+	public final String getEntityType() {
 		return getClass().getSimpleName();
 	}
 	
 	/**
 	 * Compute the sort key for this object.
-	 * The sort key is the primary id for the object.
+	 * The sort key is derived from the primary id for the object.
 	 * @return The sort key for this object.
 	 */
 	@DynamoDbSortKey
-	public abstract String primaryId();
+	@DynamoDbAttribute("sortKey")
+	public final String getSortKey() {
+		return getPrimaryId();
+	}
+	
+	/**
+	 * Report the primary identifier for the object.
+	 * This will be used as the sort key.
+	 * @return The primary id for this object.
+	 */
+	public abstract String getPrimaryId();
+	
+	/**
+	 * Phantom setter for entityType
+	 * 
+	 * The AWS DynamoDb SDK ignores bean properties that don't have both a reader 
+	 * and a writer, failing to understand that some properties could be derived and therefore 
+	 * NOT writable. Thus, this is ignored. This method exists simply to make DynamoDb work as expected
+	 * for persistence.
+	 * @param value The value to ignore
+	 */
+	public final void setEntityType(String value) {
+		// Do nothing
+	}
+	
+	/**
+	 * Phantom setter for sortKey
+	 * 
+	 * The AWS DynamoDb SDK ignores bean properties that don't have both a reader 
+	 * and a writer, failing to understand that some properties could be derived and therefore 
+	 * NOT writable. Thus, this is ignored. This method exists simply to make DynamoDb work as expected
+	 * for persistence.
+	 * @param value The value to ignore
+	 */
+	public final void setSortKey(String value) {
+		// Do nothing
+	}
 }

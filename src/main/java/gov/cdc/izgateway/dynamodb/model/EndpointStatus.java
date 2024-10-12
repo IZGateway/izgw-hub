@@ -17,6 +17,7 @@ import lombok.AccessLevel;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.Setter;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbIgnore;
 
 import com.fasterxml.jackson.annotation.JsonFormat.Shape;
@@ -30,6 +31,7 @@ import java.util.TreeMap;
 /**
  * This class reports on the status of a destination at a given point in time.
  */
+@DynamoDbBean
 @Schema(description="This class reports on the status of a destination at a given point in time.")
 @Data
 @EqualsAndHashCode(callSuper=false)
@@ -223,7 +225,7 @@ public class EndpointStatus extends DynamoDbEntity implements IEndpoint, Seriali
 	}
 
 	@Override
-	public String primaryId() {
+	public String getPrimaryId() {
 		return String.format("%tFT%tH", statusAt, statusAt);
 	}
 }

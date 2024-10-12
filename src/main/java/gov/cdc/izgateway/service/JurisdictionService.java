@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import gov.cdc.izgateway.model.IJurisdiction;
 import gov.cdc.izgateway.repository.IJurisdictionRepository;
+import gov.cdc.izgateway.repository.RepositoryFactory;
 import gov.cdc.izgateway.utils.SystemUtils;
 
 @Service
@@ -21,8 +22,8 @@ public class JurisdictionService implements IJurisdictionService {
 	private IJurisdictionRepository jurisdictionRepository;
 	long lastUpdate = 0;
 	
-	public JurisdictionService(IJurisdictionRepository jurisdictionRepository) {
-		this.jurisdictionRepository = jurisdictionRepository;
+	public JurisdictionService(RepositoryFactory factory) {
+		this.jurisdictionRepository = factory.jurisdictionRepository();
 		setInstance(this);
 	}
 	

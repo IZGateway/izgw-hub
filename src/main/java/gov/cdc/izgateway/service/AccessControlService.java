@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 
 import gov.cdc.izgateway.model.IAccessControl;
 import gov.cdc.izgateway.repository.IAccessControlRepository;
+import gov.cdc.izgateway.repository.RepositoryFactory;
 import gov.cdc.izgateway.security.Roles;
 import lombok.extern.slf4j.Slf4j;
 
@@ -65,8 +66,8 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
      * @param registry	The registry for managing access control to methods
      */
     @Autowired
-    public AccessControlService(IAccessControlRepository accessControlRepository, IAccessControlRegistry registry) {
-        this.accessControlRepository = accessControlRepository;
+    public AccessControlService(RepositoryFactory factory, IAccessControlRegistry registry) {
+        this.accessControlRepository = factory.accessControlRepository();
         this.registry = registry;
     }
     

@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.StringToClassMapItem;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 
 /**
  * An entity to get jurisdiction information
@@ -17,6 +18,7 @@ import lombok.EqualsAndHashCode;
 @SuppressWarnings("serial")
 @Data
 @EqualsAndHashCode(callSuper=false)
+@DynamoDbBean
 public class Jurisdiction extends DynamoDbEntity implements IJurisdiction {
 	/**
 	 * A map of jurisdictions.
@@ -64,8 +66,11 @@ public class Jurisdiction extends DynamoDbEntity implements IJurisdiction {
     @Schema(description="The prefix to use for destinations managed by this jurisdiction.")
 	private String prefix;
     
+    @Schema(description="The vendor for the jurisdiction.")
+    private String vendor;
+    
 	@Override
-	public String primaryId() {
+	public String getPrimaryId() {
 		return  Integer.toString(jurisdictionId);
 	}
 }

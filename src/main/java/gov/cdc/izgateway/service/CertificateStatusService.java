@@ -6,6 +6,8 @@ import org.springframework.stereotype.Service;
 import gov.cdc.izgateway.db.model.CertificateStatus;
 import gov.cdc.izgateway.model.ICertificateStatus;
 import gov.cdc.izgateway.repository.ICertificateStatusRepository;
+import gov.cdc.izgateway.repository.RepositoryFactory;
+
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,8 +18,8 @@ public class CertificateStatusService implements ICertificateStatusService {
     private final ICertificateStatusRepository certificateStatusRepository;
     
     @Autowired
-    public CertificateStatusService(ICertificateStatusRepository certificateStatusRepository) {
-        this.certificateStatusRepository = certificateStatusRepository;
+    public CertificateStatusService(RepositoryFactory factory) {
+        this.certificateStatusRepository = factory.certificateStatusRepository();
     }
     
     @Override
@@ -27,7 +29,7 @@ public class CertificateStatusService implements ICertificateStatusService {
 
     @Override
 	public ICertificateStatus save(ICertificateStatus certificateStatus){
-		return certificateStatusRepository.saveAndFlush(certificateStatus);
+		return certificateStatusRepository.store(certificateStatus);
     }
     
     @Override

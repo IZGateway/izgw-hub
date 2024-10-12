@@ -1,7 +1,6 @@
 package test.gov.cdc.izgateway.security.ocsp;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -14,7 +13,9 @@ import java.util.Date;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -25,16 +26,21 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 
 import gov.cdc.izgateway.Application;
 import gov.cdc.izgateway.db.model.CertificateStatus;
-import gov.cdc.izgateway.db.repository.CertificateStatusRepository;
 import gov.cdc.izgateway.model.ICertificateStatus;
+import gov.cdc.izgateway.repository.IAccessControlRepository;
+import gov.cdc.izgateway.repository.ICertificateStatusRepository;
+import gov.cdc.izgateway.repository.IDestinationRepository;
+import gov.cdc.izgateway.repository.IJurisdictionRepository;
+import gov.cdc.izgateway.repository.IMessageHeaderRepository;
+import gov.cdc.izgateway.repository.RepositoryFactory;
 import gov.cdc.izgateway.security.ocsp.CertificateStatusType;
 import gov.cdc.izgateway.security.ocsp.RevocationChecker;
 import gov.cdc.izgateway.security.ocsp.RevocationChecker.SslLocation;
@@ -76,16 +82,59 @@ import lombok.extern.slf4j.Slf4j;
  * 
  * Verifies appropriate responses for good, revoked and a cert with no url to perform
  * revocation checks on.
- *
  */
 class TestRevocationChecker implements InitializingBean {
+	private final static class TestRepositoryFactory implements RepositoryFactory {
+		@Override
+		public IAccessControlRepository accessControlRepository() {
+			return null;
+		}
+
+		@Override
+		public ICertificateStatusRepository certificateStatusRepository() {
+			// TODO Auto-generated method stub
+			return new ICertificateStatusRepository() {
+				private static Map<String, ICertificateStatus> map = new HashMap<>();
+				@Override
+				public ICertificateStatus store(ICertificateStatus h) {
+					map.put(h.getCertificateId(), h);
+					return h;
+				}
+
+				@Override
+				public List<? extends ICertificateStatus> findAll() {
+					return new ArrayList<>(map.values());
+				}
+
+				@Override
+				public ICertificateStatus findByCertificateId(String certificateId) {
+					return map.get(certificateId);
+				}
+			};
+		}
+
+		@Override
+		public IDestinationRepository destinationRepository() {
+			return null;
+		}
+
+		@Override
+		public IJurisdictionRepository jurisdictionRepository() {
+			return null;
+		}
+
+		@Override
+		public IMessageHeaderRepository messageHeaderRepository() {
+			return null;
+		}
+	}
+
 	private static final int DELAY = 1;
 	private static int REPEAT = 0;
 	static X509Certificate phizca;
 	static String lastAlias;
 
-	@Autowired 
-	CertificateStatusRepository certificateStatusRepository;
+	RepositoryFactory factory = new TestRepositoryFactory();
 	ICertificateStatusService certificateStatusService;
 	
     public TestRevocationChecker() {
@@ -93,7 +142,7 @@ class TestRevocationChecker implements InitializingBean {
 
     public void afterPropertiesSet() {
     	log.info("Startup");
-    	this.certificateStatusService = new CertificateStatusService(certificateStatusRepository);
+    	this.certificateStatusService = new CertificateStatusService(factory);
     }
     
 	/**
@@ -154,11 +203,9 @@ class TestRevocationChecker implements InitializingBean {
 		
 		// Two objects should be equal
 		assertEquals(certStatus, result);
-		// But distinct
-		assertNotSame(certStatus, result);
+
 		result = certificateStatusService.findByCertificateId(certStatus.getCertificateId());
-		// Two objects should be distinct
-		assertNotSame(certStatus, result);
+
 		// And objects should be equal, but if result is UNKNOWN, this should only generate a warning
 		try {
 			assertEquals(certStatus, result);

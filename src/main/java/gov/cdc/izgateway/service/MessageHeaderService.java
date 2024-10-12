@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import gov.cdc.izgateway.model.IMessageHeader;
 import gov.cdc.izgateway.repository.IMessageHeaderRepository;
+import gov.cdc.izgateway.repository.RepositoryFactory;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -23,15 +24,15 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class MessageHeaderService implements InitializingBean, IMessageHeaderService {
 
-    private final IMessageHeaderRepository messageHeaderInfoRepository;
+    private final IMessageHeaderRepository messageHeaderRepository;
     private Map<String, IMessageHeader> cache = Collections.emptyMap();
     private List<IMessageHeader> list = Collections.emptyList();
 
     @Value("${data.cache.timeToLive:300}")
     private int refreshPeriod;
     
-    public MessageHeaderService(IMessageHeaderRepository messageHeaderInfoRepository) {
-        this.messageHeaderInfoRepository = messageHeaderInfoRepository;
+    public MessageHeaderService(RepositoryFactory factory) {
+        this.messageHeaderRepository = factory.messageHeaderRepository();
     }
     
     /**
@@ -44,7 +45,7 @@ public class MessageHeaderService implements InitializingBean, IMessageHeaderSer
     
     @Override
 	public void refresh() {
-        list = Collections.unmodifiableList(messageHeaderInfoRepository.findAll());
+        list = Collections.unmodifiableList(messageHeaderRepository.findAll());
         Map<String, IMessageHeader> map = new LinkedHashMap<>();
         // Initialize new cache
         for (IMessageHeader msh: list) {
@@ -110,7 +111,7 @@ public class MessageHeaderService implements InitializingBean, IMessageHeaderSer
 
 	@Override
 	public IMessageHeader saveAndFlush(IMessageHeader h) {
-		h = messageHeaderInfoRepository.saveAndFlush(h);
+		h = messageHeaderRepository.store(h);
 		// Update cache
 		if (cache.get(h.getMsh()) != null) {
 			cache.put(h.getMsh(), h);

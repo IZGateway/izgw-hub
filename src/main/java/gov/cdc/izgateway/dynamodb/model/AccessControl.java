@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -25,6 +26,7 @@ import gov.cdc.izgateway.utils.SystemUtils;
 @EqualsAndHashCode(callSuper=false)
 @AllArgsConstructor
 @NoArgsConstructor
+@DynamoDbBean
 public class AccessControl extends DynamoDbEntity implements Serializable, IAccessControl {
 	/**
 	 * Provides easy access to the Map class for Swagger documentation
@@ -49,7 +51,7 @@ public class AccessControl extends DynamoDbEntity implements Serializable, IAcce
     }
 
 	@Override
-	public String primaryId() {
+	public String getPrimaryId() {
 		return destType + "#" + category + "#" + name + "#" + member;
 	}
 

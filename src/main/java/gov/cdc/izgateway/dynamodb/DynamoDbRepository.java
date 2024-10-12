@@ -5,14 +5,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ServiceConfigurationError;
 
-import org.springframework.stereotype.Repository;
-
 import gov.cdc.izgateway.logging.markers.Markers2;
 import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.BeanTableSchema;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryConditional;
 
 /**
@@ -38,7 +37,10 @@ public class DynamoDbRepository<T extends DynamoDbEntity> {
 	 */
 	public DynamoDbRepository(Class<T> entityClass, DynamoDbEnhancedClient client) {
 		this.entityClass = entityClass;
-		table = client.table(TABLE_NAME, TableSchema.fromBean(entityClass));
+		// This creates the schema from the class, but does not get subclass attributes.
+		BeanTableSchema<T> schema = TableSchema.fromBean(entityClass);
+		table = client.table(TABLE_NAME, schema);
+		log.info("Table initialized for {}", entityClass.getSimpleName());
 	}
 	
 	/**
@@ -48,13 +50,21 @@ public class DynamoDbRepository<T extends DynamoDbEntity> {
 	 */
 	public T find(String primaryId) {
 		Key key = Key.builder().partitionValue(entityClass.getSimpleName()).sortValue(primaryId).build();
-		Iterator<T> i = table.query(QueryConditional.sortBeginsWith(key)).items().iterator();
+		Iterator<T> i = table.query(QueryConditional.keyEqualTo(key)).items().iterator();
 		if (!i.hasNext()) {
 			return null;
 		}
 		return i.next();
 	}
 	
+	/**
+	 * This is a protected method that supports finding by a partial sort key.
+	 * It is intended to be called by methods which are better named in the 
+	 * extending interface to collect entities with particular properties.
+	 * 
+	 * @param partialKey	The partial key
+	 * @return	The found entities.
+	 */
 	protected List<T> findByType(String partialKey) {
 		Key key = Key.builder().partitionValue(entityClass.getSimpleName()).sortValue(partialKey).build();
 		return table.query(QueryConditional.sortBeginsWith(key)).items().stream().toList();
@@ -62,10 +72,11 @@ public class DynamoDbRepository<T extends DynamoDbEntity> {
 	
 	/**
 	 * Find all items.
-	 * @return	All entities stored in the database 
+	 * @return	All entities of the specified type stored in the database 
 	 */
 	public List<T> findAll() {
-		return table.scan().items().stream().toList();
+		Key key = Key.builder().partitionValue(entityClass.getSimpleName()).build();
+		return table.query(QueryConditional.keyEqualTo(key)).items().stream().toList();
 	}
 	
 	/**

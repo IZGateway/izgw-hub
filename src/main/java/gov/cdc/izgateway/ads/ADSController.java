@@ -76,6 +76,7 @@ public class ADSController implements ADSChecker {
     private static final List<String> METADATA_FIELDNAMES = getMetadataFieldNames();
     public static final String IZGW_ADS_VERSION1 = "DEX1.0";
     public static final String IZGW_ADS_VERSION2 = "DEX2.0";
+    public static final List<String> DEX_VERSIONS = Arrays.asList(IZGW_ADS_VERSION1, IZGW_ADS_VERSION2); 
     
     public interface Execute<T> {
 
@@ -658,7 +659,7 @@ public class ADSController implements ADSChecker {
         	statusCode = hex.getStatusCode();
         }
         if (statusCode != 0) {
-	        HubClientFault hce = HubClientFault.invalidMessage(e, route, statusCode, error, null); 
+	        HubClientFault hce = HubClientFault.invalidMessage(e, route, statusCode, error); 
 	        tData.setProcessError(hce);
 	        return hce;
         }

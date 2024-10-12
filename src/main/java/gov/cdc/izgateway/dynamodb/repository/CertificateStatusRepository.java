@@ -1,8 +1,6 @@
 package gov.cdc.izgateway.dynamodb.repository;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Repository;
-
 import gov.cdc.izgateway.dynamodb.DynamoDbRepository;
 import gov.cdc.izgateway.dynamodb.model.CertificateStatus;
 import gov.cdc.izgateway.model.ICertificateStatus;
@@ -14,7 +12,6 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
  * 
  * @author Audacious Inquiry
  */
-@Repository
 public class CertificateStatusRepository extends DynamoDbRepository<CertificateStatus> implements ICertificateStatusRepository {
 	/**
 	 * Construct a new CertificateStatusRepository from the DynamoDb enhanced client.
@@ -25,7 +22,7 @@ public class CertificateStatusRepository extends DynamoDbRepository<CertificateS
 	}
 	
 	@Override
-	public ICertificateStatus saveAndFlush(ICertificateStatus cert) {
+	public ICertificateStatus store(ICertificateStatus cert) {
 		if (cert == null) {
 			throw new NullPointerException("Entity cannot be null");
 		}

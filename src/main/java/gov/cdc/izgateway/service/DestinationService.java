@@ -9,6 +9,7 @@ import gov.cdc.izgateway.db.model.Destination;
 import gov.cdc.izgateway.logging.markers.Markers2;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.repository.IDestinationRepository;
+import gov.cdc.izgateway.repository.RepositoryFactory;
 import gov.cdc.izgateway.utils.SystemUtils;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -91,8 +92,8 @@ public class DestinationService implements InitializingBean, IDestinationService
      * Construct a service using the specified repository
      * @param destinationRepository the repository
      */
-    public DestinationService(IDestinationRepository destinationRepository) {
-        this.destinationRepository = destinationRepository;
+    public DestinationService(RepositoryFactory factory) {
+        this.destinationRepository = factory.destinationRepository();
     }
     
     @Override
@@ -114,7 +115,7 @@ public class DestinationService implements InitializingBean, IDestinationService
 	@Override
 	public void saveAndFlush(IDestination dest) {
 		try {
-			destinationRepository.saveAndFlush(dest);
+			destinationRepository.store(dest);
 			// Update the cache
 			cache.put(dest.getDestId(), dest);
 		} catch (Exception ex) {

@@ -1,8 +1,6 @@
 package gov.cdc.izgateway.dynamodb.repository;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Repository;
-
 import gov.cdc.izgateway.dynamodb.DynamoDbRepository;
 import gov.cdc.izgateway.dynamodb.model.AccessControl;
 import gov.cdc.izgateway.model.IAccessControl;
@@ -15,7 +13,6 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
  * 
  * @author Audacious Inquiry
  */
-@Repository
 public class AccessControlRepository extends DynamoDbRepository<AccessControl> implements IAccessControlRepository {
 	/**
 	 * Construct a new AccessControlRepository from the DynamoDb enhanced client.
@@ -26,7 +23,7 @@ public class AccessControlRepository extends DynamoDbRepository<AccessControl> i
 	}
 	
 	@Override
-	public IAccessControl saveAndFlush(IAccessControl h) {
+	public IAccessControl store(IAccessControl h) {
 		if (h instanceof AccessControl h2) {
 			return super.saveAndFlush(h2);
 		}
@@ -37,10 +34,10 @@ public class AccessControlRepository extends DynamoDbRepository<AccessControl> i
 	public void delete(IAccessControl control) 
 	{
 		if (control instanceof AccessControl c) {
-			delete(c.primaryId());
+			delete(c.getPrimaryId());
 		} else {
 			AccessControl c = new AccessControl(control);
-			delete(c.primaryId());
+			delete(c.getPrimaryId());
 		}
 	}
 
@@ -53,8 +50,7 @@ public class AccessControlRepository extends DynamoDbRepository<AccessControl> i
 	@Override
 	public IAccessControl removeUserFromGroup(String user, String group) {
 		AccessControl c = new AccessControl("group", group, user, SystemUtils.getDestType());
-		super.delete(c.primaryId());
+		super.delete(c.getPrimaryId());
 		return c;
 	}
-
 }

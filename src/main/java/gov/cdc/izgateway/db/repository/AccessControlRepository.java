@@ -13,7 +13,6 @@ import gov.cdc.izgateway.db.model.AccessControl;
 import gov.cdc.izgateway.db.model.AccessControlId;
 import gov.cdc.izgateway.model.IAccessControl;
 import gov.cdc.izgateway.repository.IAccessControlRepository;
-import gov.cdc.izgateway.security.Roles;
 import gov.cdc.izgateway.service.IAccessControlService;
 import gov.cdc.izgateway.utils.SystemUtils;
 
@@ -78,8 +77,8 @@ public interface AccessControlRepository extends JpaRepository<AccessControl, Ac
      * @return The stored access control entry
      */
     @Transactional
-	default AccessControl addUserToGroup(String user, String group) { 
-		AccessControl accessControl = 
+	default IAccessControl addUserToGroup(String user, String group) { 
+		IAccessControl accessControl = 
 				findById(new AccessControlId(IAccessControlService.GROUP_CATEGORY, group, user))
 					.orElse(new AccessControl(IAccessControlService.GROUP_CATEGORY, group, user, false));
 		// If an update is necessary.
@@ -98,8 +97,8 @@ public interface AccessControlRepository extends JpaRepository<AccessControl, Ac
 	}
 	
     @Transactional
-	default AccessControl removeUserFromGroup(String user, String group) { 
-		AccessControl accessControl = 
+	default IAccessControl removeUserFromGroup(String user, String group) { 
+		IAccessControl accessControl = 
 				findById(new AccessControlId(IAccessControlService.GROUP_CATEGORY, group, user))
 				.orElse(new AccessControl(IAccessControlService.GROUP_CATEGORY, group, user, false));
 		// If an update is necessary.
@@ -108,4 +107,17 @@ public interface AccessControlRepository extends JpaRepository<AccessControl, Ac
 		}
 		return accessControl;
 	}
+    
+    /**
+     * Save and flush the access control record.
+     * @param control	The record to save
+     * @return	The saved record
+     */
+    @Override
+    default IAccessControl store(IAccessControl control) {
+    	if (control instanceof AccessControl ac) {
+    		return saveAndFlush(ac);
+    	}
+    	return saveAndFlush(new AccessControl(control.getCategory(), control.getName(), control.getMember()));
+    }
 }

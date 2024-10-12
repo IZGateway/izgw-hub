@@ -61,6 +61,14 @@ public class AccessControl implements Serializable, IAccessControl {
     	this(category, name, member, true);
     }
     
+    /**
+     * Create a new access control entry from an existing one.
+     * @param control
+     */
+    public AccessControl(IAccessControl control) {
+    	this(control.getCategory(), control.getName(), control.getMember(), true);
+    }
+    
     @Override
     public String toString() {
     	return String.format("%s: %s %s %s", category, name, 
