@@ -11,7 +11,7 @@ spring:
         name: IZ Gateway 2.0
         fix-newlines: ${FIX_NEWLINES:true}
         enable-status-check: ${STATUS_CHECK:true}
-        
+    
     datasource:
         url: jdbc:mysql://${MYSQL_HOST:localhost}:${PHIZ_DATA_DB_PORT:3306}/${MYSQL_DB_NAME:phiz}
         username: ${MYSQL_HUB_NAME}
@@ -26,6 +26,10 @@ spring:
         hibernate:
             naming:
                 physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+            temp:
+                use_jdbc_metadata_defaults: false
+            hbm2ddl:
+                auto: none
 
     servlet:
       multipart:
@@ -34,13 +38,9 @@ spring:
         max-request-size: 15GB
 
 amazon:
-	aws:
-		accesskey: ${AWS_ACCESS_KEY:key}
-		secretkey: ${AWS_SECRET_KEY:key2}
-		
-	dynamodb:
-		endpoint: http://localhost:8000/
-        
+    dynamodb:
+        endpoint: # Set to http://localhost:8000/ to use local DynamoDb instance for testing
+         
 management:
     metrics:
         export:

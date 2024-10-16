@@ -140,7 +140,9 @@ public class DEXStorageSender extends RestfulFileSender implements FileSender {
 		            if (pex.getCausingConnection().getResponseCode() == HttpServletResponse.SC_UNAUTHORIZED) {
 		            	continue;
 		            }
-  	            	throw pex;
+  	            	ProtocolException ex = new ProtocolException(error);
+  	            	ex.initCause(pex);
+  	            	throw ex;
 		        } catch (IOException | RuntimeException ex) { // NOSONAR: Logging and throwing OK
 		            // Log it and defer to makeAttempts to perform exponential back-off.
 		            log.error(Markers2.append(ex, METADATA, meta, FINGERPRINT, upload.getFingerprint()), 
@@ -338,7 +340,7 @@ public class DEXStorageSender extends RestfulFileSender implements FileSender {
             
             break;
         case "STATUS":
-        	base = new URL(base, "status/" + meta.getPath());
+        	base = new URL(base, "upload/info/" + meta.getPath());
         	con = getConnection(base);
         	con.setRequestMethod("GET");
         	break;
@@ -486,11 +488,12 @@ public class DEXStorageSender extends RestfulFileSender implements FileSender {
 	protected String getSubmissionStatus(HttpURLConnection con) throws IOException {
 		int result = con.getResponseCode();
 		InputStream is;
-		if (result == HttpStatus.OK.value()) {
+		if (HttpStatus.OK.value() == result) {
 			is = con.getInputStream();
 			return IOUtils.toString(is, StandardCharsets.UTF_8);
 		} 
 		is = con.getErrorStream();
-		throw new HttpResponseException(result, IOUtils.toString(is, StandardCharsets.UTF_8));
+		String error = IOUtils.toString(is, StandardCharsets.UTF_8);
+		throw new HttpResponseException(result, error);
 	}
 }

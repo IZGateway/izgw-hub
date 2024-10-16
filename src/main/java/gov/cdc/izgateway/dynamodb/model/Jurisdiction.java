@@ -1,27 +1,29 @@
-package gov.cdc.izgateway.db.model;
+package gov.cdc.izgateway.dynamodb.model;
 
+import gov.cdc.izgateway.dynamodb.DynamoDbEntity;
 import gov.cdc.izgateway.model.IJurisdiction;
 import gov.cdc.izgateway.model.MappableEntity;
 import io.swagger.v3.oas.annotations.StringToClassMapItem;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 
 /**
- * A record for a jurisdiction.
+ * An entity to get jurisdiction information
+ * 
  * @author Audacious Inquiry
+ *
  */
 @SuppressWarnings("serial")
-@Entity
-@Table(name="jurisdiction")
 @Data
-public class Jurisdiction implements IJurisdiction {
+@EqualsAndHashCode(callSuper=false)
+@DynamoDbBean
+public class Jurisdiction extends DynamoDbEntity implements IJurisdiction {
 	/**
+	 * A map of jurisdictions.
+	 * 
 	 * @author Audacious Inquiry
-	 *
 	 */
 	@Schema(properties= {
 			@StringToClassMapItem(key="Alaska", value=Destination.class),
@@ -30,37 +32,45 @@ public class Jurisdiction implements IJurisdiction {
 			@StringToClassMapItem(key="Maryland", value=Destination.class),
 			@StringToClassMapItem(key="Wyoming", value=Destination.class)
 		})
-	/** The map for Swagger documentation */
 	public static class Map extends MappableEntity<Jurisdiction>{}
 
-    @Id
-    @Column(name="jurisdiction_id")
-    @Schema(description="The identifier of the jurisdiction.")
-	private int jurisdictionId;
-    @Schema(description="The name of the jurisdiction.")
-    @Column(name="name")
-	private String name;
-    @Schema(description="The description of the jurisdiction.")
-    @Column(name="description")
-	private String description;
-    @Schema(description="The prefix to use for destinations managed by this jurisdiction.")
-    @Column(name="dest_prefix")
-	private String prefix;
-    
 	/**
-	 * Construct a new jurisidiction record.
+	 * Create a new Jurisdiction
 	 */
 	public Jurisdiction() {
 	}
-
 	/**
-	 * Construct a new jurisidiction record from an existing one
-	 * @param j The existing jurisdiction to copy from
+	 * Create a copy from an existing Jurisdiction
+	 *  
+	 * @param that	The jurisdiction to copy.
 	 */
-	public Jurisdiction(IJurisdiction j) {
-		this.jurisdictionId = j.getJurisdictionId();
-		this.name = j.getName();
-		this.description = j.getDescription();
-		this.prefix = j.getPrefix();
+	public Jurisdiction(IJurisdiction that) {
+		this.description = that.getDescription();
+		this.jurisdictionId = that.getJurisdictionId();
+		this.name = that.getName();
+		this.prefix = that.getPrefix();
+	}
+	
+    @Schema(description="The identifier of the jurisdiction.")
+	private int jurisdictionId;
+    public int getJurisdictionId() {
+    	return jurisdictionId;
+    }
+    
+    @Schema(description="The name of the jurisdiction.")
+	private String name;
+    
+    @Schema(description="The description of the jurisdiction.")
+	private String description;
+    
+    @Schema(description="The prefix to use for destinations managed by this jurisdiction.")
+	private String prefix;
+    
+    @Schema(description="The vendor for the jurisdiction.")
+    private String vendor;
+    
+	@Override
+	public String getPrimaryId() {
+		return  Integer.toString(jurisdictionId);
 	}
 }

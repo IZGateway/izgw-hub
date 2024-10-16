@@ -14,8 +14,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import gov.cdc.izgateway.ads.ADSController;
 import gov.cdc.izgateway.configuration.SenderConfig;
-import gov.cdc.izgateway.db.service.AccessControlService;
-import gov.cdc.izgateway.db.service.DestinationService;
 import gov.cdc.izgateway.logging.RequestContext;
 import gov.cdc.izgateway.logging.info.DestinationInfo;
 import gov.cdc.izgateway.logging.info.HostInfo;
@@ -23,6 +21,8 @@ import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.model.IEndpointStatus;
 import gov.cdc.izgateway.security.AccessControlRegistry;
 import gov.cdc.izgateway.security.Roles;
+import gov.cdc.izgateway.service.AccessControlService;
+import gov.cdc.izgateway.service.DestinationService;
 import gov.cdc.izgateway.service.IMessageHeaderService;
 import gov.cdc.izgateway.service.impl.EndpointStatusService;
 import gov.cdc.izgateway.soap.SoapControllerBase;
@@ -154,7 +154,7 @@ public class HubController extends SoapControllerBase {
 		}
 		
 		if (!accessControlService.isMemberOf(RequestContext.getSourceInfo().getCommonName(), destGroup)) {
-			throw SecurityFault.generalSecurity("Source is not permitted to send to destination", destGroup, null);
+			throw SecurityFault.generalSecurity("Source Not Allowed", destGroup, null);
 		}
 	}
 	

@@ -3,6 +3,8 @@ package gov.cdc.izgateway.ads.mockdex;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import gov.cdc.izgateway.ads.ADSErrorResponse;
+import gov.cdc.izgateway.common.Constants;
+import gov.cdc.izgateway.common.ResourceNotFoundException;
 import gov.cdc.izgateway.logging.RequestContext;
 import gov.cdc.izgateway.logging.event.EventIdMdcConverter;
 import gov.cdc.izgateway.logging.markers.Markers2;
@@ -18,6 +20,8 @@ import gov.cdc.izgateway.soap.fault.FaultSupport;
 import gov.cdc.izgateway.soap.fault.UnexpectedExceptionFault;
 import gov.cdc.izgateway.soap.fault.UnknownDestinationFault;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +31,7 @@ import me.desair.tus.server.upload.UploadInfo;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
-
+import org.apache.commons.lang3.time.FastDateFormat;
 import org.slf4j.MDC;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpHeaders;
@@ -49,6 +53,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
@@ -61,7 +66,7 @@ import java.util.TreeMap;
 @Slf4j
 @RestController
 @RolesAllowed({ Roles.INTERNAL, Roles.ADMIN })
-@RequestMapping({"/rest"})
+@RequestMapping({"/rest/upload"})
 @Lazy(false)
 public class DexFileUploadController {
 
@@ -69,6 +74,15 @@ public class DexFileUploadController {
     private final TusFileUploadService uploadService;
     private final Path tusUploadDirectory;
     private final DexConfiguration config;
+    private static final int MAX_ENTRIES = 10;
+    private final Map<String, Object> submissions = new LinkedHashMap<>() {
+		private static final long serialVersionUID = 1L;
+    
+		@Override
+        protected boolean removeEldestEntry(Map.Entry<String,Object> eldest) {
+            return size() > MAX_ENTRIES;
+        }
+    };
     
     private Object realm;
 
@@ -170,7 +184,7 @@ public class DexFileUploadController {
 	 * 
 	 * @throws OAuthException If the token was not valid
 	 */
-	@RequestMapping(value = { "/upload/oauth", "/upload/oauth/refresh" }, method = { RequestMethod.POST, RequestMethod.GET})
+	@RequestMapping(value = { "/oauth", "/oauth/refresh" }, method = { RequestMethod.POST, RequestMethod.GET})
     @Operation(hidden=true)
     public ResponseEntity<AccessToken> handleOauthPost(
     	HttpServletRequest servletRequest,
@@ -298,12 +312,32 @@ public class DexFileUploadController {
 
     
     /**
+     * Get the status for an upload
+     * @param tguid	The GUID of the upload
+     * @return The metadata and other data associated with the upload.
+     * @throws ResourceNotFoundException if an error occurs
+     */
+    @GetMapping("/upload/info/{tguid}")
+    @Operation(summary = "Get the status of the specified upload",
+	description = "Gets the upload status for the specified request")
+    @ApiResponse(responseCode = "200", description = "Success", content = @Content)
+    @ApiResponse(responseCode = "404", description = "Not Found", content = @Content)
+    public ResponseEntity<Object> info(
+    	@PathVariable String tguid
+    ) throws ResourceNotFoundException {
+    	Object o = submissions.get(tguid);
+    	if (o == null) {
+    		return new ResponseEntity<>("Submission not found for " + tguid, HttpStatus.NOT_FOUND);
+    	}
+    	return new ResponseEntity<>(o, HttpStatus.OK);
+    }
+    /**
      * Handle an upload request
      * @param servletRequest	The request
      * @param servletResponse	The response
      * @throws Exception	If any errors occur
      */
-    @RequestMapping(value = { "/upload/dex", "/upload/dex/**" }, method = { RequestMethod.POST, RequestMethod.PATCH,
+    @RequestMapping(value = { "/dex", "/dex/**" }, method = { RequestMethod.POST, RequestMethod.PATCH,
         RequestMethod.HEAD, RequestMethod.DELETE, RequestMethod.GET, RequestMethod.OPTIONS })
     @Operation(hidden=true)
     public void upload(HttpServletRequest servletRequest, HttpServletResponse servletResponse) throws Exception {
@@ -335,6 +369,7 @@ public class DexFileUploadController {
         }
 
         if (uploadInfo != null && !uploadInfo.isUploadInProgress()) {
+        	submissions.put(StringUtils.substringAfterLast(uploadURI, "/"), getInfo(uploadInfo));
             try (InputStream is = this.uploadService.getUploadedBytes(uploadURI)) {
                 Path output = this.appUploadDirectory.resolve(uploadInfo.getFileName());
                 Files.copy(is, output, StandardCopyOption.REPLACE_EXISTING);
@@ -352,6 +387,20 @@ public class DexFileUploadController {
             }
         }
     }
+
+	private Object getInfo(UploadInfo uploadInfo) {
+		Map<String, Object> info = new TreeMap<>();
+		info.put("manifest", uploadInfo.getMetadata());
+		Map<String, Object> fileInfo = new TreeMap<>();
+		fileInfo.put("size_bytes", uploadInfo.getLength());
+		fileInfo.put("updated_at", 
+			FastDateFormat
+				.getInstance(Constants.TIMESTAMP_FORMAT)
+				.format(uploadInfo.getCreationTimestamp())
+		);
+		info.put("file_info", fileInfo);
+		return info;
+	}
 
     private String getBearerToken(HttpServletRequest servletRequest) {
         String bearerToken = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);

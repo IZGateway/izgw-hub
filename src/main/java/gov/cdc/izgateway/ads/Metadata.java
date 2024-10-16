@@ -67,6 +67,8 @@ public interface Metadata extends Serializable {
 	
 	public static final String RFC2616_DATE_FORMAT_PATTERN = "EEE, dd MMM yyyy HH:mm:ss zzz";
 	public static final FastDateFormat RFC2616_DATE_FORMAT = FastDateFormat.getInstance(RFC2616_DATE_FORMAT_PATTERN);
+	public static final String DEX_VERSION1 = "V2023-09-01";
+	public static final String DEX_VERSION2 = "V2024-09-04";
 
 	/*
 	 * version	New field
@@ -75,7 +77,13 @@ public interface Metadata extends Serializable {
 	 */
 	@JsonProperty("version")
 	default String getVersion() {
-		return "2.0";
+		switch (StringUtils.defaultString(getExtSourceVersion())) {
+		case DEX_VERSION1:
+			return "1.0";
+		case DEX_VERSION2:
+		default:
+			return "2.0";
+		}
 	}
 	
     @JsonProperty("meta_destination_id")
@@ -104,6 +112,14 @@ public interface Metadata extends Serializable {
     void setExtEvent(String extEvent);
 
     /*
+     * New with DEX2.0
+     * Values generally same as meta_ext_event, but allows other
+     * forms of submissions to be passed through to NDLP
+     */
+    @JsonProperty("meta_ext_event_type")
+    String getExtEventType();
+    void setExtEventType(String extEventTyype);
+    /*
      * data_stream_id	New field
 	 * DEX required	Add field
 	 * Allowed values:
@@ -127,6 +143,8 @@ public interface Metadata extends Serializable {
 			return "covid-all-monthly-vaccination";
 		case "covidbridgevaccination":
 			return "covid-bridge-vaccination";
+		case "genericimmunization":
+			return "generic-immunization";
 		default:
 			return value;
     	}
@@ -219,6 +237,12 @@ public interface Metadata extends Serializable {
     Date getUploadedDate();
     void setUploadedDate(Date uploadedDate);
     
+    @JsonProperty("meta_ext_file_timestamp")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = RFC2616_DATE_FORMAT_PATTERN)
+    default Date getFileTimestamp() {
+    	return getUploadedDate();
+    }
+    
     @JsonProperty("izgw_event_id")
     String getEventId();
     void setEventId(String eventId);
@@ -234,6 +258,7 @@ public interface Metadata extends Serializable {
             equals(this.getPeriod(), that.getPeriod()) &&
             equals(this.getExtEntity(), that.getExtEntity()) &&
             equals(this.getExtEvent(), that.getExtEvent()) &&
+            equals(this.getExtEventType(), that.getExtEventType()) &&
             equals(this.getExtObjectKey(), that.getExtObjectKey()) &&
             equals(this.getExtSource(), that.getExtSource()) &&
             equals(this.getExtSourceVersion(), that.getExtSourceVersion()) &&

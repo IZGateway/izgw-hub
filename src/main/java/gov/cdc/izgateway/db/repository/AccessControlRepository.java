@@ -11,6 +11,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import gov.cdc.izgateway.db.model.AccessControl;
 import gov.cdc.izgateway.db.model.AccessControlId;
+import gov.cdc.izgateway.model.IAccessControl;
+import gov.cdc.izgateway.repository.IAccessControlRepository;
+import gov.cdc.izgateway.service.IAccessControlService;
 import gov.cdc.izgateway.utils.SystemUtils;
 
 /**
@@ -22,7 +25,7 @@ import gov.cdc.izgateway.utils.SystemUtils;
  *
  */
 @Repository
-public interface AccessControlRepository extends JpaRepository<AccessControl, AccessControlId> {
+public interface AccessControlRepository extends JpaRepository<AccessControl, AccessControlId>, IAccessControlRepository {
 	/**
 	 * Asks SpringJPA to construct the query by dest_type.
 	 * 
@@ -46,7 +49,6 @@ public interface AccessControlRepository extends JpaRepository<AccessControl, Ac
 	default List<AccessControl> findAll() {
 		return findAllByDestTypeId(SystemUtils.getDestType());
 	}
-	
 
 	/**
 	 * Add a new access control entry.
@@ -65,26 +67,57 @@ public interface AccessControlRepository extends JpaRepository<AccessControl, Ac
      * Presently, this is only used by IZ Gateway to create a new blacklist entry, which should always
      * be an insert operation.  It's technically possible that two systems could be trying to create
      * the same entry at the same time, perhaps even in two different environments. Because it's a
-     * blacklist entry, it applies to ALL environments.  A user blacklisted by one IZGW environment
-     * shouldn't be allowed into any other environments.
+     * blacklist entry, it applies to ALL environments.  
      * 
      * This will need rework to support adding users to groups generally, and so will the 
      * delete capabilities.
      * 
-     * @param accessControl the entry for the user to blacklist
+     * @param user The user to add
+     * @param group The group to add the user to
      * @return The stored access control entry
      */
-    @SuppressWarnings("unchecked")
-	@Transactional
-	@Override
-	default AccessControl saveAndFlush(AccessControl accessControl) {
-		insertAccessControl(
-			accessControl.getCategory(),
-			accessControl.getName(),
-			accessControl.getMember(),
-			accessControl.isAllowed() ? 0x7F : 0x7E
-		);
-		flush();
+    @Transactional
+	default IAccessControl addUserToGroup(String user, String group) { 
+		IAccessControl accessControl = 
+				findById(new AccessControlId(IAccessControlService.GROUP_CATEGORY, group, user))
+					.orElse(new AccessControl(IAccessControlService.GROUP_CATEGORY, group, user, false));
+		// If an update is necessary.
+		if (!accessControl.isAllowed()) {
+			// Save the results and refresh the cache.
+			accessControl.setAllowed(true);
+			insertAccessControl(
+					accessControl.getCategory(),
+					accessControl.getName(),
+					accessControl.getMember(),
+					accessControl.isAllowed() ? 0x7F : 0x7E
+				);
+			flush();
+		}
 		return accessControl;
 	}
+	
+    @Transactional
+	default IAccessControl removeUserFromGroup(String user, String group) { 
+		IAccessControl accessControl = 
+				findById(new AccessControlId(IAccessControlService.GROUP_CATEGORY, group, user))
+				.orElse(new AccessControl(IAccessControlService.GROUP_CATEGORY, group, user, false));
+		// If an update is necessary.
+		if (accessControl != null && accessControl.isAllowed()) {
+			delete(accessControl);
+		}
+		return accessControl;
+	}
+    
+    /**
+     * Save and flush the access control record.
+     * @param control	The record to save
+     * @return	The saved record
+     */
+    @Override
+    default IAccessControl store(IAccessControl control) {
+    	if (control instanceof AccessControl ac) {
+    		return saveAndFlush(ac);
+    	}
+    	return saveAndFlush(new AccessControl(control.getCategory(), control.getName(), control.getMember()));
+    }
 }

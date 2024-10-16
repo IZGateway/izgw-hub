@@ -1,4 +1,4 @@
-package gov.cdc.izgateway.db.service;
+package gov.cdc.izgateway.service;
 
 import gov.cdc.izgateway.configuration.AppProperties;
 import gov.cdc.izgateway.configuration.StatusCheckerConfiguration;

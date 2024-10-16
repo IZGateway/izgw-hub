@@ -7,6 +7,8 @@ import lombok.EqualsAndHashCode;
 import java.io.Serializable;
 import java.security.cert.X509Certificate;
 import java.sql.Timestamp;
+import java.util.Date;
+
 import gov.cdc.izgateway.model.ICertificateStatus;
 import gov.cdc.izgateway.utils.X500Utils;
 
@@ -87,5 +89,23 @@ public class CertificateStatus implements Serializable, ICertificateStatus {
     	setCertSerialNumber(s.getCertSerialNumber());
     	setCommonName(s.getCommonName());
     }
+
+	@Override
+	public void setLastCheckedTimeStamp(Date lastCheckedTimeStamp) {
+		if (lastCheckedTimeStamp instanceof Timestamp t) {
+			this.lastCheckedTimeStamp = t;
+		} else {
+			this.lastCheckedTimeStamp = new Timestamp(lastCheckedTimeStamp.getTime());
+		}
+	}
+
+	@Override
+	public void setNextCheckTimeStamp(Date nextCheckTimeStamp) {
+		if (nextCheckTimeStamp instanceof Timestamp t) {
+			this.nextCheckTimeStamp = t;
+		} else {
+			this.nextCheckTimeStamp = new Timestamp(nextCheckTimeStamp.getTime());
+		}
+	}
 
 }

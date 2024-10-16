@@ -2,13 +2,13 @@ package gov.cdc.izgateway.status;
 
 import gov.cdc.izgateway.common.ResourceNotFoundException;
 import gov.cdc.izgateway.db.model.EndpointStatus;
-import gov.cdc.izgateway.db.service.DestinationService;
-import gov.cdc.izgateway.db.service.StatusCheckerService;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.model.IEndpointStatus;
 import gov.cdc.izgateway.repository.EndpointStatusRepository;
 import gov.cdc.izgateway.security.AccessControlRegistry;
 import gov.cdc.izgateway.security.Roles;
+import gov.cdc.izgateway.service.DestinationService;
+import gov.cdc.izgateway.service.StatusCheckerService;
 import gov.cdc.izgateway.service.impl.EndpointStatusService;
 import gov.cdc.izgateway.utils.ExecUtils;
 import io.swagger.v3.oas.annotations.Operation;
@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
 
 @RestController
 @CrossOrigin
-@RolesAllowed({Roles.OPEN, Roles.ADMIN})
+@RolesAllowed({Roles.USERS, Roles.ADMIN})
 @RequestMapping({"/rest"})
 @Lazy(false)
 public class StatusController {
@@ -64,7 +64,7 @@ public class StatusController {
         // order, which is garbage.
         String[] includeArray = include == null ? EndpointStatusRepository.INCLUDE_ALL : include.split("[\\s,]+");
         List<String> included = Arrays.asList(includeArray);
-        List<IEndpointStatus> found = endpointStatusService.find(count, includeArray);
+        List<? extends IEndpointStatus> found = endpointStatusService.find(count, includeArray);
 
         Map<String, List<IEndpointStatus>> t = new TreeMap<>();
         for (IEndpointStatus f : found) {
