@@ -15,13 +15,13 @@ import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
  * A converter for the java.util.Date time which converts dates to and from
  * strings in the a ISO 8601 timestamp format using the UTC timezone.
  */
-public class DateConverter implements AttributeConverter<Date> {
-	FastDateFormat ft = FastDateFormat.getInstance(Constants.TIMESTAMP_FORMAT);
+public class DateConverter implements AttributeConverter<Date> { // NOSONAR, singleton OK here.
+	private static FastDateFormat ft = FastDateFormat.getInstance(Constants.TIMESTAMP_FORMAT);
 	private static final DateConverter INSTANCE = new DateConverter();
 	
 	@Override
 	public AttributeValue transformFrom(Date input) {
-		return AttributeValue.fromS(ft.format(input));
+		return AttributeValue.fromS(convert(input));
 	}
 
 	@Override
@@ -43,6 +43,11 @@ public class DateConverter implements AttributeConverter<Date> {
 		return AttributeValueType.S;
 	}
 	
+	/**
+	 * @param <T> The enhanced type
+	 * @param enhancedType	A type to attempt conversion on
+	 * @return	A converter to use for that class.
+	 */
 	public static <T> AttributeConverter<T> provider(EnhancedType<T> enhancedType) {
 		if (!Date.class.isAssignableFrom(enhancedType.rawClass())) {
 			return null;
@@ -50,5 +55,14 @@ public class DateConverter implements AttributeConverter<Date> {
 		@SuppressWarnings("unchecked")
 		AttributeConverter<T> result = (AttributeConverter<T>) INSTANCE;
 		return result;
+	}
+
+	/**
+	 * Convert a date to an ISO 8601 String
+	 * @param date The date to convert
+	 * @return	The string in ISO 8601 format YYYY-MM-DDThh:mm:ss.SSSZ
+	 */
+	public static String convert(Date date) {
+		return ft.format(date);
 	}
 }

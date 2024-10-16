@@ -11,6 +11,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.io.Serializable;
 import java.util.Date;
 
+import org.apache.commons.lang3.StringUtils;
+
 import gov.cdc.izgateway.dynamodb.DateConverter;
 import gov.cdc.izgateway.dynamodb.DynamoDbEntity;
 import gov.cdc.izgateway.model.MappableEntity;
@@ -64,12 +66,28 @@ public class Event extends DynamoDbEntity implements Serializable {
      * @param name	The name of the event (e.g., Migration)
      */
     public Event(String name) {
-    	this.name = name;
+    	this(name, null);
     }
+    
+    /**
+     * Create a new event.
+     * @param name	The name of the event (e.g., Migration)
+     * @param target The target of the event.
+     */
+    public Event(String name, String target) {
+    	this.name = name;
+    	this.target = target;
+    }    
     
 	@Override
 	public String getPrimaryId() {
-		return name + "#" + target + "#" + started;
+		if (StringUtils.isEmpty(name)) {
+			throw new IllegalArgumentException("Event name cannot be null or empty");
+		}
+		if (started == null) {
+			started = new Date();
+		}
+		return name + "#" + StringUtils.defaultString(target) + "#" + DateConverter.convert(started);
 	}
 	
     /**

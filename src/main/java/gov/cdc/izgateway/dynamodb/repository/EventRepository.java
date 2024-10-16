@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import gov.cdc.izgateway.dynamodb.DynamoDbRepository;
 import gov.cdc.izgateway.dynamodb.model.Event;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
+import software.amazon.awssdk.utils.StringUtils;
 
 /**
  * Class representing the DynamoDb repository for Events.
@@ -47,6 +48,12 @@ public class EventRepository extends DynamoDbRepository<Event> {
 	 * @return	The events.
 	 */
 	public List<Event> findByNameAndTarget(String name, String target) {
+		if (StringUtils.isEmpty(name)) {
+			throw new IllegalArgumentException("Name cannot be null or empty");
+		}
+		if (StringUtils.isEmpty(target)) {
+			return findByType(name + "#");
+		}
 		return findByType(name + "#" + target + "#");
 	}
 

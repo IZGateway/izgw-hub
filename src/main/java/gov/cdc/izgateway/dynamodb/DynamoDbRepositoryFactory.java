@@ -75,6 +75,7 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
 		this.eventRepository = new EventRepository(client);
 		
 		if (!ensureDbExists()) {
+			markDbCreated();
 			migrateAllDbs();
 		} else {
 			log.info("Connected to existing {} in {}", DynamoDbRepository.TABLE_NAME, 
@@ -85,38 +86,50 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
 	private boolean ensureDbExists() {
 		ListTablesRequest lgtr = ListTablesRequest.builder().build();
 		boolean failed = false;
-		while (true) {
-			ListTablesResponse response = ddbClient.listTables(lgtr);
-			if (response.hasTableNames() && response.tableNames().stream().anyMatch(DynamoDbRepository.TABLE_NAME::equals)) {
-				return true;
+		ListTablesResponse response = ddbClient.listTables(lgtr);
+		if (response.hasTableNames() && response.tableNames().stream().anyMatch(DynamoDbRepository.TABLE_NAME::equals)) {
+			if (!isDbCreated()) {
+				return false;
 			}
-			CreateTableRequest.Builder cgtr = CreateTableRequest.builder();
-			cgtr.tableName(DynamoDbRepository.TABLE_NAME)
-				//.deletionProtectionEnabled(true)
-				.billingMode(BillingMode.PAY_PER_REQUEST)
-				.keySchema(
-					KeySchemaElement.builder().attributeName("entityType").keyType(KeyType.HASH).build(),
-					KeySchemaElement.builder().attributeName("sortKey").keyType(KeyType.RANGE).build()
-				)
-				.attributeDefinitions(
-					AttributeDefinition.builder().attributeName("entityType").attributeType(ScalarAttributeType.S).build(),
-					AttributeDefinition.builder().attributeName("sortKey").attributeType(ScalarAttributeType.S).build()
-				);
-			try {
-				ddbClient.createTable(cgtr.build());
-				break;
-			} catch (ResourceInUseException rex) {
-				if (failed) {
-					log.error("Cannot create an existing database");
-					throw rex;
-				}
-				failed = true;
-			}
+			log.info("Connected to existing database {}", DynamoDbRepository.TABLE_NAME);
+			return true;
 		}
-		log.warn("DynamoDb Table for {} does not exist, creating it", DynamoDbRepository.TABLE_NAME);
-		Event event = new Event(Event.CREATED);
-		eventRepository.store(event);
+		log.warn("DynamoDb Table {} does not exist, attempting to create it", DynamoDbRepository.TABLE_NAME);
+		// Attempt to create the database
+		CreateTableRequest.Builder cgtr = CreateTableRequest.builder();
+		cgtr.tableName(DynamoDbRepository.TABLE_NAME)
+			//.deletionProtectionEnabled(true)
+			.billingMode(BillingMode.PAY_PER_REQUEST)
+			.keySchema(
+				KeySchemaElement.builder().attributeName("entityType").keyType(KeyType.HASH).build(),
+				KeySchemaElement.builder().attributeName("sortKey").keyType(KeyType.RANGE).build()
+			)
+			.attributeDefinitions(
+				AttributeDefinition.builder().attributeName("entityType").attributeType(ScalarAttributeType.S).build(),
+				AttributeDefinition.builder().attributeName("sortKey").attributeType(ScalarAttributeType.S).build()
+			);
+		try {
+			ddbClient.createTable(cgtr.build());
+			return false;
+		} catch (ResourceInUseException rex) {
+			if (failed) {
+				log.error("Cannot create existing database {}", DynamoDbRepository.TABLE_NAME);
+				throw rex;
+			}
+		} catch (Exception ex) {
+			log.error("Error creating database {}", DynamoDbRepository.TABLE_NAME);
+			throw ex;
+		}
 		return false;
+	}
+
+	private boolean isDbCreated() {
+		return eventRepository.findByNameAndTarget(Event.CREATED, "Database").isEmpty();
+	}
+	private void markDbCreated() {
+		Event event = new Event(Event.CREATED);
+		event.setTarget("Database");
+		eventRepository.store(event);
 	}
 
 	private void migrateAllDbs() {
