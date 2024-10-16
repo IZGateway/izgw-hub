@@ -6,7 +6,6 @@ import lombok.EqualsAndHashCode;
 
 import java.io.Serializable;
 import java.security.cert.X509Certificate;
-import java.sql.Timestamp;
 import java.util.Date;
 
 import gov.cdc.izgateway.model.ICertificateStatus;
@@ -46,10 +45,10 @@ public class CertificateStatus implements Serializable, ICertificateStatus {
     private String certSerialNumber;
 
     @Column(name = "last_checked_timestamp")
-    private Timestamp lastCheckedTimeStamp;
+    private Date lastCheckedTimeStamp;
 
     @Column(name = "next_check_timestamp")
-    private Timestamp nextCheckTimeStamp;
+    private Date nextCheckTimeStamp;
 
     @Column(name = "last_check_status")
     private String lastCheckStatus;
@@ -86,8 +85,8 @@ public class CertificateStatus implements Serializable, ICertificateStatus {
     		throw new NullPointerException("cert parameter cannot be null");
     	}
     	setLastCheckStatus("UNKNOWN");
-		setLastCheckedTimeStamp(new Timestamp(0)); // Start of epoch, effectively never previously checked.
-		setNextCheckTimeStamp(new Timestamp(System.currentTimeMillis() - 100));  // Overdue for a check
+		setLastCheckedTimeStamp(new Date(0)); // Start of epoch, effectively never previously checked.
+		setNextCheckTimeStamp(new Date(System.currentTimeMillis() - 100));  // Overdue for a check
 		setCertificateId(ICertificateStatus.computeThumbprint(cert));
 		setCertSerialNumber(cert.getSerialNumber().toString(16));
 		setCommonName(X500Utils.getCommonName(cert));
@@ -104,15 +103,4 @@ public class CertificateStatus implements Serializable, ICertificateStatus {
     	setCertSerialNumber(s.getCertSerialNumber());
     	setCommonName(s.getCommonName());
     }
-
-	@Override
-	public void setLastCheckedTimeStamp(Date lastCheckedTimeStamp) {
-		this.lastCheckedTimeStamp = new Timestamp(lastCheckedTimeStamp.getTime());
-	}
-
-	@Override
-	public void setNextCheckTimeStamp(Date nextCheckTimeStamp) {
-		this.nextCheckTimeStamp = new Timestamp(nextCheckTimeStamp.getTime());
-	}
-
 }
