@@ -39,6 +39,8 @@ public class MetadataImpl implements Metadata {
     private Date uploadedDate;
 	private String destinationId;
 	private String eventId;
+	private String submissionStatus;
+	private String submissionLocation;
 	@JsonIgnore
     private transient IDestination destination;
 
@@ -140,11 +142,22 @@ public class MetadataImpl implements Metadata {
 				log.warn("Could not parse date {} from blob metadata", value);
 			}
 			break;
+		case "izgw_submission_status":
+			setSubmissionStatus(value);
+			break;
+		case "izgw_submission_location":
+			setSubmissionLocation(value);
+			break;
 		default:
 			break;
 		}
 	}
-
+	
+	public void setExtSourceVersion(String version) {
+		extSourceVersion = version;
+    	setSchemaVersion(getVersion());
+	}
+	
 	private static final List<String> MONTHS = Arrays.asList("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC");
 	private static final List<String> QUARTERS = Arrays.asList("Q1", "Q2", "Q3", "Q4");
 	/**

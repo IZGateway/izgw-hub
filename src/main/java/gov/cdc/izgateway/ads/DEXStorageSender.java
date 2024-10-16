@@ -340,7 +340,11 @@ public class DEXStorageSender extends RestfulFileSender implements FileSender {
             
             break;
         case "STATUS":
-        	base = new URL(base, "upload/info/" + meta.getPath());
+        	String path = meta.getPath();
+        	if (path.startsWith("/")) {
+        		path = path.substring(1);
+        	}
+        	base = new URL(base, "upload/info/" + path);
         	con = getConnection(base);
         	con.setRequestMethod("GET");
         	break;

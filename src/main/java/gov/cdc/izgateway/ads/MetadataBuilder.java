@@ -202,7 +202,8 @@ public class MetadataBuilder {
             errors.add("Route ID must be present and not empty");
         }
         // Ensure that some value is set in ExtSourceVersion 
-        meta.setExtSourceVersion(Metadata.DEX_VERSION1);
+        meta.setExtSourceVersion(Metadata.DEX_VERSION2);
+
         IDestination dest = dests.findByDestId(routeId.trim().toLowerCase());
         meta.setDestination(dest);
         if (dest == null) {

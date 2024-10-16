@@ -1,10 +1,11 @@
 package gov.cdc.izgateway.ads;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import gov.cdc.izgateway.common.ResourceNotFoundException;
 import gov.cdc.izgateway.configuration.AppProperties;
-import gov.cdc.izgateway.db.model.EndpointStatus;
 import gov.cdc.izgateway.db.service.StatusCheckerService.ADSChecker;
 import gov.cdc.izgateway.logging.RequestContext;
 import gov.cdc.izgateway.logging.event.EventIdMdcConverter;
@@ -40,8 +41,6 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.core.io.InputStreamResource;
@@ -450,6 +449,7 @@ public class ADSController implements ADSChecker {
         String messageId = null;
         MetadataImpl meta = null;
         long now = System.currentTimeMillis();
+        IDestination dest;
     	try {
 	        // If no filename value is provided in API call, extract filename from the file component.
 	        if (StringUtils.isBlank(filename)) {
@@ -469,7 +469,7 @@ public class ADSController implements ADSChecker {
 	        log.info(Markers2.append("Source", RequestContext.getSourceInfo()), "New ADS request ({} b) read in {} s",
 	        		meta.getFileSize(), (now - RequestContext.getTransactionData().getStartTime()) / 1000);
 	        meta.setUploadedDate(new Date(System.currentTimeMillis()));
-	        IDestination dest = meta.getDestination(); 
+	        dest = meta.getDestination(); 
 	        verifyRouting(dest);
     	} catch (MetadataFault f) {
 	    	startLogging(f.getMeta());
@@ -489,6 +489,29 @@ public class ADSController implements ADSChecker {
         	log.info("Fault occurred", f);
         	throw f;
         }
+        try {
+        	// Get the submission status result from the destination.
+        	MetadataImpl meta2 = new MetadataImpl(meta);
+        	meta2.setPath(StringUtils.substringAfterLast(meta.getPath(), "/"));
+        	String result = getSender(dest).getSubmissionStatus(dest, meta2);
+        	log.info("{}", result);
+        	// Parse it from JSON to a Map
+        	JsonNode jsonNodeTree = new ObjectMapper().readTree(result);
+        	String status = jsonNodeTree.get("deliveries").get(0).get("status").asText();
+        	String location = jsonNodeTree.get("deliveries").get(0).get("location").asText();
+        	// Extract the status and location fields into metadata.
+        	meta.setSubmissionStatus(status);
+        	meta.setSubmissionLocation(location);
+        	
+        } catch (Fault f) {
+        	log.info("Could not validate submission status", f);
+        	meta.setSubmissionStatus("UNKNOWN");
+        	meta.setSubmissionLocation("UNKNOWN");
+        } catch (Exception e) {
+        	log.info("Could not parse submission status response", e);
+        	meta.setSubmissionStatus("UNKNOWN");
+        	meta.setSubmissionLocation("UNKNOWN");
+		}
         return meta;
 
     }
@@ -658,7 +681,7 @@ public class ADSController implements ADSChecker {
         	statusCode = hex.getStatusCode();
         }
         if (statusCode != 0) {
-	        HubClientFault hce = HubClientFault.invalidMessage(e, route, statusCode, error, null); 
+	        HubClientFault hce = HubClientFault.invalidMessage(e, route, statusCode, error); 
 	        tData.setProcessError(hce);
 	        return hce;
         }

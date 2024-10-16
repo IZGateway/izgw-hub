@@ -623,28 +623,15 @@
 									"listen": "test",
 									"script": {
 										"exec": [
-											"pm.test(\"Status code is 200\", function () {\r",
-											"    pm.response.to.have.status(200);\r",
+											"pm.test(\"Status code is 500\", function () {\r",
+											"    pm.response.to.have.status(500);\r",
 											"});\r",
 											"\r",
 											"pm.test(\"Response is As Expected\", function () {\r",
-											"    var response = utils.removeNS(xml2Json(responseBody));\r",
-											"    var header = response?.Envelope?.Header?.HubResponseHeader;\r",
 											"    try {\r",
-											"        pm.expect(header).to.not.be.eql(undefined);\r",
-											"        pm.expect(header).to.have.property('DestinationId');\r",
-											"        pm.expect(header).to.have.property('DestinationUri');\r",
+											"        pm.expect(pm.response.text()).to.contain('<Summary>UnknownTestCase</Summary>');\r",
 											"    } catch (err) {\r",
-											"        console.log({\"header\": header});\r",
-											"        throw err;\r",
-											"    }\r",
-											"    var hl7Message = response['Envelope']['Body']['SubmitSingleMessageResponse']['Hl7Message'];\r",
-											"    var request = xml2Json(pm.request.body);\r",
-											"    var expected = pm.collectionVariables.get(\"GoodResponse\");\r",
-											"    try {\r",
-											"        pm.expect(hl7Message.replaceAll('\\r','\\n')).to.be.eql(expected.replaceAll('\\r','\\n'));  // TODO: Raise the issue of CR's in content.\r",
-											"    } catch (err) {\r",
-											"        console.log(hl7Message, expected);\r",
+											"        console.log({\"FailedResponse\": pm.response.text()} );\r",
 											"        throw err;\r",
 											"    }\r",
 											"});\r",
@@ -7818,6 +7805,91 @@
 										}
 									},
 									"response": []
+								},
+								{
+									"name": "TC_24i Invalid XML Response",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 500\", function () {\r",
+													"    pm.response.to.have.status(500);\r",
+													"});\r",
+													"\r",
+													"pm.test(\"Response has HubClientFault\", function () {\r",
+													"    pm.expect(responseBody).to.contain('HubClientFault>');\r",
+													"    pm.expect(responseBody).to.contain('urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessage:Fault:HubClientFault');\r",
+													"});\r",
+													"\r",
+													"pm.test(\"Response has correct soap reason about fault\", function () {\r",
+													"    pm.expect(responseBody).to.include(\"This is not a SOAP Fault nor is it XML\");\r",
+													"});\r",
+													"\r",
+													"var response = utils.removeNS(xml2Json(responseBody));\r",
+													"pm.test(\"Response has Summary = HTTPError400\", function() {\r",
+													"   var summary = response['Envelope']['Body']['Fault']['Detail']['Summary'];\r",
+													"   pm.expect(summary).to.be.eql('HTTPError400');\r",
+													"});\r",
+													"\r",
+													"pm.test(\"Response has Retry = CHECK_IIS_STATUS\", function() {\r",
+													"   var response = utils.removeNS(xml2Json(responseBody));\r",
+													"   var retry = response['Envelope']['Body']['Fault']['Detail']['Retry'];\r",
+													"   pm.expect(retry).to.be.eql('CHECK_IIS_STATUS');\r",
+													"});\r",
+													"utils.checkNamespaces(pm);\r",
+													"\r",
+													""
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"utils.setup(pm, \"dev\");"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"protocolProfileBehavior": {
+										"disabledSystemHeaders": {
+											"host": true
+										}
+									},
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Host",
+												"value": "{{hostHeader}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/xml"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|||TEST|TC_24I|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS|SIISCLIENT28374</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+										},
+										"url": {
+											"raw": "https://{{host}}:{{port}}/IISHubService",
+											"protocol": "https",
+											"host": [
+												"{{host}}"
+											],
+											"port": "{{port}}",
+											"path": [
+												"IISHubService"
+											]
+										}
+									},
+									"response": []
 								}
 							]
 						}
@@ -11025,6 +11097,289 @@
 							"port": "{{port}}",
 							"path": [
 								"IISHubService"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Sample Connectivity Test for 2014",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var echoBack;\r",
+									"var env = pm.environment.get(\"testingEnvironment\");\r",
+									"pm.test(\"Status code is 200\", function () {\r",
+									"    pm.expect(pm.response).to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response is same as sent\", function () {\r",
+									"    var response = utils.removeNS(xml2Json(responseBody));\r",
+									"    var request = utils.removeNS(xml2Json(pm.request.body));\r",
+									"    echoBack = request['Envelope']['Body']['ConnectivityTestRequest']['EchoBack'] \r",
+									"    pm.expect(response['Envelope']['Body']['ConnectivityTestResponse']['EchoBack']).to.eql(echoBack);\r",
+									"});\r",
+									"\r",
+									"const interval = setTimeout(() => {}, 3000);\r",
+									"async function moreTests() {\r",
+									"    utils.getLogs(null, pm).then((logData) => {\r",
+									"        logs = logData.json();\r",
+									"        txData = utils.getTxData(logs);\r",
+									"        var isV2 = txData[0].transactionData.serverRequest !== undefined;\r",
+									"        pm.test(\"Logs are an array of objects\", function () {\r",
+									"            pm.expect(logs).to.be.an('array');\r",
+									"            pm.expect(logs[0]?.transactionData).to.be.an(\"object\");\r",
+									"        });\r",
+									"\r",
+									"        pm.test(\"There are no ERROR, WARN, stack_trace or SOAPFaults in logs\", function () {\r",
+									"            for (log of logs) {\r",
+									"                pm.expect(log.level).to.match(/INFO|DEBUG|TRACE/);\r",
+									"                pm.expect(typeof log.stack_trace ).eql(\"undefined\");\r",
+									"                if ('ws_response_message' in log) {\r",
+									"                    pm.expect(log.ws_response_message.soapFault, 'response SOAP fault must be null').to.be.eql(null);\r",
+									"                }\r",
+									"                if ('ws_request_message' in log) {\r",
+									"                    pm.expect(log.ws_request_message.soapFault, 'request SOAP fault must be null').to.be.eql(null);\r",
+									"                }\r",
+									"            }\r",
+									"        });\r",
+									"\r",
+									"        requests = isV2 ? null : utils.getWsRequest(logs);\r",
+									"        req0 = isV2 ? txData[1]?.transactionData?.serverRequest : requests[0];\r",
+									"        req1 = isV2 ? txData[1]?.transactionData?.clientRequest : requests[1];\r",
+									"        req2 = isV2 ? txData[0]?.transactionData?.serverRequest : requests[2];\r",
+									"        req3 = isV2 ? txData[0]?.transactionData?.clientRequest : requests[3];\r",
+									"\r",
+									"        pm.test(\"There are 3 requests\", function () {\r",
+									"            if (isV2) {\r",
+									"                pm.expect(req0).to.not.eql(null);\r",
+									"                pm.expect(req1).to.not.eql(null);\r",
+									"                pm.expect(req2).to.not.eql(null);\r",
+									"                pm.expect(req3).to.not.eql(null);\r",
+									"            } else {\r",
+									"                pm.expect(requests.length).to.eql(3);\r",
+									"            }\r",
+									"        });\r",
+									"        pm.test(\"First request EndPoint Type is INBOUND to SERVER\", function () {\r",
+									"            pm.expect(req0.ws_request_message.direction).to.eql(\"INBOUND\");\r",
+									"            pm.expect(req0.ws_request_message.endpointType).to.eql(\"SERVER\");\r",
+									"            // pm.expect(requests[0].ws_request_message.endpointAddress).to.eql(\"/IISHubService\"); Don't need this anymore, it's in destination\r",
+									"        });\r",
+									"\r",
+									"        pm.test(\"First request MessageID Matches inbound MessageID\", function () {\r",
+									"            pm.expect(req0.ws_request_message.soapHeaders.MessageID).to.eql(pm.environment.get(\"testMessageId\"));\r",
+									"        });\r",
+									"        // NOTE: You have to pay attention to the format that IZGW Serializes to in constructing the message!\r",
+									"        // The body of this test is carefully structured for an exact match of the expected output format.\r",
+									"        pm.test(\"First request payload matches inbound body\", function () {\r",
+									"            var payload = req0.ws_request_message.payload.trim().replace(/[\\r]+/g,\"\");\r",
+									"            var expected = pm.request.body.raw.trim().replace(/[\\r]+/g,\"\");\r",
+									"            pm.expect(payload).to.eql(expected);\r",
+									"        });\r",
+									"\r",
+									"        pm.test(\"Second request EndPoint Type is OUTBOUND to CLIENT\", function () {\r",
+									"            pm.expect(req1.ws_request_message.direction).to.eql(\"OUTBOUND\");\r",
+									"            pm.expect(req1.ws_request_message.endpointType).to.eql(\"CLIENT\");\r",
+									"        });\r",
+									"\r",
+									"        pm.test(\"Third request EndPoint Type is INBOUND to SERVER\", function () {\r",
+									"            pm.expect(req2.ws_request_message.direction).to.eql(\"INBOUND\");\r",
+									"            pm.expect(req2.ws_request_message.endpointType).to.eql(\"SERVER\");\r",
+									"            // pm.expect(requests[1].ws_request_message.endpointAddress).to.match(/^https:.*\\/dev\\/IISService/); // No longer necessary, we have destination\r",
+									"        });\r",
+									"\r",
+									"        txData = utils.getTxData(logs);\r",
+									"        pm.test(\"Log to contain transactionData with echoBack == request.responseHL7Message\", function() {\r",
+									"            pm.expect(txData[txData.length - 1]).to.have.nested.property('transactionData.responseHL7Message');\r",
+									"            pm.expect(txData[txData.length - 1].transactionData.responseHL7Message).to.be.eql(echoBack)\r",
+									"            pm.expect(txData.length).to.be.eql(2);\r",
+									"        });\r",
+									"\r",
+									"        responses = utils.getWsResponse(logs)\r",
+									"        resp0 = isV2 ? txData[1]?.transactionData?.serverResponse : responses[0];\r",
+									"        resp1 = isV2 ? txData[1]?.transactionData?.clientResponse : responses[1];\r",
+									"        resp2 = isV2 ? txData[0]?.transactionData?.serverResponse : responses[2];\r",
+									"        resp3 = isV2 ? txData[0]?.transactionData?.clientResponse : responses[3];\r",
+									"\r",
+									"        pm.test(\"There are 4 responses\", function () {\r",
+									"            pm.expect(resp0?.ws_response_message, \"resp0 failed\" + JSON.stringify(resp0)).to.not.eql(null);\r",
+									"            pm.expect(resp1?.ws_response_message, \"resp1 failed\" + JSON.stringify(resp1)).to.not.eql(null);\r",
+									"            pm.expect(resp2?.ws_response_message, \"resp2 failed\" + JSON.stringify(resp2)).to.not.eql(null);\r",
+									"            pm.expect(resp3?.ws_response_message, \"resp3 failed\" + JSON.stringify(resp3)).to.eql(null);\r",
+									"        });\r",
+									"        pm.test(\"First Response is OUTBOUND SERVER\", function () {\r",
+									"            pm.expect(resp0?.ws_response_message.direction).to.eql(\"OUTBOUND\");\r",
+									"            pm.expect(resp0?.ws_response_message.endpointType).to.eql(\"SERVER\");\r",
+									"\r",
+									"        });\r",
+									"        pm.test(\"Second Response is INBOUND CLIENT\", function () {\r",
+									"            pm.expect(resp1?.ws_response_message.direction).to.eql(\"INBOUND\");\r",
+									"            pm.expect(resp1?.ws_response_message.endpointType).to.eql(\"CLIENT\");\r",
+									"        });\r",
+									"        pm.test(\"Third Response is OUTBOUND SERVER\", function () {\r",
+									"            pm.expect(resp2?.ws_response_message.direction).to.eql(\"OUTBOUND\");\r",
+									"            pm.expect(resp2?.ws_response_message.endpointType).to.eql(\"SERVER\");\r",
+									"        });\r",
+									"\r",
+									"        utils.testLogs(logs, pm, TX_SLA);\r",
+									"    });\r",
+									"}\r",
+									" if(!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) {\r",
+									"    utils.testSLA(pm, LONG_SLA);\r",
+									"    moreTests();\r",
+									"    utils.checkNamespaces(pm);\r",
+									" }\r",
+									" \r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"utils.setup(pm, \"dev\");"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disabledSystemHeaders": {
+							"host": true
+						}
+					},
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Host",
+								"value": "{{hostHeader}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/xml"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\">\r\n    <soap:Header>\r\n        <Action xmlns=\"http://www.w3.org/2005/08/addressing\">urn:cdc:iisb:2014:IISPortType:ConnectivityTestRequest</Action>\r\n        <MessageID xmlns=\"http://www.w3.org/2005/08/addressing\">a8d7c1f2-5773-4fd2-a0b9-0c6aa12d2926</MessageID>\r\n        <To xmlns=\"http://www.w3.org/2005/08/addressing\">http://www.w3.org/2005/08/addressing/anonymous</To>\r\n    </soap:Header>\r\n    <soap:Body>\r\n        <ConnectivityTestRequest xmlns=\"urn:cdc:iisb:2014\">\r\n            <echoBack>Wishing dev.izgateway.org : 443 an Audacious Hello at Wed Oct 02 2024 15:26:08 GMT-0400 (Eastern Daylight Time) !</echoBack>\r\n        </ConnectivityTestRequest>\r\n    </soap:Body>\r\n</soap:Envelope>"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"IISHubService"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "TC_99 IIS Status for Jurisdiction",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Save the request for use by subsequent tests\r",
+									"pm.variables.set(\"getLogs\",pm.request);\r",
+									"pm.test(\"Content-Type to be application/json\", function() {\r",
+									"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/^application\\/json/);\r",
+									"});\r",
+									"var status = pm.response.json();\r",
+									"\r",
+									"pm.test(\"Body to parse as json object\", function() {\r",
+									"    pm.expect(typeof status).to.eql(\"object\");\r",
+									"});\r",
+									"\r",
+									"pm.test(\"404 endpoint has 404 status\", function() {\r",
+									"    pm.expect(status[\"404\"].status).to.be.eql(\"HTTP Error 404\");\r",
+									"});\r",
+									"\r",
+									"pm.test(\"dev endpoints have status = Connected\", function() {\r",
+									"    pm.expect(status[\"dev\"].status).to.be.eql(\"Connected\");\r",
+									"    pm.expect(status[\"devwup\"].status).to.be.eql(\"Connected\");\r",
+									"});\r",
+									"\r",
+									"pm.test(\"down endpoint has status = Connect Timeout\", function() {\r",
+									"    pm.expect(status[\"down\"].status).to.be.eql(\"Connect Timeout\");\r",
+									"});\r",
+									"\r",
+									"pm.test(\"invalid endpoint has status = DNS Resolution Error\", function() {\r",
+									"    pm.expect(status[\"invalid\"].status).to.be.eql(\"DNS Resolution Error\");\r",
+									"});\r",
+									"\r",
+									"pm.test(\"reject endpoint has status = Connection Rejected\", function() {\r",
+									"    pm.expect(status[\"reject\"].status).to.be.eql(\"Connection Rejected\");\r",
+									"});\r",
+									"\r",
+									"// Verify logging for status checks\r",
+									"const interval = setTimeout(() => {}, 3000);\r",
+									"async function moreTests() {\r",
+									"    utils.getLogs(null, pm).then((logData) => {\r",
+									"        logs = logData.json();\r",
+									"        txData = utils.getTxData(logs);\r",
+									"        utils.testLogs(logs, pm, LONG_SLA);\r",
+									"    });\r",
+									"}\r",
+									"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"utils.setup(pm);"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disabledSystemHeaders": {
+							"host": true
+						}
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Host",
+								"value": "{{hostHeader}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/xml"
+							},
+							{
+								"key": "X-Message-ID",
+								"value": "{{testMessageId}}"
+							}
+						],
+						"url": {
+							"raw": "{{protocol}}://{{host}}:{{port}}/rest/status",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"rest",
+								"status"
 							]
 						}
 					},

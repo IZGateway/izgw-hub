@@ -268,14 +268,15 @@ public class Application implements WebMvcConfigurer {
     		// Load Mock IIS in background
     		PerformanceSimulatorMultiton.getInstance(PerformanceSimulatorMultiton.PERFORMANCE_PROFILE_MOCK_IIS);
     	}).start();
+    	String database = HealthService.getHealth().getDatabase();
         try {
             // Test for database connectivity and prefetch caches.
             List<IDestination> list = destinationService.getAllDestinations();
 
             if (list.isEmpty() && abortOnNoIIS) {
             	HealthService.setHealthy(false, "No IIS Connections available");
-                log.error("No IIS Connections are available from {}", ds.getUrl());
-                throw new ServiceConfigurationError("No IIS Connections are available from " + ds.getUrl());
+                log.error("No IIS Connections are available from {}", database);
+                throw new ServiceConfigurationError("No IIS Connections are available from " + database);
             } else {
                 // Prefetch to populate cache
                 messageHeaderService.getAllMessageHeaders();
@@ -287,8 +288,8 @@ public class Application implements WebMvcConfigurer {
             }
         } catch (RuntimeException hex) { // NOSONAR This is handling the exception correctly
         	HealthService.setHealthy(hex);
-            log.error(Markers2.append(hex), "Cannot get a database connection to {}: {}", ds.getUrl(), hex.getMessage(), hex);
-            throw new ServiceConfigurationError("Cannot get a database connection to " + ds.getUrl(), hex);
+            log.error(Markers2.append(hex), "Cannot get a database connection to {}: {}", database, hex.getMessage(), hex);
+            throw new ServiceConfigurationError("Cannot get a database connection to " + database, hex);
         }
 	}
 
