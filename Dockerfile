@@ -4,7 +4,7 @@ RUN apk update
 RUN apk upgrade --no-cache
 RUN apk add --no-cache openjdk17-jre mariadb-client mariadb-connector-c-dev 
 RUN npm upgrade -g
-RUN npm outdated -g
+RUN npm outdated -g 
 
 # Define arguments (set in izgateway pom.xml)
 ARG JAR_FILENAME
@@ -58,17 +58,13 @@ ADD docker/data/bcpkix-fips-2.0.7.jar bcpkix-fips-2.0.7.jar
 ADD docker/data/bctls-fips-2.0.19.jar bctls-fips-2.0.19.jar
 
 ADD docker/fatjar-run.sh run1.sh
-ADD docker/izgwdb.sh izgwdb1.sh
 
 # Remove carriage returns from batch file (for build on WinDoze).
 RUN tr -d '\r' <run1.sh >run.sh
 RUN rm run1.sh
-RUN tr -d '\r' <izgwdb1.sh >izgwdb.sh
-RUN rm izgwdb1.sh
 
 # Make scripts executable
 RUN ["chmod", "u+r+x", "run.sh"]
-RUN ["chmod", "u+r+x", "izgwdb.sh"]
 
 # Update base keystore in cacerts by adding AWS Certificate and converting to BCFKS format
 WORKDIR /usr/lib/jvm/java-17-openjdk/jre/lib/security
