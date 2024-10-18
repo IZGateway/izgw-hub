@@ -72,7 +72,8 @@ import javax.xml.ws.http.HTTPException;
 @RequestMapping({"/rest"})
 @Lazy(false)
 public class ADSController implements ADSChecker {
-    private static final List<String> METADATA_FIELDNAMES = getMetadataFieldNames();
+    private static final String UNKNOWN = "UNKNOWN";
+	private static final List<String> METADATA_FIELDNAMES = getMetadataFieldNames();
     public static final String IZGW_ADS_VERSION1 = "DEX1.0";
     public static final String IZGW_ADS_VERSION2 = "DEX2.0";
     
@@ -489,11 +490,12 @@ public class ADSController implements ADSChecker {
         	log.info("Fault occurred", f);
         	throw f;
         }
+        String result = null;
         try {
         	// Get the submission status result from the destination.
         	MetadataImpl meta2 = new MetadataImpl(meta);
         	meta2.setPath(StringUtils.substringAfterLast(meta.getPath(), "/"));
-        	String result = getSender(dest).getSubmissionStatus(dest, meta2);
+        	result = getSender(dest).getSubmissionStatus(dest, meta2);
         	log.info("{}", result);
         	// Parse it from JSON to a Map
         	JsonNode jsonNodeTree = new ObjectMapper().readTree(result);
@@ -504,13 +506,13 @@ public class ADSController implements ADSChecker {
         	meta.setSubmissionLocation(location);
         	
         } catch (Fault f) {
-        	log.info("Could not validate submission status", f);
-        	meta.setSubmissionStatus("UNKNOWN");
-        	meta.setSubmissionLocation("UNKNOWN");
+        	log.info("Could not validate submission status");
+        	meta.setSubmissionStatus(UNKNOWN);
+        	meta.setSubmissionLocation(UNKNOWN);
         } catch (Exception e) {
-        	log.info("Could not parse submission status response", e);
-        	meta.setSubmissionStatus("UNKNOWN");
-        	meta.setSubmissionLocation("UNKNOWN");
+        	log.info("Could not parse submission status response:\n{}", result, e);
+        	meta.setSubmissionStatus(UNKNOWN);
+        	meta.setSubmissionLocation(UNKNOWN);
 		}
         return meta;
 
