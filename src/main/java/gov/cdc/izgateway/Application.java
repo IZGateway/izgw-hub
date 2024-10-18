@@ -231,14 +231,7 @@ public class Application implements WebMvcConfigurer {
         // Enable JSSE Server Name Identification (SNI) connection extension in client and server connections
         System.setProperty("jsse.enableSNIExtension", "true");
         
-        Runtime.getRuntime().addShutdownHook(new Thread()
-        {
-            @Override
-            public void run()
-            {
-                shutdown();
-            }
-        });
+        Runtime.getRuntime().addShutdownHook(new Thread(Application::shutdown, "Shutdown Hook"));
 
         // Set the eventId for startup log records to 0
         MDC.put(EventId.EVENTID_KEY, EventId.DEFAULT_TX_ID);

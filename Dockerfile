@@ -82,4 +82,4 @@ WORKDIR /usr/share/izgateway/
 
 ENV IZGW_VERSION=$IZGW_VERSION  
 # run app on startup
-ENTRYPOINT ["sh","-c","crond && bash run.sh app.jar"]
+ENTRYPOINT ["sh","-c","crond && exec bash run.sh app.jar"]

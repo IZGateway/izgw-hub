@@ -39,20 +39,6 @@ cat /tmp/newresolv.conf > /etc/resolv.conf
 #Start dnsmasq as root
 dnsmasq  --use-stale-cache=0 --log-queries=extra --user=root --log-facility=/var/log/dnsmasq.log
 
-# Backup the database on upgrade if one does not already exist. IZGW_VERSION environment variable set in Docker image
-BACKUP_PREFIX=pre-$IZGW_VERSION-upgrade-backup
-if [[ ! $MYSQL_DB_NAME ]] 
-then
-   MYSQL_DB_NAME=phiz
-fi
-
-FILE=`ls -1 conf/backups/$BACKUP_PREFIX-$MYSQL_DB_NAME*.sql 2>/dev/null | head -1`
-if [[ ! -e $FILE ]]
-then
-    ./izgwdb.sh backup $BACKUP_PREFIX || exit 1 
-fi
-
-
 # Enable remote debugging if DEBUG is set in the environment
 JAVA_TOOL_OPTS=
 if [[ $DEBUG ]]
@@ -66,7 +52,7 @@ then
 fi
 
 # Have to externalize bc-fips jars
-java $JAVA_OPTS $JAVA_TOOL_OPTS \
+exec java $JAVA_OPTS $JAVA_TOOL_OPTS \
    -XX:+CreateCoredumpOnCrash -cp ./bc-fips-2.0.0.jar:./bcpkix-fips-2.0.7.jar:./bctls-fips-2.0.19.jar \
    --add-opens=java.base/java.lang.reflect=ALL-UNNAMED \
    --add-opens=java.base/java.net=ALL-UNNAMED \
