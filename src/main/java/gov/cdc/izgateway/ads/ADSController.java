@@ -529,16 +529,16 @@ public class ADSController implements ADSChecker {
 		int retries = 0;
 		long backoff = 250;
 		while (true) {
+    		MetadataImpl meta2 = new MetadataImpl(meta);
+    		meta2.setPath(StringUtils.substringAfterLast(meta.getPath(), "/"));
 	    	try {
-	    		MetadataImpl meta2 = new MetadataImpl(meta);
-	    		meta2.setPath(StringUtils.substringAfterLast(meta.getPath(), "/"));
 	    		result = getSender(dest).getSubmissionStatus(dest, meta2);
 				return new ObjectMapper().readTree(result).get("deliveries").get(0);
 			} catch (Exception e) {
 				if (++retries > 4) {
 					return null;
 				}
-				log.info("/info result: {}", result);
+				log.warn("Failed to verify submission, retrying: {}\n {}", meta2, result);
 				try {
 					Thread.sleep(backoff);
 				} catch (InterruptedException e1) {
