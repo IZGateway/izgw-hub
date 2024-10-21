@@ -66,15 +66,17 @@ public class MetadataImpl implements Metadata {
         extEventType = resp.getExtEventType();
         extEntity = resp.getExtEntity();
         username = resp.getUsername(); 
-        ipAddress = resp.getIpAddress();
         filename = resp.getFilename();
         extObjectKey = resp.getExtObjectKey();
-        fileSize = resp.getFileSize();
-        uploadedDate = resp.getUploadedDate();
+        ipAddress = resp.getIpAddress();
         path = resp.getPath();
         schemaVersion = resp.getSchemaVersion();
+        fileSize = resp.getFileSize();
+        uploadedDate = resp.getUploadedDate();
         destinationId = resp.getDestinationId();
         eventId = resp.getEventId();
+    	submissionStatus = resp.getSubmissionStatus();
+    	submissionLocation = resp.getSubmissionLocation();
         if (resp instanceof MetadataImpl r2) {
         	destination = r2.getDestination();
         }

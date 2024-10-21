@@ -491,54 +491,38 @@ public class ADSController implements ADSChecker {
         	log.info("Fault occurred", f);
         	throw f;
         }
-        try {
-        	// Get the submission status result from the destination.
-        	// Parse it from JSON to a Map
-        	JsonNode deliveries = getDeliveries(meta, dest);
-        	if (deliveries == null) {
-            	log.info("Could not retrieve submission status");
-            	meta.setSubmissionStatus(UNKNOWN);
-            	meta.setSubmissionLocation(UNKNOWN);
-        	} else {
-	        	String status = deliveries.get("status").asText();
-	        	String location = deliveries.get("location").asText();
-	        	// Extract the status and location fields into metadata.
-	        	meta.setSubmissionStatus(status);
-	        	meta.setSubmissionLocation(location);
-        	}
-        } catch (Fault f) {
-        	log.info(Markers2.append(f), "Error retrieving submission status");
-        	meta.setSubmissionStatus(UNKNOWN);
-        	meta.setSubmissionLocation(UNKNOWN);
-        } 
+        String deliveryPath = StringUtils.substringAfterLast(meta.getPath(), "/");
+    	// Get the submission status result from the destination.
+    	verifyDelivery(meta, dest, deliveryPath);
         return meta;
     }
 
     /**
-     * Retrieve delivery data from /info endpoint
+     * Verify delivery data using /info endpoint
      * @param meta	The metadata for the endpoint
      * @param dest	The destination for the endpoint
      * @return	The delivery data
-     * @throws DestinationConnectionFault	If there are destination related problems connecting to the destination
-     * @throws MetadataFault In the unlikely case (b/c it's already been checked once) metadata is invalid 
-     * @throws HubClientFault	If there are hub related problems connecting to the destination
      */
-	private JsonNode getDeliveries(MetadataImpl meta, IDestination dest)
-			throws DestinationConnectionFault, MetadataFault, HubClientFault {
+	private void verifyDelivery(MetadataImpl meta, IDestination dest, String deliveryPath) {
 		String result = null;
 		int retries = 0;
 		long backoff = 250;
+		JsonNode deliveries = null;
 		while (true) {
     		MetadataImpl meta2 = new MetadataImpl(meta);
-    		meta2.setPath(StringUtils.substringAfterLast(meta.getPath(), "/"));
+    		meta2.setPath(deliveryPath);
 	    	try {
 	    		result = getSender(dest).getSubmissionStatus(dest, meta2);
-				return new ObjectMapper().readTree(result).get("deliveries").get(0);
+				deliveries = new ObjectMapper().readTree(result).get("deliveries").get(0);
+				break;
+			} catch (Fault f) {
+	        	log.error(Markers2.append(f), "Error retrieving submission status for: {}", meta2);
+	        	break;
 			} catch (Exception e) {
+				log.warn(Markers2.append(e), "Failed to verify submission status for: {}\n {}", meta2, result);
 				if (++retries > 4) {
-					return null;
+					break;
 				}
-				log.warn("Failed to verify submission, retrying: {}\n {}", meta2, result);
 				try {
 					Thread.sleep(backoff);
 				} catch (InterruptedException e1) {
@@ -547,6 +531,18 @@ public class ADSController implements ADSChecker {
 				backoff += backoff;
 			}
 		}
+		
+    	if (deliveries == null) {
+        	meta.setSubmissionStatus(UNKNOWN);
+        	meta.setSubmissionLocation(UNKNOWN);
+        	return;
+    	} 
+    	
+    	String status = deliveries.get("status").asText();
+        String location = deliveries.get("location").asText();
+        // Extract the status and location fields into metadata.
+        meta.setSubmissionStatus(status);
+        meta.setSubmissionLocation(location);
 	}
     
     private void verifyRouting(IDestination iDestination) throws UnknownDestinationFault {
