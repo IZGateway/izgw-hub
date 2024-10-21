@@ -1,6 +1,7 @@
 package gov.cdc.izgateway.ads;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -490,33 +491,62 @@ public class ADSController implements ADSChecker {
         	log.info("Fault occurred", f);
         	throw f;
         }
-        String result = null;
         try {
         	// Get the submission status result from the destination.
-        	MetadataImpl meta2 = new MetadataImpl(meta);
-        	meta2.setPath(StringUtils.substringAfterLast(meta.getPath(), "/"));
-        	result = getSender(dest).getSubmissionStatus(dest, meta2);
-        	log.info("{}", result);
         	// Parse it from JSON to a Map
-        	JsonNode jsonNodeTree = new ObjectMapper().readTree(result);
-        	String status = jsonNodeTree.get("deliveries").get(0).get("status").asText();
-        	String location = jsonNodeTree.get("deliveries").get(0).get("location").asText();
-        	// Extract the status and location fields into metadata.
-        	meta.setSubmissionStatus(status);
-        	meta.setSubmissionLocation(location);
-        	
+        	JsonNode deliveries = getDeliveries(meta, dest);
+        	if (deliveries == null) {
+            	log.info("Could not retrieve submission status");
+            	meta.setSubmissionStatus(UNKNOWN);
+            	meta.setSubmissionLocation(UNKNOWN);
+        	} else {
+	        	String status = deliveries.get("status").asText();
+	        	String location = deliveries.get("location").asText();
+	        	// Extract the status and location fields into metadata.
+	        	meta.setSubmissionStatus(status);
+	        	meta.setSubmissionLocation(location);
+        	}
         } catch (Fault f) {
-        	log.info("Could not validate submission status");
+        	log.info(Markers2.append(f), "Error retrieving submission status");
         	meta.setSubmissionStatus(UNKNOWN);
         	meta.setSubmissionLocation(UNKNOWN);
-        } catch (Exception e) {
-        	log.info("Could not parse submission status response:\n{}", result, e);
-        	meta.setSubmissionStatus(UNKNOWN);
-        	meta.setSubmissionLocation(UNKNOWN);
-		}
+        } 
         return meta;
-
     }
+
+    /**
+     * Retrieve delivery data from /info endpoint
+     * @param meta	The metadata for the endpoint
+     * @param dest	The destination for the endpoint
+     * @return	The delivery data
+     * @throws DestinationConnectionFault	If there are destination related problems connecting to the destination
+     * @throws MetadataFault In the unlikely case (b/c it's already been checked once) metadata is invalid 
+     * @throws HubClientFault	If there are hub related problems connecting to the destination
+     */
+	private JsonNode getDeliveries(MetadataImpl meta, IDestination dest)
+			throws DestinationConnectionFault, MetadataFault, HubClientFault {
+		String result = null;
+		int retries = 0;
+		long backoff = 250;
+		while (true) {
+	    	try {
+	    		MetadataImpl meta2 = new MetadataImpl(meta);
+	    		meta2.setPath(StringUtils.substringAfterLast(meta.getPath(), "/"));
+	    		result = getSender(dest).getSubmissionStatus(dest, meta2);
+				return new ObjectMapper().readTree(result).get("deliveries").get(0);
+			} catch (Exception e) {
+				if (++retries > 3) {
+					return null;
+				}
+				try {
+					Thread.sleep(backoff);
+				} catch (InterruptedException e1) {
+					Thread.currentThread().interrupt();
+				}
+				backoff += backoff;
+			}
+		}
+	}
     
     private void verifyRouting(IDestination iDestination) throws UnknownDestinationFault {
         if (iDestination.isDex()) {

@@ -156,6 +156,8 @@ public class Application implements WebMvcConfigurer {
             HealthService.setHealthy(ex);
             System.exit(1);
         }
+        String providerVersion = new BouncyCastleFipsProvider().getInfo();
+        log.info("Bouncy Castle Version: {}", providerVersion);
         
         updateJul();
         
