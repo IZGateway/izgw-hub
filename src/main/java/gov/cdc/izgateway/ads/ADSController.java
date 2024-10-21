@@ -535,9 +535,10 @@ public class ADSController implements ADSChecker {
 	    		result = getSender(dest).getSubmissionStatus(dest, meta2);
 				return new ObjectMapper().readTree(result).get("deliveries").get(0);
 			} catch (Exception e) {
-				if (++retries > 3) {
+				if (++retries > 4) {
 					return null;
 				}
+				log.info("/info result: {}", result);
 				try {
 					Thread.sleep(backoff);
 				} catch (InterruptedException e1) {
