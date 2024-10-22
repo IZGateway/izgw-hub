@@ -501,7 +501,6 @@ public class ADSController implements ADSChecker {
      * Verify delivery data using /info endpoint
      * @param meta	The metadata for the endpoint
      * @param dest	The destination for the endpoint
-     * @return	The delivery data
      */
 	private void verifyDelivery(MetadataImpl meta, IDestination dest, String deliveryPath) {
 		String result = null;
@@ -514,6 +513,7 @@ public class ADSController implements ADSChecker {
 	    	try {
 	    		result = getSender(dest).getSubmissionStatus(dest, meta2);
 				deliveries = new ObjectMapper().readTree(result).get("deliveries").get(0);
+				log.info("Meta: {}\nResult: '{}'", meta2, result);
 				break;
 			} catch (Fault f) {
 	        	log.error(Markers2.append(f), "Error retrieving submission status for: {}", meta2);
