@@ -64,7 +64,7 @@ public class StatusController {
         // order, which is garbage.
         String[] includeArray = include == null ? EndpointStatusRepository.INCLUDE_ALL : include.split("[\\s,]+");
         List<String> included = Arrays.asList(includeArray);
-        List<IEndpointStatus> found = endpointStatusService.find(count, includeArray);
+        List<? extends IEndpointStatus> found = endpointStatusService.find(count, includeArray);
 
         Map<String, List<IEndpointStatus>> t = new TreeMap<>();
         for (IEndpointStatus f : found) {

@@ -1,10 +1,11 @@
 package gov.cdc.izgateway.ads;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import gov.cdc.izgateway.common.ResourceNotFoundException;
 import gov.cdc.izgateway.configuration.AppProperties;
-import gov.cdc.izgateway.db.model.EndpointStatus;
 import gov.cdc.izgateway.db.service.StatusCheckerService.ADSChecker;
 import gov.cdc.izgateway.logging.RequestContext;
 import gov.cdc.izgateway.logging.event.EventIdMdcConverter;
@@ -40,8 +41,6 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.core.io.InputStreamResource;
@@ -73,6 +72,7 @@ import javax.xml.ws.http.HTTPException;
 @RequestMapping({"/rest"})
 @Lazy(false)
 public class ADSController implements ADSChecker {
+    private static final String UNKNOWN = "UNKNOWN";
     private static final List<String> METADATA_FIELDNAMES = getMetadataFieldNames();
     public static final String IZGW_ADS_VERSION1 = "DEX1.0";
     public static final String IZGW_ADS_VERSION2 = "DEX2.0";
@@ -450,6 +450,7 @@ public class ADSController implements ADSChecker {
         String messageId = null;
         MetadataImpl meta = null;
         long now = System.currentTimeMillis();
+        IDestination dest;
     	try {
 	        // If no filename value is provided in API call, extract filename from the file component.
 	        if (StringUtils.isBlank(filename)) {
@@ -463,13 +464,13 @@ public class ADSController implements ADSChecker {
 	                }
 	            }
 	        }
-			messageId = getMessageId(xMessageId, xCorrelationId, xRequestId);
+          messageId = getMessageId(xMessageId, xCorrelationId, xRequestId);
 	        meta = getMetadata(messageId, destinationId, facilityId, reportType, period, filename, force);
 	        meta.setFileSize(file.getSize());
 	        log.info(Markers2.append("Source", RequestContext.getSourceInfo()), "New ADS request ({} b) read in {} s",
 	        		meta.getFileSize(), (now - RequestContext.getTransactionData().getStartTime()) / 1000);
 	        meta.setUploadedDate(new Date(System.currentTimeMillis()));
-	        IDestination dest = meta.getDestination(); 
+	        dest = meta.getDestination(); 
 	        verifyRouting(dest);
     	} catch (MetadataFault f) {
 	    	startLogging(f.getMeta());
@@ -489,9 +490,60 @@ public class ADSController implements ADSChecker {
         	log.info("Fault occurred", f);
         	throw f;
         }
+        String deliveryPath = StringUtils.substringAfterLast(meta.getPath(), "/");
+    	// Get the submission status result from the destination.
+    	verifyDelivery(meta, dest, deliveryPath);
         return meta;
-
     }
+
+    /**
+     * Verify delivery data using /info endpoint
+     * @param meta	The metadata for the endpoint
+     * @param dest	The destination for the endpoint
+     */
+	private void verifyDelivery(MetadataImpl meta, IDestination dest, String deliveryPath) {
+		String result = null;
+		int retries = 0;
+		long backoff = 250;
+		JsonNode deliveries = null;
+		while (true) {
+    		MetadataImpl meta2 = new MetadataImpl(meta);
+    		meta2.setPath(deliveryPath);
+	    	try {
+	    		result = getSender(dest).getSubmissionStatus(dest, meta2);
+				deliveries = new ObjectMapper().readTree(result).get("deliveries").get(0);
+				if (deliveries != null) {
+					break;
+				}
+			} catch (Fault f) {
+	        	log.error(Markers2.append(f), "Error retrieving submission status for: {}", meta2);
+	        	break;
+			} catch (Exception e) {
+				log.warn(Markers2.append(e), "Failed to verify submission status for: {}\n {}", meta2, result);
+				if (++retries > 4) {
+					break;
+				}
+				try {
+					Thread.sleep(backoff);
+				} catch (InterruptedException e1) {
+					Thread.currentThread().interrupt();
+				}
+				backoff += backoff;
+			}
+		}
+		
+    	if (deliveries == null) {
+        	meta.setSubmissionStatus(UNKNOWN);
+        	meta.setSubmissionLocation(UNKNOWN);
+        	return;
+    	} 
+    	
+    	String status = deliveries.get("status").asText();
+        String location = deliveries.get("location").asText();
+        // Extract the status and location fields into metadata.
+        meta.setSubmissionStatus(status);
+        meta.setSubmissionLocation(location);
+	}
     
     private void verifyRouting(IDestination iDestination) throws UnknownDestinationFault {
         if (iDestination.isDex()) {
@@ -658,7 +710,7 @@ public class ADSController implements ADSChecker {
         	statusCode = hex.getStatusCode();
         }
         if (statusCode != 0) {
-	        HubClientFault hce = HubClientFault.invalidMessage(e, route, statusCode, error, null); 
+	        HubClientFault hce = HubClientFault.invalidMessage(e, route, statusCode, error); 
 	        tData.setProcessError(hce);
 	        return hce;
         }

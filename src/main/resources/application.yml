@@ -68,7 +68,12 @@ server:
     local-port: 9081
     mode: ${PHIZ_MODE:prod}
     maxRetries: 3
-    
+    tomcat:
+        accept-count: 200
+        max-connections: 16384
+        max-threads: 400
+        max-keep-alive-requests: 1
+        
     ssl:
         enabled: true
         client-auth: need

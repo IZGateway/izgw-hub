@@ -274,6 +274,12 @@ public class DEXStorageSender extends RestfulFileSender implements FileSender {
     /** The set of fields agreed to according to the specification */
     private final DexConfiguration dexConfig;
     
+    /**
+     * Create a storage sender for the DEX Endpoint
+     * @param config	The Sender configuration
+     * @param tlsSupport	TLS Support for client connections
+     * @param dexConfig	The DEX Configuration
+     */
     public DEXStorageSender(SenderConfig config, final ClientTlsSupport tlsSupport, final DexConfiguration dexConfig) {
     	super(config, tlsSupport);
     	this.dexConfig = dexConfig;
@@ -340,7 +346,11 @@ public class DEXStorageSender extends RestfulFileSender implements FileSender {
             
             break;
         case "STATUS":
-        	base = new URL(base, "upload/info/" + meta.getPath());
+        	String path = meta.getPath();
+        	if (path.startsWith("/")) {
+        		  path = path.substring(1);
+        	}
+        	base = new URL(base, "upload/info/" + path);
         	con = getConnection(base);
         	con.setRequestMethod("GET");
         	break;
@@ -392,7 +402,7 @@ public class DEXStorageSender extends RestfulFileSender implements FileSender {
 
     /**
      * Copy data stored in DataHandler to the URLConnection.
-     * @return 
+     * @return  The HTTP Status (201 Created) on success.
      */
     @Override
     public int writeData(HttpURLConnection con, IDestination route, DataHandler data, Metadata meta) throws IOException, DestinationConnectionFault, MetadataFault, ProtocolException {
@@ -406,6 +416,12 @@ public class DEXStorageSender extends RestfulFileSender implements FileSender {
         return HttpServletResponse.SC_CREATED;
     }
 
+    /**
+     * Convert a metadata object to a map
+     * @param meta	The metadata object to convert
+     * @return	A map reporting the metadata.
+     * @throws MetadataFault	If there are errors converting
+     */
     public static Map<String, String> getMetadataAsMap(Metadata meta) throws MetadataFault {
         Map<String, String> map = new TreeMap<>();
         String destId = meta.getDestinationId();

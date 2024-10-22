@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>gov.cdc.izgw</groupId>
 	<artifactId>izgw-hub</artifactId>
-	<version>2.1.3-IZGW-RELEASE</version>
+	<version>2.1.4-IZGW-SNAPSHOT</version>
 	<packaging>jar</packaging>
 	<name>IZ Gateway Hub 2.0</name>
 	<description>IZ Gateway Hub</description>
@@ -32,7 +32,7 @@
 		<dependency>
 			<groupId>gov.cdc.izgw</groupId>
 			<artifactId>izgw-core</artifactId>
-			<version>2.1.3-izgw-core-SNAPSHOT</version>
+			<version>2.1.4-izgw-core-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>ca.uhn.hapi</groupId>
@@ -158,17 +158,17 @@
 			<groupId>org.bouncycastle</groupId>
 			<!-- add -debug to get debug jars -->
 			<artifactId>bc-fips</artifactId>
-			<version>1.0.2.5</version>
+			<version>2.0.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.bouncycastle</groupId>
 			<artifactId>bcpkix-fips</artifactId>
-			<version>1.0.7</version>
+			<version>2.0.7</version>
 		</dependency>
 		<dependency>
 			<groupId>org.bouncycastle</groupId>
 			<artifactId>bctls-fips</artifactId>
-			<version>1.0.19</version>
+			<version>2.0.19</version>
 		</dependency>
 		<dependency>
 			<groupId>org.codehaus.janino</groupId>
@@ -186,12 +186,22 @@
 		<dependency>
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
-			<version>[2.5.0,)</version>
+			<version>[2.6.0,)</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-			<version>[2.5.0,)</version>
+			<version>[2.6.0,)</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-webflux</artifactId>
+			<version>[6.1.14,)</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-webmvc</artifactId>
+			<version>[6.1.14,)</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework</groupId>
