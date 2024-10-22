@@ -1,3 +1,13 @@
+# IZ Gateway Release 2.1.4
+The IZ Gateway Hub 2.1.3 patch release:
+
+* Improves system load capacity
+* Fixes a bug in ADS DEX Metadata reporting for the DEX 2.0 Schema
+* Reports izgw_submission_status and izgw_submission_location to verify receipt of reports
+* Upgrades spring-web components to address a CVE
+* Upgrades Bouncy Castle FIPS to Version 2.0 (NIST Certificate Number: 4743)
+
+
 # IZ Gateway Release 2.1.3
 The IZ Gateway Hub 2.1.3 patch release enables support for the DEX 2.0 schema and exchange of farmerFlu and other report submission formats determined by CDC in the future.  It also enables access to information from the /upload/info endpoint supported via DEX APIs enabling jurisdictions to determine the status of submissions sent to CDC.
 
