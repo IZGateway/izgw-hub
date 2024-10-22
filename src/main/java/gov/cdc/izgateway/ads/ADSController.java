@@ -73,7 +73,7 @@ import javax.xml.ws.http.HTTPException;
 @Lazy(false)
 public class ADSController implements ADSChecker {
     private static final String UNKNOWN = "UNKNOWN";
-	private static final List<String> METADATA_FIELDNAMES = getMetadataFieldNames();
+    private static final List<String> METADATA_FIELDNAMES = getMetadataFieldNames();
     public static final String IZGW_ADS_VERSION1 = "DEX1.0";
     public static final String IZGW_ADS_VERSION2 = "DEX2.0";
     
@@ -464,7 +464,7 @@ public class ADSController implements ADSChecker {
 	                }
 	            }
 	        }
-			messageId = getMessageId(xMessageId, xCorrelationId, xRequestId);
+          messageId = getMessageId(xMessageId, xCorrelationId, xRequestId);
 	        meta = getMetadata(messageId, destinationId, facilityId, reportType, period, filename, force);
 	        meta.setFileSize(file.getSize());
 	        log.info(Markers2.append("Source", RequestContext.getSourceInfo()), "New ADS request ({} b) read in {} s",

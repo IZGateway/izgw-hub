@@ -203,7 +203,6 @@ public class MetadataBuilder {
         }
         // Ensure that some value is set in ExtSourceVersion 
         meta.setExtSourceVersion(Metadata.DEX_VERSION2);
-
         IDestination dest = dests.findByDestId(routeId.trim().toLowerCase());
         meta.setDestination(dest);
         if (dest == null) {

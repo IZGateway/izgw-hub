@@ -391,7 +391,6 @@ public class DexFileUploadController {
 	private Object getInfo(UploadInfo uploadInfo) {
 		Map<String, Object> info = new TreeMap<>();
 		info.put("manifest", uploadInfo.getMetadata());
-
 		String date = FastDateFormat
 				.getInstance(Constants.TIMESTAMP_FORMAT)
 				.format(uploadInfo.getCreationTimestamp());
@@ -413,7 +412,6 @@ public class DexFileUploadController {
 		delivery.put("location", uploadInfo.getFileName());
 		delivery.put("issues", null);
 		info.put("deliveries", Collections.singletonList(delivery));
-		
 		return info;
 	}
 
