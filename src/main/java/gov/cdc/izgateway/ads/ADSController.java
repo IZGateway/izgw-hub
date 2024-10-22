@@ -513,8 +513,9 @@ public class ADSController implements ADSChecker {
 	    	try {
 	    		result = getSender(dest).getSubmissionStatus(dest, meta2);
 				deliveries = new ObjectMapper().readTree(result).get("deliveries").get(0);
-				log.info("Meta: {}\nResult: '{}'", meta2, result);
-				break;
+				if (deliveries != null) {
+					break;
+				}
 			} catch (Fault f) {
 	        	log.error(Markers2.append(f), "Error retrieving submission status for: {}", meta2);
 	        	break;
