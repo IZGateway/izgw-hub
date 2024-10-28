@@ -36,7 +36,7 @@ public class MetadataBuilder {
     @Getter
     @Setter
 	private boolean metadataValidationEnabled = true;
-    private static final String DEFAULT_SCHEMA_VERSION = "1.0";
+    private static final String DEFAULT_SCHEMA_VERSION = "2.0";
 	
     /**
      * Create a new MetadataBuider.
