@@ -80,6 +80,9 @@ public class IntegrityCheck {
             fileSize += read;
             md.update(buffer, 0, read);
         }
+        if (magic == null) {
+        	return new IntegrityCheck(new byte[0], fileSize, null);
+        }
         byte[] hash = md.digest();
         String mimeType = null;
         for (Map.Entry<String, byte[]> e: MAGIC_NUMBERS.entrySet()) {
