@@ -8840,7 +8840,7 @@
 												},
 												{
 													"key": "reportType",
-													"value": "influenzaVaccination",
+													"value": "rsvPrevention",
 													"type": "text"
 												},
 												{
@@ -8855,7 +8855,7 @@
 												},
 												{
 													"key": "filename",
-													"value": "MonthlyFlu_XXA_2022SEP.csv",
+													"value": "MonthlyRSV_XXA_2022SEP.csv",
 													"type": "text"
 												}
 											]
@@ -8926,8 +8926,7 @@
 										}
 									],
 									"protocolProfileBehavior": {
-										"disabledSystemHeaders": {},
-										"disableBodyPruning": true
+										"disabledSystemHeaders": {}
 									},
 									"request": {
 										"auth": {
@@ -8940,7 +8939,7 @@
 												}
 											]
 										},
-										"method": "GET",
+										"method": "POST",
 										"header": [
 											{
 												"key": "X-Message-ID",
@@ -9014,19 +9013,28 @@
 													"    pm.response.to.have.status(200);\r",
 													"});\r",
 													"\r",
-													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) {\r",
-													"    utils.testSLA(pm, 300000);\r",
+													"pm.test(\"Response is As Expected\", function () {\r",
+													"        checkDexResponse(pm, 844);\r",
+													"});\r",
 													"\r",
-													"    const interval = setTimeout(() => {}, 3000);\r",
-													"    async function moreTests() {\r",
-													"        utils.getLogs(null, pm).then((logData) => {\r",
-													"            logs = logData.json();\r",
-													"            txData = utils.getTxData(logs);\r",
-													"            utils.testLogs(logs, pm, 300000);\r",
+													"\r",
+													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) utils.testSLA(pm, 300000);\r",
+													"\r",
+													"const interval = setTimeout(() => {}, 3000);\r",
+													"async function moreTests() {\r",
+													"    utils.getLogs(null, pm).then((logData) => {\r",
+													"        logs = logData.json();\r",
+													"        txData = utils.getTxData(logs);\r",
+													"        pm.test(\"Log does not contain HL7 Error\", function() {\r",
+													"            pm.expect(txData[0].transactionData.hasHL7Error).to.be.eql(false);\r",
+													"            pm.expect(txData[0].transactionData.hl7Error).to.be.eql(\"\");\r",
 													"        });\r",
-													"    }\r",
-													"    moreTests();\r",
-													"}"
+													"        utils.testLogs(logs, pm, 300000);\r",
+													"    });\r",
+													"}\r",
+													"\r",
+													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();\r",
+													""
 												],
 												"type": "text/javascript",
 												"packages": {}
@@ -9034,8 +9042,7 @@
 										}
 									],
 									"protocolProfileBehavior": {
-										"disabledSystemHeaders": {},
-										"disableBodyPruning": true
+										"disabledSystemHeaders": {}
 									},
 									"request": {
 										"auth": {
@@ -9048,7 +9055,7 @@
 												}
 											]
 										},
-										"method": "GET",
+										"method": "POST",
 										"header": [
 											{
 												"key": "X-Message-ID",
@@ -9086,7 +9093,7 @@
 											]
 										},
 										"url": {
-											"raw": "https://{{host}}:{{port}}/rest/ads/{{dex-endpoint}}/info/{{tguid}}",
+											"raw": "https://{{host}}:{{port}}/rest/ads/{{dex-endpoint}}",
 											"protocol": "https",
 											"host": [
 												"{{host}}"
@@ -9095,9 +9102,7 @@
 											"path": [
 												"rest",
 												"ads",
-												"{{dex-endpoint}}",
-												"info",
-												"{{tguid}}"
+												"{{dex-endpoint}}"
 											]
 										}
 									},
