@@ -15,7 +15,9 @@ import gov.cdc.izgateway.logging.markers.Markers2;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.model.IEndpointStatus;
 import gov.cdc.izgateway.model.RetryStrategy;
+import gov.cdc.izgateway.security.CertPrincipal;
 import gov.cdc.izgateway.security.ClientTlsSupport;
+import gov.cdc.izgateway.security.Principal;
 import gov.cdc.izgateway.service.IDestinationService;
 import gov.cdc.izgateway.service.IStatusCheckerService;
 import gov.cdc.izgateway.service.impl.EndpointStatusService;
@@ -227,7 +229,10 @@ public class StatusCheckerService implements IStatusCheckerService {
 
         tData.setCipherSuite("INTERNAL_JAVA_CALL");
         source.setCipherSuite("INTERNAL_JAVA_CALL");
-        source.setCertificate(clientTlsSupport.getCertificate());
+
+        source.setPrincipal(RequestContext.getPrincipal());
+        // source.setCertificate(clientTlsSupport.getCertificate());
+
         source.setFacilityId("IZGW");
         source.setHost(SystemUtils.getHostname());
         source.setId("izgw");

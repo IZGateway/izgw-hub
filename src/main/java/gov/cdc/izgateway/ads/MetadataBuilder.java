@@ -236,7 +236,7 @@ public class MetadataBuilder {
      * @return	The MetadataBuilder
      */
     public MetadataBuilder setProvenance(String facilityId, TransactionData transactionData) {
-        meta.setUsername(transactionData.getSource().getCommonName());
+        meta.setUsername(transactionData.getSource().getPrincipalName());
         meta.setIpAddress(transactionData.getSource().getIpAddress());
         
         if (StringUtils.isBlank(facilityId)) {
