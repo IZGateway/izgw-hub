@@ -436,9 +436,9 @@
         monthName = fnparts.length > 2 ? fnparts[2].slice(4, 8) : new Date().getMonth();
 
         let type = fnparts[0];
-        if (type.includes("flu")) {
-          $("#reportType").val("influenzaVaccination");
-          reportType = "influenzaVaccination";
+        if (type.includes("farmerflu")) {
+            $("#reportType").val("farmerFlu");
+            reportType = "farmerFlu";
         } else if (type.includes("rsv")) {
           $("#reportType").val("rsvPrevention");
           reportType = "rsvPrevention";
@@ -448,9 +448,9 @@
         } else if (type.includes("all")) {
           $("#reportType").val("covidallMonthlyVaccination");
           reportType = "covidallMonthlyVaccination";
-        } else if (type.includes("farmerflu")) {
-            $("#reportType").val("farmerFlu");
-            reportType = "farmerFlu";
+        } else if (type.includes("flu")) {
+            $("#reportType").val("influenzaVaccination");
+            reportType = "influenzaVaccination";
         } else {
           errors.push("The filename is not properly formatted. The report type (" + type + ") is invalid");
           reportType = "";
