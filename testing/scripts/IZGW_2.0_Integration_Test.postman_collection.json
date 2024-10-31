@@ -8840,7 +8840,7 @@
 												},
 												{
 													"key": "reportType",
-													"value": "influenzaVaccination",
+													"value": "rsvPrevention",
 													"type": "text"
 												},
 												{
@@ -8855,7 +8855,7 @@
 												},
 												{
 													"key": "filename",
-													"value": "MonthlyFlu_XXA_2022SEP.csv",
+													"value": "MonthlyRSV_XXA_2022SEP.csv",
 													"type": "text"
 												}
 											]
@@ -9009,9 +9009,14 @@
 											"listen": "test",
 											"script": {
 												"exec": [
-													"pm.test(\"Status code is 502\", function () {\r",
-													"    pm.response.to.have.status(502);\r",
+													"pm.test(\"Status code is 200\", function () {\r",
+													"    pm.response.to.have.status(200);\r",
 													"});\r",
+													"\r",
+													"pm.test(\"Response is As Expected\", function () {\r",
+													"        checkDexResponse(pm, 844);\r",
+													"});\r",
+													"\r",
 													"\r",
 													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) utils.testSLA(pm, 300000);\r",
 													"\r",
@@ -9037,8 +9042,7 @@
 										}
 									],
 									"protocolProfileBehavior": {
-										"disabledSystemHeaders": {},
-										"disableBodyPruning": true
+										"disabledSystemHeaders": {}
 									},
 									"request": {
 										"auth": {
@@ -9051,7 +9055,7 @@
 												}
 											]
 										},
-										"method": "GET",
+										"method": "POST",
 										"header": [
 											{
 												"key": "X-Message-ID",
@@ -9089,7 +9093,7 @@
 											]
 										},
 										"url": {
-											"raw": "https://{{host}}:{{port}}/rest/ads/{{dex-endpoint}}/info/{{tguid}}1",
+											"raw": "https://{{host}}:{{port}}/rest/ads/{{dex-endpoint}}",
 											"protocol": "https",
 											"host": [
 												"{{host}}"
@@ -9098,119 +9102,7 @@
 											"path": [
 												"rest",
 												"ads",
-												"{{dex-endpoint}}",
-												"info",
-												"{{tguid}}1"
-											]
-										}
-									},
-									"response": []
-								},
-								{
-									"name": "Valid Check Status on Farmer Flu Submission to DEX Mock",
-									"event": [
-										{
-											"listen": "prerequest",
-											"script": {
-												"exec": [
-													"utils.setup(pm);"
-												],
-												"type": "text/javascript",
-												"packages": {}
-											}
-										},
-										{
-											"listen": "test",
-											"script": {
-												"exec": [
-													"pm.test(\"Status code is 200\", function () {\r",
-													"    pm.response.to.have.status(200);\r",
-													"});\r",
-													"\r",
-													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) {\r",
-													"    utils.testSLA(pm, 300000);\r",
-													"\r",
-													"    const interval = setTimeout(() => {}, 3000);\r",
-													"    async function moreTests() {\r",
-													"        utils.getLogs(null, pm).then((logData) => {\r",
-													"            logs = logData.json();\r",
-													"            txData = utils.getTxData(logs);\r",
-													"            utils.testLogs(logs, pm, 300000);\r",
-													"        });\r",
-													"    }\r",
-													"    moreTests();\r",
-													"}"
-												],
-												"type": "text/javascript",
-												"packages": {}
-											}
-										}
-									],
-									"protocolProfileBehavior": {
-										"disabledSystemHeaders": {},
-										"disableBodyPruning": true
-									},
-									"request": {
-										"auth": {
-											"type": "bearer",
-											"bearer": [
-												{
-													"key": "token",
-													"value": "{{token}}",
-													"type": "string"
-												}
-											]
-										},
-										"method": "GET",
-										"header": [
-											{
-												"key": "X-Message-ID",
-												"value": "Basic Submission MAA/routineImmuniziation/MAA_16M.zip/2023Q1/RIA_16M.zip"
-											}
-										],
-										"body": {
-											"mode": "formdata",
-											"formdata": [
-												{
-													"key": "facilityId",
-													"value": "XXA",
-													"type": "text"
-												},
-												{
-													"key": "reportType",
-													"value": "farmerFlu",
-													"type": "text"
-												},
-												{
-													"key": "file",
-													"type": "file",
-													"src": "MonthlyAllCOVID_ARA_2022SEP.csv"
-												},
-												{
-													"key": "period",
-													"value": "2022-SEP",
-													"type": "text"
-												},
-												{
-													"key": "filename",
-													"value": "MonthlyFarmerFlu_XXA_2022SEP.csv",
-													"type": "text"
-												}
-											]
-										},
-										"url": {
-											"raw": "https://{{host}}:{{port}}/rest/ads/{{dex-endpoint}}/info/{{tguid}}",
-											"protocol": "https",
-											"host": [
-												"{{host}}"
-											],
-											"port": "{{port}}",
-											"path": [
-												"rest",
-												"ads",
-												"{{dex-endpoint}}",
-												"info",
-												"{{tguid}}"
+												"{{dex-endpoint}}"
 											]
 										}
 									},
@@ -9716,6 +9608,7 @@
 									"        pm.expect(metadata.data_producer_id, \"data_producer_id\").to.be.eql(pm.request.body.formdata.get(\"facilityId\"));",
 									"        pm.expect(metadata.data_producer_id, \"jurisdiction\").to.be.eql(pm.request.body.formdata.get(\"facilityId\"));",
 									"        pm.expect(metadata.version, \"version\").to.match(/1.0|2.0/);",
+									"        pm.expect(metadata.version).to.be.eql(metadata.meta_schema_version);",
 									"        pm.expect(metadata.data_stream_route, \"data_stream_route\").to.match(/other|csv/);",
 									"        pm.expect(metadata.data_stream_id, \"data_stream_id\").to.match(",
 									"            /routine-immunization|covid-bridge-vaccination|covid-all-monthly-vaccination|rsv-prevention|influenza-vaccination|generic-immunization/);",

@@ -36,7 +36,7 @@ public class MetadataBuilder {
     @Getter
     @Setter
 	private boolean metadataValidationEnabled = true;
-    private static final String DEFAULT_SCHEMA_VERSION = "1.0";
+    private static final String DEFAULT_SCHEMA_VERSION = "2.0";
 	
     /**
      * Create a new MetadataBuider.
@@ -203,6 +203,7 @@ public class MetadataBuilder {
         }
         // Ensure that some value is set in ExtSourceVersion 
         meta.setExtSourceVersion(Metadata.DEX_VERSION2);
+
         IDestination dest = dests.findByDestId(routeId.trim().toLowerCase());
         meta.setDestination(dest);
         if (dest == null) {
@@ -243,7 +244,7 @@ public class MetadataBuilder {
         } else {
             facilityId = facilityId.trim().toUpperCase();
             if (facilityId.trim().length() != 3 || 
-                !(facilityId.endsWith("A") || facilityId.equals(FACILITY_IZG))) {
+                !(facilityId.endsWith("A") || facilityId.equals(FACILITY_IZG) || facilityId.equals("NIH"))) {
                 errors.add(
                     String.format("Facility ID (%s) is not valid.  It must in the form of XXA.", facilityId)
                 );

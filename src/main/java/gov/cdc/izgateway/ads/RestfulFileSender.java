@@ -323,7 +323,9 @@ public abstract class RestfulFileSender implements FileSender {
         IntegrityCheck ic = null;
         if (data != null) {
             ic = IntegrityCheck.getIntegrityCheck(data);
-            headers.add(new BasicHeader("Content-MD5", ic.toString()));
+            if (ic.getHash().length != 0) {
+            	headers.add(new BasicHeader("Content-MD5", ic.toString()));
+            }
             headers.add(new BasicHeader("Content-Length", Long.toString(ic.getLength())));
             meta.setFileSize(ic.getLength());
         }
