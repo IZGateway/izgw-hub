@@ -213,7 +213,7 @@ public interface Metadata extends Serializable {
     
     @JsonProperty("meta_schema_version")
     String getSchemaVersion();
-    void setSchemaVersion(String schemaVersion);
+    void setSchemaVersion(String version);
     
     // Our additions to NDLP Specification
     @JsonProperty("izgw_route_id")
@@ -246,6 +246,15 @@ public interface Metadata extends Serializable {
     @JsonProperty("izgw_event_id")
     String getEventId();
     void setEventId(String eventId);
+    
+    @JsonProperty("izgw_submission_status")
+    String getSubmissionStatus();
+    void setSubmissionStatus(String status);
+    
+    @JsonProperty("izgw_submission_location")
+    String getSubmissionLocation();
+    void setSubmissionLocation(String location);
+
 
     default boolean isEqual(Object o) {
         if (!(o instanceof Metadata)) {

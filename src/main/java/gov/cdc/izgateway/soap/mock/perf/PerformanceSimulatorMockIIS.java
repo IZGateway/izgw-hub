@@ -287,7 +287,7 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 		}
 		return qParts;
 	}
-
+	
 	private static String queryError(String message, String errorLocation, String errorCode, String errorMessage) {
 		Map<String, String> map = new HashMap<>();
 		map.put("{{Error Location}}", errorLocation);

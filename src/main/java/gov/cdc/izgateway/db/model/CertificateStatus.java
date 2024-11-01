@@ -6,13 +6,16 @@ import lombok.EqualsAndHashCode;
 
 import java.io.Serializable;
 import java.security.cert.X509Certificate;
-import java.sql.Timestamp;
 import java.util.Date;
 
 import gov.cdc.izgateway.model.ICertificateStatus;
 import gov.cdc.izgateway.utils.X500Utils;
 
 
+/**
+ * Implements ICertificateStatus for MySQL/RDS backend
+ * @author Audacious Inquiry
+ */
 @SuppressWarnings("serial")
 @Entity
 @Table(name = "certificatestatus")
@@ -42,10 +45,10 @@ public class CertificateStatus implements Serializable, ICertificateStatus {
     private String certSerialNumber;
 
     @Column(name = "last_checked_timestamp")
-    private Timestamp lastCheckedTimeStamp;
+    private Date lastCheckedTimeStamp;
 
     @Column(name = "next_check_timestamp")
-    private Timestamp nextCheckTimeStamp;
+    private Date nextCheckTimeStamp;
 
     @Column(name = "last_check_status")
     private String lastCheckStatus;
@@ -67,20 +70,31 @@ public class CertificateStatus implements Serializable, ICertificateStatus {
     	return new CertificateStatus(cert);
     }
     
+    /**
+     * Creates a new empty CertificateStatus
+     */
     public CertificateStatus() {
     	setLastCheckStatus("UNKNOWN");
 	}
+    /**
+     * Creates a new CertificateStatus record from an existing certificate.
+     * @param cert The certificate to initialize it from 
+     */
     public CertificateStatus(X509Certificate cert) {
     	if (cert == null) {
     		throw new NullPointerException("cert parameter cannot be null");
     	}
     	setLastCheckStatus("UNKNOWN");
-		setLastCheckedTimeStamp(new Timestamp(0)); // Start of epoch, effectively never previously checked.
-		setNextCheckTimeStamp(new Timestamp(System.currentTimeMillis() - 100));  // Overdue for a check
+		setLastCheckedTimeStamp(new Date(0)); // Start of epoch, effectively never previously checked.
+		setNextCheckTimeStamp(new Date(System.currentTimeMillis() - 100));  // Overdue for a check
 		setCertificateId(ICertificateStatus.computeThumbprint(cert));
 		setCertSerialNumber(cert.getSerialNumber().toString(16));
 		setCommonName(X500Utils.getCommonName(cert));
     }
+    /**
+     * Copies a CertificateStatus from another one.
+     * @param s	The certificate status to copy from
+     */
     public CertificateStatus(ICertificateStatus s) {
     	setLastCheckStatus(s.getLastCheckStatus());
     	setLastCheckedTimeStamp(s.getLastCheckedTimeStamp());
@@ -89,23 +103,4 @@ public class CertificateStatus implements Serializable, ICertificateStatus {
     	setCertSerialNumber(s.getCertSerialNumber());
     	setCommonName(s.getCommonName());
     }
-
-	@Override
-	public void setLastCheckedTimeStamp(Date lastCheckedTimeStamp) {
-		if (lastCheckedTimeStamp instanceof Timestamp t) {
-			this.lastCheckedTimeStamp = t;
-		} else {
-			this.lastCheckedTimeStamp = new Timestamp(lastCheckedTimeStamp.getTime());
-		}
-	}
-
-	@Override
-	public void setNextCheckTimeStamp(Date nextCheckTimeStamp) {
-		if (nextCheckTimeStamp instanceof Timestamp t) {
-			this.nextCheckTimeStamp = t;
-		} else {
-			this.nextCheckTimeStamp = new Timestamp(nextCheckTimeStamp.getTime());
-		}
-	}
-
 }

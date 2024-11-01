@@ -4,7 +4,7 @@ RUN apk update
 RUN apk upgrade --no-cache
 RUN apk add --no-cache openjdk17-jre mariadb-client mariadb-connector-c-dev 
 RUN npm upgrade -g
-RUN npm outdated -g
+RUN npm outdated -g 
 
 # Define arguments (set in izgateway pom.xml)
 ARG JAR_FILENAME
@@ -53,22 +53,18 @@ WORKDIR /usr/share/izgateway/
 ADD target/$JAR_FILENAME app.jar
 
 # Ensure we only use NIST certified publicly available BC-FIPS packages
-ADD docker/data/bc-fips-1.0.2.5.jar bc-fips-1.0.2.5.jar
-ADD docker/data/bcpkix-fips-1.0.7.jar bcpkix-fips-1.0.7.jar
-ADD docker/data/bctls-fips-1.0.19.jar bctls-fips-1.0.19.jar
+ADD docker/data/bc-fips-2.0.0.jar bc-fips-2.0.0.jar
+ADD docker/data/bcpkix-fips-2.0.7.jar bcpkix-fips-2.0.7.jar
+ADD docker/data/bctls-fips-2.0.19.jar bctls-fips-2.0.19.jar
 
 ADD docker/fatjar-run.sh run1.sh
-ADD docker/izgwdb.sh izgwdb1.sh
 
 # Remove carriage returns from batch file (for build on WinDoze).
 RUN tr -d '\r' <run1.sh >run.sh
 RUN rm run1.sh
-RUN tr -d '\r' <izgwdb1.sh >izgwdb.sh
-RUN rm izgwdb1.sh
 
 # Make scripts executable
 RUN ["chmod", "u+r+x", "run.sh"]
-RUN ["chmod", "u+r+x", "izgwdb.sh"]
 
 # Update base keystore in cacerts by adding AWS Certificate and converting to BCFKS format
 WORKDIR /usr/lib/jvm/java-17-openjdk/jre/lib/security
@@ -76,10 +72,10 @@ RUN keytool -keystore cacerts -storepass changeit -noprompt -trustcacerts -impor
 RUN keytool -importkeystore -srckeystore cacerts -srcstoretype JKS -srcstorepass changeit \
       -destkeystore jssecacerts -deststorepass changeit -deststoretype BCFKS -providername BCFIPS \
       -provider org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider \
-      -providerpath /usr/share/izgateway/bc-fips-1.0.2.5.jar
+      -providerpath /usr/share/izgateway/bc-fips-2.0.0.jar
 
 WORKDIR /usr/share/izgateway/
 
 ENV IZGW_VERSION=$IZGW_VERSION  
 # run app on startup
-ENTRYPOINT ["sh","-c","crond && bash run.sh app.jar"]
+ENTRYPOINT ["sh","-c","crond && exec bash run.sh app.jar"]

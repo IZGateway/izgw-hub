@@ -53,6 +53,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -77,7 +78,6 @@ public class DexFileUploadController {
     private static final int MAX_ENTRIES = 10;
     private final Map<String, Object> submissions = new LinkedHashMap<>() {
 		private static final long serialVersionUID = 1L;
-    
 		@Override
         protected boolean removeEldestEntry(Map.Entry<String,Object> eldest) {
             return size() > MAX_ENTRIES;
@@ -310,7 +310,6 @@ public class DexFileUploadController {
         return new ResponseEntity<>(err, headers, status);
     }
 
-    
     /**
      * Get the status for an upload
      * @param tguid	The GUID of the upload
@@ -331,6 +330,7 @@ public class DexFileUploadController {
     	}
     	return new ResponseEntity<>(o, HttpStatus.OK);
     }
+   
     /**
      * Handle an upload request
      * @param servletRequest	The request
@@ -387,22 +387,35 @@ public class DexFileUploadController {
             }
         }
     }
-
+    
 	private Object getInfo(UploadInfo uploadInfo) {
+    	String date = FastDateFormat
+				.getInstance(Constants.TIMESTAMP_FORMAT)
+				.format(uploadInfo.getCreationTimestamp());
 		Map<String, Object> info = new TreeMap<>();
 		info.put("manifest", uploadInfo.getMetadata());
 		Map<String, Object> fileInfo = new TreeMap<>();
 		fileInfo.put("size_bytes", uploadInfo.getLength());
-		fileInfo.put("updated_at", 
-			FastDateFormat
-				.getInstance(Constants.TIMESTAMP_FORMAT)
-				.format(uploadInfo.getCreationTimestamp())
-		);
+		fileInfo.put("updated_at", date);
 		info.put("file_info", fileInfo);
+		
+		Map<String, String> uploadStatus = new TreeMap<>();
+		uploadStatus.put("status", "Complete");
+		uploadStatus.put("chunk_received_at", date);
+		info.put("upload_status", uploadStatus);
+		
+		Map<String, String> delivery = new TreeMap<>();
+		delivery.put("delivered_at", date);
+		delivery.put("status", "SUCCESS");
+		delivery.put("name", "izgw");
+		delivery.put("location", uploadInfo.getFileName());
+		delivery.put("issues", null);
+		info.put("deliveries", Collections.singletonList(delivery));
+
 		return info;
 	}
-
-    private String getBearerToken(HttpServletRequest servletRequest) {
+	
+	private String getBearerToken(HttpServletRequest servletRequest) {
         String bearerToken = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
         String[] parts;
         if (bearerToken != null) {

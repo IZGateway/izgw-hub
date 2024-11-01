@@ -84,16 +84,18 @@ class ParsedFilename {
 	private String checkRiverFilename(String[] parts) {
 		// Monthly files
 		filetype = parts.length > 0 ? parts[0] : "";
-		 if (StringUtils.containsIgnoreCase(filetype, "flu")) {
-		     filetype = "influenzaVaccination";
-		 } else if (StringUtils.containsIgnoreCase(filetype, "rsv")) {
-			 filetype = "rsvPrevention";
-		 } else if (StringUtils.containsIgnoreCase(filetype, "all")) {
-			 filetype = "covidallMonthlyVaccination";
-		 } else {
+		if (StringUtils.containsIgnoreCase(filetype, "farmer")) {
 		    filetype = "genericImmunization";
-		 }
-		 return filetype;
+		} else if (StringUtils.containsIgnoreCase(filetype, "flu")) {
+		    filetype = "influenzaVaccination";
+		} else if (StringUtils.containsIgnoreCase(filetype, "rsv")) {
+			filetype = "rsvPrevention";
+		} else if (StringUtils.containsIgnoreCase(filetype, "all")) {
+			filetype = "covidallMonthlyVaccination";
+		} else {
+		    filetype = "genericImmunization";
+		}
+		return filetype;
 	}
 	
 	private Date parseDate(String dateString, String format) {

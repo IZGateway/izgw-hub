@@ -3,6 +3,22 @@ The IZ Gateway Hub 2.2.0 Release enables IZ Gateway to run in multiple regions
 * It uses AWS DynamoDB instead of AWS RDS
 * It can run behind an Application Load Balancer instead of a Network Load Balancer
 
+# IZ Gateway Release 2.1.5
+The IZ Gateway Hub 2.1.5 patch release:
+
+* Fixes a null pointer error in IIS to CDC (DEX) APIs with file sizes of 0
+* Corrects a bug in meta_schema_version and version fields to ensure they have the same values
+
+# IZ Gateway Release 2.1.4
+The IZ Gateway Hub 2.1.4 patch release:
+
+* Improves system load capacity
+* Fixes a bug in ADS DEX Metadata reporting for the DEX 2.0 Schema
+* Reports izgw_submission_status and izgw_submission_location to verify receipt of reports
+* Upgrades spring-web components to address a CVE
+* Upgrades Bouncy Castle FIPS to Version 2.0 (NIST Certificate Number: 4743)
+>>>>>>> refs/heads/Release_v2.1.5-branch
+
 # IZ Gateway Release 2.1.3
 The IZ Gateway Hub 2.1.3 patch release enables support for the DEX 2.0 schema and exchange of farmerFlu and other report submission formats determined by CDC in the future.  It also enables access to information from the /upload/info endpoint supported via DEX APIs enabling jurisdictions to determine the status of submissions sent to CDC.
 
