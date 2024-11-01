@@ -6,6 +6,7 @@ import lombok.EqualsAndHashCode;
 import java.io.Serializable;
 import java.security.cert.X509Certificate;
 import java.sql.Timestamp;
+import java.util.Date;
 
 import gov.cdc.izgateway.dynamodb.DynamoDbEntity;
 import gov.cdc.izgateway.model.ICertificateStatus;
@@ -39,9 +40,9 @@ public class CertificateStatus extends DynamoDbEntity implements Serializable, I
     
     private String certSerialNumber;
 
-    private Timestamp lastCheckedTimeStamp;
+    private Date lastCheckedTimeStamp;
 
-    private Timestamp nextCheckTimeStamp;
+    private Date nextCheckTimeStamp;
 
     private String lastCheckStatus;
 
