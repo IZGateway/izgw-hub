@@ -509,6 +509,209 @@
 							"response": []
 						},
 						{
+							"name": "TC_89a Logging Test: Logged Message in Dev",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Response is As Expected\", function () {\r",
+											"    var response = utils.removeNS(xml2Json(responseBody));\r",
+											"    var header = response?.Envelope?.Header?.HubResponseHeader;\r",
+											"    try {\r",
+											"        pm.expect(header).to.not.be.eql(undefined);\r",
+											"        pm.expect(header).to.have.property('DestinationId');\r",
+											"        pm.expect(header).to.have.property('DestinationUri');\r",
+											"    } catch (err) {\r",
+											"        console.log({\"header\": header});\r",
+											"        throw err;\r",
+											"    }\r",
+											"    var hl7Message = response['Envelope']['Body']['SubmitSingleMessageResponse']['Hl7Message'];\r",
+											"    var request = xml2Json(pm.request.body);\r",
+											"    var expected = pm.collectionVariables.get(\"GoodResponse\");\r",
+											"    try {\r",
+											"        pm.expect(hl7Message.replaceAll('\\r','\\n')).to.be.eql(expected.replaceAll('\\r','\\n'));  // TODO: Raise the issue of CR's in content.\r",
+											"    } catch (err) {\r",
+											"        console.log(hl7Message, expected);\r",
+											"        throw err;\r",
+											"    }\r",
+											"});\r",
+											"\r",
+											"\r",
+											"\r",
+											"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) utils.testSLA(pm, LONG_SLA);\r",
+											"\r",
+											"const interval = setTimeout(() => {}, 3000);\r",
+											"async function moreTests() {\r",
+											"    utils.getLogs(null, pm).then((logData) => {\r",
+											"        logs = logData.json();\r",
+											"        txData = utils.getTxData(logs);\r",
+											"        pm.test(\"Log does not contain HL7 Error\", function() {\r",
+											"            pm.expect(txData[0].transactionData.hasHL7Error).to.be.eql(false);\r",
+											"            pm.expect(txData[0].transactionData.hl7Error).to.be.eql(\"\");\r",
+											"        });\r",
+											"        pm.test(\"Log does not contain PHI\", function() {\r",
+											"            pm.expect(txData[0].transactionData.requestHL7Message).to.not.contain(\"\\nPID\");\r",
+											"            pm.expect(txData[0].transactionData.requestHL7Message).to.not.contain(\"\\nQPD\");\r",
+											"        });\r",
+											"        utils.testLogs(logs, pm, 250);\r",
+											"    });\r",
+											"}\r",
+											"\r",
+											"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();\r",
+											"utils.checkNamespaces(pm);\r",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"utils.setup(pm, \"dev\");"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {
+									"host": true
+								}
+							},
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Host",
+										"value": "{{hostHeader}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/xml"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>{{GoodMessage}}</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{host}}"
+									],
+									"port": "{{port}}",
+									"path": [
+										"IISHubService"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "TC_89b Logging Test: Unlogged Message in Dev",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if ('dev.izgateway.org' != pm.variables.get(\"host\")) {\r",
+											"    pm.test(\"Status code is 500\", function () {\r",
+											"        pm.response.to.have.status(500);\r",
+											"    });\r",
+											"\r",
+											"    pm.test(\"Response is As Expected\", function () {\r",
+											"        try {\r",
+											"            pm.expect(pm.response.text()).to.contain('<Summary>UnknownTestCase</Summary>');\r",
+											"        } catch (err) {\r",
+											"            console.log({\"FailedResponse\": pm.response.text()} );\r",
+											"            throw err;\r",
+											"        }\r",
+											"    });\r",
+											"\r",
+											"    if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) utils.testSLA(pm, LONG_SLA);\r",
+											"\r",
+											"    const interval = setTimeout(() => {}, 3000);\r",
+											"    async function moreTests() {\r",
+											"        utils.getLogs(null, pm).then((logData) => {\r",
+											"            logs = logData.json();\r",
+											"            txData = utils.getTxData(logs);\r",
+											"            pm.test(\"Log does not contain HL7 Error\", function() {\r",
+											"                pm.expect(txData[0].transactionData.hasHL7Error).to.be.eql(false);\r",
+											"                pm.expect(txData[0].transactionData.hl7Error).to.be.eql(\"\");\r",
+											"            });\r",
+											"            pm.test(\"Log does not contain PHI\", function() {\r",
+											"                pm.expect(txData[0].transactionData.requestHL7Message).to.not.contain(\"\\nPID\");\r",
+											"                pm.expect(txData[0].transactionData.requestHL7Message).to.not.contain(\"\\nQPD\");\r",
+											"            });\r",
+											"            utils.testLogs(logs, pm, 250);\r",
+											"        });\r",
+											"    }\r",
+											"\r",
+											"    if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();\r",
+											"    utils.checkNamespaces(pm);\r",
+											"\r",
+											"}"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"utils.setup(pm, \"dev\");"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {
+									"host": true
+								}
+							},
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Host",
+										"value": "{{hostHeader}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/xml"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IRIS IIS|IRIS|TEST|TC_04|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS|SIISCLIENT28374|\r\nQPD|Z34^Request Immunization History^CDCPHINVS|20210330093013LA231|LAMASM77BF4BA6^^^IZGATEWAYTEST&amp;2.16.840.1.113883.40.1&amp;ISO^MR|Johnson^James^Andrew^^^^L|Leung^Jen^^^^^M|20160414|M|Main Street&amp;&amp;123^^New Orleans^LA^70115^^L|^PRN^PH^^^555^5551111|Y|1</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{host}}"
+									],
+									"port": "{{port}}",
+									"path": [
+										"IISHubService"
+									]
+								}
+							},
+							"response": []
+						},
+						{
 							"name": "TC_ACK03 Error Handling IIS wants to Warn a Sender of an issue. No Error level problems with Message",
 							"event": [
 								{
@@ -734,7 +937,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IRIS IIS|IRIS|TEST|TC_21D|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS|SIISCLIENT28374|\r\nQPD|Z34^Request Immunization History^CDCPHINVS|20210330093013LA231|LAMASM77BF4BA6^^^IZGATEWAYTEST&amp;2.16.840.1.113883.40.1&amp;ISO^MR|Johnson^James^Andrew^^^^L|Leung^Jen^^^^^M|20160414|M|Main Street&amp;&amp;123^^New Orleans^LA^70115^^L|^PRN^PH^^^555^5551111|Y|1</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IRIS IIS|IRIS|TEST|TC_21D|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS|SIISCLIENT28374|\r\nQPD|Z34^Request Immunization History^CDCPHINVS|20210330093013LA231|LAMASM77BF4BA6^^^IZGATEWAYTEST&amp;2.16.840.1.113883.40.1&amp;ISO^MR|JohnsonIZG^James^Andrew^^^^L|Leung^Jen^^^^^M|20160414|M|Main Street&amp;&amp;123^^New Orleans^LA^70115^^L|^PRN^PH^^^555^5551111|Y|1</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
@@ -2562,7 +2765,7 @@
 											"        utils.testLogs(logs, pm, TX_SLA);\r",
 											"    });\r",
 											"}\r",
-											" if(pm.environment.get(\"testingEnvironment\") !== \"test\"){\r",
+											" if(!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) {\r",
 											"    utils.testSLA(pm, LONG_SLA);\r",
 											"    moreTests();\r",
 											"    utils.checkNamespaces(pm);\r",
@@ -7602,6 +7805,91 @@
 										}
 									},
 									"response": []
+								},
+								{
+									"name": "TC_24i Invalid XML Response",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 500\", function () {\r",
+													"    pm.response.to.have.status(500);\r",
+													"});\r",
+													"\r",
+													"pm.test(\"Response has HubClientFault\", function () {\r",
+													"    pm.expect(responseBody).to.contain('HubClientFault>');\r",
+													"    pm.expect(responseBody).to.contain('urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessage:Fault:HubClientFault');\r",
+													"});\r",
+													"\r",
+													"pm.test(\"Response has correct soap reason about fault\", function () {\r",
+													"    pm.expect(responseBody).to.include(\"ParseError at [row,col]\");\r",
+													"});\r",
+													"\r",
+													"var response = utils.removeNS(xml2Json(responseBody));\r",
+													"pm.test(\"Response has Summary = DestinationReturnedInvalidResponse\", function() {\r",
+													"   var summary = response['Envelope']['Body']['Fault']['Detail']['Summary'];\r",
+													"   pm.expect(summary).to.be.eql('DestinationReturnedInvalidResponse');\r",
+													"});\r",
+													"\r",
+													"pm.test(\"Response has Retry = CHECK_IIS_STATUS\", function() {\r",
+													"   var response = utils.removeNS(xml2Json(responseBody));\r",
+													"   var retry = response['Envelope']['Body']['Fault']['Detail']['Retry'];\r",
+													"   pm.expect(retry).to.be.eql('CHECK_IIS_STATUS');\r",
+													"});\r",
+													"utils.checkNamespaces(pm);\r",
+													"\r",
+													""
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"utils.setup(pm, \"dev\");"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"protocolProfileBehavior": {
+										"disabledSystemHeaders": {
+											"host": true
+										}
+									},
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Host",
+												"value": "{{hostHeader}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/xml"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|||TEST|TC_24I|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS|SIISCLIENT28374</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+										},
+										"url": {
+											"raw": "https://{{host}}:{{port}}/IISHubService",
+											"protocol": "https",
+											"host": [
+												"{{host}}"
+											],
+											"port": "{{port}}",
+											"path": [
+												"IISHubService"
+											]
+										}
+									},
+									"response": []
 								}
 							]
 						}
@@ -8354,122 +8642,6 @@
 									"response": []
 								},
 								{
-									"name": "Write covidbridge Submission to DEX Mock",
-									"event": [
-										{
-											"listen": "prerequest",
-											"script": {
-												"exec": [
-													"utils.setup(pm);"
-												],
-												"type": "text/javascript",
-												"packages": {}
-											}
-										},
-										{
-											"listen": "test",
-											"script": {
-												"exec": [
-													"pm.test(\"Status code is 200\", function () {\r",
-													"    pm.response.to.have.status(200);\r",
-													"});\r",
-													"\r",
-													"pm.test(\"Response is As Expected\", function () {\r",
-													"    checkDexResponse(pm, 323);\r",
-													"});\r",
-													"\r",
-													"\r",
-													"utils.testSLA(pm, 300000);\r",
-													"\r",
-													"const interval = setTimeout(() => {}, 3000);\r",
-													"async function moreTests() {\r",
-													"    utils.getLogs(null, pm).then((logData) => {\r",
-													"        logs = logData.json();\r",
-													"        txData = utils.getTxData(logs);\r",
-													"        pm.test(\"Log does not contain HL7 Error\", function() {\r",
-													"            pm.expect(txData[0].transactionData.hasHL7Error).to.be.eql(false);\r",
-													"            pm.expect(txData[0].transactionData.hl7Error).to.be.eql(\"\");\r",
-													"        });\r",
-													"        utils.testLogs(logs, pm, 300000);\r",
-													"    });\r",
-													"}\r",
-													"\r",
-													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();\r",
-													""
-												],
-												"type": "text/javascript",
-												"packages": {}
-											}
-										}
-									],
-									"protocolProfileBehavior": {
-										"disabledSystemHeaders": {}
-									},
-									"request": {
-										"auth": {
-											"type": "bearer",
-											"bearer": [
-												{
-													"key": "token",
-													"value": "{{token}}",
-													"type": "string"
-												}
-											]
-										},
-										"method": "POST",
-										"header": [
-											{
-												"key": "X-Message-ID",
-												"value": "Basic Submission MAA/routineImmuniziation/MAA_16M.zip/2023Q1/RIA_16M.zip"
-											}
-										],
-										"body": {
-											"mode": "formdata",
-											"formdata": [
-												{
-													"key": "facilityId",
-													"value": "XXA",
-													"type": "text"
-												},
-												{
-													"key": "reportType",
-													"value": "covidbridgeVaccination",
-													"type": "text"
-												},
-												{
-													"key": "file",
-													"type": "file",
-													"src": "MonthlyBridgeCOVID_ARA_2022SEP.csv"
-												},
-												{
-													"key": "period",
-													"value": "2022-SEP",
-													"type": "text"
-												},
-												{
-													"key": "filename",
-													"value": "MonthlyBridgeCOVID_XXA_2022SEP.csv",
-													"type": "text"
-												}
-											]
-										},
-										"url": {
-											"raw": "https://{{host}}:{{port}}/rest/ads/{{dex-endpoint}}",
-											"protocol": "https",
-											"host": [
-												"{{host}}"
-											],
-											"port": "{{port}}",
-											"path": [
-												"rest",
-												"ads",
-												"{{dex-endpoint}}"
-											]
-										}
-									},
-									"response": []
-								},
-								{
 									"name": "Write RSV Submission to DEX Mock",
 									"event": [
 										{
@@ -8603,7 +8775,7 @@
 											"script": {
 												"exec": [
 													"// Disable while DEX Staging is down.\r",
-													"if (false) {\r",
+													"if (true) {\r",
 													"    pm.test(\"Status code is 200\", function () {\r",
 													"        pm.response.to.have.status(200);\r",
 													"    });\r",
@@ -8815,6 +8987,346 @@
 												"rest",
 												"ads",
 												"{{dex-endpoint}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Write Farmer Flu Submission to DEX Mock",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"utils.setup(pm);"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 200\", function () {\r",
+													"    pm.response.to.have.status(200);\r",
+													"});\r",
+													"\r",
+													"pm.test(\"Response is As Expected\", function () {\r",
+													"        checkDexResponse(pm, 844);\r",
+													"});\r",
+													"\r",
+													"\r",
+													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) utils.testSLA(pm, 300000);\r",
+													"\r",
+													"const interval = setTimeout(() => {}, 3000);\r",
+													"async function moreTests() {\r",
+													"    utils.getLogs(null, pm).then((logData) => {\r",
+													"        logs = logData.json();\r",
+													"        txData = utils.getTxData(logs);\r",
+													"        pm.test(\"Log does not contain HL7 Error\", function() {\r",
+													"            pm.expect(txData[0].transactionData.hasHL7Error).to.be.eql(false);\r",
+													"            pm.expect(txData[0].transactionData.hl7Error).to.be.eql(\"\");\r",
+													"        });\r",
+													"        utils.testLogs(logs, pm, 300000);\r",
+													"    });\r",
+													"}\r",
+													"\r",
+													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();\r",
+													""
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"protocolProfileBehavior": {
+										"disabledSystemHeaders": {}
+									},
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "POST",
+										"header": [
+											{
+												"key": "X-Message-ID",
+												"value": "Basic Submission MAA/routineImmuniziation/MAA_16M.zip/2023Q1/RIA_16M.zip"
+											}
+										],
+										"body": {
+											"mode": "formdata",
+											"formdata": [
+												{
+													"key": "facilityId",
+													"value": "XXA",
+													"type": "text"
+												},
+												{
+													"key": "reportType",
+													"value": "farmerFlu",
+													"type": "text"
+												},
+												{
+													"key": "file",
+													"type": "file",
+													"src": "MonthlyAllCOVID_ARA_2022SEP.csv"
+												},
+												{
+													"key": "period",
+													"value": "2022-SEP",
+													"type": "text"
+												},
+												{
+													"key": "filename",
+													"value": "MonthlyFarmerFlu_XXA_2022SEP.csv",
+													"type": "text"
+												}
+											]
+										},
+										"url": {
+											"raw": "https://{{host}}:{{port}}/rest/ads/{{dex-endpoint}}",
+											"protocol": "https",
+											"host": [
+												"{{host}}"
+											],
+											"port": "{{port}}",
+											"path": [
+												"rest",
+												"ads",
+												"{{dex-endpoint}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Invalid Check Status on Farmer Flu Submission to DEX Mock",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"utils.setup(pm);"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 502\", function () {\r",
+													"    pm.response.to.have.status(502);\r",
+													"});\r",
+													"\r",
+													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) utils.testSLA(pm, 300000);\r",
+													"\r",
+													"const interval = setTimeout(() => {}, 3000);\r",
+													"async function moreTests() {\r",
+													"    utils.getLogs(null, pm).then((logData) => {\r",
+													"        logs = logData.json();\r",
+													"        txData = utils.getTxData(logs);\r",
+													"        pm.test(\"Log does not contain HL7 Error\", function() {\r",
+													"            pm.expect(txData[0].transactionData.hasHL7Error).to.be.eql(false);\r",
+													"            pm.expect(txData[0].transactionData.hl7Error).to.be.eql(\"\");\r",
+													"        });\r",
+													"        utils.testLogs(logs, pm, 300000);\r",
+													"    });\r",
+													"}\r",
+													"\r",
+													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();\r",
+													""
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"protocolProfileBehavior": {
+										"disabledSystemHeaders": {},
+										"disableBodyPruning": true
+									},
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "X-Message-ID",
+												"value": "Basic Submission MAA/routineImmuniziation/MAA_16M.zip/2023Q1/RIA_16M.zip"
+											}
+										],
+										"body": {
+											"mode": "formdata",
+											"formdata": [
+												{
+													"key": "facilityId",
+													"value": "XXA",
+													"type": "text"
+												},
+												{
+													"key": "reportType",
+													"value": "farmerFlu",
+													"type": "text"
+												},
+												{
+													"key": "file",
+													"type": "file",
+													"src": "MonthlyAllCOVID_ARA_2022SEP.csv"
+												},
+												{
+													"key": "period",
+													"value": "2022-SEP",
+													"type": "text"
+												},
+												{
+													"key": "filename",
+													"value": "MonthlyFarmerFlu_XXA_2022SEP.csv",
+													"type": "text"
+												}
+											]
+										},
+										"url": {
+											"raw": "https://{{host}}:{{port}}/rest/ads/{{dex-endpoint}}/info/{{tguid}}1",
+											"protocol": "https",
+											"host": [
+												"{{host}}"
+											],
+											"port": "{{port}}",
+											"path": [
+												"rest",
+												"ads",
+												"{{dex-endpoint}}",
+												"info",
+												"{{tguid}}1"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Valid Check Status on Farmer Flu Submission to DEX Mock",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"utils.setup(pm);"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 200\", function () {\r",
+													"    pm.response.to.have.status(200);\r",
+													"});\r",
+													"\r",
+													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) {\r",
+													"    utils.testSLA(pm, 300000);\r",
+													"\r",
+													"    const interval = setTimeout(() => {}, 3000);\r",
+													"    async function moreTests() {\r",
+													"        utils.getLogs(null, pm).then((logData) => {\r",
+													"            logs = logData.json();\r",
+													"            txData = utils.getTxData(logs);\r",
+													"            utils.testLogs(logs, pm, 300000);\r",
+													"        });\r",
+													"    }\r",
+													"    moreTests();\r",
+													"}"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"protocolProfileBehavior": {
+										"disabledSystemHeaders": {},
+										"disableBodyPruning": true
+									},
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [
+											{
+												"key": "X-Message-ID",
+												"value": "Basic Submission MAA/routineImmuniziation/MAA_16M.zip/2023Q1/RIA_16M.zip"
+											}
+										],
+										"body": {
+											"mode": "formdata",
+											"formdata": [
+												{
+													"key": "facilityId",
+													"value": "XXA",
+													"type": "text"
+												},
+												{
+													"key": "reportType",
+													"value": "farmerFlu",
+													"type": "text"
+												},
+												{
+													"key": "file",
+													"type": "file",
+													"src": "MonthlyAllCOVID_ARA_2022SEP.csv"
+												},
+												{
+													"key": "period",
+													"value": "2022-SEP",
+													"type": "text"
+												},
+												{
+													"key": "filename",
+													"value": "MonthlyFarmerFlu_XXA_2022SEP.csv",
+													"type": "text"
+												}
+											]
+										},
+										"url": {
+											"raw": "https://{{host}}:{{port}}/rest/ads/{{dex-endpoint}}/info/{{tguid}}",
+											"protocol": "https",
+											"host": [
+												"{{host}}"
+											],
+											"port": "{{port}}",
+											"path": [
+												"rest",
+												"ads",
+												"{{dex-endpoint}}",
+												"info",
+												"{{tguid}}"
 											]
 										}
 									},
@@ -9076,28 +9588,32 @@
 									"    try {",
 									"        pm.expect(metadata.meta_destination_id, \"meta_destination_id\").to.match(/ndlp|test/);",
 									"        pm.expect(metadata.meta_ext_source, \"meta_ext_source\").to.be.eql(\"IZGW\");",
-									"        pm.expect(metadata.meta_ext_sourceversion, \"meta_ext_sourceversion\").to.be.eql(ADS_SOURCE_VERSION);",
+									"        pm.expect(metadata.meta_ext_sourceversion, \"meta_ext_sourceversion\").to.match(/V2023-09-01|V2024-09-04/);",
 									"        pm.expect(metadata.meta_ext_filename, \"meta_ext_filename\").to.be.eql(pm.request.body.formdata.get(\"filename\"));",
-									"        ",
+									"        pm.expect(metadata.izgw_path).to.not.be.eql(null);",
+									"        pm.environment.set(\"tguid\", metadata.izgw_path.split('/').pop());",
 									"        pm.expect(metadata.meta_username, \"meta_username\").to.contain(\"testing.izgateway.org\");",
 									"",
-									"        pm.expect(metadata.izgw_route_id, \"izgw_route_id\").to.match(/ndlp-izgw-ri|ndlp-izgw-flu|azurite|azurite_http|dex-dev|dex-stg|dex/);",
+									"        pm.expect(metadata.izgw_route_id, \"izgw_route_id\").to.match(/dex-dev|dex-stg|dex/);",
 									"        pm.expect(metadata.izgw_ipaddress, \"izgw_ipaddress\").to.match(/^[1-9][0-9]{0,2}(\\.[0-9]{1,3}){3}$|^([A-Fa-f0-9:])+$/);",
 									"        pm.expect(metadata.izgw_uploaded_timestamp, \"izgw_uploaded_timestamp\").to.be.not.eql(null);",
 									"        ",
 									"        // Filesizes on unix differ by one from Windows, unsure why.",
 									"        pm.expect(Math.abs(fileSize - metadata.izgw_filesize), \"izgw_filesize\").to.be.lessThan(4);",
 									"        pm.expect(metadata.meta_ext_submissionperiod, \"meta_ext_submissionperiod\").to.be.eql(pm.request.body.formdata.get(\"period\"));",
-									"        pm.expect(metadata.meta_ext_event, \"meta_ext_event\").to.be.eql(pm.request.body.formdata.get(\"reportType\"));",
+									"        pm.expect(metadata.meta_ext_event_type, \"meta_ext_event_type\").to.be.eql(pm.request.body.formdata.get(\"reportType\"));",
 									"        pm.expect(metadata.meta_ext_entity, \"meta_ext_entity\").to.be.eql(pm.request.body.formdata.get(\"facilityId\"));",
 									"        pm.expect(metadata.received_filename, \"recieved_filename\").to.be.eql(pm.request.body.formdata.get(\"filename\"));",
 									"        pm.expect(metadata.sender_id, \"sender_id\").to.be.eql(\"IZGW\");",
 									"        pm.expect(metadata.data_producer_id, \"data_producer_id\").to.be.eql(pm.request.body.formdata.get(\"facilityId\"));",
 									"        pm.expect(metadata.data_producer_id, \"jurisdiction\").to.be.eql(pm.request.body.formdata.get(\"facilityId\"));",
-									"        pm.expect(metadata.version, \"version\").to.be.eql(\"2.0\");",
+									"        pm.expect(metadata.version, \"version\").to.match(/1.0|2.0/);",
+									"        pm.expect(metadata.version).to.be.eql(metadata.meta_schema_version);",
 									"        pm.expect(metadata.data_stream_route, \"data_stream_route\").to.match(/other|csv/);",
 									"        pm.expect(metadata.data_stream_id, \"data_stream_id\").to.match(",
-									"            /routine-immunization|covid-bridge-vaccination|covid-all-monthly-vaccination|rsv-prevention|influenza-vaccination/);",
+									"            /routine-immunization|covid-bridge-vaccination|covid-all-monthly-vaccination|rsv-prevention|influenza-vaccination|generic-immunization/);",
+									"        pm.expect(metadata.izgw_submission_status, \"izgw_submission_status\").to.be.eql(\"SUCCESS\");",
+									"        pm.expect(metadata.izgw_submission_location, \"izgw_submission_location\").to.not.be.eql(null);",
 									"    } catch (err) {",
 									"        console.log(\"Response\", pm.response, pm.response.text());",
 									"        if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) {",
@@ -9913,8 +10429,7 @@
 									"listen": "test",
 									"script": {
 										"exec": [
-											"utils.testHL7RSP(pm.response.text(), pm.request.body, [], \"AE\", null, \"ERR||QPD^1^7|101^Required Field Missing^HL70357|E||||Missing Required QPD Parameter: Sex\");",
-											""
+											"utils.testHL7RSP(pm.response.text(), pm.request.body, [\"100000317^^^MYEHR^MR\"], \"AA\", \"OK\", \"\");"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -10407,6 +10922,471 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "Submit Single Message Test",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var echoBack;\r",
+									"var env = pm.environment.get(\"testingEnvironment\");\r",
+									"pm.test(\"Status code is 200\", function () {\r",
+									"    pm.expect(pm.response).to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response is same as sent\", function () {\r",
+									"    var response = utils.removeNS(xml2Json(responseBody));\r",
+									"    var request = utils.removeNS(xml2Json(pm.request.body));\r",
+									"    echoBack = request['Envelope']['Body']['ConnectivityTestRequest']['EchoBack'] \r",
+									"    pm.expect(response['Envelope']['Body']['ConnectivityTestResponse']['EchoBack']).to.eql(echoBack);\r",
+									"});\r",
+									"\r",
+									"const interval = setTimeout(() => {}, 3000);\r",
+									"async function moreTests() {\r",
+									"    utils.getLogs(null, pm).then((logData) => {\r",
+									"        logs = logData.json();\r",
+									"        txData = utils.getTxData(logs);\r",
+									"        var isV2 = txData[0].transactionData.serverRequest !== undefined;\r",
+									"        pm.test(\"Logs are an array of objects\", function () {\r",
+									"            pm.expect(logs).to.be.an('array');\r",
+									"            pm.expect(logs[0]?.transactionData).to.be.an(\"object\");\r",
+									"        });\r",
+									"\r",
+									"        pm.test(\"There are no ERROR, WARN, stack_trace or SOAPFaults in logs\", function () {\r",
+									"            for (log of logs) {\r",
+									"                pm.expect(log.level).to.match(/INFO|DEBUG|TRACE/);\r",
+									"                pm.expect(typeof log.stack_trace ).eql(\"undefined\");\r",
+									"                if ('ws_response_message' in log) {\r",
+									"                    pm.expect(log.ws_response_message.soapFault, 'response SOAP fault must be null').to.be.eql(null);\r",
+									"                }\r",
+									"                if ('ws_request_message' in log) {\r",
+									"                    pm.expect(log.ws_request_message.soapFault, 'request SOAP fault must be null').to.be.eql(null);\r",
+									"                }\r",
+									"            }\r",
+									"        });\r",
+									"\r",
+									"        requests = isV2 ? null : utils.getWsRequest(logs);\r",
+									"        req0 = isV2 ? txData[1]?.transactionData?.serverRequest : requests[0];\r",
+									"        req1 = isV2 ? txData[1]?.transactionData?.clientRequest : requests[1];\r",
+									"        req2 = isV2 ? txData[0]?.transactionData?.serverRequest : requests[2];\r",
+									"        req3 = isV2 ? txData[0]?.transactionData?.clientRequest : requests[3];\r",
+									"\r",
+									"        pm.test(\"There are 3 requests\", function () {\r",
+									"            if (isV2) {\r",
+									"                pm.expect(req0).to.not.eql(null);\r",
+									"                pm.expect(req1).to.not.eql(null);\r",
+									"                pm.expect(req2).to.not.eql(null);\r",
+									"                pm.expect(req3).to.not.eql(null);\r",
+									"            } else {\r",
+									"                pm.expect(requests.length).to.eql(3);\r",
+									"            }\r",
+									"        });\r",
+									"        pm.test(\"First request EndPoint Type is INBOUND to SERVER\", function () {\r",
+									"            pm.expect(req0.ws_request_message.direction).to.eql(\"INBOUND\");\r",
+									"            pm.expect(req0.ws_request_message.endpointType).to.eql(\"SERVER\");\r",
+									"            // pm.expect(requests[0].ws_request_message.endpointAddress).to.eql(\"/IISHubService\"); Don't need this anymore, it's in destination\r",
+									"        });\r",
+									"\r",
+									"        pm.test(\"First request MessageID Matches inbound MessageID\", function () {\r",
+									"            pm.expect(req0.ws_request_message.soapHeaders.MessageID).to.eql(pm.environment.get(\"testMessageId\"));\r",
+									"        });\r",
+									"        // NOTE: You have to pay attention to the format that IZGW Serializes to in constructing the message!\r",
+									"        // The body of this test is carefully structured for an exact match of the expected output format.\r",
+									"        pm.test(\"First request payload matches inbound body\", function () {\r",
+									"            var payload = req0.ws_request_message.payload.trim().replace(/[\\r]+/g,\"\");\r",
+									"            var expected = pm.request.body.raw.trim().replace(/[\\r]+/g,\"\");\r",
+									"            pm.expect(payload).to.eql(expected);\r",
+									"        });\r",
+									"\r",
+									"        pm.test(\"Second request EndPoint Type is OUTBOUND to CLIENT\", function () {\r",
+									"            pm.expect(req1.ws_request_message.direction).to.eql(\"OUTBOUND\");\r",
+									"            pm.expect(req1.ws_request_message.endpointType).to.eql(\"CLIENT\");\r",
+									"        });\r",
+									"\r",
+									"        pm.test(\"Third request EndPoint Type is INBOUND to SERVER\", function () {\r",
+									"            pm.expect(req2.ws_request_message.direction).to.eql(\"INBOUND\");\r",
+									"            pm.expect(req2.ws_request_message.endpointType).to.eql(\"SERVER\");\r",
+									"            // pm.expect(requests[1].ws_request_message.endpointAddress).to.match(/^https:.*\\/dev\\/IISService/); // No longer necessary, we have destination\r",
+									"        });\r",
+									"\r",
+									"        txData = utils.getTxData(logs);\r",
+									"        pm.test(\"Log to contain transactionData with echoBack == request.responseHL7Message\", function() {\r",
+									"            pm.expect(txData[txData.length - 1]).to.have.nested.property('transactionData.responseHL7Message');\r",
+									"            pm.expect(txData[txData.length - 1].transactionData.responseHL7Message).to.be.eql(echoBack)\r",
+									"            pm.expect(txData.length).to.be.eql(2);\r",
+									"        });\r",
+									"\r",
+									"        responses = utils.getWsResponse(logs)\r",
+									"        resp0 = isV2 ? txData[1]?.transactionData?.serverResponse : responses[0];\r",
+									"        resp1 = isV2 ? txData[1]?.transactionData?.clientResponse : responses[1];\r",
+									"        resp2 = isV2 ? txData[0]?.transactionData?.serverResponse : responses[2];\r",
+									"        resp3 = isV2 ? txData[0]?.transactionData?.clientResponse : responses[3];\r",
+									"\r",
+									"        pm.test(\"There are 4 responses\", function () {\r",
+									"            pm.expect(resp0?.ws_response_message, \"resp0 failed\" + JSON.stringify(resp0)).to.not.eql(null);\r",
+									"            pm.expect(resp1?.ws_response_message, \"resp1 failed\" + JSON.stringify(resp1)).to.not.eql(null);\r",
+									"            pm.expect(resp2?.ws_response_message, \"resp2 failed\" + JSON.stringify(resp2)).to.not.eql(null);\r",
+									"            pm.expect(resp3?.ws_response_message, \"resp3 failed\" + JSON.stringify(resp3)).to.eql(null);\r",
+									"        });\r",
+									"        pm.test(\"First Response is OUTBOUND SERVER\", function () {\r",
+									"            pm.expect(resp0?.ws_response_message.direction).to.eql(\"OUTBOUND\");\r",
+									"            pm.expect(resp0?.ws_response_message.endpointType).to.eql(\"SERVER\");\r",
+									"\r",
+									"        });\r",
+									"        pm.test(\"Second Response is INBOUND CLIENT\", function () {\r",
+									"            pm.expect(resp1?.ws_response_message.direction).to.eql(\"INBOUND\");\r",
+									"            pm.expect(resp1?.ws_response_message.endpointType).to.eql(\"CLIENT\");\r",
+									"        });\r",
+									"        pm.test(\"Third Response is OUTBOUND SERVER\", function () {\r",
+									"            pm.expect(resp2?.ws_response_message.direction).to.eql(\"OUTBOUND\");\r",
+									"            pm.expect(resp2?.ws_response_message.endpointType).to.eql(\"SERVER\");\r",
+									"        });\r",
+									"\r",
+									"        utils.testLogs(logs, pm, TX_SLA);\r",
+									"    });\r",
+									"}\r",
+									" if(!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) {\r",
+									"    utils.testSLA(pm, LONG_SLA);\r",
+									"    moreTests();\r",
+									"    utils.checkNamespaces(pm);\r",
+									" }\r",
+									" \r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"utils.setup(pm, \"dev\");"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disabledSystemHeaders": {
+							"host": true
+						}
+					},
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Host",
+								"value": "{{hostHeader}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/xml"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>nd_test</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>uuid:702c904a-5d3a-4e62-ba11-facffcc359ab</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn:SubmitSingleMessageRequest>\r\n      <urn:FacilityID></urn:FacilityID>\r\n      <urn:Hl7Message>MSH|^~\\&amp;|IHS00048|DS-ND-06501|NDIIS|ND0000|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|T|2.5.1|||ER|AL|||||Z34^CDCPHINVS|DS-ND-06501|\r\nQPD|Z34^Request Immunization History^CDCPHINVS|20210330093013ND231|112258-9^^^ND^MR|JohnsonIZG^JamesIZG^AndrewIZG^^^^L|LeungIZG^SarahIZG^^^^^M|20160414|M|Main Street&amp;&amp;123^^Alexander^ND^58831^^L|^PRN^PH^^^555^5551111|Y|1\r\nRCP|I|10^RD&amp;Records&amp;HL70126</urn:Hl7Message>\r\n    </urn:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"IISHubService"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Sample Connectivity Test for 2014",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var echoBack;\r",
+									"var env = pm.environment.get(\"testingEnvironment\");\r",
+									"pm.test(\"Status code is 200\", function () {\r",
+									"    pm.expect(pm.response).to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"Response is same as sent\", function () {\r",
+									"    var response = utils.removeNS(xml2Json(responseBody));\r",
+									"    var request = utils.removeNS(xml2Json(pm.request.body));\r",
+									"    echoBack = request['Envelope']['Body']['ConnectivityTestRequest']['EchoBack'] \r",
+									"    pm.expect(response['Envelope']['Body']['ConnectivityTestResponse']['EchoBack']).to.eql(echoBack);\r",
+									"});\r",
+									"\r",
+									"const interval = setTimeout(() => {}, 3000);\r",
+									"async function moreTests() {\r",
+									"    utils.getLogs(null, pm).then((logData) => {\r",
+									"        logs = logData.json();\r",
+									"        txData = utils.getTxData(logs);\r",
+									"        var isV2 = txData[0].transactionData.serverRequest !== undefined;\r",
+									"        pm.test(\"Logs are an array of objects\", function () {\r",
+									"            pm.expect(logs).to.be.an('array');\r",
+									"            pm.expect(logs[0]?.transactionData).to.be.an(\"object\");\r",
+									"        });\r",
+									"\r",
+									"        pm.test(\"There are no ERROR, WARN, stack_trace or SOAPFaults in logs\", function () {\r",
+									"            for (log of logs) {\r",
+									"                pm.expect(log.level).to.match(/INFO|DEBUG|TRACE/);\r",
+									"                pm.expect(typeof log.stack_trace ).eql(\"undefined\");\r",
+									"                if ('ws_response_message' in log) {\r",
+									"                    pm.expect(log.ws_response_message.soapFault, 'response SOAP fault must be null').to.be.eql(null);\r",
+									"                }\r",
+									"                if ('ws_request_message' in log) {\r",
+									"                    pm.expect(log.ws_request_message.soapFault, 'request SOAP fault must be null').to.be.eql(null);\r",
+									"                }\r",
+									"            }\r",
+									"        });\r",
+									"\r",
+									"        requests = isV2 ? null : utils.getWsRequest(logs);\r",
+									"        req0 = isV2 ? txData[1]?.transactionData?.serverRequest : requests[0];\r",
+									"        req1 = isV2 ? txData[1]?.transactionData?.clientRequest : requests[1];\r",
+									"        req2 = isV2 ? txData[0]?.transactionData?.serverRequest : requests[2];\r",
+									"        req3 = isV2 ? txData[0]?.transactionData?.clientRequest : requests[3];\r",
+									"\r",
+									"        pm.test(\"There are 3 requests\", function () {\r",
+									"            if (isV2) {\r",
+									"                pm.expect(req0).to.not.eql(null);\r",
+									"                pm.expect(req1).to.not.eql(null);\r",
+									"                pm.expect(req2).to.not.eql(null);\r",
+									"                pm.expect(req3).to.not.eql(null);\r",
+									"            } else {\r",
+									"                pm.expect(requests.length).to.eql(3);\r",
+									"            }\r",
+									"        });\r",
+									"        pm.test(\"First request EndPoint Type is INBOUND to SERVER\", function () {\r",
+									"            pm.expect(req0.ws_request_message.direction).to.eql(\"INBOUND\");\r",
+									"            pm.expect(req0.ws_request_message.endpointType).to.eql(\"SERVER\");\r",
+									"            // pm.expect(requests[0].ws_request_message.endpointAddress).to.eql(\"/IISHubService\"); Don't need this anymore, it's in destination\r",
+									"        });\r",
+									"\r",
+									"        pm.test(\"First request MessageID Matches inbound MessageID\", function () {\r",
+									"            pm.expect(req0.ws_request_message.soapHeaders.MessageID).to.eql(pm.environment.get(\"testMessageId\"));\r",
+									"        });\r",
+									"        // NOTE: You have to pay attention to the format that IZGW Serializes to in constructing the message!\r",
+									"        // The body of this test is carefully structured for an exact match of the expected output format.\r",
+									"        pm.test(\"First request payload matches inbound body\", function () {\r",
+									"            var payload = req0.ws_request_message.payload.trim().replace(/[\\r]+/g,\"\");\r",
+									"            var expected = pm.request.body.raw.trim().replace(/[\\r]+/g,\"\");\r",
+									"            pm.expect(payload).to.eql(expected);\r",
+									"        });\r",
+									"\r",
+									"        pm.test(\"Second request EndPoint Type is OUTBOUND to CLIENT\", function () {\r",
+									"            pm.expect(req1.ws_request_message.direction).to.eql(\"OUTBOUND\");\r",
+									"            pm.expect(req1.ws_request_message.endpointType).to.eql(\"CLIENT\");\r",
+									"        });\r",
+									"\r",
+									"        pm.test(\"Third request EndPoint Type is INBOUND to SERVER\", function () {\r",
+									"            pm.expect(req2.ws_request_message.direction).to.eql(\"INBOUND\");\r",
+									"            pm.expect(req2.ws_request_message.endpointType).to.eql(\"SERVER\");\r",
+									"            // pm.expect(requests[1].ws_request_message.endpointAddress).to.match(/^https:.*\\/dev\\/IISService/); // No longer necessary, we have destination\r",
+									"        });\r",
+									"\r",
+									"        txData = utils.getTxData(logs);\r",
+									"        pm.test(\"Log to contain transactionData with echoBack == request.responseHL7Message\", function() {\r",
+									"            pm.expect(txData[txData.length - 1]).to.have.nested.property('transactionData.responseHL7Message');\r",
+									"            pm.expect(txData[txData.length - 1].transactionData.responseHL7Message).to.be.eql(echoBack)\r",
+									"            pm.expect(txData.length).to.be.eql(2);\r",
+									"        });\r",
+									"\r",
+									"        responses = utils.getWsResponse(logs)\r",
+									"        resp0 = isV2 ? txData[1]?.transactionData?.serverResponse : responses[0];\r",
+									"        resp1 = isV2 ? txData[1]?.transactionData?.clientResponse : responses[1];\r",
+									"        resp2 = isV2 ? txData[0]?.transactionData?.serverResponse : responses[2];\r",
+									"        resp3 = isV2 ? txData[0]?.transactionData?.clientResponse : responses[3];\r",
+									"\r",
+									"        pm.test(\"There are 4 responses\", function () {\r",
+									"            pm.expect(resp0?.ws_response_message, \"resp0 failed\" + JSON.stringify(resp0)).to.not.eql(null);\r",
+									"            pm.expect(resp1?.ws_response_message, \"resp1 failed\" + JSON.stringify(resp1)).to.not.eql(null);\r",
+									"            pm.expect(resp2?.ws_response_message, \"resp2 failed\" + JSON.stringify(resp2)).to.not.eql(null);\r",
+									"            pm.expect(resp3?.ws_response_message, \"resp3 failed\" + JSON.stringify(resp3)).to.eql(null);\r",
+									"        });\r",
+									"        pm.test(\"First Response is OUTBOUND SERVER\", function () {\r",
+									"            pm.expect(resp0?.ws_response_message.direction).to.eql(\"OUTBOUND\");\r",
+									"            pm.expect(resp0?.ws_response_message.endpointType).to.eql(\"SERVER\");\r",
+									"\r",
+									"        });\r",
+									"        pm.test(\"Second Response is INBOUND CLIENT\", function () {\r",
+									"            pm.expect(resp1?.ws_response_message.direction).to.eql(\"INBOUND\");\r",
+									"            pm.expect(resp1?.ws_response_message.endpointType).to.eql(\"CLIENT\");\r",
+									"        });\r",
+									"        pm.test(\"Third Response is OUTBOUND SERVER\", function () {\r",
+									"            pm.expect(resp2?.ws_response_message.direction).to.eql(\"OUTBOUND\");\r",
+									"            pm.expect(resp2?.ws_response_message.endpointType).to.eql(\"SERVER\");\r",
+									"        });\r",
+									"\r",
+									"        utils.testLogs(logs, pm, TX_SLA);\r",
+									"    });\r",
+									"}\r",
+									" if(!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) {\r",
+									"    utils.testSLA(pm, LONG_SLA);\r",
+									"    moreTests();\r",
+									"    utils.checkNamespaces(pm);\r",
+									" }\r",
+									" \r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"utils.setup(pm, \"dev\");"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disabledSystemHeaders": {
+							"host": true
+						}
+					},
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Host",
+								"value": "{{hostHeader}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/xml"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\">\r\n    <soap:Header>\r\n        <Action xmlns=\"http://www.w3.org/2005/08/addressing\">urn:cdc:iisb:2014:IISPortType:ConnectivityTestRequest</Action>\r\n        <MessageID xmlns=\"http://www.w3.org/2005/08/addressing\">a8d7c1f2-5773-4fd2-a0b9-0c6aa12d2926</MessageID>\r\n        <To xmlns=\"http://www.w3.org/2005/08/addressing\">http://www.w3.org/2005/08/addressing/anonymous</To>\r\n    </soap:Header>\r\n    <soap:Body>\r\n        <ConnectivityTestRequest xmlns=\"urn:cdc:iisb:2014\">\r\n            <echoBack>Wishing dev.izgateway.org : 443 an Audacious Hello at Wed Oct 02 2024 15:26:08 GMT-0400 (Eastern Daylight Time) !</echoBack>\r\n        </ConnectivityTestRequest>\r\n    </soap:Body>\r\n</soap:Envelope>"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"IISHubService"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "TC_99 IIS Status for Jurisdiction",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Save the request for use by subsequent tests\r",
+									"pm.variables.set(\"getLogs\",pm.request);\r",
+									"pm.test(\"Content-Type to be application/json\", function() {\r",
+									"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/^application\\/json/);\r",
+									"});\r",
+									"var status = pm.response.json();\r",
+									"\r",
+									"pm.test(\"Body to parse as json object\", function() {\r",
+									"    pm.expect(typeof status).to.eql(\"object\");\r",
+									"});\r",
+									"\r",
+									"pm.test(\"404 endpoint has 404 status\", function() {\r",
+									"    pm.expect(status[\"404\"].status).to.be.eql(\"HTTP Error 404\");\r",
+									"});\r",
+									"\r",
+									"pm.test(\"dev endpoints have status = Connected\", function() {\r",
+									"    pm.expect(status[\"dev\"].status).to.be.eql(\"Connected\");\r",
+									"    pm.expect(status[\"devwup\"].status).to.be.eql(\"Connected\");\r",
+									"});\r",
+									"\r",
+									"pm.test(\"down endpoint has status = Connect Timeout\", function() {\r",
+									"    pm.expect(status[\"down\"].status).to.be.eql(\"Connect Timeout\");\r",
+									"});\r",
+									"\r",
+									"pm.test(\"invalid endpoint has status = DNS Resolution Error\", function() {\r",
+									"    pm.expect(status[\"invalid\"].status).to.be.eql(\"DNS Resolution Error\");\r",
+									"});\r",
+									"\r",
+									"pm.test(\"reject endpoint has status = Connection Rejected\", function() {\r",
+									"    pm.expect(status[\"reject\"].status).to.be.eql(\"Connection Rejected\");\r",
+									"});\r",
+									"\r",
+									"// Verify logging for status checks\r",
+									"const interval = setTimeout(() => {}, 3000);\r",
+									"async function moreTests() {\r",
+									"    utils.getLogs(null, pm).then((logData) => {\r",
+									"        logs = logData.json();\r",
+									"        txData = utils.getTxData(logs);\r",
+									"        utils.testLogs(logs, pm, LONG_SLA);\r",
+									"    });\r",
+									"}\r",
+									"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"utils.setup(pm);"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disabledSystemHeaders": {
+							"host": true
+						}
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Host",
+								"value": "{{hostHeader}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/xml"
+							},
+							{
+								"key": "X-Message-ID",
+								"value": "{{testMessageId}}"
+							}
+						],
+						"url": {
+							"raw": "{{protocol}}://{{host}}:{{port}}/rest/status",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}",
+							"path": [
+								"rest",
+								"status"
+							]
+						}
+					},
+					"response": []
 				}
 			]
 		}
@@ -10479,7 +11459,7 @@
 					"",
 					"function checkForPHI(caseName, value, pm) {",
 					"    var failure = false;",
-					"    pm.test('Logger-TC06/07' + caseName + 'Verify HL7 content in logs does not contain PII', function() {",
+					"    pm.test('Logger-TC06/07' + caseName + ' Verify HL7 content in logs does not contain PII', function() {",
 					"        if (value == null) {",
 					"            return;",
 					"        }",
@@ -10811,7 +11791,9 @@
 					"            pm.expect(entry.transactionData.hl7Error).to.match(HL7ERROR);",
 					"            success = true;",
 					"        });",
-					"        checkForPHI('a', entry.transactionData.hl7Error, pm);",
+					"        if (entry.transactionData?.prod == true) {",
+					"            checkForPHI('a', entry.transactionData.hl7Error, pm);",
+					"        }",
 					"",
 					"        _test('Log Entry['+index+'] to contain transactionData.messageId', function () {",
 					"            pm.expect(entry).to.have.nested.property('transactionData.messageId');",
@@ -10861,7 +11843,9 @@
 					"                pm.expect(entry.transactionData.requestHL7Message).to.match(HL7REQMESSAGE);",
 					"                success = true;",
 					"            });",
-					"            checkForPHI('b', entry.transactionData.requestHL7Message, pm);",
+					"            if (entry?.transactionData?.prod == true) {",
+					"                checkForPHI('b', entry.transactionData.requestHL7Message, pm);",
+					"            }",
 					"            _test('Logging-TC_10/11 Log Entry['+index+'] to contain transactionData.requestPayloadType matching VXU|QBP|Other', function () {",
 					"                pm.expect(entry).to.have.nested.property('transactionData.requestPayloadType');",
 					"                pm.expect(entry.transactionData.requestPayloadType).to.match(/^VXU|QBP|ADS|Other$/);",
@@ -10883,7 +11867,9 @@
 					"                pm.expect(entry.transactionData.responseHL7Message).to.match(HL7ERROR);",
 					"                success = true;",
 					"            });",
-					"            checkForPHI('c', entry.transactionData.responseHL7Message, pm);",
+					"            if (entry.transactionData?.prod == true) {",
+					"                checkForPHI('c', entry.transactionData.responseHL7Message, pm);",
+					"            }",
 					"        }",
 					"        _test('Log Entry['+index+'] to contain transactionData.responsePayloadSize matching [0-9]*', function () {",
 					"            pm.expect(entry).to.have.nested.property('transactionData.responsePayloadSize');",
@@ -11518,25 +12504,28 @@
 					"        }",
 					"        if(env !== \"test\"){",
 					"        try {",
-					"            for (entry of logs) {",
+					"            for (var entry of logs) {",
 					"                testLogEntry(entry, pm, count++);",
-					"            }",
-					"            for (entry of txData) {",
-					"                pm.test(\"Check Service Type\", function() {",
-					"                    pm.expect(entry.transactionData.serviceType).to.match(/Mock|Gateway/);",
-					"                    if (entry.requestUri == \"/IISHubService\" || entry.requestUri.includes(\"/rest/\")) {",
-					"                        pm.expect(entry.transactionData.serviceType).to.eql(\"Gateway\");",
-					"                    } else {",
-					"                        pm.expect(entry.transactionData.serviceType).to.eql(\"Mock\");",
-					"                    }",
-					"                });",
 					"            }",
 					"            logTestingCompleted = true;",
 					"        } catch (error) {",
-					"            pm.test(\"Testing log entry \" + (count + 1) + \" of \" + logs.length, function () {",
-					"                pm.expect(error, error.message).to.be.eql(null);",
+					"            pm.test(\"Testing log entry \" + count + \" of \" + logs.length, function () {",
+					"                    console.log(logs[count-1]);",
+					"                    pm.expect(error, error.message).to.be.eql(null);",
+					"                }",
+					"            );",
+					"        }",
+					"        for (entry of txData) {",
+					"            pm.test(\"Check Service Type\", function() {",
+					"                pm.expect(entry.transactionData.serviceType).to.match(/Mock|Gateway/);",
+					"                if (entry?.requestUri == \"/IISHubService\" || entry?.requestUri.includes(\"/rest/\")) {",
+					"                    pm.expect(entry?.transactionData?.serviceType).to.eql(\"Gateway\");",
+					"                } else {",
+					"                    pm.expect(entry?.transactionData?.serviceType).to.eql(\"Mock\");",
+					"                }",
 					"            });",
 					"        }",
+					"",
 					"        pm.test(\"Tested \" + logs.length + \" log entries\", function () {",
 					"            pm.expect(count).to.be.eql(logs.length);",
 					"            pm.expect(logTestingCompleted).to.be.eql(true, \"Log Testing Completed\");",
@@ -11563,7 +12552,7 @@
 	"variable": [
 		{
 			"key": "GoodMessage",
-			"value": "MSH|^~\\&amp;|IRIS IIS|IRIS|TEST|TC_04|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS|SIISCLIENT28374|\nQPD|Z34^Request Immunization History^CDCPHINVS|20210330093013LA231|LAMASM77BF4BA6^^^IZGATEWAYTEST&amp;2.16.840.1.113883.40.1&amp;ISO^MR|Johnson^James^Andrew^^^^L|Leung^Jen^^^^^M|20160414|M|Main Street&amp;&amp;123^^New Orleans^LA^70115^^L|^PRN^PH^^^555^5551111|Y|1",
+			"value": "MSH|^~\\&amp;|IRIS IIS|IRIS|TEST|TC_04|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS|SIISCLIENT28374|\nQPD|Z34^Request Immunization History^CDCPHINVS|20210330093013LA231|LAMASM77BF4BA6^^^IZGATEWAYTEST&amp;2.16.840.1.113883.40.1&amp;ISO^MR|JohnsonIZG^James^Andrew^^^^L|Leung^Jen^^^^^M|20160414|M|Main Street&amp;&amp;123^^New Orleans^LA^70115^^L|^PRN^PH^^^555^5551111|Y|1",
 			"type": "string"
 		},
 		{

@@ -27,6 +27,7 @@ public class MetadataImpl implements Metadata {
     private String extSource;
     private String extSourceVersion;
     private String extEvent;
+    private String extEventType;
     private String extEntity;
     private String username;
     private String filename;
@@ -38,6 +39,8 @@ public class MetadataImpl implements Metadata {
     private Date uploadedDate;
 	private String destinationId;
 	private String eventId;
+	private String submissionStatus;
+	private String submissionLocation;
 	@JsonIgnore
     private transient IDestination destination;
 
@@ -60,17 +63,20 @@ public class MetadataImpl implements Metadata {
         extSource = resp.getExtSource();
         extSourceVersion = resp.getExtSourceVersion();
         extEvent = resp.getExtEvent();
+        extEventType = resp.getExtEventType();
         extEntity = resp.getExtEntity();
         username = resp.getUsername(); 
-        ipAddress = resp.getIpAddress();
         filename = resp.getFilename();
         extObjectKey = resp.getExtObjectKey();
-        fileSize = resp.getFileSize();
-        uploadedDate = resp.getUploadedDate();
+        ipAddress = resp.getIpAddress();
         path = resp.getPath();
         schemaVersion = resp.getSchemaVersion();
+        fileSize = resp.getFileSize();
+        uploadedDate = resp.getUploadedDate();
         destinationId = resp.getDestinationId();
         eventId = resp.getEventId();
+    	submissionStatus = resp.getSubmissionStatus();
+    	submissionLocation = resp.getSubmissionLocation();
         if (resp instanceof MetadataImpl r2) {
         	destination = r2.getDestination();
         }
@@ -95,6 +101,9 @@ public class MetadataImpl implements Metadata {
 			break;
 		case "meta_ext_event":
 			setExtEvent(value);
+			break;
+		case "meta_ext_event_type":
+			setExtEventType(value);
 			break;
 		case "meta_ext_entity":
 			setExtEntity(value);
@@ -135,11 +144,22 @@ public class MetadataImpl implements Metadata {
 				log.warn("Could not parse date {} from blob metadata", value);
 			}
 			break;
+		case "izgw_submission_status":
+			setSubmissionStatus(value);
+			break;
+		case "izgw_submission_location":
+			setSubmissionLocation(value);
+			break;
 		default:
 			break;
 		}
 	}
-
+	
+	public void setExtSourceVersion(String version) {
+		extSourceVersion = version;
+    	setSchemaVersion(getVersion());
+	}
+	
 	private static final List<String> MONTHS = Arrays.asList("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC");
 	private static final List<String> QUARTERS = Arrays.asList("Q1", "Q2", "Q3", "Q4");
 	/**

@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
 
 @RestController
 @CrossOrigin
-@RolesAllowed({Roles.OPEN, Roles.ADMIN})
+@RolesAllowed({Roles.USERS, Roles.ADMIN})
 @RequestMapping({"/rest"})
 @Lazy(false)
 public class StatusController {
@@ -64,7 +64,7 @@ public class StatusController {
         // order, which is garbage.
         String[] includeArray = include == null ? EndpointStatusRepository.INCLUDE_ALL : include.split("[\\s,]+");
         List<String> included = Arrays.asList(includeArray);
-        List<IEndpointStatus> found = endpointStatusService.find(count, includeArray);
+        List<? extends IEndpointStatus> found = endpointStatusService.find(count, includeArray);
 
         Map<String, List<IEndpointStatus>> t = new TreeMap<>();
         for (IEndpointStatus f : found) {

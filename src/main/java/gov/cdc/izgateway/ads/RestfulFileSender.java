@@ -13,6 +13,7 @@ import gov.cdc.izgateway.service.IDestinationService;
 import gov.cdc.izgateway.soap.fault.*;
 import gov.cdc.izgateway.utils.*;
 import jakarta.activation.DataHandler;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
 import org.apache.commons.io.IOUtils;
@@ -23,6 +24,7 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import org.apache.http.Header;
 import org.apache.http.HttpHeaders;
+import org.apache.http.client.HttpResponseException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
@@ -58,10 +60,14 @@ public abstract class RestfulFileSender implements FileSender {
     protected boolean fiddle = false;
     protected final ClientTlsSupport tlsSupport;
     
-    // Fixed values in metadata
-    @Configuration 
+    /**
+     * @author Audacious Inquiry
+     * Configuration for the Sender
+     */
+    @Configuration
+    @Data
     public static class SenderConfig {
-        @Value("${ads.maxAge:120}")
+    	@Value("${ads.maxAge:120}")
         private int maxAgeInMinutes;
         
         /** Maximum expected size of a file upload (15Gb) */
@@ -70,21 +76,13 @@ public abstract class RestfulFileSender implements FileSender {
         
         private final IDestinationService destinationService;
         
+        /**
+         * Create a new configuration 
+         * @param destinationService	The destination service it applies to
+         */
         @Autowired
         public SenderConfig(IDestinationService destinationService) {
         	this.destinationService = destinationService;
-        }
-
-        public IDestinationService getDestinationService() {
-        	return destinationService;
-        }
-        
-        public int getMaxAgeInMinutes() {
-        	return maxAgeInMinutes;
-        }
-        
-        public int getMaxUploadSizeInGB() {
-        	return maxUploadSizeInGB;
         }
     }
     
@@ -156,8 +154,11 @@ public abstract class RestfulFileSender implements FileSender {
                 throw new HTTPException(responseCode);
             }
             return con;
-        } catch (io.tus.java.client.ProtocolException | URISyntaxException e) {
-           throw HubClientFault.invalidMessage(e, route, 0, null, null);
+        } catch (URISyntaxException e) {
+        	throw HubClientFault.invalidMessage(e, route, 0, null);
+        } catch (io.tus.java.client.ProtocolException e) {
+        	throw HubClientFault.invalidMessage(e, route, 0, 
+        		IOUtils.toInputStream(e.getMessage(), StandardCharsets.UTF_8));
         } catch (MalformedURLException e) {
             throw new MetadataFault(meta, e, FILENAME_INVALID);
         } catch (IOException e) {
@@ -216,9 +217,11 @@ public abstract class RestfulFileSender implements FileSender {
 				throw new UnsupportedOperationException();
 			}
 	        return getSubmissionStatus(con);
-		} catch (URISyntaxException | IOException e) {
-			throw HubClientFault.invalidMessage(e, route, 0, null, null);
-        }
+		} catch (HttpResponseException ex) {
+			throw HubClientFault.httpError(route, ex.getStatusCode(), ex.getMessage());
+        } catch (URISyntaxException | IOException e) {
+			throw HubClientFault.invalidMessage(e, route, 0, null);
+        } 
     }
 
 	protected abstract String getSubmissionStatus(HttpURLConnection con) throws IOException;
@@ -308,6 +311,7 @@ public abstract class RestfulFileSender implements FileSender {
     /**
      * extract the metadata values as Headers for an HTTP PUT operation
      * @param meta  The metadata object to extract headers from.
+     * @param data The data
      * @return  The HTTP Headers to use with Blob storage
      * @throws IOException 
      */
@@ -319,7 +323,9 @@ public abstract class RestfulFileSender implements FileSender {
         IntegrityCheck ic = null;
         if (data != null) {
             ic = IntegrityCheck.getIntegrityCheck(data);
-            headers.add(new BasicHeader("Content-MD5", ic.toString()));
+            if (ic.getHash().length != 0) {
+            	headers.add(new BasicHeader("Content-MD5", ic.toString()));
+            }
             headers.add(new BasicHeader("Content-Length", Long.toString(ic.getLength())));
             meta.setFileSize(ic.getLength());
         }
@@ -415,11 +421,11 @@ public abstract class RestfulFileSender implements FileSender {
             if (con == null) {
                 //check if the Connect Exception is ActiveReject or Timeout
                 checkException(route, elapsedTimeIIS, ObjectUtils.defaultIfNull(ExceptionUtils.getRootCause(e), e), null);
-                throw HubClientFault.invalidMessage(e, route, 0, null, null);
+                throw HubClientFault.invalidMessage(e, route, 0, null);
             }
             
             InputStream is = con.getErrorStream();
-            throw HubClientFault.invalidMessage(e, route, 0, is, null);
+            throw HubClientFault.invalidMessage(e, route, 0, is);
         }
     }
     
@@ -435,6 +441,13 @@ public abstract class RestfulFileSender implements FileSender {
     	return tlsSupport.getSNIEnabledConnection(base);
     }
     
+    /**
+     * Get the Url to connect to based on the metadata and destination
+     * @param meta	The metadata
+     * @param r	The destination
+     * @return	The URL
+     * @throws MetadataFault	If the URL is malformed
+     */
     public static URL getUrl(Metadata meta, IDestination r)
         throws MetadataFault {
         try {
@@ -454,13 +467,23 @@ public abstract class RestfulFileSender implements FileSender {
     	return config.getMaxUploadSizeInGB() * 1073741824l;
     }
     
+	/**
+	 * Gets an SSLSocketFactory suitable for connecting to the destination endpoint
+	 * @return	The SSLSocketFactory 
+	 */
 	public SSLSocketFactory getSslSocketFactory() {
 		return tlsSupport.getSSLContext().getSocketFactory();
 	}
 	/**
 	 * Reusable portion of ValidateResponse refactored out for
 	 * reuse by ADS Service.
-	 * @throws SecurityFault 
+	 * @param routing The destination to counnect to
+	 * @param elapsedTimeIIS Time spent thus far
+	 * @param rootCause The exception
+	 * @param error The error message
+	 * @throws HubClientFault If there was a fault on the hub side
+	 * @throws DestinationConnectionFault If there was a fault on the client side
+	 * @throws SecurityFault 	If there was a security fault
 	 */
 	public static void checkException(IDestination routing, long elapsedTimeIIS, Throwable rootCause, InputStream error) throws HubClientFault, DestinationConnectionFault, SecurityFault {
 	    StackTraceElement[] stackTrace = rootCause.getStackTrace();
@@ -510,6 +533,6 @@ public abstract class RestfulFileSender implements FileSender {
 	        // This is an unexpected exception in the response.
 	        log.error(Markers2.append(rootCause), "Unexpected Exception: {}", rootCause.getMessage(), rootCause);
 	    }
-	    throw HubClientFault.invalidMessage(rootCause, routing, statusCode, error, null);
+	    throw HubClientFault.invalidMessage(rootCause, routing, statusCode, error);
 	}
 }

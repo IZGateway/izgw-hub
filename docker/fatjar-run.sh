@@ -39,20 +39,6 @@ cat /tmp/newresolv.conf > /etc/resolv.conf
 #Start dnsmasq as root
 dnsmasq  --use-stale-cache=0 --log-queries=extra --user=root --log-facility=/var/log/dnsmasq.log
 
-# Backup the database on upgrade if one does not already exist. IZGW_VERSION environment variable set in Docker image
-BACKUP_PREFIX=pre-$IZGW_VERSION-upgrade-backup
-if [[ ! $MYSQL_DB_NAME ]] 
-then
-   MYSQL_DB_NAME=phiz
-fi
-
-FILE=`ls -1 conf/backups/$BACKUP_PREFIX-$MYSQL_DB_NAME*.sql 2>/dev/null | head -1`
-if [[ ! -e $FILE ]]
-then
-    ./izgwdb.sh backup $BACKUP_PREFIX || exit 1 
-fi
-
-
 # Enable remote debugging if DEBUG is set in the environment
 JAVA_TOOL_OPTS=
 if [[ $DEBUG ]]
@@ -66,22 +52,11 @@ then
 fi
 
 # Have to externalize bc-fips jars
-java $JAVA_OPTS $JAVA_TOOL_OPTS -javaagent:lib/aspectjweaver-1.9.6.jar -javaagent:lib/spring-instrument-5.3.8.jar \
-   -XX:+CreateCoredumpOnCrash -cp ./bc-fips-1.0.2.5.jar:./bcpkix-fips-1.0.7.jar:./bctls-fips-1.0.19.jar \
-   --add-opens jdk.management/com.sun.management.internal=ALL-UNNAMED \
-   --add-opens java.base/java.lang=ALL-UNNAMED \
-   --add-opens java.base/java.lang.invoke=ALL-UNNAMED \
-   --add-opens java.base/java.io=ALL-UNNAMED \
-   --add-opens java.base/java.util=ALL-UNNAMED \
-   --add-opens java.base/javax.net.ssl=ALL-UNNAMED \
-   --add-opens java.base/java.util.concurrent=ALL-UNNAMED \
-   --add-opens java.rmi/sun.rmi.transport=ALL-UNNAMED \
-   --add-opens jdk.management/com.sun.management.internal=ALL-UNNAMED \
-   --add-opens java.base/java.io=ALL-UNNAMED \
-   --add-opens java.base/sun.security.internal.spec=ALL-UNNAMED \
-   --add-opens java.base/java.lang.reflect=ALL-UNNAMED \
-   --add-opens java.base/java.net=ALL-UNNAMED \
-   --add-opens java.base/sun.reflect.annotation=ALL-UNNAMED \
+exec java $JAVA_OPTS $JAVA_TOOL_OPTS \
+   -XX:+CreateCoredumpOnCrash -cp ./bc-fips-2.0.0.jar:./bcpkix-fips-2.0.7.jar:./bctls-fips-2.0.19.jar \
+   --add-opens=java.base/java.lang.reflect=ALL-UNNAMED \
+   --add-opens=java.base/java.net=ALL-UNNAMED \
+   --add-opens=jdk.management/com.sun.management.internal=ALL-UNNAMED \
    -Dorg.bouncycastle.fips.approved_only=true \
    -Dorg.bouncycastle.jsse.client.dh.unrestrictedGroups=true \
    -Djavax.net.ssl.trustStorePassword=changeit \
