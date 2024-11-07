@@ -1,6 +1,6 @@
 package gov.cdc.izgateway.principal.provider;
 
-import gov.cdc.izgateway.security.CertPrincipal;
+import gov.cdc.izgateway.security.CertificatePrincipal;
 import gov.cdc.izgateway.security.IzgPrincipal;
 import gov.cdc.izgateway.utils.X500Utils;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,7 +19,7 @@ public class CertificatePrincipalProviderImpl implements CertificatePrincipalPro
 
     @Override
     public IzgPrincipal createPrincipalFromCertificate(HttpServletRequest request) {
-        IzgPrincipal principal = new CertPrincipal();
+        IzgPrincipal principal = new CertificatePrincipal();
         X509Certificate[] certs = (X509Certificate[]) request.getAttribute(Globals.CERTIFICATES_ATTR);
 
         if (certs == null || certs.length == 0) {

@@ -235,6 +235,7 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
     // DB accesscontrol table:
     // group users *
     // group soap users
+    // UnauthenticatedPrincipal should fail here - valid principal should pass
     @Override
 	public boolean isUserInRole(String user, String role) {
 		if (OPEN_TO_ANY.equals(role) || "*".equals(role)) {
