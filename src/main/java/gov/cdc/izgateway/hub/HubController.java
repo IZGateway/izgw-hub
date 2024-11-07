@@ -153,7 +153,7 @@ public class HubController extends SoapControllerBase {
 			return;
 		}
 		
-		if (!accessControlService.isMemberOf(RequestContext.getSourceInfo().getPrincipalName(), destGroup)) {
+		if (!accessControlService.isMemberOf(RequestContext.getSourceInfo().getCommonName(), destGroup)) {
 			throw SecurityFault.generalSecurity("Source Not Allowed", destGroup, null);
 		}
 	}

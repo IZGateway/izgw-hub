@@ -1,5 +1,8 @@
 package gov.cdc.izgateway.db.service;
 
+import gov.cdc.izgateway.logging.RequestContext;
+import gov.cdc.izgateway.security.IzgPrincipal;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -227,7 +230,11 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 		}
     	return Collections.unmodifiableMap(allowedRoutesByEvent);
     }
-    
+
+    // TODO: PCahill - talk with team about the role "soap" and that it may allow all users access to the API
+    // DB accesscontrol table:
+    // group users *
+    // group soap users
     @Override
 	public boolean isUserInRole(String user, String role) {
 		if (OPEN_TO_ANY.equals(role) || "*".equals(role)) {
@@ -366,12 +373,25 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 		if (wasUserPreviouslyAdmitted(user, method, path)) {
 			return true;
 		}
-    	for (String role: roles) {
-    		if (isUserInRole(user, role)) {
-    			saveAdmittedUser(user, method, path);
-    			return true;
-    		}
-    	}
+
+        IzgPrincipal principal = RequestContext.getPrincipal();
+
+        /*
+            If the principal has roles (populated via JWT token), use them for the access decision,
+            otherwise use the user and the roles we manage for the users.
+         */
+        if (!CollectionUtils.isEmpty(principal.getRoles())) {
+            return roles.stream().anyMatch(principal.getRoles()::contains);
+        } else {
+            for (String role: roles) {
+                if (isUserInRole(user, role)) {
+                    saveAdmittedUser(user, method, path);
+                    return true;
+                }
+            }
+
+        }
+
     	return roles.isEmpty() ? null : false;
 	}
 	
