@@ -11,7 +11,7 @@ public class JwtPrincipalProviderConfig {
 
     @Bean
     public JwtPrincipalProvider jwtPrincipalProvider(
-            JwtClientCredentialsPrincipalProvider clientCredentialsProvider,
+            JwtJwksPrincipalProvider clientCredentialsProvider,
             JwtSharedSecretPrincipalProvider sharedSecretProvider) {
         if ("client-credentials".equalsIgnoreCase(jwtProvider)) {
             return clientCredentialsProvider;

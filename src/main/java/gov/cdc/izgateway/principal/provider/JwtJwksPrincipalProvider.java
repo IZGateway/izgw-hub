@@ -16,8 +16,7 @@ import java.util.Objects;
 
 @Slf4j
 @Component
-// TODO: Think of renaming this as it's not truly just ClientCredentialsFlow
-public class JwtClientCredentialsPrincipalProvider implements JwtPrincipalProvider {
+public class JwtJwksPrincipalProvider implements JwtPrincipalProvider {
     @Value("${jwt.jwk-set-uri}")
     private String jwkSetUri;
 

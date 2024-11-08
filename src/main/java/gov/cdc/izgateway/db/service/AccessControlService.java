@@ -2,6 +2,7 @@ package gov.cdc.izgateway.db.service;
 
 import gov.cdc.izgateway.logging.RequestContext;
 import gov.cdc.izgateway.security.IzgPrincipal;
+import gov.cdc.izgateway.security.UnauthenticatedPrincipal;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.InitializingBean;
@@ -231,17 +232,17 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
     	return Collections.unmodifiableMap(allowedRoutesByEvent);
     }
 
-    // TODO: PCahill - talk with team about the role "soap" and that it may allow all users access to the API
-    // DB accesscontrol table:
-    // group users *
-    // group soap users
-    // UnauthenticatedPrincipal should fail here - valid principal should pass
     @Override
 	public boolean isUserInRole(String user, String role) {
 		if (OPEN_TO_ANY.equals(role) || "*".equals(role)) {
 			return true;
 		}
-		
+
+        if (RequestContext.getPrincipal() instanceof UnauthenticatedPrincipal) {
+            // If the role being checked is not OPEN_TO_ANY, and the user is not authenticated, return false.
+            return false;
+        }
+
     	if (usersInRoles.isEmpty()) {
     		refresh();
     	}
