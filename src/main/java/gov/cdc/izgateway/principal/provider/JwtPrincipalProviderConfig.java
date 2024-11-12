@@ -6,14 +6,14 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class JwtPrincipalProviderConfig {
-    @Value("${jwt.provider}:shared-secret")
+    @Value("${jwt.provider:shared-secret}")
     private String jwtProvider;
 
     @Bean
     public JwtPrincipalProvider jwtPrincipalProvider(
             JwtJwksPrincipalProvider clientCredentialsProvider,
             JwtSharedSecretPrincipalProvider sharedSecretProvider) {
-        if ("client-credentials".equalsIgnoreCase(jwtProvider)) {
+        if ("jwks".equalsIgnoreCase(jwtProvider)) {
             return clientCredentialsProvider;
         } else if ("shared-secret".equalsIgnoreCase(jwtProvider)) {
             return sharedSecretProvider;

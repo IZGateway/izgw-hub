@@ -17,7 +17,7 @@ import java.util.Objects;
 @Slf4j
 @Component
 public class JwtJwksPrincipalProvider implements JwtPrincipalProvider {
-    @Value("${jwt.jwk-set-uri}")
+    @Value("${jwt.jwk-set-uri:}")
     private String jwkSetUri;
 
     @Override
