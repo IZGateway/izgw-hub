@@ -62,7 +62,6 @@ springdoc:
         path: /swagger/api-docs
 
 server:
-    cnk-enabled: true
     hostname: ${PHIZ_SERVER_HOSTNAME:dev.izgateway.org}
     protocol: https
     port: ${PHIZ_SERVER_PORT:443} 
