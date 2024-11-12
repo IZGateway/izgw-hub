@@ -32,7 +32,7 @@
 		<dependency>
 			<groupId>gov.cdc.izgw</groupId>
 			<artifactId>izgw-core</artifactId>
-			<version>2.2.0-IGDD-1765_optional_mtls_plus_jwt-SNAPSHOT</version>
+			<version>2.1.5-IGDD-1765_optional_mtls_plus_jwt-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>ca.uhn.hapi</groupId>
