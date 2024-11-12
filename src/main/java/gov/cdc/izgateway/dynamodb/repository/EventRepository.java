@@ -15,6 +15,7 @@ import software.amazon.awssdk.utils.StringUtils;
  * @author Audacious Inquiry
  */
 public class EventRepository extends DynamoDbRepository<Event> {
+	
 	/**
 	 * Construct a new JurisdictionRepository from the DynamoDb enhanced client.
 	 * @param client The client
@@ -24,13 +25,23 @@ public class EventRepository extends DynamoDbRepository<Event> {
 	}
 	
 	/**
-	 * Save the event
+	 * Create the event
 	 * @param event	The event
-	 * @return The event.
+	 * @return The event, or null if the event already exists.
 	 */
-	public Event store(Event event) {
+	public Event create(Event event) {
+		return this.saveIfNotExists(event);
+	}
+	
+	/**
+	 * Update the event
+	 * @param event	The event
+	 * @return The updated event
+	 */
+	public Event update(Event event) {
 		return this.saveAndFlush(event);
 	}
+	
 	
 	/**
 	 * Find all events with the given name
@@ -64,7 +75,7 @@ public class EventRepository extends DynamoDbRepository<Event> {
 	 * @return	true if the event was started, false if not.
 	 */
 	public boolean hasEventStarted(String name, String target) {
-		List<Event> events = findByNameAndTarget(Event.MIGRATION, target);
+		List<Event> events = findByNameAndTarget(name, target);
 		return !events.isEmpty();
 	}
 	
@@ -75,7 +86,7 @@ public class EventRepository extends DynamoDbRepository<Event> {
 	 * @return	true if the event was completed, false if not.
 	 */
 	public boolean hasEventFinished(String name, String target) {
-		List<Event> events = findByNameAndTarget(Event.MIGRATION, target);
+		List<Event> events = findByNameAndTarget(name, target);
 		return events.stream().anyMatch(e -> e.getCompleted() != null);
 	}
 }

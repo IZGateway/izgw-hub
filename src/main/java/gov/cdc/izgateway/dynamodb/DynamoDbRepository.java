@@ -9,10 +9,13 @@ import gov.cdc.izgateway.logging.markers.Markers2;
 import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
+import software.amazon.awssdk.enhanced.dynamodb.Expression;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.BeanTableSchema;
+import software.amazon.awssdk.enhanced.dynamodb.model.PutItemEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryConditional;
+import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
 
 /**
  * A DynamoDbRepository for a given type of database entity.
@@ -117,5 +120,19 @@ public class DynamoDbRepository<T extends DynamoDbEntity> {
 		}
 		table.putItem(entity);
 		return entity;
+	}
+	
+	protected T saveIfNotExists(T entity) {
+		Expression ex = Expression.builder().expression("attribute_not_exists(" + DynamoDbEntity.ENTITY_TYPE + ")").build();
+		PutItemEnhancedRequest<T> request = PutItemEnhancedRequest.builder(entityClass).item(entity).conditionExpression(ex).build();
+		try {
+			table.putItem(request);
+			return entity;
+		} catch (ConditionalCheckFailedException e) {
+			return null;
+		} catch (Exception e) {
+			log.warn(Markers2.append(e), "Conditional Create on {}:{} failed", entity.getEntityType(), entity.getSortKey());
+			return null;
+		}
 	}
 }

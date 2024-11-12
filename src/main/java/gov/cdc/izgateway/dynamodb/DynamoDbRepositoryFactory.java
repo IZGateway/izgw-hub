@@ -3,6 +3,8 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.time.Duration;
 import java.util.Date;
+import java.util.List;
+import java.util.ServiceConfigurationError;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
@@ -62,6 +64,7 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
 	/**
 	 * Create the factory for DynamoDb Repositories
 	 * @param client The Enhanced Client to use to access the repository
+	 * @param ddbClient The DynamoDB Client to use
 	 * @param migrationFactory The factory to use to access other (MySql) databases to support migration.
 	 */
 	public DynamoDbRepositoryFactory(
@@ -75,8 +78,32 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
 		this.eventRepository = new EventRepository(client);
 		
 		if (!ensureDbExists()) {
-			markDbCreated();
-			migrateAllDbs();
+			Event e = markDbCreated(); 
+			if (e != null) {
+				migrateAllTables();
+				e.setCompleted(new Date());
+				eventRepository.update(e);
+			} else {
+				List<Event> found = null;
+				long sleep = 0;
+				int retries = 10;
+				do {
+					try {
+						if (sleep != 0) {
+							Thread.sleep(sleep);
+						}
+					} catch (InterruptedException ex) {
+						Thread.currentThread().interrupt();
+					}
+					sleep = 30000;
+					found = eventRepository.findByNameAndTarget(Event.CREATED, "Database"); 
+				}	while ((found.isEmpty() || found.get(0).getCompleted() == null) && --retries > 0);
+				if (retries <= 0) {
+					log.error("Failed waiting for DB migration on {} in {}", DynamoDbRepository.TABLE_NAME, 
+							DefaultAwsRegionProviderChain.builder().build().getRegion());
+					throw new ServiceConfigurationError("Database not migrated: " + DynamoDbRepository.TABLE_NAME, null);
+				}
+			}
 		} else {
 			log.info("Connected to existing {} in {}", DynamoDbRepository.TABLE_NAME, 
 					DefaultAwsRegionProviderChain.builder().build().getRegion());
@@ -85,54 +112,29 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
 
 	private boolean ensureDbExists() {
 		ListTablesRequest lgtr = ListTablesRequest.builder().build();
-		boolean failed = false;
 		ListTablesResponse response = ddbClient.listTables(lgtr);
 		if (response.hasTableNames() && response.tableNames().stream().anyMatch(DynamoDbRepository.TABLE_NAME::equals)) {
 			if (!isDbCreated()) {
 				return false;
 			}
-			log.info("Connected to existing database {}", DynamoDbRepository.TABLE_NAME);
+			log.info("Connected to existing database: {}", DynamoDbRepository.TABLE_NAME);
 			return true;
 		}
-		log.warn("DynamoDb Table {} does not exist, attempting to create it", DynamoDbRepository.TABLE_NAME);
-		// Attempt to create the database
-		CreateTableRequest.Builder cgtr = CreateTableRequest.builder();
-		cgtr.tableName(DynamoDbRepository.TABLE_NAME)
-			//.deletionProtectionEnabled(true)
-			.billingMode(BillingMode.PAY_PER_REQUEST)
-			.keySchema(
-				KeySchemaElement.builder().attributeName("entityType").keyType(KeyType.HASH).build(),
-				KeySchemaElement.builder().attributeName("sortKey").keyType(KeyType.RANGE).build()
-			)
-			.attributeDefinitions(
-				AttributeDefinition.builder().attributeName("entityType").attributeType(ScalarAttributeType.S).build(),
-				AttributeDefinition.builder().attributeName("sortKey").attributeType(ScalarAttributeType.S).build()
-			);
-		try {
-			ddbClient.createTable(cgtr.build());
-			return false;
-		} catch (ResourceInUseException rex) {
-			if (failed) {
-				log.error("Cannot create existing database {}", DynamoDbRepository.TABLE_NAME);
-				throw rex;
-			}
-		} catch (Exception ex) {
-			log.error("Error creating database {}", DynamoDbRepository.TABLE_NAME);
-			throw ex;
-		}
-		return false;
+		log.error("Database does not exist: {}", DynamoDbRepository.TABLE_NAME);
+		throw new ServiceConfigurationError("Database does not exist " + DynamoDbRepository.TABLE_NAME, null);
 	}
 
 	private boolean isDbCreated() {
 		return eventRepository.findByNameAndTarget(Event.CREATED, "Database").isEmpty();
 	}
-	private void markDbCreated() {
+	
+	private Event markDbCreated() {
 		Event event = new Event(Event.CREATED);
 		event.setTarget("Database");
-		eventRepository.store(event);
+		return eventRepository.create(event);
 	}
 
-	private void migrateAllDbs() {
+	private void migrateAllTables() {
 		if (migrationFactory != null) {
 			migrateTo(migrationFactory.accessControlRepository(), acr = new AccessControlRepository(client));
 			// Migrating the CertificateStatus repository is not required. Any unchecked certificate will be rechecked.
@@ -222,7 +224,7 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
 			dest.store(e);
 		}
 		event.setCompleted(new Date());
-		eventRepository.store(event);
+		eventRepository.update(event);
 		log.info("Migration complete for {}", dest.getClass().getSimpleName());
 		return dest;
 	}
@@ -251,6 +253,6 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
 		// or it hasn't started yet.  So, we'll say that migration is needed.  It is still POSSIBLE
 		// that two servers could try to migrate the data after this call.
 		Event event = new Event(Event.MIGRATION);
-		return eventRepository.store(event);
+		return eventRepository.create(event);
 	}
 }

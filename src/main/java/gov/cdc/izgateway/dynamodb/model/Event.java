@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.io.Serializable;
 import java.util.Date;
+import java.util.UUID;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -60,6 +61,9 @@ public class Event extends DynamoDbEntity implements Serializable {
     
     @Schema(description = "System reporting the event")
     private String reportedBy = SystemUtils.getHostname();
+    
+    @Schema(description = "The Unique Id of the event")
+    private String eventId = UUID.randomUUID().toString();
     
     /**
      * Create a new event.

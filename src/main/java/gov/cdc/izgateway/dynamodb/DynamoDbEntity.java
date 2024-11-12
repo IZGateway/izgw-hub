@@ -16,13 +16,17 @@ import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSortK
  */
 @DynamoDbBean
 public abstract class DynamoDbEntity {
+	/** The attribute to use for entity type */
+	public static final String ENTITY_TYPE = "entityType";
+	/** The attribute to use for the sort key */
+	public static final String SORT_KEY = "sortKey";
 	/**
 	 * Compute the partition key for this object.
 	 * The partition key is the simple type name of the object + the entity specific sort key.
 	 * @return The partition key for this object.
 	 */
 	@DynamoDbPartitionKey
-	@DynamoDbAttribute("entityType")
+	@DynamoDbAttribute(ENTITY_TYPE)
 	public final String getEntityType() {
 		return getClass().getSimpleName();
 	}
@@ -33,7 +37,7 @@ public abstract class DynamoDbEntity {
 	 * @return The sort key for this object.
 	 */
 	@DynamoDbSortKey
-	@DynamoDbAttribute("sortKey")
+	@DynamoDbAttribute(SORT_KEY)
 	public final String getSortKey() {
 		return getPrimaryId();
 	}
