@@ -18,7 +18,7 @@ public class HubPrincipalService implements PrincipalService {
     private final CertificatePrincipalProvider certificatePrincipalProvider;
 
     @Autowired
-    public HubPrincipalService(JwtPrincipalProvider jwtPrincipalProvider, CertificatePrincipalProvider certificatePrincipalProvider) {
+    public HubPrincipalService(CertificatePrincipalProvider certificatePrincipalProvider) {
         this.certificatePrincipalProvider = certificatePrincipalProvider;
     }
 
