@@ -3,9 +3,7 @@ package gov.cdc.izgateway.dynamodb.model;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
-
 import java.io.Serializable;
-
 import gov.cdc.izgateway.dynamodb.DynamoDbEntity;
 import gov.cdc.izgateway.model.IMessageHeader;
 import gov.cdc.izgateway.model.MappableEntity;
@@ -90,7 +88,7 @@ public class MessageHeader extends DynamoDbEntity implements Serializable, IMess
 		this.setUsername(that.getUsername());
 	}
 
-	@Override
+  @Override
 	public String getPrimaryId() {
 		return getMsh();
 	}

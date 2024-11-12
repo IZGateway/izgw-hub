@@ -44,16 +44,13 @@ public class CertificateStatus extends DynamoDbEntity implements Serializable, I
     private String certSerialNumber;
 
     private Date lastCheckedTimeStamp;
-    
     private Date nextCheckTimeStamp;
-    
     private String lastCheckStatus;
 
     public String toString() {
     	return String.format("%s(%s) last checked at %tD %tT.%TL: %s", 
     			commonName, certificateId, lastCheckedTimeStamp, lastCheckedTimeStamp, lastCheckedTimeStamp, lastCheckStatus);
     }
-    
     
     /**
      * Create a PhizCertificateStatus object representing the current certificate.
@@ -116,5 +113,4 @@ public class CertificateStatus extends DynamoDbEntity implements Serializable, I
     public Date getNextCheckTimeStamp() {
     	return nextCheckTimeStamp;
     }
-
 }

@@ -50,8 +50,8 @@ public class Jurisdiction extends DynamoDbEntity implements IJurisdiction {
 		this.name = that.getName();
 		this.prefix = that.getPrefix();
 	}
-	
-    @Schema(description="The identifier of the jurisdiction.")
+
+  @Schema(description="The identifier of the jurisdiction.")
 	private int jurisdictionId;
     public int getJurisdictionId() {
     	return jurisdictionId;

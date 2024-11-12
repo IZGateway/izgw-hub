@@ -149,7 +149,7 @@ public class Destination extends DynamoDbEntity implements IEndpoint, Serializab
 		return maintEnd;
 	}
 
-	@Schema(description = "The identifier of the facility to use with test messages for this endpoint")
+  @Schema(description = "The identifier of the facility to use with test messages for this endpoint")
 	private String facilityId;
 
 	@Schema(description = "The MSH3 value to use with test messages for this endpoint")

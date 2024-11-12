@@ -53,7 +53,6 @@ public class EndpointStatus extends DynamoDbEntity implements IEndpoint, Seriali
     
 	@Schema(description="The identifier of destination")
     private String destId;
-
 	@Setter(AccessLevel.NONE)
     private int destType = SystemUtils.getDestType();
 	

@@ -20,6 +20,7 @@ public abstract class DynamoDbEntity {
 	public static final String ENTITY_TYPE = "entityType";
 	/** The attribute to use for the sort key */
 	public static final String SORT_KEY = "sortKey";
+
 	/**
 	 * Compute the partition key for this object.
 	 * The partition key is the simple type name of the object + the entity specific sort key.
