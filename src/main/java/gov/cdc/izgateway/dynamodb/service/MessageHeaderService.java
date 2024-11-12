@@ -7,7 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import gov.cdc.izgateway.db.model.MessageHeader;
-import gov.cdc.izgateway.db.repository.MessageHeaderInfoRepository;
+import gov.cdc.izgateway.db.repository.MessageHeaderRepository;
 import gov.cdc.izgateway.model.IMessageHeader;
 import gov.cdc.izgateway.service.IMessageHeaderService;
 import lombok.extern.slf4j.Slf4j;
@@ -25,15 +25,15 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class MessageHeaderService implements InitializingBean, IMessageHeaderService {
 
-    private final MessageHeaderInfoRepository messageHeaderInfoRepository;
+    private final MessageHeaderRepository messageHeaderRepository;
     private Map<String, IMessageHeader> cache = Collections.emptyMap();
     private List<IMessageHeader> list = Collections.emptyList();
 
     @Value("${data.cache.timeToLive:300}")
     private int refreshPeriod;
     
-    public MessageHeaderService(MessageHeaderInfoRepository messageHeaderInfoRepository) {
-        this.messageHeaderInfoRepository = messageHeaderInfoRepository;
+    public MessageHeaderService(MessageHeaderRepository messageHeaderInfoRepository) {
+        this.messageHeaderRepository = messageHeaderInfoRepository;
     }
     
     /**
@@ -46,7 +46,7 @@ public class MessageHeaderService implements InitializingBean, IMessageHeaderSer
     
     @Override
 	public void refresh() {
-        list = Collections.unmodifiableList(messageHeaderInfoRepository.findAll());
+        list = Collections.unmodifiableList(messageHeaderRepository.findAll());
         Map<String, IMessageHeader> map = new LinkedHashMap<>();
         // Initialize new cache
         for (IMessageHeader msh: list) {
@@ -113,10 +113,9 @@ public class MessageHeaderService implements InitializingBean, IMessageHeaderSer
 	@Override
 	public IMessageHeader saveAndFlush(IMessageHeader h) {
 		if (h instanceof MessageHeader h1) {
-			h = messageHeaderInfoRepository.saveAndFlush(h1);
+			h = messageHeaderRepository.saveAndFlush(h1);
 		} else {
-			MessageHeader h1 = new MessageHeader(h);
-			h = messageHeaderInfoRepository.saveAndFlush(h1);
+			h = messageHeaderRepository.saveAndFlush(new MessageHeader(h));
 		}
 		// Update cache
 		if (cache.get(h.getMsh()) != null) {
