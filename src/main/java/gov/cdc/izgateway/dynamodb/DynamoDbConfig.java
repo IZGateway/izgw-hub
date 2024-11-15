@@ -38,7 +38,7 @@ public class DynamoDbConfig {
      */
     @Bean
     public DynamoDbClient getDynamoDbClient(
-    	@Value("${amazon.dynamodb.endpoint:https://localhost:8000/}") 
+    	@Value("${amazon.dynamodb.endpoint:}") 
     	String dynamodbEndpoint
     ) {
     	DefaultCredentialsProvider credentialsProvider = DefaultCredentialsProvider.create();
