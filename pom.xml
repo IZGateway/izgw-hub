@@ -26,7 +26,7 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.java.package>${project.groupId}</project.java.package>
 		<spring-security.version>6.3.3</spring-security.version>
-		<spring.version>6.1.12</spring.version>
+		<spring.version>6.2.0</spring.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -473,28 +473,4 @@
 			<url>https://maven.pkg.github.com/izgateway/izgw-core</url>
 		</repository>
 	</repositories>
-	<dependencyManagement>
-		<dependencies>
-			<dependency>
-				<groupId>org.springframework</groupId>
-				<artifactId>spring-tx</artifactId>
-				<version>[6.1.14,)</version>
-			</dependency>
-			<dependency>
-				<groupId>org.springframework</groupId>
-				<artifactId>spring-web</artifactId>
-				<version>[6.1.14,)</version>
-			</dependency>
-			<dependency>
-				<groupId>org.springframework</groupId>
-				<artifactId>spring-webflux</artifactId>
-				<version>[6.1.14,)</version>
-			</dependency>
-			<dependency>
-				<groupId>org.springframework</groupId>
-				<artifactId>spring-webmvc</artifactId>
-				<version>[6.1.14,)</version>
-			</dependency>
-		</dependencies>
-	</dependencyManagement>
 </project>
