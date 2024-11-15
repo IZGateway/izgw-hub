@@ -37,9 +37,10 @@ spring:
         max-file-size: 15GB
         max-request-size: 15GB
 
-amazon:
-    dynamodb:
-        endpoint: # Set to http://localhost:8000/ to use local DynamoDb instance for testing
+# uncomment these lines to use local DynamoDb instance for testing 
+# amazon:
+#    dynamodb:
+#        endpoint: http://localhost:8000/ # to use local DynamoDb instance for testing
          
 management:
     metrics:

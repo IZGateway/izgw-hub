@@ -125,7 +125,7 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
 	}
 
 	private boolean isDbCreated() {
-		return eventRepository.findByNameAndTarget(Event.CREATED, "Database").isEmpty();
+		return !eventRepository.findByNameAndTarget(Event.CREATED, "Database").isEmpty();
 	}
 	
 	private Event markDbCreated() {
@@ -141,6 +141,7 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
 			migrateTo(migrationFactory.jurisdictionRepository(), jr = new JurisdictionRepository(client));
 			migrateTo(migrationFactory.destinationRepository(), dr = new DestinationRepository(client));
 			migrateTo(migrationFactory.messageHeaderRepository(), mhr = new MessageHeaderRepository(client));
+			log.info("Database Migration completed for {}", DynamoDbRepository.TABLE_NAME);
 		}
 	}
 	
@@ -230,7 +231,7 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
 	}
 
 	private Event startMigrationEvent(IRepository<?> dest) {
-		String eventTarget = dest.getClass().getName();
+		String eventTarget = dest.getClass().getSimpleName();
 		Duration waitFor = Duration.ofMinutes(5);
 		Duration waitPeriod = Duration.ofSeconds(10);
 		while (eventRepository.hasEventStarted(Event.MIGRATION, eventTarget)) {
@@ -252,7 +253,7 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
 		// If we get to this stage, we've either waited long enough for a started event to complete
 		// or it hasn't started yet.  So, we'll say that migration is needed.  It is still POSSIBLE
 		// that two servers could try to migrate the data after this call.
-		Event event = new Event(Event.MIGRATION);
+		Event event = new Event(Event.MIGRATION, eventTarget);
 		return eventRepository.create(event);
 	}
 }
