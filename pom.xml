@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.3.4</version>
+		<version>3.3.5</version>
 		<relativePath />
 	</parent>
 	<groupId>gov.cdc.izgw</groupId>
@@ -25,8 +25,9 @@
 		<image.tag>${project.artifactId}-${project.version}-${buildno}</image.tag>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.java.package>${project.groupId}</project.java.package>
-		<spring-security.version>6.3.3</spring-security.version>
+		<spring-security.version>6.3.4</spring-security.version>
 		<spring.version>6.2.0</spring.version>
+		<spring-framework.version>6.2.0</spring-framework.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -210,9 +211,8 @@
 			<artifactId>spring-webmvc</artifactId>
 		</dependency>
 		<dependency>
-    	<groupId>org.springframework.security</groupId>
+    		<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-web</artifactId>
-			<version>[6.3.4,)</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
