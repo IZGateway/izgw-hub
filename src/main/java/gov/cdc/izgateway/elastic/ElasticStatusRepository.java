@@ -129,6 +129,19 @@ public class ElasticStatusRepository extends ElasticRepository implements Endpoi
 		return cache.get(id);
 	}
 	
+
+	@Override
+	public void resetCircuitBreakers() {
+		if (cache.isEmpty()) {
+			refresh();
+		}
+		for (IEndpointStatus status: cache.values()) {
+			if (status.isCircuitBreakerThrown()) {
+				status.setStatus(IEndpointStatus.CONNECTED);
+			}
+		}
+	}
+	
 	/**
 	 * Request status from ElasticSearch
 	 * @return  true if refreshed, false otherwise
