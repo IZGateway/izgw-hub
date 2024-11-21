@@ -1,3 +1,6 @@
-# IZ Gateway Release 2.1.3
-The IZ Gateway Hub 2.1.3 patch release enables support for the DEX 2.0 schema and exchange of farmerFlu and other report submission formats determined by CDC in the future.  It also enables access to information from the /upload/info endpoint supported via DEX APIs enabling jurisdictions to determine the status of submissions sent to CDC.
+# IZ Gateway Release 2.1.5
+The IZ Gateway Hub 2.1.5 patch release:
+
+* Fixes a null pointer error in IIS to CDC (DEX) APIs with file sizes of 0
+* Corrects a bug in meta_schema_version and version fields to ensure they have the same values
 
