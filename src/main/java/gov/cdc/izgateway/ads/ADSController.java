@@ -286,14 +286,19 @@ public class ADSController implements ADSChecker {
 		if (tData != null) {
 			tData.getDestination().setUrl(m.getDestUrl());
 		}
-		MetadataImpl meta = m.build();
-
-		// Verify destination and event are aligned, don't let people send a
-		// routineImmunization to the flu endpoint
-		// and vice versa
-		checkDestinationAndEvent(meta);
-
-		return meta;
+		try {
+			MetadataImpl meta = m.build();
+	
+			// Verify destination and event are aligned, don't let people send a
+			// routineImmunization to the flu endpoint
+			// and vice versa
+			checkDestinationAndEvent(meta);
+			return meta;
+		} catch (MetadataFault mf) {
+			// Log the parsed metadata in the response.
+			tData.setResponse(mf.getMeta());
+			throw mf;
+		}
 	}
 
 	private void normalizeReportType(MetadataBuilder m, String reportType) {
