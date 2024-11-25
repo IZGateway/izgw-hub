@@ -183,11 +183,18 @@ public class MetadataBuilder {
 		}
 		Calendar metaDate = meta.getPeriodAsCalendar(); 
 		int divisor = pf.getFiletype().equals(ParsedFilename.ROUTINE_IMMUNIZATION) ? 3 : 1;
-		if (cal.get(Calendar.MONTH) / divisor != metaDate.get(Calendar.MONTH) / divisor ||
-			cal.get(Calendar.YEAR) != metaDate.get(Calendar.YEAR)
-		) {
-			errors.add(String.format("File date from filename (%s) does not match period (%s)", meta.getFilename(), meta.getPeriod()));
+		if (!checkDate(cal, metaDate, divisor)) {
+			// Failed first time through, try JUST one day later on date from file name
+			cal.add(Calendar.DAY_OF_MONTH, 1);
+			if (!checkDate(cal, metaDate, divisor)) {
+				errors.add(String.format("File date from filename (%s) does not match period (%s)", meta.getFilename(), meta.getPeriod()));
+			}
 		}
+	}
+
+	private boolean checkDate(Calendar cal, Calendar metaDate, int divisor) {
+		return cal.get(Calendar.MONTH) / divisor == metaDate.get(Calendar.MONTH) / divisor &&
+			cal.get(Calendar.YEAR) == metaDate.get(Calendar.YEAR);
 	}
 
     /**

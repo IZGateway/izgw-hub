@@ -145,23 +145,22 @@ public abstract class RestfulFileSender implements FileSender {
             int responseCode = writeData(con, route, data, meta);
             
             RequestContext.getTransactionData().setElapsedTimeIIS(elapsedTimeIIS);
-            if (responseCode != HttpStatus.CREATED.value() && responseCode > 0) {
+            if (responseCode != HttpStatus.CREATED.value()) {
                 error = con.getErrorStream();
-                // Don't report the SAS Token in logs, that is Sensitive information.
-               throw new HTTPException(responseCode);
-            }
-            else if (responseCode != HttpStatus.CREATED.value() && responseCode  <= 0) {
                 throw new HTTPException(responseCode);
             }
             return con;
         } catch (URISyntaxException e) {
         	throw HubClientFault.invalidMessage(e, route, 0, null);
         } catch (io.tus.java.client.ProtocolException e) {
-        	throw HubClientFault.invalidMessage(e, route, 0, 
-        		IOUtils.toInputStream(e.getMessage(), StandardCharsets.UTF_8));
+        	try (InputStream s = IOUtils.toInputStream(e.getMessage(), StandardCharsets.UTF_8)) {
+        		throw HubClientFault.invalidMessage(e, route, 0, s);
+        	} catch (IOException e1) {
+        		throw HubClientFault.invalidMessage(e, route, 0, null);
+			}
         } catch (MalformedURLException e) {
             throw new MetadataFault(meta, e, FILENAME_INVALID);
-        } catch (IOException e) {
+        } catch (IOException | HTTPException e) {
             if (elapsedTimeIIS < 0) {
                 elapsedTimeIIS += System.currentTimeMillis();
             }
