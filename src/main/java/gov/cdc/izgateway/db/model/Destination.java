@@ -267,33 +267,6 @@ public class Destination implements IEndpoint, Serializable, HasDestinationUri, 
 		return id.getDestId();
 	}
 
-	@Override
-	@JsonIgnore
-	@Schema(description = "True if this destination supports the original CDC 2011 Protocol", hidden=true)
-	public boolean is2011() {
-		return "2011".equals(destVersion);
-	}
-	@Override
-	@JsonIgnore
-	@Schema(description = "True if this destination supports the IZ Gateway 2014 Protocol", hidden=true)
-	public boolean is2014() {
-		return StringUtils.isEmpty(destVersion) || "2014".equals(destVersion);
-	}
-	
-	@Override
-	@JsonIgnore
-	@Schema(description = "True if this destination supports the IZ Gateway Hub Protocol", hidden=true)
-	public boolean isHub() {
-		return "HUB".equalsIgnoreCase(destVersion);
-	}
-	
-	@Override
-	@JsonIgnore
-	@Schema(description = "True if this destination supports the CDC DEX Protocol", hidden=true)
-	public boolean isDex() {
-		return ADSController.IZGW_ADS_VERSION1.equals(destVersion) || ADSController.IZGW_ADS_VERSION2.equals(destVersion);
-	}
-
 	@JsonIgnore
 	@Schema(description = "The destination id", hidden=true)
 	@Override
@@ -307,11 +280,4 @@ public class Destination implements IEndpoint, Serializable, HasDestinationUri, 
 	public String getDestinationUri() {
 		return getDestUri();
 	}
-
-    @JsonIgnore
-    @Schema(description = "is this Azure", hidden=true)
-    @Override
-    public boolean isAzure() {
-        return false;
-    }
 }
