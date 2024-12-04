@@ -307,4 +307,11 @@ public class Destination implements IEndpoint, Serializable, HasDestinationUri, 
 	public String getDestinationUri() {
 		return getDestUri();
 	}
+
+    @JsonIgnore
+    @Schema(description = "is this Azure", hidden=true)
+    @Override
+    public boolean isAzure() {
+        return false;
+    }
 }
