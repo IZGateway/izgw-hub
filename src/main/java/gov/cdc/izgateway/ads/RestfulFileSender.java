@@ -2,7 +2,6 @@ package gov.cdc.izgateway.ads;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import gov.cdc.izgateway.db.service.StatusCheckerService;
 import gov.cdc.izgateway.logging.RequestContext;
 import gov.cdc.izgateway.logging.event.TransactionData;
 import gov.cdc.izgateway.logging.info.HostInfo;
@@ -10,6 +9,7 @@ import gov.cdc.izgateway.logging.markers.Markers2;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.security.ClientTlsSupport;
 import gov.cdc.izgateway.service.IDestinationService;
+import gov.cdc.izgateway.service.StatusCheckerService;
 import gov.cdc.izgateway.soap.fault.*;
 import gov.cdc.izgateway.utils.*;
 import jakarta.activation.DataHandler;

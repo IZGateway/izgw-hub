@@ -1,4 +1,4 @@
-package gov.cdc.izgateway.db.service;
+package gov.cdc.izgateway.service;
 
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.InitializingBean;
@@ -7,13 +7,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestMethod;
 
-import gov.cdc.izgateway.db.model.AccessControl;
-import gov.cdc.izgateway.db.model.AccessControlId;
-import gov.cdc.izgateway.db.repository.AccessControlRepository;
 import gov.cdc.izgateway.model.IAccessControl;
+import gov.cdc.izgateway.repository.IAccessControlRepository;
+import gov.cdc.izgateway.repository.RepositoryFactory;
 import gov.cdc.izgateway.security.Roles;
-import gov.cdc.izgateway.service.IAccessControlRegistry;
-import gov.cdc.izgateway.service.IAccessControlService;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -23,7 +20,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -34,6 +30,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Implements the IAccessControlService for IZ Gateway.
  * 
+ * 
  * @author Audacious Inquiry
  */
 @Slf4j
@@ -43,7 +40,7 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 	private static final int MAX_CACHE_SIZE = 1000;
 	private static final int REDUCE_QTY = 200;
 
-	private final AccessControlRepository accessControlRepository;
+	private final IAccessControlRepository accessControlRepository;
 	private final IAccessControlRegistry registry;
 
 	private Map<String, Map<String, Boolean>> allowedUsersByGroup = Collections.emptyMap();
@@ -69,8 +66,8 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
      * @param registry	The registry for managing access control to methods
      */
     @Autowired
-    public AccessControlService(AccessControlRepository accessControlRepository, IAccessControlRegistry registry) {
-        this.accessControlRepository = accessControlRepository;
+    public AccessControlService(RepositoryFactory factory, IAccessControlRegistry registry) {
+        this.accessControlRepository = factory.accessControlRepository();
         this.registry = registry;
     }
     
@@ -93,10 +90,7 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
         Map<String, Map<String, Boolean>> newAllowedRoutesByEvent = new TreeMap<>();
         cachedControlDecisions.clear();
         
-        List<AccessControl> controls = new ArrayList<>(accessControlRepository.findAll());
-        // Add the server itself to the internal group.
-        AccessControl self = new AccessControl(GROUP_CATEGORY, "internal", serverName);
-        controls.add(self);
+        List<IAccessControl> controls = new ArrayList<>(accessControlRepository.findAll());
         for (IAccessControl control: controls) {
         	Map<String, Map<String, Boolean>> mapToUpdate = null;
         	switch (control.getCategory()) {
@@ -115,8 +109,10 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
         			control.getName(),
         			k -> new LinkedHashMap<>()
         		);
-				group.put(control.getMember(), control.isAllowed());
-			}
+			group.put(control.getMember(), control.isAllowed());
+		}
+        // Add the server itself to the internal group.
+        newAllowedUsersByGroup.computeIfAbsent(Roles.INTERNAL, k -> new LinkedHashMap<>()).put(serverName, true);
         allowedUsersByGroup = newAllowedUsersByGroup;
         allowedRoutesByEvent = newAllowedRoutesByEvent;
         usersInRoles = getUserRoles();
@@ -413,32 +409,19 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 
 	@Override
 	public IAccessControl removeUserFromBlacklist(String user) {
-		Optional<AccessControl> accessControl = accessControlRepository.findById(new AccessControlId(IAccessControlService.GROUP_CATEGORY, Roles.BLACKLIST, user));
-		// If an update is necessary.
-		if (!accessControl.isEmpty()) {
-			// Save the results and refresh the cache.
-			accessControlRepository.delete(accessControl.get());
+		try {
+			return accessControlRepository.removeUserFromGroup(user, Roles.BLACKLIST);
+		} finally {
 			refresh();
-			return accessControl.get();
 		}
-		return null;
 	}
 	
 	@Override
 	public IAccessControl addUserToBlacklist(String user) {
-		AccessControl accessControl = 
-			accessControlRepository
-				.findById(new AccessControlId(IAccessControlService.GROUP_CATEGORY, Roles.BLACKLIST, user))
-				.orElse(new AccessControl(IAccessControlService.GROUP_CATEGORY, Roles.BLACKLIST, user, false));
-		
-		// If an update is necessary.
-		if (!accessControl.isAllowed()) {
-			// Save the results and refresh the cache.
-			accessControl.setAllowed(true);
-			accessControlRepository.saveAndFlush(accessControl);
+		try {
+			return accessControlRepository.addUserToGroup(user, Roles.BLACKLIST);
+		} finally {
 			refresh();
 		}
-		
-		return accessControl;
 	}
 }

@@ -1,7 +1,6 @@
 package gov.cdc.izgateway.dynamodb;
 
-import org.apache.commons.lang3.StringUtils;
-
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbAttribute;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbPartitionKey;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSortKey;
@@ -17,43 +16,63 @@ import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSortK
  */
 @DynamoDbBean
 public abstract class DynamoDbEntity {
-	/**
-	 * Implement this method to return the primary id of the entity.
-	 * @return	The primary key of the entity.
-	 */
-	public abstract String primaryId();
-	
-	/**
-	 * Override this method to return the sort key of the entity.
-	 * @return	The sort key of the entity.
-	 */
-	public String sortKey() {
-		return null;
-	}
-	
+	/** The attribute to use for entity type */
+	public static final String ENTITY_TYPE = "entityType";
+	/** The attribute to use for the sort key */
+	public static final String SORT_KEY = "sortKey";
+
 	/**
 	 * Compute the partition key for this object.
 	 * The partition key is the simple type name of the object + the entity specific sort key.
 	 * @return The partition key for this object.
 	 */
 	@DynamoDbPartitionKey
-	public final String dynamoDbPartitionKey() {
-		return StringUtils.joinWith("#", getClass().getSimpleName(), primaryId());
+	@DynamoDbAttribute(ENTITY_TYPE)
+	public final String getEntityType() {
+		return getClass().getSimpleName();
 	}
 	
 	/**
 	 * Compute the sort key for this object.
-	 * The sort key is the simple type name of the object + the entity specific sort key.
+	 * The sort key is derived from the primary id for the object.
 	 * @return The sort key for this object.
 	 */
 	@DynamoDbSortKey
-	public final String dynamoDbSortKey() {
-		String sortKey = sortKey();
-		if (sortKey == null) {
-			return dynamoDbPartitionKey();
-		}
-		return StringUtils.joinWith("#", getClass().getSimpleName(), sortKey);
+	@DynamoDbAttribute(SORT_KEY)
+	public final String getSortKey() {
+		return getPrimaryId();
 	}
 	
-
+	/**
+	 * Report the primary identifier for the object.
+	 * This will be used as the sort key.
+	 * @return The primary id for this object.
+	 */
+	public abstract String getPrimaryId();
+	
+	/**
+	 * Phantom setter for entityType
+	 * 
+	 * The AWS DynamoDb SDK ignores bean properties that don't have both a reader 
+	 * and a writer, failing to understand that some properties could be derived and therefore 
+	 * NOT writable. Thus, this is ignored. This method exists simply to make DynamoDb work as expected
+	 * for persistence.
+	 * @param value The value to ignore
+	 */
+	public final void setEntityType(String value) {
+		// Do nothing
+	}
+	
+	/**
+	 * Phantom setter for sortKey
+	 * 
+	 * The AWS DynamoDb SDK ignores bean properties that don't have both a reader 
+	 * and a writer, failing to understand that some properties could be derived and therefore 
+	 * NOT writable. Thus, this is ignored. This method exists simply to make DynamoDb work as expected
+	 * for persistence.
+	 * @param value The value to ignore
+	 */
+	public final void setSortKey(String value) {
+		// Do nothing
+	}
 }

@@ -2,8 +2,8 @@ package gov.cdc.izgateway.dynamodb.model;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 import java.io.Serializable;
-
 import gov.cdc.izgateway.dynamodb.DynamoDbEntity;
 import gov.cdc.izgateway.model.IMessageHeader;
 import gov.cdc.izgateway.model.MappableEntity;
@@ -25,6 +25,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Data
 @EqualsAndHashCode(callSuper=false)
 @Schema(description="Mappings from Message Header values to sources")
+@DynamoDbBean
 public class MessageHeader extends DynamoDbEntity implements Serializable, IMessageHeader {
 	/**
 	 * An alias for the message header map supporting Swagger 
@@ -86,8 +87,9 @@ public class MessageHeader extends DynamoDbEntity implements Serializable, IMess
 		this.setSourceType(that.getSourceType());
 		this.setUsername(that.getUsername());
 	}
-	@Override
-	public String primaryId() {
-		return msh;
+
+  @Override
+	public String getPrimaryId() {
+		return getMsh();
 	}
 }

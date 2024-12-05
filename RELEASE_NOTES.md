@@ -1,3 +1,8 @@
+# IZ Gateway Release 2.2.0
+The IZ Gateway Hub 2.2.0 Release enables IZ Gateway to run in multiple regions
+* It uses AWS DynamoDB instead of AWS RDS
+* It can run behind an Application Load Balancer instead of a Network Load Balancer
+
 # IZ Gateway Release 2.1.5
 The IZ Gateway Hub 2.1.5 patch release:
 
@@ -22,7 +27,6 @@ adjusts logging levels for that environment.
 
 # IZ Gateway Release 2.1.1
 The IZ Gateway Hub 2.1.1 patch release adds access control capabilities for destinations.
-
 
 # IZ Gateway Release 2.1.0
 The IZ Gateway Hub 2.1.0 is in preparation for code sharing across IZ Gateway Hub and the IZ Gateway Transformation Service.

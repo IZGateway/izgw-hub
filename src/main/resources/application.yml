@@ -11,7 +11,7 @@ spring:
         name: IZ Gateway 2.0
         fix-newlines: ${FIX_NEWLINES:true}
         enable-status-check: ${STATUS_CHECK:true}
-        
+    
     datasource:
         url: jdbc:mysql://${MYSQL_HOST:localhost}:${PHIZ_DATA_DB_PORT:3306}/${MYSQL_DB_NAME:phiz}
         username: ${MYSQL_HUB_NAME}
@@ -37,9 +37,10 @@ spring:
         max-file-size: 15GB
         max-request-size: 15GB
 
-amazon:
-    dynamodb:
-        endpoint: ${AWS_DYNAMODB_HOST:http://localhost:8000/}
+# uncomment these lines to use local DynamoDb instance for testing 
+# amazon:
+#    dynamodb:
+#        endpoint: http://localhost:8000/ # to use local DynamoDb instance for testing
          
 management:
     metrics:

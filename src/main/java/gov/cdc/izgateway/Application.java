@@ -7,6 +7,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.security.Security;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceConfigurationError;
@@ -40,7 +41,6 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.web.embedded.tomcat.TomcatConnectorCustomizer;
 import org.springframework.boot.web.embedded.tomcat.TomcatContextCustomizer;
 import org.springframework.boot.web.embedded.tomcat.TomcatProtocolHandlerCustomizer;
@@ -50,8 +50,6 @@ import org.springframework.boot.web.servlet.ServletContextInitializer;
 import org.springframework.context.ApplicationContextException;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
-import org.springframework.context.annotation.Profile;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -67,8 +65,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.servlet.config.annotation.ContentNegotiationConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-import com.zaxxer.hikari.HikariDataSource;
-
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import gov.cdc.izgateway.logging.event.EventId;
@@ -78,7 +74,7 @@ import gov.cdc.izgateway.security.SSLImplementation;
 import gov.cdc.izgateway.security.ocsp.RevocationChecker;
 import gov.cdc.izgateway.service.IDestinationService;
 import gov.cdc.izgateway.service.IMessageHeaderService;
-import gov.cdc.izgateway.soap.mock.perf.PerformanceSimulatorMockIIS;
+import gov.cdc.izgateway.service.MessageHeaderService;
 import gov.cdc.izgateway.soap.mock.perf.PerformanceSimulatorMultiton;
 import gov.cdc.izgateway.soap.net.SoapMessageConverter;
 import gov.cdc.izgateway.soap.net.SoapMessageWriter;
@@ -86,7 +82,6 @@ import gov.cdc.izgateway.status.StatusCheckScheduler;
 import gov.cdc.izgateway.utils.UtilizationService;
 import gov.cdc.izgateway.common.HealthService;
 import gov.cdc.izgateway.configuration.AppProperties;
-import gov.cdc.izgateway.db.service.MessageHeaderService;
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.annotations.info.Contact;
 import io.swagger.v3.oas.annotations.info.License;
@@ -106,8 +101,6 @@ import lombok.extern.slf4j.Slf4j;
         )
 )
 @SpringBootApplication
-@EntityScan(basePackages={"gov.cdc.izgateway.db.model"})
-@EnableJpaRepositories(basePackages={"gov.cdc.izgateway.db.repository"})
 public class Application implements WebMvcConfigurer {
 	private static final Map<String, byte[]> staticPages = new TreeMap<>();
 	private static final String BUILD_FILE = "build.txt";
@@ -122,6 +115,9 @@ public class Application implements WebMvcConfigurer {
 	private boolean fixNewlines;
 	@Value("${spring.application.enable-status-check:false}")
 	private boolean statusCheck;
+	
+	@Value("${spring.database:jpa")
+	private String databaseType;
 	
     // Heartbeat needs it's own thread in order to not be blocked by other background tasks.
     private static ScheduledExecutorService he = 
@@ -254,9 +250,13 @@ public class Application implements WebMvcConfigurer {
 	private static void checkApplication(ConfigurableApplicationContext ctx) {
         IDestinationService destinationService = ctx.getBean(IDestinationService.class);
         serverName = destinationService.getServerName();
-        serverMode = ctx.getBean(AppProperties.class).getServerMode();
+        AppProperties props = ctx.getBean(AppProperties.class); 
+        serverMode = props.getServerMode();
         IMessageHeaderService messageHeaderService = ctx.getBean(MessageHeaderService.class);
         DataSourceProperties ds = ctx.getBean(DataSourceProperties.class);
+        if (Arrays.asList("jpa", "migrate").contains(props.getDatabaseType())) {
+        	HealthService.setDatabase(ds.getUrl());
+        }
         StatusCheckScheduler sc = ctx.getBean(StatusCheckScheduler.class);
         Application app = ctx.getBean(Application.class);
     	new Thread(() -> {
@@ -345,27 +345,7 @@ public class Application implements WebMvcConfigurer {
 	@Value("${server.local-port:9081}") 
 	private int additionalPort;
 	
-	@Bean
-	@Primary
-	@ConfigurationProperties("spring.datasource")
-	@Profile("!test")
-	public DataSourceProperties dataSourceProperties() {
-		return new DataSourceProperties();
-	}
-
-
-	@Bean
-	@ConfigurationProperties("spring.datasource.configuration")
-	public HikariDataSource dataSource(DataSourceProperties properties) {
-		try {
-			log.info("Initializing Data Source: {}", properties.getUrl());
-			return properties.initializeDataSourceBuilder().type(HikariDataSource.class).build();
-		} finally {
-			log.info("Database initialized");
-		}
-	}
-	
-    @Override
+	@Override
     public void configureMessageConverters(List<HttpMessageConverter<?>> messageConverters) {
     	SoapMessageConverter smc = new SoapMessageConverter(SoapMessageConverter.INBOUND); 
     	smc.setHub(true);

@@ -4,20 +4,20 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 import gov.cdc.izgateway.common.Constants;
-import gov.cdc.izgateway.db.service.JurisdictionService;
 import gov.cdc.izgateway.dynamodb.DynamoDbEntity;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.model.IEndpoint;
 import gov.cdc.izgateway.model.IEndpointStatus;
 import gov.cdc.izgateway.model.IJurisdiction;
 import gov.cdc.izgateway.model.RetryStrategy;
+import gov.cdc.izgateway.service.JurisdictionService;
 import gov.cdc.izgateway.utils.SystemUtils;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.Getter;
 import lombok.Setter;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbIgnore;
 
 import com.fasterxml.jackson.annotation.JsonFormat.Shape;
@@ -31,6 +31,7 @@ import java.util.TreeMap;
 /**
  * This class reports on the status of a destination at a given point in time.
  */
+@DynamoDbBean
 @Schema(description="This class reports on the status of a destination at a given point in time.")
 @Data
 @EqualsAndHashCode(callSuper=false)
@@ -52,7 +53,6 @@ public class EndpointStatus extends DynamoDbEntity implements IEndpoint, Seriali
     
 	@Schema(description="The identifier of destination")
     private String destId;
-	@Getter(AccessLevel.NONE)
 	@Setter(AccessLevel.NONE)
     private int destType = SystemUtils.getDestType();
 	
@@ -91,19 +91,19 @@ public class EndpointStatus extends DynamoDbEntity implements IEndpoint, Seriali
 	 * Copy an EndpointStatus entity.
 	 * @param that	The entity to copy
 	 */
-	public EndpointStatus(EndpointStatus that) { 
-		statusId = that.statusId;
-		destId = that.destId;
-		destType = that.destType;
-		statusAt = that.statusAt;
-		statusBy = that.statusBy;
-		detail = that.detail;
-		retryStrategy = that.retryStrategy;
-		destUri = that.destUri;
-		diagnostics = that.diagnostics;
-		jurisdictionId = that.jurisdictionId;
-		destVersion = that.destVersion;
-		status = that.status;
+	public EndpointStatus(IEndpointStatus that) { 
+		statusId = that.getStatusId();
+		destId = that.getDestId();
+		destType = that.getDestTypeId();
+		statusAt = that.getStatusAt();
+		statusBy = that.getStatusBy();
+		detail = that.getDetail();
+		retryStrategy = that.getRetryStrategy();
+		destUri = that.getDestUri();
+		diagnostics = that.getDiagnostics();
+		jurisdictionId = that.getJurisdictionId();
+		destVersion = that.getDestVersion();
+		status = that.getStatus();
 	}
 
 	/**
@@ -224,12 +224,7 @@ public class EndpointStatus extends DynamoDbEntity implements IEndpoint, Seriali
 	}
 
 	@Override
-	public String primaryId() {
-		return String.format("%d#%tFT%tH", destType, statusAt, statusAt);
-	}
-	
-	@Override
-	public String sortKey() {
-		return Integer.toString(statusId);
+	public String getPrimaryId() {
+		return String.format("%tFT%tH", statusAt, statusAt);
 	}
 }

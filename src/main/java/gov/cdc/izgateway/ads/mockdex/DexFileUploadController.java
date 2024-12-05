@@ -78,7 +78,6 @@ public class DexFileUploadController {
     private static final int MAX_ENTRIES = 10;
     private final Map<String, Object> submissions = new LinkedHashMap<>() {
 		private static final long serialVersionUID = 1L;
-
 		@Override
         protected boolean removeEldestEntry(Map.Entry<String,Object> eldest) {
             return size() > MAX_ENTRIES;
@@ -331,6 +330,7 @@ public class DexFileUploadController {
     	}
     	return new ResponseEntity<>(o, HttpStatus.OK);
     }
+   
     /**
      * Handle an upload request
      * @param servletRequest	The request
@@ -389,13 +389,11 @@ public class DexFileUploadController {
     }
     
 	private Object getInfo(UploadInfo uploadInfo) {
-		Map<String, Object> info = new TreeMap<>();
-		info.put("manifest", uploadInfo.getMetadata());
-
-    String date = FastDateFormat
+    	String date = FastDateFormat
 				.getInstance(Constants.TIMESTAMP_FORMAT)
 				.format(uploadInfo.getCreationTimestamp());
-
+		Map<String, Object> info = new TreeMap<>();
+		info.put("manifest", uploadInfo.getMetadata());
 		Map<String, Object> fileInfo = new TreeMap<>();
 		fileInfo.put("size_bytes", uploadInfo.getLength());
 		fileInfo.put("updated_at", date);
@@ -414,9 +412,9 @@ public class DexFileUploadController {
 		delivery.put("issues", null);
 		info.put("deliveries", Collections.singletonList(delivery));
 
-    return info;
+		return info;
 	}
-
+	
 	private String getBearerToken(HttpServletRequest servletRequest) {
         String bearerToken = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
         String[] parts;

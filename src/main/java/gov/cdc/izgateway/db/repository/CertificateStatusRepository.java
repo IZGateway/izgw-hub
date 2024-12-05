@@ -6,14 +6,28 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import gov.cdc.izgateway.db.model.CertificateStatus;
+import gov.cdc.izgateway.model.ICertificateStatus;
+import gov.cdc.izgateway.repository.ICertificateStatusRepository;
 
-/*
- * PhizRevocationChecker runs in a separate thread that won't
- * have a transaction.  Using propagation=Propagation.REQUIRES_NEW
- * will ensure that a new transaction is created.
+/**
+ * Interface for the CertificateStatusRepository
+ *
+ * @author Audacious Inquiry
  */
 @Repository
 @Transactional
-public interface CertificateStatusRepository extends JpaRepository<CertificateStatus, Integer> {
+public interface CertificateStatusRepository extends JpaRepository<CertificateStatus, Integer>, ICertificateStatusRepository {
     CertificateStatus findByCertificateId(String certificateId);
+    /**
+     * Save and flush the access control record.
+     * @param control	The record to save
+     * @return	The saved record
+     */
+	@Override
+	default ICertificateStatus store(ICertificateStatus h) {
+		if (h instanceof CertificateStatus cs) {
+			return saveAndFlush(cs);
+		}
+		return saveAndFlush(new CertificateStatus(h));
+	}
 }

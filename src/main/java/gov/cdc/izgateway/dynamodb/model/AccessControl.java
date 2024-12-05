@@ -2,13 +2,18 @@ package gov.cdc.izgateway.dynamodb.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.io.Serializable;
 
+import gov.cdc.izgateway.dynamodb.DynamoDbEntity;
 import gov.cdc.izgateway.model.IAccessControl;
 import gov.cdc.izgateway.model.MappableEntity;
+import gov.cdc.izgateway.utils.SystemUtils;
 
 
 /**
@@ -18,9 +23,11 @@ import gov.cdc.izgateway.model.MappableEntity;
  */
 @SuppressWarnings("serial")
 @Data
+@EqualsAndHashCode(callSuper=false)
 @AllArgsConstructor
 @NoArgsConstructor
-public class AccessControl  implements Serializable, IAccessControl {
+@DynamoDbBean
+public class AccessControl extends DynamoDbEntity implements Serializable, IAccessControl {
 	/**
 	 * Provides easy access to the Map class for Swagger documentation
 	 */
@@ -35,22 +42,41 @@ public class AccessControl  implements Serializable, IAccessControl {
     @Schema(description = "The access control member")
     private String member;
     
-    @Schema(description = "True if member can be in name for category")
-    private boolean allowed;
-    
-    /**
-     * Create a new access control entry.
-     * @param category The category of the access control entry
-     * @param name	The name of the entry
-     * @param member Members of the entry
-     */
-    public AccessControl(String category, String name, String member) {
-    	this(category, name, member, true);
-    }
+    @Schema(description = "The environment")
+    private int destType;
     
     @Override
     public String toString() {
-    	return String.format("%s: %s %s %s", category, name, 
-    			allowed ? "allows access to" : "does not allow access to", member);
+    	return String.format("%s: %s allows access to %s", category, name, member);
     }
+
+	@Override
+	public String getPrimaryId() {
+		return destType + "#" + category + "#" + name + "#" + member;
+	}
+
+	@DynamoDbIgnore
+	@Override
+	public boolean isAllowed() {
+		return true;
+	}
+
+	@Override
+	public void setAllowed(boolean allowed) {
+		// Do Nothing
+	}
+
+	/**
+	 * Copy constructor
+	 * @param control The AccessControl to copy
+	 */
+	public AccessControl(IAccessControl control) {
+		this.name = control.getName();
+		this.member = control.getMember();
+		this.category = control.getCategory();
+		this.destType = SystemUtils.getDestType();
+		if (!control.isAllowed()) {
+			throw new IllegalStateException("Cannot copy an Access Control exclusion");
+		}
+	}
 }

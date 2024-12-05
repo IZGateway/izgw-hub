@@ -29,7 +29,7 @@ import gov.cdc.izgateway.model.MappableEntity;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class AccessControl  implements Serializable, IAccessControl {
+public class AccessControl implements Serializable, IAccessControl {
 	/**
 	 * Provides easy access to the Map class for Swagger documentation
 	 */
@@ -59,6 +59,14 @@ public class AccessControl  implements Serializable, IAccessControl {
      */
     public AccessControl(String category, String name, String member) {
     	this(category, name, member, true);
+    }
+    
+    /**
+     * Create a new access control entry from an existing one.
+     * @param control
+     */
+    public AccessControl(IAccessControl control) {
+    	this(control.getCategory(), control.getName(), control.getMember(), true);
     }
     
     @Override

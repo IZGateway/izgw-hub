@@ -49,6 +49,8 @@ jobs:
       run: |
           echo BASE_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout` >> $GITHUB_ENV
           echo COMPUTERNAME=`hostname` >> $GITHUB_ENV
+          # Set up for unit testing against JPA repository 
+          echo SPRING_DATABASE=jpa >> $GITHUB_ENV
           mkdir -p ~/.m2 \
           && cat << EOF > ~/.m2/toolchains.xml
           <?xml version="1.0" encoding="UTF8"?>

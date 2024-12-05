@@ -1,4 +1,4 @@
-package gov.cdc.izgateway.dynamodb.service;
+package gov.cdc.izgateway.service;
 
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.InitializingBean;
@@ -6,10 +6,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import gov.cdc.izgateway.db.model.Destination;
-import gov.cdc.izgateway.db.repository.DestinationRepository;
 import gov.cdc.izgateway.logging.markers.Markers2;
 import gov.cdc.izgateway.model.IDestination;
-import gov.cdc.izgateway.service.IDestinationService;
+import gov.cdc.izgateway.repository.IDestinationRepository;
+import gov.cdc.izgateway.repository.RepositoryFactory;
 import gov.cdc.izgateway.utils.SystemUtils;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +32,7 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @Service
 public class DestinationService implements InitializingBean, IDestinationService {
-    private final DestinationRepository destinationRepository;
+    private final IDestinationRepository destinationRepository;
     private Map<String, IDestination> cache = Collections.emptyMap();
     private List<IDestination> list = Collections.emptyList();
     @Value("${data.cache.timeToLive:300}")
@@ -72,7 +72,7 @@ public class DestinationService implements InitializingBean, IDestinationService
     
     @Override
 	public void refresh() {
-        list = Collections.unmodifiableList(destinationRepository.findAll());
+        list = Collections.unmodifiableList(destinationRepository.findAllByDestTypeId(SystemUtils.getDestType()));
         Map<String, IDestination> map = new LinkedHashMap<>();
         // Initialize new cache
         for (IDestination dest: list) {
@@ -92,8 +92,8 @@ public class DestinationService implements InitializingBean, IDestinationService
      * Construct a service using the specified repository
      * @param destinationRepository the repository
      */
-    public DestinationService(DestinationRepository destinationRepository) {
-        this.destinationRepository = destinationRepository;
+    public DestinationService(RepositoryFactory factory) {
+        this.destinationRepository = factory.destinationRepository();
     }
     
     @Override
@@ -115,12 +115,7 @@ public class DestinationService implements InitializingBean, IDestinationService
 	@Override
 	public void saveAndFlush(IDestination dest) {
 		try {
-			if (dest instanceof Destination d) {
-				dest = destinationRepository.saveAndFlush(d);
-			} else {
-				Destination d = new Destination(dest);
-				dest = destinationRepository.saveAndFlush(d);
-			}
+			destinationRepository.store(dest);
 			// Update the cache
 			cache.put(dest.getDestId(), dest);
 		} catch (Exception ex) {

@@ -2,12 +2,14 @@ package gov.cdc.izgateway.dynamodb.model;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbConvertedBy;
 import java.io.Serializable;
 import java.security.cert.X509Certificate;
 import java.sql.Timestamp;
 import java.util.Date;
 
+import gov.cdc.izgateway.dynamodb.DateConverter;
 import gov.cdc.izgateway.dynamodb.DynamoDbEntity;
 import gov.cdc.izgateway.model.ICertificateStatus;
 import gov.cdc.izgateway.utils.X500Utils;
@@ -21,6 +23,7 @@ import gov.cdc.izgateway.utils.X500Utils;
 @SuppressWarnings("serial")
 @Data
 @EqualsAndHashCode(callSuper=false)
+@DynamoDbBean
 public class CertificateStatus extends DynamoDbEntity implements Serializable, ICertificateStatus {
 	/** certificateId is the SHA-1 Message Digest of the Certificate
 	 *  It is guaranteed to be unique across all certificates within the
@@ -41,9 +44,7 @@ public class CertificateStatus extends DynamoDbEntity implements Serializable, I
     private String certSerialNumber;
 
     private Date lastCheckedTimeStamp;
-
     private Date nextCheckTimeStamp;
-
     private String lastCheckStatus;
 
     public String toString() {
@@ -98,7 +99,18 @@ public class CertificateStatus extends DynamoDbEntity implements Serializable, I
     }
 
 	@Override
-	public String primaryId() {
+	public String getPrimaryId() {
 		return certificateId;
 	}
+
+	// Add support for timestamps
+    @DynamoDbConvertedBy(DateConverter.class)
+    public Date getLastCheckedTimeStamp() {
+    	return lastCheckedTimeStamp;
+    }
+
+    @DynamoDbConvertedBy(DateConverter.class)
+    public Date getNextCheckTimeStamp() {
+    	return nextCheckTimeStamp;
+    }
 }

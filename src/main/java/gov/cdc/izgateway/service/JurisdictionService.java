@@ -1,4 +1,4 @@
-package gov.cdc.izgateway.db.service;
+package gov.cdc.izgateway.service;
 
 import java.time.Duration;
 import java.util.LinkedHashMap;
@@ -7,10 +7,10 @@ import java.util.Map;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
-import gov.cdc.izgateway.db.model.Jurisdiction;
-import gov.cdc.izgateway.db.repository.JurisdictionRepository;
 import gov.cdc.izgateway.model.IJurisdiction;
-import gov.cdc.izgateway.service.IJurisdictionService;
+import gov.cdc.izgateway.repository.IJurisdictionRepository;
+import gov.cdc.izgateway.repository.RepositoryFactory;
+import gov.cdc.izgateway.utils.SystemUtils;
 
 @Service
 @Lazy(false)
@@ -18,12 +18,12 @@ public class JurisdictionService implements IJurisdictionService {
 	private static final long MAX_AGE_IN_MINUTES = 60;  // Update every hour
 	// Keep track of the singleton to simplify Destination entity class
 	private static IJurisdictionService instance;
-	private Map<Integer, Jurisdiction> cache = new LinkedHashMap<>();
-	private JurisdictionRepository jurisdictionRepository;
+	private Map<Integer, IJurisdiction> cache = new LinkedHashMap<>();
+	private IJurisdictionRepository jurisdictionRepository;
 	long lastUpdate = 0;
 	
-	public JurisdictionService(JurisdictionRepository jurisdictionRepository) {
-		this.jurisdictionRepository = jurisdictionRepository;
+	public JurisdictionService(RepositoryFactory factory) {
+		this.jurisdictionRepository = factory.jurisdictionRepository();
 		setInstance(this);
 	}
 	
@@ -58,7 +58,7 @@ public class JurisdictionService implements IJurisdictionService {
 
 	@Override
 	public void refresh() {
-		Map<Integer, Jurisdiction> newCache = new LinkedHashMap<>();
+		Map<Integer, IJurisdiction> newCache = new LinkedHashMap<>();
 		jurisdictionRepository.findAll().forEach(j -> newCache.put(j.getJurisdictionId(), j));
 		lastUpdate = System.currentTimeMillis();
 		cache = newCache;

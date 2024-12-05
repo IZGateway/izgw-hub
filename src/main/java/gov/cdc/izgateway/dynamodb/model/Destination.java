@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbConvertedBy;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbIgnore;
 import org.apache.commons.lang3.StringUtils;
 
@@ -13,14 +14,16 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonFormat.Shape;
 
+import gov.cdc.izgateway.ads.ADSController;
 import gov.cdc.izgateway.common.Constants;
 import gov.cdc.izgateway.common.HasDestinationUri;
-import gov.cdc.izgateway.db.service.JurisdictionService;
+import gov.cdc.izgateway.dynamodb.DateConverter;
 import gov.cdc.izgateway.dynamodb.DynamoDbEntity;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.model.IDestinationId;
 import gov.cdc.izgateway.model.IEndpoint;
 import gov.cdc.izgateway.model.IJurisdiction;
+import gov.cdc.izgateway.service.JurisdictionService;
 import gov.cdc.izgateway.utils.SystemUtils;
 import io.swagger.v3.oas.annotations.StringToClassMapItem;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -134,11 +137,19 @@ public class Destination extends DynamoDbEntity implements IEndpoint, Serializab
 	@Schema(description = "The start of the maintenance period")
 	@JsonFormat(shape = Shape.STRING, pattern = Constants.TIMESTAMP_FORMAT)
 	private Date maintStart;
+	@DynamoDbConvertedBy(DateConverter.class)
+	public Date getMaintStart() {
+		return maintStart;
+	}
 
 	@Schema(description = "The end of the maintenance period, or null if unspecified")
 	private Date maintEnd;
+	@DynamoDbConvertedBy(DateConverter.class)
+	public Date getMaintEnd() {
+		return maintEnd;
+	}
 
-	@Schema(description = "The identifier of the facility to use with test messages for this endpoint")
+  @Schema(description = "The identifier of the facility to use with test messages for this endpoint")
 	private String facilityId;
 
 	@Schema(description = "The MSH3 value to use with test messages for this endpoint")
@@ -292,6 +303,15 @@ public class Destination extends DynamoDbEntity implements IEndpoint, Serializab
 		return id.getDestId();
 	}
 
+	/**
+	 * Set the destination id. A setter must be available
+	 * for DynamoDb to operate on this field. 
+	 * @param id
+	 */
+	public void setDestId(String id) {
+		this.id.setDestId(id);
+	}
+	
 	@Override
 	@DynamoDbIgnore
 	@JsonIgnore
@@ -321,7 +341,7 @@ public class Destination extends DynamoDbEntity implements IEndpoint, Serializab
 	@JsonIgnore
 	@Schema(description = "True if this destination supports the CDC DEX Protocol", hidden=true)
 	public boolean isDex() {
-		return "DEX1.0".equals(destVersion);
+		return ADSController.DEX_VERSIONS.contains(destVersion);
 	}
 
 	@JsonIgnore
@@ -339,7 +359,7 @@ public class Destination extends DynamoDbEntity implements IEndpoint, Serializab
 	}
 
 	@Override
-	public String primaryId() {
+	public String getPrimaryId() {
 		return id.toString();
 	}
 }
