@@ -452,8 +452,12 @@ public abstract class RestfulFileSender implements FileSender {
         try {
             URI base = new URI(r.getDestinationUri());
             base = base.resolve(ADSUtils.createUrl(base, meta));
-            return new URL(base.getScheme(), base.getHost(), base.getPort(), base.getPath() + "?" + r.getPassword());
-        } catch (MalformedURLException | URISyntaxException e) {
+            String password = r.getPassword();
+            if (r.isAzure()) {
+            	password = ADSUtils.getAzurePassword(password);
+            }
+            return new URL(base.getScheme(), base.getHost(), base.getPort(), base.getPath() + "?" + password);
+        } catch (Exception e) {
             throw new MetadataFault(meta, e, e.getMessage());
         }
     }
