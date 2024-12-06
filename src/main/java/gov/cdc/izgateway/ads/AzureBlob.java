@@ -23,6 +23,7 @@ import org.w3c.dom.NodeList;
 import ca.uhn.hl7v2.util.XMLUtils;
 import gov.cdc.izgateway.logging.markers.Markers2;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Represents an Blob in Azure Blob Stoorage 
@@ -31,9 +32,8 @@ import lombok.Data;
  *
  */
 @Data
+@Slf4j
 public class AzureBlob {
-    private static final Logger LOGGER = LoggerFactory.getLogger(DEXStorageSender.class);
-    
     private final String name;
 	private final long length;
 	private final Date created;
@@ -79,12 +79,12 @@ public class AzureBlob {
 			// It could be 404 if deleted from another thread 
 			if (status != 202 && status != 404) {
 				String error = org.apache.commons.io.IOUtils.toString(conx.getErrorStream(), StandardCharsets.UTF_8);
-				LOGGER.error("Unexpected response for delete of blob {}: {} {}", getName(), status, error);
+				log.error("Unexpected response for delete of blob {}: {} {}", getName(), status, error);
 				return;
 			}
-			LOGGER.info("Deleted blob {} of length {} created on {}", getName(), getLength(), getCreated());
+			log.info("Deleted blob {} of length {} created on {}", getName(), getLength(), getCreated());
 		} catch (Exception e) {
-			LOGGER.error(Markers2.append(e), "Cannot delete blob {}: {}", getName(), e.getMessage());
+			log.error(Markers2.append(e), "Cannot delete blob {}: {}", getName(), e.getMessage());
 		}
 	}
 	
@@ -102,15 +102,14 @@ public class AzureBlob {
 			status = conx.getResponseCode();
 			if (status != 200) {
 				String error = IOUtils.toString(conx.getErrorStream(), StandardCharsets.UTF_8);
-				AzureBlobStorageSender.LOGGER.error("Cannot list blobs: {}", error);
+				log.error("Cannot list blobs: {}", error);
 				return new AzureBlob[0];
 			}
 			return parseBlobs(conx);
 		} catch (IOException e) {
-			AzureBlobStorageSender.LOGGER.error(Markers2.append(e), "Cannot list blobs: {}", e.getMessage());
+			log.error(Markers2.append(e), "Cannot list blobs: {}", e.getMessage());
 			return new AzureBlob[0];
 		} 
-		
 	}
 
 	private static AzureBlob[] parseBlobs(HttpsURLConnection conx) throws IOException {

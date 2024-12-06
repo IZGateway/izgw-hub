@@ -9,12 +9,10 @@ import java.net.URL;
 import java.util.Arrays;
 import java.util.Date;
 import jakarta.activation.DataHandler;
+import lombok.extern.slf4j.Slf4j;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.Header;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import gov.cdc.izgateway.model.IDestination;
@@ -27,8 +25,8 @@ import gov.cdc.izgateway.soap.fault.MessageTooLargeFault.Direction;
  * This class implements the FileSender interface to Azure and the Azurite Azure emulator.
  */
 @Component
+@Slf4j
 public class AzureBlobStorageSender extends RestfulFileSender implements FileSender {
-    static final Logger LOGGER = LoggerFactory.getLogger(AzureBlobStorageSender.class);
     static final int  BUFFERSIZE = 1048576; //1MB
     /**
      * Create a new storage sender to create an AzureBlob
@@ -87,7 +85,8 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
             con.setRequestMethod("PUT");
             
             // If the blob already exists, overwrite it.
-            con.setFixedLengthStreamingMode(meta.getFileSize());  // NOSONAR: meta won't be null here
+            con.setChunkedStreamingMode(BUFFERSIZE);
+            //con.setFixedLengthStreamingMode(meta.getFileSize());  // NOSONAR: meta won't be null here
 
             break;
 
@@ -115,7 +114,15 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
     protected int writeData(HttpURLConnection con, IDestination route, DataHandler data, Metadata meta) throws IOException {
         try (OutputStream os = con.getOutputStream();
             InputStream is = data.getInputStream()) {
-            IOUtils.copyLarge(is,os,new byte[BUFFERSIZE]);
+            byte[] buffer = new byte[BUFFERSIZE];
+            long count = 0;
+            int n;
+            while ((n = is.read(buffer)) > 0) {
+                os.write(buffer, 0, n);
+                count += n;
+                log.info("ADS write to {} of {} ({}%) of {} bytes", route.getDestId(), 
+                		count, (count * 100.0) / meta.getFileSize(), meta.getFileSize());
+            }
         }
         return con.getResponseCode();
     }
@@ -155,12 +162,12 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
 		// Still not enough room for this upload and the next, see if there is room for this one
 		long freeDiskSpace = getDiskFreeSpace(); 
 		if (fileSize < freeDiskSpace) {
-			LOGGER.warn("Running low on storage: {} free", freeDiskSpace);
+			log.warn("Running low on storage: {} free", freeDiskSpace);
 			return;
 		}
 		
 		// Not enough room
-		LOGGER.error("Out of storage for upload: {} free", freeDiskSpace);
+		log.error("Out of storage for upload: {} free", freeDiskSpace);
 		throw new MessageTooLargeFault(Direction.REQUEST, freeDiskSpace, fileSize);
 	}
 

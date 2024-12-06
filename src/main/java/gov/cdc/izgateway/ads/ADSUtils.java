@@ -108,10 +108,12 @@ public class ADSUtils {
     public static String getPath(URI base, Metadata meta) {
         long now = System.currentTimeMillis();
         if (meta.getExtSourceVersion().equals(Metadata.DEX_VERSION2)) {
-        	return String.format("%s/%s/%tY-%tm-%td/%s/%s", 
-    			base.getPath(), meta.getDataStreamId(), 
+        	return String.format("%s/%s/%s/%tY/%tm/%td/%s", 
+    			base.getPath(), 
+    			meta.getDataStreamId(), 
+    			meta.getExtEntity(), 
     			now, now, now,
-    			meta.getExtEntity(), meta.getFilename()
+    			meta.getFilename()
         	);
         }
         return String.format(
