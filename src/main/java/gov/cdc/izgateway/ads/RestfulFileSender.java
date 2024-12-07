@@ -529,6 +529,15 @@ public abstract class RestfulFileSender implements FileSender {
 	    int statusCode = 0;
 	    if (rootCause instanceof HTTPException httpEx) {
 	    	statusCode = httpEx.getStatusCode();
+	    } else if (rootCause instanceof IOException ioEx) {
+	    	String message = ioEx.getMessage();
+	    	if (StringUtils.containsIgnoreCase(message, "writ")) {
+	    		throw DestinationConnectionFault.writeError(routing, ioEx);
+	    	} 
+	    	if (StringUtils.containsIgnoreCase(message, "read")) {
+	    		throw DestinationConnectionFault.readError(routing, ioEx);
+	    	} 
+	    	throw DestinationConnectionFault.ioError(routing, ioEx);
 	    }
 	    if (!(rootCause instanceof FaultSupport) &&
 	    	!(rootCause instanceof HTTPException) &&

@@ -117,11 +117,22 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
             byte[] buffer = new byte[BUFFERSIZE];
             long count = 0;
             int n;
+            int percent = -1;	// Catch the first block
             while ((n = is.read(buffer)) > 0) {
-                os.write(buffer, 0, n);
-                count += n;
-                log.info("ADS write to {} of {} ({}%) of {} bytes", route.getDestId(), 
-                		count, (count * 100.0) / meta.getFileSize(), meta.getFileSize());
+            	try {
+            		os.write(buffer, 0, n);
+            		count += n;
+            	} catch (IOException ioex) {
+            		percent = -1;	// Reset to force logging at failure point
+            		throw ioex;
+            	} finally {
+	            	// Only log after passing each percent threshold once 0% 1% 2% ... 99%
+	                if ((count * 100) / meta.getFileSize() > percent) {
+		                log.info("ADS write to {} of {} ({}%) of {} bytes", route.getDestId(), 
+		                		count, (count * 100.0) / meta.getFileSize(), meta.getFileSize());
+		                percent = (int) ((count * 100) / meta.getFileSize());
+	                }
+            	}
             }
         }
         return con.getResponseCode();
