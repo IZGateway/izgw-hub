@@ -215,8 +215,8 @@ public class MetadataBuilder {
         meta.setDestination(dest);
         if (dest == null) {
             errors.add(String.format("Destination ID (%s) is not valid",  routeId));
-        } else if (!dest.isDex()) {
-            errors.add(String.format("Destination ID (%s) is not a valid DEX endpoint", routeId));
+        } else if (!dest.isDex() && !dest.isAzure()) {
+            errors.add(String.format("Destination ID (%s) is not a valid ADS endpoint", routeId));
         } else {
             // Normalize it
             meta.setRouteId(dest.getDestId());
@@ -224,11 +224,11 @@ public class MetadataBuilder {
             setDestinationId("ndlp");
             // Set the value for ExtSourceVersion based on version of DEX Endpoint
 	        switch (dest.getDestVersion()) {
-	        case ADSController.IZGW_ADS_VERSION1:
+	        case IDestination.IZGW_ADS_VERSION1:
 	        	meta.setExtSourceVersion(Metadata.DEX_VERSION1);
 	        	break;
+	        case IDestination.IZGW_ADS_VERSION2, IDestination.IZGW_AZURE_VERSION1:
 	        default:
-	        case ADSController.IZGW_ADS_VERSION2:
 	        	meta.setExtSourceVersion(Metadata.DEX_VERSION2);
 	        	break;
 	        }

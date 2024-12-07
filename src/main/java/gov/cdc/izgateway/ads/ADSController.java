@@ -74,9 +74,14 @@ import javax.xml.ws.http.HTTPException;
 public class ADSController implements ADSChecker {
 	private static final String UNKNOWN = "UNKNOWN";
 	private static final List<String> METADATA_FIELDNAMES = getMetadataFieldNames();
-	public static final String IZGW_ADS_VERSION1 = "DEX1.0";
-	public static final String IZGW_ADS_VERSION2 = "DEX2.0";
 
+	/**
+	 * An interface that can run a FileSender task
+	 * 
+	 * @author Audacious Inquiry
+	 *
+	 * @param <T>
+	 */
 	public interface Execute<T> {
 
 		/**
@@ -94,13 +99,15 @@ public class ADSController implements ADSChecker {
 		private final IAccessControlService accessControls;
 		private final IDestinationService dests;
 		private final DEXStorageSender dexFileSender;
+		private final AzureBlobStorageSender azureFileSender;
 
 		public ADSControllerConfiguration(IAccessControlService accessControls, IDestinationService dests,
-				DEXStorageSender dexFileSender, AppProperties app) {
+				DEXStorageSender dexFileSender, AzureBlobStorageSender azureFileSender, AppProperties app) {
 			mode = app.getServerMode();
 			this.accessControls = accessControls;
 			this.dests = dests;
 			this.dexFileSender = dexFileSender;
+			this.azureFileSender = azureFileSender;
 		}
 	}
 
@@ -264,6 +271,8 @@ public class ADSController implements ADSChecker {
 	private RestfulFileSender getSender(IDestination route) {
 		if (route.isDex()) {
 			return config.getDexFileSender();
+		} else if (route.isAzure()) {
+			return config.getAzureFileSender();
 		}
 		return null;
 	}
@@ -455,7 +464,7 @@ public class ADSController implements ADSChecker {
 		try {
 			submitFile(meta, data);
 		} catch (Fault f) {
-			log.info("Fault occurred", f);
+			log.info(Markers2.append(f), "Fault occurred", f);
 			throw f;
 		}
 		String deliveryPath = StringUtils.substringAfterLast(meta.getPath(), "/");
@@ -471,6 +480,14 @@ public class ADSController implements ADSChecker {
 	 * @param dest The destination for the endpoint
 	 */
 	private void verifyDelivery(MetadataImpl meta, IDestination dest, String deliveryPath) {
+		if (dest.isAzure()) {
+			// If destination is Azure, we are auto assured of delivery, since we did the delivery directly
+			meta.setSubmissionStatus("SUCCESS");
+			meta.setSubmissionLocation(meta.getPath());
+			return;
+		}
+
+		// Otherwise, check DEX for delivery status to NDLP
 		String result = null;
 		int retries = 0;
 		long backoff = 250;
@@ -515,12 +532,21 @@ public class ADSController implements ADSChecker {
 	}
 
 	private void verifyRouting(IDestination iDestination) throws UnknownDestinationFault {
-		if (iDestination.isDex()) {
+		if (iDestination.isDex() || iDestination.isAzure()) {
 			return;
 		}
-		throw UnknownDestinationFault.invalidDestination(iDestination.getDestId(),
-				String.format("This destination is using version %s of the ADS API, it should be using: %s or %s",
-						iDestination.getDestVersion(), IZGW_ADS_VERSION1, IZGW_ADS_VERSION2));
+		String[] versions = { 						
+				IDestination.IZGW_ADS_VERSION1, 
+				IDestination.IZGW_ADS_VERSION2,
+				IDestination.IZGW_AZURE_VERSION1,
+				IDestination.IZGW_AZURE_VERSION2
+		};
+
+		throw UnknownDestinationFault.invalidDestination(
+				iDestination.getDestId(),
+				String.format("This destination is using version %s of the ADS API, it should be using: %s", 
+					iDestination.getDestVersion(), versions)
+		);
 	}
 
 	private void checkDestinationAndEvent(MetadataImpl meta) throws MetadataFault {
