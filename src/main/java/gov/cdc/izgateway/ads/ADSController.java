@@ -597,15 +597,20 @@ public class ADSController implements ADSChecker {
 		if (tData != null) {
 			tData.setProcessError(ex);
 			Object response = tData.getResponse();
+			Map<String, Object> m2 = null;
 			if (response instanceof Map<?, ?>) {
 				@SuppressWarnings("unchecked")
 				Map<String, Object> m = (Map<String, Object>) response;
-				m.put("error", err);
+				m2 = m;
 			} else {
-				if (response != null) {
-					log.warn(Markers2.append("originalResponse", response), "Error overwrites response object");
-				}
-				tData.setResponse(singletonMap("error", err));
+				m2 = new TreeMap<>();
+				tData.setResponse(m2);
+			}
+			m2.put("error", err);
+			if (ex instanceof HubClientFault hcf && hcf.getOriginalBody() != null) {
+				m2.put("detail", hcf.getOriginalBody());
+			} else if (response != null && response != m2) {
+				m2.put("originalResponse", response);
 			}
 		}
 		return new ResponseEntity<>(err, updateStatusFromRetryStrategy(ex, err));

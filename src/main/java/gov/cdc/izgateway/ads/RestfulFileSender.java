@@ -14,6 +14,7 @@ import gov.cdc.izgateway.soap.fault.*;
 import gov.cdc.izgateway.utils.*;
 import jakarta.activation.DataHandler;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.extern.slf4j.Slf4j;
 
 import org.apache.commons.io.IOUtils;
@@ -59,7 +60,27 @@ public abstract class RestfulFileSender implements FileSender {
 	/** Set to true to see output in debug console */
     protected boolean fiddle = false;
     protected final ClientTlsSupport tlsSupport;
+    private static final boolean DO_INTEGRITY_CHECK = false; 
     
+    /**
+     * This class is used to throw an HttpException in derived
+     * classes where the errorStream comes from a new UrlConnection.
+     * 
+     * @author Audacious Inquiry
+     */
+    
+    @Data
+    @EqualsAndHashCode(callSuper=false)
+    protected static class HttpException extends IOException {
+		private static final long serialVersionUID = 1L;
+		private final int statusCode;
+    	private final transient InputStream errorStream;
+    	protected HttpException(int statusCode, InputStream errorStream, Throwable cause) {
+    		super(cause);
+    		this.statusCode = statusCode;
+    		this.errorStream = errorStream;
+    	}
+    }
     /**
      * @author Audacious Inquiry
      * Configuration for the Sender
@@ -88,6 +109,7 @@ public abstract class RestfulFileSender implements FileSender {
     
     private static final List<String> LOCALHOST = Arrays.asList(HostInfo.LOCALHOST_IP4, HostInfo.LOCALHOST_IP6, HostInfo.LOCALHOST);
 	protected final SenderConfig config;
+	static final int  BUFFERSIZE = 104857600; // 100 MB is the limit of what Azurite will accept.
     
     protected RestfulFileSender(SenderConfig config, ClientTlsSupport tlsSupport) {
     	this.config = config;
@@ -123,10 +145,10 @@ public abstract class RestfulFileSender implements FileSender {
         
         // Create the HTTP URL to send
         long elapsedTimeIIS = 0;
-        InputStream error = null;
-        try {
+        HttpURLConnection con = null;
+        try  {
             meta.setUploadedDate(new Date());
-            HttpURLConnection con = getConnection("POST", route, meta, data);
+            con = getConnection("POST", route, meta, data);
             checkForSpace(con, route, meta.getFileSize());
 
             elapsedTimeIIS = -System.currentTimeMillis();
@@ -145,8 +167,8 @@ public abstract class RestfulFileSender implements FileSender {
             int responseCode = writeData(con, route, data, meta);
             
             RequestContext.getTransactionData().setElapsedTimeIIS(elapsedTimeIIS);
-            if (responseCode != HttpStatus.CREATED.value()) {
-                error = con.getErrorStream();
+            // If not CREATED or OK, generate an error. 
+            if (responseCode != HttpStatus.CREATED.value() && responseCode != HttpStatus.OK.value()) {
                 throw new HTTPException(responseCode);
             }
             return con;
@@ -160,14 +182,16 @@ public abstract class RestfulFileSender implements FileSender {
 			}
         } catch (MalformedURLException e) {
             throw new MetadataFault(meta, e, FILENAME_INVALID);
+        } catch (HttpException ex) {
+            InputStream errorStream = ex.getErrorStream();
+			throw HubClientFault.invalidMessage(ex, route, ex.getStatusCode(), errorStream);
         } catch (IOException | HTTPException e) {
-            if (elapsedTimeIIS < 0) {
-                elapsedTimeIIS += System.currentTimeMillis();
-            }
-            checkException(route, elapsedTimeIIS, ObjectUtils.defaultIfNull(ExceptionUtils.getRootCause(e),e), error);
+            checkException(route, elapsedTimeIIS, ObjectUtils.defaultIfNull(ExceptionUtils.getRootCause(e), e), con.getErrorStream());
             return null;
         }  finally {
-            elapsedTimeIIS += System.currentTimeMillis();
+        	if (elapsedTimeIIS < 0) {
+        		elapsedTimeIIS += System.currentTimeMillis();
+        	}
             RequestContext.getTransactionData().setElapsedTimeIIS(elapsedTimeIIS);
         }
     }
@@ -321,14 +345,18 @@ public abstract class RestfulFileSender implements FileSender {
         // set the file size before the header is generated.
         IntegrityCheck ic = null;
         if (data != null) {
-            ic = IntegrityCheck.getIntegrityCheck(data);
+        	// IntegrityCheck is costly on large files, takes a few minutes to compute.
+            ic = DO_INTEGRITY_CHECK ? IntegrityCheck.getIntegrityCheck(data) : IntegrityCheck.getLength(data);
             if (ic.getHash().length != 0) {
             	headers.add(new BasicHeader("Content-MD5", ic.toString()));
             }
             headers.add(new BasicHeader("Content-Length", Long.toString(ic.getLength())));
             meta.setFileSize(ic.getLength());
         }
-        headers.add(new BasicHeader("x-ms-blob-type", "BlockBlob"));
+        String blobType = getBlobType(meta);
+        if (blobType != null) {
+            headers.add(new BasicHeader("x-ms-blob-type", blobType));
+        }
         addHeadersFromMetadata(meta, headers);
         // Set the Content-Type from the filename.
         switch (StringUtils.substringAfterLast(meta.getFilename(), ".").toLowerCase()) {
@@ -357,7 +385,16 @@ public abstract class RestfulFileSender implements FileSender {
         return headers;
     }
 
-    private void addHeadersFromMetadata(Metadata meta, List<Header> headers) {
+    /**
+     * Returns the type of blob to create.
+     * @param meta	The metadata for the blob.
+     * @return	The type of blob to create (or null if not relevant).
+     */
+    protected String getBlobType(Metadata meta) {
+		return null;
+	}
+    
+	protected void addHeadersFromMetadata(Metadata meta, List<Header> headers) {
     	boolean isProd = !"test".equals(meta.getDestinationId());
     	
         for (Method m: Metadata.class.getMethods()) {
