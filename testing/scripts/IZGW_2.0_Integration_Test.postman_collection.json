@@ -7890,6 +7890,106 @@
 										}
 									},
 									"response": []
+								},
+								{
+									"name": "TC_25 PHI in Fault Message",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 500\", function () {\r",
+													"    pm.response.to.have.status(500);\r",
+													"});\r",
+													"\r",
+													"pm.test(\"Response has HubClientFault\", function () {\r",
+													"    pm.expect(pm.response.text()).to.contain('HubClientFault>');\r",
+													"    pm.expect(pm.response.text()).to.contain('urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessage:Fault:HubClientFault');\r",
+													"});\r",
+													"\r",
+													"pm.test(\"Response has correct soap reason about fault\", function () {\r",
+													"    pm.expect(pm.response.text()).to.include(\"Destination Threw Fault\");\r",
+													"});\r",
+													"\r",
+													"var response = utils.removeNS(utils.xml2Json(pm.response.text()));\r",
+													"pm.test(\"Response has Summary = DestinationThrewFault\", function() {\r",
+													"   var summary = response['Envelope']['Body']['Fault']['Detail']['Summary'];\r",
+													"   pm.expect(summary).to.be.eql('DestinationThrewFault');\r",
+													"});\r",
+													"\r",
+													"pm.test(\"Response has Retry = CONTACT_SUPPORT\", function() {\r",
+													"   var response = utils.removeNS(utils.xml2Json(pm.response.text()));\r",
+													"   var retry = response['Envelope']['Body']['Fault']['Detail']['Retry'];\r",
+													"   pm.expect(retry).to.be.eql('CONTACT_SUPPORT');\r",
+													"});\r",
+													"\r",
+													"pm.test(\"Response does not contain PHI\", function() {\r",
+													"    pm.expect(pm.response.text()).to.not.include(\"BART\");\r",
+													"});\r",
+													"\r",
+													"async function moreTests() {\r",
+													"    utils.getLogs(null, pm).then((logData) => {\r",
+													"        pm.test(\"Logs to not include PHI\", function() {\r",
+													"            if (logData != null) {\r",
+													"                console.log(logData);\r",
+													"                pm.expect(logData.text()).to.not.include(\"BART\");\r",
+													"            }\r",
+													"        });\r",
+													"    });\r",
+													"}\r",
+													"moreTests();\r",
+													"\r",
+													""
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"utils.setup(pm, \"dev\");"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"protocolProfileBehavior": {
+										"disabledSystemHeaders": {
+											"host": true
+										}
+									},
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Host",
+												"value": "{{hostHeader}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/xml"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|||TEST|TC_25|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS|SIISCLIENT28374</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+										},
+										"url": {
+											"raw": "https://{{host}}:{{port}}/IISHubService",
+											"protocol": "https",
+											"host": [
+												"{{host}}"
+											],
+											"port": "{{port}}",
+											"path": [
+												"IISHubService"
+											]
+										}
+									},
+									"response": []
 								}
 							]
 						}
@@ -8775,7 +8875,7 @@
 											"script": {
 												"exec": [
 													"// Disable while DEX Staging is down.\r",
-													"if (true) {\r",
+													"if (false) {\r",
 													"    pm.test(\"Status code is 200\", function () {\r",
 													"        pm.response.to.have.status(200);\r",
 													"    });\r",
@@ -12323,6 +12423,9 @@
 					"                });",
 					"                return Object.create(EmptyResponse);",
 					"            });",
+					"            if (data == null) {",
+					"                return Object.create(EmptyResponse);",
+					"            }",
 					"            return data;",
 					"        }",
 					"        return getStuff();",
@@ -12471,6 +12574,11 @@
 					"        }",
 					"        return null;",
 					"    },",
+					"    xml2Json: function(str) { // replacement for old xml2Json function",
+					"        let jsonResponse;",
+					"        xml2js.parseString(str, {explicitArray: false}, (err, result) => { jsonResponse = result; });",
+					"        return jsonResponse;",
+					"    },",
 					"    testFault: function(pm, txData, fault, summary, retry) {",
 					"        var entry = this.getFirstTxEntry(txData);",
 					"        if (entry == null) {",
@@ -12534,6 +12642,10 @@
 					"    }",
 					"}",
 					"}",
+					"",
+					"const xml2js = require('xml2js');",
+					"",
+					"// replace xml2Json with xml2js version",
 					"",
 					"utils = Object.create(Utils);"
 				]
