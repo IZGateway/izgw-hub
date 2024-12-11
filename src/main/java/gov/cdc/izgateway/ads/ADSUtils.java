@@ -141,21 +141,21 @@ public class ADSUtils {
      * @param password
      * @return	The appropriate token to use for an Azure blob store.
      */
-	public static String getAzurePassword(String password) {
+	public static String getAzureToken(String password) {
 		String[] tokens = password.split(",");
 		if (tokens.length == 1) {
 			return password;
 		}
 		for (String token: tokens) {
-			String ipAddress = StringUtils.substringBetween("sip=", "&");
+			String ipAddress = StringUtils.substringBetween(token, "sip=", "&");
 			if (StringUtils.isEmpty(ipAddress)) {
 				// This token is NOT locked to an IP Address 
-				log.info("Did not find a token matching {}", MY_IP_ADDRESS);
+				log.debug("Did not find a token matching {}", MY_IP_ADDRESS);
 				return token;
 			}
 			if (ipAddress.equals(MY_IP_ADDRESS) || ipAddress.contains("-") && myIpInRange(ipAddress)) {
 				// This token is locked to my IP Address or to a range of IP addresses that my IP Address is in. 
-				log.info("Found token for {} with parameters {}", MY_IP_ADDRESS, StringUtils.substringBefore(token, "&sig="));
+				log.debug("Found token for {} with parameters {}", MY_IP_ADDRESS, StringUtils.substringBefore(token, "&sig="));
 				return token;
 			}
 		}
