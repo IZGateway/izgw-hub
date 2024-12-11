@@ -353,10 +353,7 @@ public abstract class RestfulFileSender implements FileSender {
             headers.add(new BasicHeader("Content-Length", Long.toString(ic.getLength())));
             meta.setFileSize(ic.getLength());
         }
-        String blobType = getBlobType(meta);
-        if (blobType != null) {
-            headers.add(new BasicHeader("x-ms-blob-type", blobType));
-        }
+
         addHeadersFromMetadata(meta, headers);
         // Set the Content-Type from the filename.
         switch (StringUtils.substringAfterLast(meta.getFilename(), ".").toLowerCase()) {
@@ -384,15 +381,6 @@ public abstract class RestfulFileSender implements FileSender {
         headers.add(new BasicHeader("x-ms-client-request-id", meta.getExtObjectKey()));
         return headers;
     }
-
-    /**
-     * Returns the type of blob to create.
-     * @param meta	The metadata for the blob.
-     * @return	The type of blob to create (or null if not relevant).
-     */
-    protected String getBlobType(Metadata meta) {
-		return null;
-	}
     
 	protected void addHeadersFromMetadata(Metadata meta, List<Header> headers) {
     	boolean isProd = !"test".equals(meta.getDestinationId());

@@ -6,18 +6,26 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import javax.xml.ws.http.HTTPException;
 
 import jakarta.activation.DataHandler;
 import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.Header;
-import org.apache.http.message.BasicHeader;
 import org.springframework.http.HttpStatus;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
@@ -35,6 +43,26 @@ import gov.cdc.izgateway.soap.fault.MessageTooLargeFault.Direction;
 @Component
 @Slf4j
 public class AzureBlobStorageSender extends RestfulFileSender implements FileSender {
+	private static final int MAX_THREADS = 4;  // Use no more than 4 threads to upload
+	private static final int CHUNKSIZE = 10*1024*1024; // Chunk in 10 Mb blocks an 8Gb upload will have about 800 chunks 
+	/**
+	 * Chunks are used to track memory regions to read and write.
+	 * @author Audacious Inquiry
+	 */
+	private static record Chunk(byte[] buffer, int offset, int length) { // NOSONAR Array == is OK
+		/** Break a chunk into a list of chunks each bufferSize in length
+		 * This method allows chunks to be read in one size and written
+		 * in another size.
+		 * @param bufferSize	The size of the new chunks to create. 
+		 */
+		List<Chunk> chunks(int bufferSize) {
+			List<Chunk> l = new ArrayList<>();
+			for (int i = 0; i < length; i += bufferSize) {
+				l.add(new Chunk(buffer, offset + i, Math.min(bufferSize, length - i)));
+			}
+			return l;
+		}
+	}
     /**
      * Create a new storage sender to create an AzureBlob
      * @param config	The configuration for the sender
@@ -91,7 +119,8 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
             // Azure uses PUT for it's CREATE/WRITE API Calls
             // If the blob already exists, we will overwrite it.
             con.setRequestMethod("PUT");
-            
+    		con.setRequestProperty("x-ms-blob-type", "BlockBlob");
+
             break;
 
         case "STATUS":
@@ -110,15 +139,6 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
         return con;
     }
 
-    @Override
-    protected String getBlobType(Metadata meta) {
-    	if (meta.getFileSize() > RestfulFileSender.BUFFERSIZE) {
-    		// Use an AppendBlob for larger uploads to support
-    		// retryable writes.
-    		return "AppendBlob";
-    	}
-    	return "BlockBlob";
-    }
     /**
      * Copy data stored in DataHandler to the URLConnection.
      * @return the status of the write.
@@ -147,34 +167,22 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
     }
     
     protected int writeAsSingleBlock(HttpURLConnection con, IDestination route, DataHandler data, Metadata meta, byte[] buffer, int bytesToSend) throws IOException {
-    	if (bytesToSend != 0) {
-    		// Set uploaded property if we are finishing in a single block.
-			con.addRequestProperty("x-ms-meta-uploaded", new Date().toString());
-    	}
     	try (OutputStream os = con.getOutputStream();
             InputStream is = data.getInputStream()) {
     		int n = 0;
-    		int percent = -1;	// Catch the first block
 			try {
 				if ((n = is.read(buffer, 0, bytesToSend)) > 0) {
 					os.write(buffer, 0, n);
 				}
-			} catch (IOException ioex) {
-				percent = -1;	// Reset to force logging at failure point
-				throw ioex;
 			} finally {
-	            logProgress(route, meta, n, percent);
-	            percent = (int) ((n * 100) / meta.getFileSize());
+	            logProgress(route, meta, n);
 			}
         }
         return con.getResponseCode();
     }
-	private void logProgress(IDestination route, Metadata meta, long count, int percent) {
-    	// Only log after passing each percent threshold once 0% 1% 2% ... 99%
-        if ((count * 100) / meta.getFileSize() > percent) {
-        	log.info("ADS write to {} of {} ({}%) of {} bytes", route.getDestId(), 
-        			count, (count * 100.0) / meta.getFileSize(), meta.getFileSize());
-        }
+	private void logProgress(IDestination route, Metadata meta, long count) {
+    	log.info("ADS write to {} of {} ({}%) of {} bytes", route.getDestId(), 
+    			count, (count * 100.0) / meta.getFileSize(), meta.getFileSize());
 	}
     
 	/**
@@ -190,32 +198,158 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
 	protected int writeInMultipleBlocks(URL url, IDestination route, DataHandler data, Metadata meta, byte[] buffer) throws IOException {
     	// So here, the connection passed in has already been used, but no data has been written yet.
 		long count = 0;
-		
+		int blockId = 0; 
     	// We need to modify the URL, with slightly different parameters to append blocks.
-    	url = new URL(url.toString().replace("?", "?comp=appendblock&"));
     	InputStream is = data.getInputStream();
     	int status = HttpStatus.CREATED.value();
-		int percent = -1; // Also log first append block.
     	do {
-    		int n = 0;
-			if ((n = is.read(buffer)) <= 0) {
-				// we read no data, what do we do here.
-			}
+    		int n = is.read(buffer);
+			// if we read no data, what do we do here.
 			
 			try {
-				status = writeWithRetries(buffer, n, url, count, meta.getExtObjectKey());
+				Chunk chunk = new Chunk(buffer, 0, n);
+				if (canCompleteInOneCall(n)) {
+					status = writeWithRetries(chunk, url, blockId++, count, meta.getExtObjectKey());
+				} else {
+					status = writeChunks(chunk, url, count, meta.getExtObjectKey());
+				}
 				count += n;
 			} finally {
-	            logProgress(route, meta, count, percent);
-	            percent = (int) ((count * 100) / meta.getFileSize());
+	            logProgress(route, meta, count);
 			}
 	    	if (status != HttpStatus.CREATED.value()) {
 	    		throw new HTTPException(status);
 	    	}
     	} while (count < meta.getFileSize());
     	
-		return markComplete(url, meta);
+    	int numBlockWritten = (int) ((count + CHUNKSIZE - 1) / CHUNKSIZE);
+		return markComplete(url, meta, numBlockWritten);
     }
+
+	/**
+	 * This method enables a large block to be written in several parallel threads.
+	 * 
+	 * A single connection may only be able to handle a fraction of the available bandwidth 
+	 * to the Azure endpoint, and so it would be better to run uploads of the large buffer in 
+	 * smaller chunks in parallel. To optimize upload speed, we must determine the appropriate 
+	 * chunking by tuning the number of connections used.
+	 * 
+	 * @param chunk	The (big) chunk to upload
+	 * @param url	The url of the blob where it is to be uploaded
+	 * @param count	The number of bytes already written
+	 * @param requestId	The request identifier
+	 * @return	The status of the writes (either all CREATED or status of first failed block)
+	 * @throws IOException	If an error occurs
+	 */
+	private int writeChunks(Chunk chunk, URL url, long count, String requestId) throws IOException {
+		List<Chunk> chunkList = chunk.chunks(CHUNKSIZE);
+		List<Callable<Integer>> taskList = new ArrayList<>();
+		ExecutorService executor = Executors.newFixedThreadPool(MAX_THREADS);
+		int blockId = (int) (count / CHUNKSIZE);
+		// Write in multiple threads.
+		for (int i = 0; i < chunkList.size(); i++) {
+			Chunk cnk = chunkList.get(i);
+			int theBlock = blockId + i;
+			long theCount = count;
+			taskList.add(() -> 
+				writeWithRetries(
+					cnk,
+					url,
+					theBlock,
+					theCount,
+					requestId
+				)
+			);
+			count += cnk.length;
+		}
+		int status = 0;
+		try {
+			List<Future<Integer>> futures = executor.invokeAll(taskList);
+			for (Future<Integer> result: futures) {
+				status = result.get();
+		    	if (status != HttpStatus.CREATED.value()) {
+		    		throw new HTTPException(status);
+		    	}
+			}
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new RuntimeException("Upload interrupted", e);  // NOSONAR
+		} catch (ExecutionException e) {
+			Throwable cause = e.getCause();
+			if (cause instanceof IOException ioex) {
+				throw ioex;
+			}
+			if (cause instanceof RuntimeException rex) {
+				throw rex;
+			}
+			throw new RuntimeException(e);  // NOSONAR Should never get here, but if we do we throw
+		}
+		return status;
+	}
+	
+	private boolean canCompleteInOneCall(int n) {
+		return n < CHUNKSIZE || MAX_THREADS <= 1;
+	}
+	/**
+	 * Write a chunk to the blob
+	 * @param chunk	The chunk to write
+	 * @param url	The base url for accessing the blob.
+	 * @param blockId	The block being written
+	 * @param count	The number of bytes already written.
+	 * @param requestId	The request identifier
+	 * @return	The status of the write
+	 * @throws IOException	If an unrecoverable IO Exception occurs
+	 */
+	@Retryable(retryFor=IOException.class, noRetryFor=HttpException.class, backoff= @Backoff(value=100, multiplier=2))
+	private int writeWithRetries(Chunk chunk, URL url, int blockId, long count, String requestId) throws IOException {
+		// This is slightly irksome. Microsoft expects non-safe Base64 encoded strings in a URL
+		// with URL encoding, rather than base 64 url-safe encoding
+		String blockIdString = URLEncoder.encode(encodeBlockId(blockId), StandardCharsets.UTF_8);
+
+		// Open a new connection for each block to be appended.
+		//
+		// This does two things:
+		// 1. It enables each write operation to be retryable on an exception
+		// 2. It escapes from firewall attempts to block sockets from sending more
+		//    than N bytes of data, since each append is <= BUFFERSIZE.
+		url = new URL(url.toString().replace("?", "?comp=block&blockid=" + blockIdString + "&"));
+		HttpURLConnection con = getBlobConnection(url, requestId);
+		con.setFixedLengthStreamingMode(chunk.length());
+		con.getOutputStream().write(chunk.buffer(), chunk.offset(), chunk.length());
+		
+		int result = con.getResponseCode();
+		if (result != HttpStatus.CREATED.value()) {
+			InputStream errorStream = con.getErrorStream();
+			throw new HttpException(result, errorStream, null);
+		}
+		return result;
+	}
+	
+	/**
+	 * Get a connection to a blob
+	 * @param url	The URL for the connection
+	 * @param requestId	The request identifier
+	 * @return	An HttpURLConnection set up to call an Azure Blop API
+	 * @throws IOException	If the connection cannot be opened
+	 */
+	private HttpURLConnection getBlobConnection(URL url, String requestId) throws IOException {
+		HttpURLConnection con = (HttpURLConnection) url.openConnection();
+		con.setRequestMethod("PUT");
+		con.setDoInput(true);
+		con.setDoOutput(true);
+		con.setRequestProperty("x-ms-client-request-id", requestId);
+		return con;
+	}
+
+	/**
+	 * Base-65 encode a block identifier
+	 * @param blockId	The block number, a 24-bit integer
+	 * @return	The base-64 encoded block identifier (a four character string).
+	 */
+	private String encodeBlockId(int blockId) {
+		byte[] data = { (byte)((blockId >> 16) & 0xFF), (byte)((blockId >> 8) & 0xFF), (byte)(blockId & 0xFF) };
+		return Base64.encodeBase64String(data);
+	}
 
 	/**
 	 * Mark the blob as "Done"
@@ -225,47 +359,22 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
 	 * @throws IOException On error marking the blob complete
 	 */
 	@Retryable(retryFor=IOException.class, noRetryFor=HttpException.class, backoff= @Backoff(value=100, multiplier=2))
-	private int markComplete(URL url, Metadata meta) throws IOException {
-		String urlString = url.toString().replace("?comp=appendblock&", "?comp=metadata&");
+	private int markComplete(URL url, Metadata meta, int numBlocks) throws IOException {
+		// Update the URL
+		String urlString = url.toString().replace("?", "?comp=blocklist&"); 
 		
 		url = new URL(urlString);
-		HttpURLConnection con = (HttpURLConnection) url.openConnection();
-		con.setRequestMethod("PUT");
-		con.setDoInput(true);
-		con.setDoOutput(true);
-		con.setFixedLengthStreamingMode(0);
-		List<Header> headers = new ArrayList<>();
-		addHeadersFromMetadata(meta, headers);
-		headers.add(new BasicHeader("x-ms-meta-uploaded", new Date().toString()));
-		for (Header h: headers) {
-			con.addRequestProperty(h.getName(), h.getValue());
-		}
-		int result = con.getResponseCode();
-		if (result != HttpStatus.OK.value()) {
-			InputStream errorStream = con.getErrorStream();
-			throw new HttpException(result, errorStream, null);
-		}
-		return result;
-	}
-	
-	@Retryable(retryFor=IOException.class, noRetryFor=HttpException.class, backoff= @Backoff(value=100, multiplier=2))
-	private int writeWithRetries(byte[] buffer, int numBytes, URL url, long count, String requestId) throws IOException {
-		// Open a new connection for each block to be appended.
-		//
-		// This does two things:
-		// 1. It enables each write operation to be retryable on an exception
-		// 2. It escapes from firewall attempts to block sockets from sending more
-		//    than N bytes of data, since each append is <= BUFFERSIZE.
-		HttpURLConnection con = (HttpURLConnection) url.openConnection();
+		HttpURLConnection con = getBlobConnection(url, meta.getExtObjectKey());
+
+		// Compute the payload
+		String blockList = getBlockList(numBlocks);
+		byte[] data = blockList.getBytes(StandardCharsets.UTF_8);
+
+		// Write the data
+		con.setFixedLengthStreamingMode(data.length);
+		con.getOutputStream().write(data);
 		
-		con.setRequestMethod("PUT");
-		con.setDoInput(true);
-		con.setDoOutput(true);
-		con.setFixedLengthStreamingMode(numBytes);
-		con.setRequestProperty("x-ms-client-request-id", requestId);
-		con.setRequestProperty("x-ms-blob-condition-appendpos", Long.toString(count));
-		con.getOutputStream().write(buffer, 0, numBytes);
-		
+		// Check the response
 		int result = con.getResponseCode();
 		if (result != HttpStatus.CREATED.value()) {
 			InputStream errorStream = con.getErrorStream();
@@ -273,6 +382,21 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
 		}
 		return result;
 	}
+	
+	private String getBlockList(int numBlocks) {
+		StringBuilder b = new StringBuilder();
+		b.append("<?xml version='1.0' encoding='utf-8'?>\n");  
+		b.append("<BlockList>\n");
+		for (int blockNum = 0; blockNum < numBlocks; blockNum++) {
+			b.append("<Latest>");
+			b.append(encodeBlockId(blockNum));
+			b.append("</Latest>\n");
+		}
+		b.append("</BlockList>\n");
+		String blockList = b.toString();
+		return blockList;
+	}
+	
         
 	@Override
 	protected void setExpiration(HttpURLConnection con, Date date) {
