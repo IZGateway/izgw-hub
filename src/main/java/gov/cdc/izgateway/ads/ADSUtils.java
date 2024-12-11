@@ -2,6 +2,8 @@ package gov.cdc.izgateway.ads;
 
 import org.apache.commons.lang3.StringUtils;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
@@ -20,6 +22,7 @@ import java.util.TreeMap;
  * @author Audacious Inquiry
  *
  */
+@Slf4j
 public class ADSUtils {
     private static final Map<String, String> ENTITY_ID_MAP = new TreeMap<>();
 
@@ -147,15 +150,12 @@ public class ADSUtils {
 			String ipAddress = StringUtils.substringBetween("sip=", "&");
 			if (StringUtils.isEmpty(ipAddress)) {
 				// This token is NOT locked to an IP Address 
+				log.info("Did not find a token matching {}", MY_IP_ADDRESS);
 				return token;
 			}
-			if (ipAddress.equals(MY_IP_ADDRESS)) {
-				// This token is locked to my IP Address 
-				return token;
-			}
-			
-			if (ipAddress.contains("-") && myIpInRange(ipAddress)) {
-				// This token is locked to a range of IP addresses that my IP Address is in.
+			if (ipAddress.equals(MY_IP_ADDRESS) || ipAddress.contains("-") && myIpInRange(ipAddress)) {
+				// This token is locked to my IP Address or to a range of IP addresses that my IP Address is in. 
+				log.info("Found token for {} with parameters {}", MY_IP_ADDRESS, StringUtils.substringBefore(token, "&sig="));
 				return token;
 			}
 		}
@@ -195,7 +195,7 @@ public class ADSUtils {
 	 * 
 	 * @return The egress IP Address of this system.
 	 */
-    private static String getMyIpAddress() {
+    public static String getMyIpAddress() {
     	String[] urlStrings = { "http://checkip.amazonaws.com/", "http://ipv4.icanhazip.com/" };
     	Throwable ex = null;
     	for (String urlString: urlStrings) {
@@ -209,4 +209,11 @@ public class ADSUtils {
     	}
     	throw new ServiceConfigurationError("Cannot get IP Address", ex);
 	}
+    
+    /**
+     * @return The egress IP address for this instance.
+     */
+    public static String getEgressPoint() {
+    	return MY_IP_ADDRESS;
+    }
 }
