@@ -314,7 +314,7 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
 				+ "&"
 			)
 		);
-		System.err.printf("%6d %s %s%n", blockId, blockIdString, chunk.length());
+		
 		HttpURLConnection con = getBlobConnection(url, requestId);
 		con.setFixedLengthStreamingMode(chunk.length());
 		con.getOutputStream().write(chunk.buffer(), chunk.offset(), chunk.length());
@@ -370,7 +370,6 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
 
 		// Compute the payload
 		String blockList = getBlockList(numBlocks);
-		System.err.println(blockList);
 		byte[] data = blockList.getBytes(StandardCharsets.UTF_8);
 
 		// Write the data
