@@ -1,3 +1,7 @@
+# IZ Gateway Release 2.1.7
+The IZ Gateway Hub 2.1.7 release
+* Supports access to NDLP Storage for ADS Uploads
+
 # IZ Gateway Release 2.1.6
 The IZ Gateway Hub 2.1.6 release
 * Improves logging on ADS input errors or outbound file upload errors
