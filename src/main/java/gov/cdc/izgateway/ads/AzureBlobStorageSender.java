@@ -44,7 +44,7 @@ import gov.cdc.izgateway.soap.fault.MessageTooLargeFault.Direction;
 @Slf4j
 public class AzureBlobStorageSender extends RestfulFileSender implements FileSender {
 	private static final int MAX_THREADS = 4;  // Use no more than 4 threads to upload
-	private static final int CHUNKSIZE = 10*1024*1024; // Chunk in 10 Mb blocks an 8Gb upload will have about 800 chunks 
+	private static final int CHUNKSIZE = 8*1024*1024; // Chunk in 8 Mb blocks an 8Gb upload will have 1024 chunks 
 	/**
 	 * Chunks are used to track memory regions to read and write.
 	 * @author Audacious Inquiry
@@ -198,8 +198,7 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
 	protected int writeInMultipleBlocks(URL url, IDestination route, DataHandler data, Metadata meta, byte[] buffer) throws IOException {
     	// So here, the connection passed in has already been used, but no data has been written yet.
 		long count = 0;
-		int blockId = 0; 
-    	// We need to modify the URL, with slightly different parameters to append blocks.
+		// We need to modify the URL, with slightly different parameters to append blocks.
     	InputStream is = data.getInputStream();
     	int status = HttpStatus.CREATED.value();
     	do {
@@ -208,11 +207,7 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
 			
 			try {
 				Chunk chunk = new Chunk(buffer, 0, n);
-				if (canCompleteInOneCall(n)) {
-					status = writeWithRetries(chunk, url, blockId++, count, meta.getExtObjectKey());
-				} else {
-					status = writeChunks(chunk, url, count, meta.getExtObjectKey());
-				}
+				status = writeChunks(chunk, url, count, meta.getExtObjectKey());
 				count += n;
 			} finally {
 	            logProgress(route, meta, count);
@@ -244,7 +239,6 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
 	private int writeChunks(Chunk chunk, URL url, long count, String requestId) throws IOException {
 		List<Chunk> chunkList = chunk.chunks(CHUNKSIZE);
 		List<Callable<Integer>> taskList = new ArrayList<>();
-		ExecutorService executor = Executors.newFixedThreadPool(MAX_THREADS);
 		int blockId = (int) (count / CHUNKSIZE);
 		// Write in multiple threads.
 		for (int i = 0; i < chunkList.size(); i++) {
@@ -263,6 +257,7 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
 			count += cnk.length;
 		}
 		int status = 0;
+		ExecutorService executor = Executors.newFixedThreadPool(MAX_THREADS);
 		try {
 			List<Future<Integer>> futures = executor.invokeAll(taskList);
 			for (Future<Integer> result: futures) {
@@ -283,6 +278,8 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
 				throw rex;
 			}
 			throw new RuntimeException(e);  // NOSONAR Should never get here, but if we do we throw
+		} finally {
+			executor.shutdownNow();
 		}
 		return status;
 	}
@@ -302,9 +299,7 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
 	 */
 	@Retryable(retryFor=IOException.class, noRetryFor=HttpException.class, backoff= @Backoff(value=100, multiplier=2))
 	private int writeWithRetries(Chunk chunk, URL url, int blockId, long count, String requestId) throws IOException {
-		// This is slightly irksome. Microsoft expects non-safe Base64 encoded strings in a URL
-		// with URL encoding, rather than base 64 url-safe encoding
-		String blockIdString = URLEncoder.encode(encodeBlockId(blockId), StandardCharsets.UTF_8);
+		String blockIdString = encodeBlockId(blockId);
 
 		// Open a new connection for each block to be appended.
 		//
@@ -312,7 +307,14 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
 		// 1. It enables each write operation to be retryable on an exception
 		// 2. It escapes from firewall attempts to block sockets from sending more
 		//    than N bytes of data, since each append is <= BUFFERSIZE.
-		url = new URL(url.toString().replace("?", "?comp=block&blockid=" + blockIdString + "&"));
+		url = new URL(
+			url.toString().replace("?", 
+				"?comp=block&blockid=" 
+				+ URLEncoder.encode(blockIdString, StandardCharsets.UTF_8) 
+				+ "&"
+			)
+		);
+		System.err.printf("%6d %s %s%n", blockId, blockIdString, chunk.length());
 		HttpURLConnection con = getBlobConnection(url, requestId);
 		con.setFixedLengthStreamingMode(chunk.length());
 		con.getOutputStream().write(chunk.buffer(), chunk.offset(), chunk.length());
@@ -368,6 +370,7 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
 
 		// Compute the payload
 		String blockList = getBlockList(numBlocks);
+		System.err.println(blockList);
 		byte[] data = blockList.getBytes(StandardCharsets.UTF_8);
 
 		// Write the data
@@ -388,13 +391,12 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
 		b.append("<?xml version='1.0' encoding='utf-8'?>\n");  
 		b.append("<BlockList>\n");
 		for (int blockNum = 0; blockNum < numBlocks; blockNum++) {
-			b.append("<Latest>");
+			b.append(" <Latest>");
 			b.append(encodeBlockId(blockNum));
 			b.append("</Latest>\n");
 		}
 		b.append("</BlockList>\n");
-		String blockList = b.toString();
-		return blockList;
+		return b.toString();
 	}
 	
         

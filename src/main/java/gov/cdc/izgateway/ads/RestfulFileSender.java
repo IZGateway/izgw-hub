@@ -109,7 +109,7 @@ public abstract class RestfulFileSender implements FileSender {
     
     private static final List<String> LOCALHOST = Arrays.asList(HostInfo.LOCALHOST_IP4, HostInfo.LOCALHOST_IP6, HostInfo.LOCALHOST);
 	protected final SenderConfig config;
-	static final int  BUFFERSIZE = 104857600; // 100 MB is the limit of what Azurite will accept.
+	static final int  BUFFERSIZE = 134217728; // 128MB
     
     protected RestfulFileSender(SenderConfig config, ClientTlsSupport tlsSupport) {
     	this.config = config;
