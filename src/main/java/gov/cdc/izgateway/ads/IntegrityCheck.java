@@ -3,6 +3,7 @@ package gov.cdc.izgateway.ads;
 
 import org.apache.commons.lang3.StringUtils;
 import org.bouncycastle.util.encoders.Base64;
+import org.springframework.web.multipart.MultipartFile;
 
 import gov.cdc.izgateway.logging.markers.Markers2;
 import jakarta.activation.DataHandler;
@@ -53,6 +54,21 @@ public class IntegrityCheck {
         this.mimeType = mimeType;
     }
 
+    /**
+     * Compute the length of the data. Attempts to get it from the MultipartFile if it
+     * exists, otherwise, computes an IntegrityCheck from the file data.
+     * 
+     * @param data The DataHandler
+     * @return	The length of content in the data handler
+     * @throws IOException	If an IO Exception occurs
+     */
+    public static IntegrityCheck getLength(DataHandler data) throws IOException {
+    	if (data.getContent() instanceof MultipartFile mp) {
+    		long fileSize = mp.getSize();
+    		return new IntegrityCheck(new byte[0], fileSize, null);
+    	}
+    	return getIntegrityCheck(data);
+    }
     /** 
      * Compute MD5 Hash and length of DataHandler content 
      * @param data  The data handler
@@ -67,7 +83,7 @@ public class IntegrityCheck {
             log.error(Markers2.append(e), "No MD5 Algorithm available: {}", e);
             throw new ServiceConfigurationError("Misconfigured System");
         }
-        byte[] buffer = new byte[10240];
+        byte[] buffer = new byte[1048576];
         byte[] magic = null;
         InputStream is;
         long fileSize = 0;
