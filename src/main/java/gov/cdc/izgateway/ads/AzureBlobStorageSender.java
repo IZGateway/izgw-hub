@@ -17,8 +17,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.function.Supplier;
-
 import javax.xml.ws.http.HTTPException;
 
 import jakarta.activation.DataHandler;
@@ -28,8 +26,6 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.Header;
 import org.springframework.http.HttpStatus;
-import org.springframework.retry.annotation.Backoff;
-import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
 
 import gov.cdc.izgateway.model.IDestination;
@@ -100,12 +96,15 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
             con.setRequestMethod("GET");
             break;
         case "PING":
-            queryUrl = new URL(base + "?restype=container&comp=list&maxresults=1&" + route.getPassword() );
+            queryUrl = new URL(base +
+            		"?restype=container&comp=list&maxresults=1&" 
+            		+ route.getPassword() );
             con = getConnection(queryUrl);
             // This is a GET, there is nothing else to write
             con.setDoOutput(false);
             con.setRequestMethod("GET");
             break;
+            
         case "GET":
             con = getConnection(base);
             con.setDoOutput(false);
@@ -121,7 +120,6 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
             // If the blob already exists, we will overwrite it.
             con.setRequestMethod("PUT");
     		con.setRequestProperty("x-ms-blob-type", "BlockBlob");
-
             break;
 
         case "STATUS":
@@ -139,7 +137,7 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
         con.setDoInput(true);
         return con;
     }
-
+    
     /**
      * Copy data stored in DataHandler to the URLConnection.
      * @return the status of the write.

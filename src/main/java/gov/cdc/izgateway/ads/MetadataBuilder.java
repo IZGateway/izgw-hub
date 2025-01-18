@@ -92,6 +92,8 @@ public class MetadataBuilder {
     	// on meta_ext_event as well as meta_ext_event_type
     	if (DEX_REPORT_TYPES.contains(reportType.toLowerCase())) {
     		meta.setExtEvent(reportType);
+    	} else if ("farmerFlu".equalsIgnoreCase(reportType)) {
+    		meta.setExtEvent("farmerFluVaccination");
     	} else {
     		meta.setExtEvent(GENERIC);
     		// Force V2 if Generic is used.
