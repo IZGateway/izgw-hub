@@ -17,6 +17,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+
 import javax.xml.ws.http.HTTPException;
 
 import jakarta.activation.DataHandler;
@@ -26,6 +27,7 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.Header;
 import org.springframework.http.HttpStatus;
+
 import org.springframework.stereotype.Component;
 
 import gov.cdc.izgateway.model.IDestination;
@@ -104,7 +106,7 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
             con.setDoOutput(false);
             con.setRequestMethod("GET");
             break;
-            
+
         case "GET":
             con = getConnection(base);
             con.setDoOutput(false);
@@ -119,7 +121,7 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
             // Azure uses PUT for it's CREATE/WRITE API Calls
             // If the blob already exists, we will overwrite it.
             con.setRequestMethod("PUT");
-    		con.setRequestProperty("x-ms-blob-type", "BlockBlob");
+    		    con.setRequestProperty("x-ms-blob-type", "BlockBlob");
             break;
 
         case "STATUS":
@@ -137,8 +139,8 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
         con.setDoInput(true);
         return con;
     }
-    
-    /**
+
+   /**
      * Copy data stored in DataHandler to the URLConnection.
      * @return the status of the write.
      */
