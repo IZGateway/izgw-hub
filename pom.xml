@@ -25,7 +25,7 @@
 		<image.tag>${project.artifactId}-${project.version}-${buildno}</image.tag>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.java.package>${project.groupId}</project.java.package>
-		<spring-security.version>6.3.4</spring-security.version>
+		<spring-security.version>6.3.5</spring-security.version>
 		<spring.version>6.2.0</spring.version>
 		<spring-framework.version>6.2.0</spring-framework.version>
 		<netty.version>4.1.115.Final</netty.version>
@@ -208,7 +208,7 @@
 			<artifactId>spring-webmvc</artifactId>
 		</dependency>
 		<dependency>
-    	<groupId>org.springframework.security</groupId>
+    		<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-web</artifactId>
 		</dependency>
 		<dependency>
