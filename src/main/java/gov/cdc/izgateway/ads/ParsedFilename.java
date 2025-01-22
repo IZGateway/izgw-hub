@@ -84,7 +84,9 @@ class ParsedFilename {
 	private String checkRiverFilename(String[] parts) {
 		// Monthly files
 		filetype = parts.length > 0 ? parts[0] : "";
-		if (StringUtils.containsIgnoreCase(filetype, "flu")) {
+		if (StringUtils.containsIgnoreCase(filetype, "farmer")) {
+		    filetype = "farmerFluVaccination";
+		} else if (StringUtils.containsIgnoreCase(filetype, "flu")) {
 		    filetype = "influenzaVaccination";
 		} else if (StringUtils.containsIgnoreCase(filetype, "rsv")) {
 			filetype = "rsvPrevention";

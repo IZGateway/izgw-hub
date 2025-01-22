@@ -48,20 +48,30 @@ import java.util.Date;
  */
 
 @JsonPropertyOrder({ 
+    "data_producer_id",
+    "data_stream_id",
+    "data_stream_route",
 	"meta_destination_id", 
+	"meta_ext_entity", 
+	"meta_ext_event", 
+	"meta_ext_event_type", 
+	"meta_ext_file_timestamp",
+	"meta_ext_filename",
+	"meta_ext_objectkey",
 	"meta_ext_source", 
 	"meta_ext_sourceversion", 
-	"meta_ext_event", 
-	"meta_ext_entity meta_ext_objectkey",
-	"meta_ext_filename", 
 	"meta_ext_submissionperiod", 
 	"meta_schema_version", 
-	"izgw_route_id", 
-	"izgw_ipaddress", 
+	"meta_username", 
+	"izgw_event_id",
 	"izgw_filesize", 
+	"izgw_ipaddress", 
 	"izgw_path", 
+	"izgw_route_id",
+	"izgw_submission_location",
+	"izgw_submission_status",
 	"izgw_uploaded_timestamp",
-	"izgw_event_id"
+    "sender_id"
 })
 public interface Metadata extends Serializable {
 	
@@ -135,6 +145,8 @@ public interface Metadata extends Serializable {
     	switch (value.toLowerCase()) {
 		case "routineimmunization":
     		return "routine-immunization";
+		case "farmerfluvaccination":
+			return "farmer-flu-vaccination";
 		case "influenzavaccination":
     		return "influenza-vaccination";
 		case "rsvprevention":

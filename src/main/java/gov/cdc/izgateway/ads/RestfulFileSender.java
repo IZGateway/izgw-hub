@@ -430,7 +430,7 @@ public abstract class RestfulFileSender implements FileSender {
                 RequestContext.getDestinationInfo().setFromConnection(con);
             }
             @SuppressWarnings("unused")
-			String result = null;
+			String result = null; 
             InputStream is = null;
             if (responseCode != HttpStatus.OK.value() && 
             	responseCode != HttpStatus.NO_CONTENT.value()) {

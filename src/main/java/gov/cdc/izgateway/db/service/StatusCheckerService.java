@@ -115,7 +115,7 @@ public class StatusCheckerService implements IStatusCheckerService {
 
     public IEndpointStatus updateDestinationStatus(IDestination dest) {
         EndpointStatus s = new EndpointStatus(dest);
-        if (dest.isDex()) {
+        if (dest.isDex() || dest.isAzure()) {
             doAdsStatusCheck(dest, s);
         } else {
             doHubStatusCheck(s);
