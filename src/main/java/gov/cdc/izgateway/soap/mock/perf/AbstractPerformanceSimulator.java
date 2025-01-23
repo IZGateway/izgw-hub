@@ -4,7 +4,7 @@ package gov.cdc.izgateway.soap.mock.perf;
 import org.apache.catalina.connector.ResponseFacade;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tomcat.util.net.NioEndpoint;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 
 import gov.cdc.izgateway.logging.markers.Markers2;
@@ -383,9 +383,8 @@ abstract class AbstractPerformanceSimulator  implements PerformanceSimulatorInte
         return message("Simulated TLS Connection Error");
     }
     
-    @SuppressWarnings("deprecation")
 	static ResponseEntity<String> message(String message) {
-        return new ResponseEntity<>(message, HttpStatus.METHOD_FAILURE);
+        return new ResponseEntity<>(message, (HttpHeaders)null, 420);
     }
 
     static ResponseEntity<String> simulateReadTimeout(HttpServletResponse resp) {

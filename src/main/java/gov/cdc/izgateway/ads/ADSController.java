@@ -76,7 +76,7 @@ public class ADSController implements ADSChecker {
     private static final List<String> METADATA_FIELDNAMES = getMetadataFieldNames();
     public static final String IZGW_ADS_VERSION1 = "DEX1.0";
     public static final String IZGW_ADS_VERSION2 = "DEX2.0";
-    public static final List<String> DEX_VERSIONS = Arrays.asList(IZGW_ADS_VERSION1, IZGW_ADS_VERSION2); 
+    public static final List<String> DEX_VERSIONS = Collections.unmodifiableList(Arrays.asList(IZGW_ADS_VERSION1, IZGW_ADS_VERSION2)); 
     
 	/**
 	 * An interface that can run a FileSender task
@@ -266,7 +266,7 @@ public class ADSController implements ADSChecker {
 		String when = DateFormatUtils.ISO_8601_EXTENDED_DATETIME_TIME_ZONE_FORMAT.format(new Date());
 		log.info("{} deleted on {} by {}@{}, reason: {}", meta.getPath(), when, meta.getUsername(), meta.getIpAddress(),
 				reason);
-		return new ResponseEntity<>(result, null, HttpStatus.ACCEPTED);
+		return new ResponseEntity<>(result, (HttpHeaders)null, HttpStatus.ACCEPTED);
 	}
 
 

@@ -61,6 +61,7 @@ public class EndpointStatusRepository extends DynamoDbRepository<EndpointStatus>
 
 	@Override
 	public List<? extends IEndpointStatus> find(int maxQuarterHours, String[] include) {
+		// TODO Whatever is needed for actual implementation
 		long time = System.currentTimeMillis() - (TimeUnit.MINUTES.toMillis(15) * maxQuarterHours);
 		return null;
 	}
@@ -80,5 +81,10 @@ public class EndpointStatusRepository extends DynamoDbRepository<EndpointStatus>
 	@Override
 	public IEndpointStatus newEndpointStatus(IDestination dest) {
 		return new EndpointStatus(dest);
+	}
+
+	@Override
+	public void resetCircuitBreakers() {
+		// TODO Auto-generated method stub
 	}
 }
