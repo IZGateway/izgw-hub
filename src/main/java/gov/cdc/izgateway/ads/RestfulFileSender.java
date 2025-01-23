@@ -14,6 +14,7 @@ import gov.cdc.izgateway.soap.fault.*;
 import gov.cdc.izgateway.utils.*;
 import jakarta.activation.DataHandler;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.extern.slf4j.Slf4j;
 
 import org.apache.commons.io.IOUtils;
@@ -59,7 +60,27 @@ public abstract class RestfulFileSender implements FileSender {
 	/** Set to true to see output in debug console */
     protected boolean fiddle = false;
     protected final ClientTlsSupport tlsSupport;
+    private static final boolean DO_INTEGRITY_CHECK = false; 
     
+    /**
+     * This class is used to throw an HttpException in derived
+     * classes where the errorStream comes from a new UrlConnection.
+     * 
+     * @author Audacious Inquiry
+     */
+    
+    @Data
+    @EqualsAndHashCode(callSuper=false)
+    protected static class HttpException extends IOException {
+		private static final long serialVersionUID = 1L;
+		private final int statusCode;
+    	private final transient InputStream errorStream;
+    	protected HttpException(int statusCode, InputStream errorStream, Throwable cause) {
+    		super(cause);
+    		this.statusCode = statusCode;
+    		this.errorStream = errorStream;
+    	}
+    }
     /**
      * @author Audacious Inquiry
      * Configuration for the Sender
@@ -88,6 +109,7 @@ public abstract class RestfulFileSender implements FileSender {
     
     private static final List<String> LOCALHOST = Arrays.asList(HostInfo.LOCALHOST_IP4, HostInfo.LOCALHOST_IP6, HostInfo.LOCALHOST);
 	protected final SenderConfig config;
+	static final int  BUFFERSIZE = 134217728; // 128MB
     
     protected RestfulFileSender(SenderConfig config, ClientTlsSupport tlsSupport) {
     	this.config = config;
@@ -123,10 +145,10 @@ public abstract class RestfulFileSender implements FileSender {
         
         // Create the HTTP URL to send
         long elapsedTimeIIS = 0;
-        InputStream error = null;
-        try {
+        HttpURLConnection con = null;
+        try  {
             meta.setUploadedDate(new Date());
-            HttpURLConnection con = getConnection("POST", route, meta, data);
+            con = getConnection("POST", route, meta, data);
             checkForSpace(con, route, meta.getFileSize());
 
             elapsedTimeIIS = -System.currentTimeMillis();
@@ -145,30 +167,31 @@ public abstract class RestfulFileSender implements FileSender {
             int responseCode = writeData(con, route, data, meta);
             
             RequestContext.getTransactionData().setElapsedTimeIIS(elapsedTimeIIS);
-            if (responseCode != HttpStatus.CREATED.value() && responseCode > 0) {
-                error = con.getErrorStream();
-                // Don't report the SAS Token in logs, that is Sensitive information.
-               throw new HTTPException(responseCode);
-            }
-            else if (responseCode != HttpStatus.CREATED.value() && responseCode  <= 0) {
+            // If not CREATED or OK, generate an error. 
+            if (responseCode != HttpStatus.CREATED.value() && responseCode != HttpStatus.OK.value()) {
                 throw new HTTPException(responseCode);
             }
             return con;
         } catch (URISyntaxException e) {
         	throw HubClientFault.invalidMessage(e, route, 0, null);
         } catch (io.tus.java.client.ProtocolException e) {
-        	throw HubClientFault.invalidMessage(e, route, 0, 
-        		IOUtils.toInputStream(e.getMessage(), StandardCharsets.UTF_8));
+        	try (InputStream s = IOUtils.toInputStream(e.getMessage(), StandardCharsets.UTF_8)) {
+        		throw HubClientFault.invalidMessage(e, route, 0, s);
+        	} catch (IOException e1) {
+        		throw HubClientFault.invalidMessage(e, route, 0, null);
+			}
         } catch (MalformedURLException e) {
             throw new MetadataFault(meta, e, FILENAME_INVALID);
-        } catch (IOException e) {
-            if (elapsedTimeIIS < 0) {
-                elapsedTimeIIS += System.currentTimeMillis();
-            }
-            checkException(route, elapsedTimeIIS, ObjectUtils.defaultIfNull(ExceptionUtils.getRootCause(e),e), error);
+        } catch (HttpException ex) {
+            InputStream errorStream = ex.getErrorStream();
+			throw HubClientFault.invalidMessage(ex, route, ex.getStatusCode(), errorStream);
+        } catch (IOException | HTTPException e) {
+            checkException(route, elapsedTimeIIS, ObjectUtils.defaultIfNull(ExceptionUtils.getRootCause(e), e), con.getErrorStream());
             return null;
         }  finally {
-            elapsedTimeIIS += System.currentTimeMillis();
+        	if (elapsedTimeIIS < 0) {
+        		elapsedTimeIIS += System.currentTimeMillis();
+        	}
             RequestContext.getTransactionData().setElapsedTimeIIS(elapsedTimeIIS);
         }
     }
@@ -322,14 +345,15 @@ public abstract class RestfulFileSender implements FileSender {
         // set the file size before the header is generated.
         IntegrityCheck ic = null;
         if (data != null) {
-            ic = IntegrityCheck.getIntegrityCheck(data);
+        	// IntegrityCheck is costly on large files, takes a few minutes to compute.
+            ic = DO_INTEGRITY_CHECK ? IntegrityCheck.getIntegrityCheck(data) : IntegrityCheck.getLength(data);
             if (ic.getHash().length != 0) {
             	headers.add(new BasicHeader("Content-MD5", ic.toString()));
             }
             headers.add(new BasicHeader("Content-Length", Long.toString(ic.getLength())));
             meta.setFileSize(ic.getLength());
         }
-        headers.add(new BasicHeader("x-ms-blob-type", "BlockBlob"));
+
         addHeadersFromMetadata(meta, headers);
         // Set the Content-Type from the filename.
         switch (StringUtils.substringAfterLast(meta.getFilename(), ".").toLowerCase()) {
@@ -357,8 +381,8 @@ public abstract class RestfulFileSender implements FileSender {
         headers.add(new BasicHeader("x-ms-client-request-id", meta.getExtObjectKey()));
         return headers;
     }
-
-    private void addHeadersFromMetadata(Metadata meta, List<Header> headers) {
+    
+	protected void addHeadersFromMetadata(Metadata meta, List<Header> headers) {
     	boolean isProd = !"test".equals(meta.getDestinationId());
     	
         for (Method m: Metadata.class.getMethods()) {
@@ -406,7 +430,7 @@ public abstract class RestfulFileSender implements FileSender {
                 RequestContext.getDestinationInfo().setFromConnection(con);
             }
             @SuppressWarnings("unused")
-			String result = null;
+			String result = null; 
             InputStream is = null;
             if (responseCode != HttpStatus.OK.value() && 
             	responseCode != HttpStatus.NO_CONTENT.value()) {
@@ -453,8 +477,12 @@ public abstract class RestfulFileSender implements FileSender {
         try {
             URI base = new URI(r.getDestinationUri());
             base = base.resolve(ADSUtils.createUrl(base, meta));
-            return new URL(base.getScheme(), base.getHost(), base.getPort(), base.getPath() + "?" + r.getPassword());
-        } catch (MalformedURLException | URISyntaxException e) {
+            String token = r.getPassword();
+            if (r.isAzure()) {
+            	token = ADSUtils.getAzureToken(token);
+            }
+            return new URL(base.getScheme(), base.getHost(), base.getPort(), base.getPath() + "?" + token);
+        } catch (Exception e) {
             throw new MetadataFault(meta, e, e.getMessage());
         }
     }
@@ -526,6 +554,15 @@ public abstract class RestfulFileSender implements FileSender {
 	    int statusCode = 0;
 	    if (rootCause instanceof HTTPException httpEx) {
 	    	statusCode = httpEx.getStatusCode();
+	    } else if (rootCause instanceof IOException ioEx) {
+	    	String message = ioEx.getMessage();
+	    	if (StringUtils.containsIgnoreCase(message, "writ")) {
+	    		throw DestinationConnectionFault.writeError(routing, ioEx);
+	    	} 
+	    	if (StringUtils.containsIgnoreCase(message, "read")) {
+	    		throw DestinationConnectionFault.readError(routing, ioEx);
+	    	} 
+	    	throw DestinationConnectionFault.ioError(routing, ioEx);
 	    }
 	    if (!(rootCause instanceof FaultSupport) &&
 	    	!(rootCause instanceof HTTPException) &&

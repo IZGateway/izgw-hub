@@ -13,6 +13,8 @@ services:
     volumes:
       - ./data:/docker-entrypoint-initdb.d
     restart: always
+    networks:
+      - izg-shared-network
   phiz:
     depends_on:
       - phizmysql
@@ -31,4 +33,14 @@ services:
       - '443:443'
       - '8000:8000'
       - '9081:9081'
+    volumes:
+      - type: bind
+        source: "${SSL_SOURCE}"
+        target: /usr/share/izgateway/conf/ssl
     restart: always
+    networks:
+      - izg-shared-network
+
+networks:
+  izg-shared-network:
+    external: true

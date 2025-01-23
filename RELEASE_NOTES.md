@@ -3,6 +3,25 @@ The IZ Gateway Hub 2.2.0 Release enables IZ Gateway to run in multiple regions
 * It uses AWS DynamoDB instead of AWS RDS
 * It can run behind an Application Load Balancer instead of a Network Load Balancer
 
+# IZ Gateway Release 2.1.8
+The IZ Gateway Hub 2.1.8 release
+* Adjusts metadata handling for farmer-flu reporting to correct for specification changes published in December.
+* Upgrade logback to version 1.5.16
+* Upgrade spring-security to 6.3.5
+* Changes logging level to debug for scheduled endpoint testing
+* Improves reliability on submissions to Azure endpoints
+
+# IZ Gateway Release 2.1.7
+The IZ Gateway Hub 2.1.7 release
+* Supports access to NDLP Storage for ADS Uploads
+
+# IZ Gateway Release 2.1.6
+The IZ Gateway Hub 2.1.6 release
+* Improves logging on ADS input errors or outbound file upload errors
+* Adjust filename validation logic for ADS file uploads to relax date validation
+* Refresh now resets all circuit breakers
+* Removes PHI from fault/reason if present before logging.
+
 # IZ Gateway Release 2.1.5
 The IZ Gateway Hub 2.1.5 patch release:
 

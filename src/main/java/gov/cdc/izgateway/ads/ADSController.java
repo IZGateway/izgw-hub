@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import gov.cdc.izgateway.common.ResourceNotFoundException;
 import gov.cdc.izgateway.configuration.AppProperties;
+import gov.cdc.izgateway.db.service.StatusCheckerService.ADSChecker;
 import gov.cdc.izgateway.logging.RequestContext;
 import gov.cdc.izgateway.logging.event.EventIdMdcConverter;
 import gov.cdc.izgateway.logging.event.TransactionData;
@@ -21,7 +22,6 @@ import gov.cdc.izgateway.security.Roles;
 import gov.cdc.izgateway.security.oauth.ExternalTokenStore;
 import gov.cdc.izgateway.service.IAccessControlService;
 import gov.cdc.izgateway.service.IDestinationService;
-import gov.cdc.izgateway.service.StatusCheckerService.ADSChecker;
 import gov.cdc.izgateway.soap.fault.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -72,11 +72,19 @@ import javax.xml.ws.http.HTTPException;
 @RequestMapping({"/rest"})
 @Lazy(false)
 public class ADSController implements ADSChecker {
+	private static final String UNKNOWN = "UNKNOWN";
     private static final List<String> METADATA_FIELDNAMES = getMetadataFieldNames();
     public static final String IZGW_ADS_VERSION1 = "DEX1.0";
     public static final String IZGW_ADS_VERSION2 = "DEX2.0";
     public static final List<String> DEX_VERSIONS = Arrays.asList(IZGW_ADS_VERSION1, IZGW_ADS_VERSION2); 
     
+	/**
+	 * An interface that can run a FileSender task
+	 * 
+	 * @author Audacious Inquiry
+	 *
+	 * @param <T>
+	 */
 	public interface Execute<T> {
 		/**
 		 * Applies this function to the given arguments.
@@ -93,13 +101,15 @@ public class ADSController implements ADSChecker {
         private final IAccessControlService accessControls;
         private final IDestinationService dests;
         private final DEXStorageSender dexFileSender;
+		private final AzureBlobStorageSender azureFileSender;
 
 		public ADSControllerConfiguration(IAccessControlService accessControls, IDestinationService dests,
-				DEXStorageSender dexFileSender, AppProperties app) {
+				DEXStorageSender dexFileSender, AzureBlobStorageSender azureFileSender, AppProperties app) {
 			mode = app.getServerMode();
 			this.accessControls = accessControls;
 			this.dests = dests;
 			this.dexFileSender = dexFileSender;
+			this.azureFileSender = azureFileSender;
 		}
 	}
 
@@ -169,17 +179,12 @@ public class ADSController implements ADSChecker {
 	}
 	
     @GetMapping(value = "/ads/{destinationId}/info/{tguid}", produces = { "application/json" }) 
-    @Operation(summary = "Get the status of the specified upload",
-	description = "Gets the upload status for the specified request")
+	@Operation(summary = "Get the status of the specified upload", description = "Gets the upload status for the specified request")
     @ApiResponse(responseCode = "200", description = "Success", content = @Content)
-    public Object getSubmissionStatus(
-        @RequestHeader(name="X-Message-ID", required=false) String xMessageId,
+	public Object getSubmissionStatus(@RequestHeader(name = "X-Message-ID", required = false) String xMessageId,
         @RequestHeader(name="X-Request-ID", required=false) String xRequestId,
         @RequestHeader(name="X-Correlation-ID", required=false) String xCorrelationId,
-        @PathVariable String destinationId,
-        @PathVariable String tguid
-    ) throws Fault
-    {
+			@PathVariable String destinationId, @PathVariable String tguid) throws Fault {
         MetadataBuilder m = new MetadataBuilder();
         m.setRouteId(config.getDests(), destinationId);
         m.setMessageId(getMessageId(xMessageId, xCorrelationId, xRequestId));
@@ -199,13 +204,6 @@ public class ADSController implements ADSChecker {
 		tData.setMessageType(MessageType.SUBMIT_FILE);
 		tData.setRequestPayloadType(RequestPayloadType.fromString(meta == null ? null : meta.getExtEvent()));
 	}
-
-    private RestfulFileSender getSender(IDestination route) {
-        if (route.isDex()) {
-            return config.getDexFileSender();
-        }
-        return null;
-    }
 
 	private static List<String> getMetadataFieldNames() {
 		List<String> props = new ArrayList<>();
@@ -271,6 +269,16 @@ public class ADSController implements ADSChecker {
 		return new ResponseEntity<>(result, null, HttpStatus.ACCEPTED);
 	}
 
+
+	private RestfulFileSender getSender(IDestination route) {
+		if (route.isDex()) {
+			return config.getDexFileSender();
+		} else if (route.isAzure()) {
+			return config.getAzureFileSender();
+		}
+		return null;
+	}
+
 	private MetadataImpl getMetadata(String messageId, String destinationId, String facilityId, String reportType,
 			String period, String filename, boolean force) throws MetadataFault {
 		MetadataBuilder m = new MetadataBuilder();
@@ -289,14 +297,19 @@ public class ADSController implements ADSChecker {
 		if (tData != null) {
 			tData.getDestination().setUrl(m.getDestUrl());
 		}
-		MetadataImpl meta = m.build();
-
-		// Verify destination and event are aligned, don't let people send a
-		// routineImmunization to the flu endpoint
-		// and vice versa
-		checkDestinationAndEvent(meta);
-
-		return meta;
+		try {
+			MetadataImpl meta = m.build();
+	
+			// Verify destination and event are aligned, don't let people send a
+			// routineImmunization to the flu endpoint
+			// and vice versa
+			checkDestinationAndEvent(meta);
+			return meta;
+		} catch (MetadataFault mf) {
+			// Log the parsed metadata in the response.
+			tData.setResponse(mf.getMeta());
+			throw mf;
+		}
 	}
 
 	private void normalizeReportType(MetadataBuilder m, String reportType) {
@@ -356,7 +369,6 @@ public class ADSController implements ADSChecker {
 	 * repeatedly for subsequent calls.
 	 */
 	private static final boolean READ_LIVE = false;
-	private static final String UNKNOWN = "UNKNOWN";
 
 	/** Saved submission form */
 	private static String submissionForm = null;
@@ -455,7 +467,7 @@ public class ADSController implements ADSChecker {
 		try {
 			submitFile(meta, data);
 		} catch (Fault f) {
-			log.info("Fault occurred", f);
+			log.info(Markers2.append(f), "Fault occurred", f);
 			throw f;
 		}
 		String deliveryPath = StringUtils.substringAfterLast(meta.getPath(), "/");
@@ -471,6 +483,14 @@ public class ADSController implements ADSChecker {
 	 * @param dest The destination for the endpoint
 	 */
 	private void verifyDelivery(MetadataImpl meta, IDestination dest, String deliveryPath) {
+		if (dest.isAzure()) {
+			// If destination is Azure, we are auto assured of delivery, since we did the delivery directly
+			meta.setSubmissionStatus("SUCCESS");
+			meta.setSubmissionLocation(meta.getPath());
+			return;
+		}
+
+		// Otherwise, check DEX for delivery status to NDLP
 		String result = null;
 		int retries = 0;
 		long backoff = 250;
@@ -515,12 +535,21 @@ public class ADSController implements ADSChecker {
 	}
 
 	private void verifyRouting(IDestination iDestination) throws UnknownDestinationFault {
-		if (iDestination.isDex()) {
+		if (iDestination.isDex() || iDestination.isAzure()) {
 			return;
 		}
-		throw UnknownDestinationFault.invalidDestination(iDestination.getDestId(),
-				String.format("This destination is using version %s of the ADS API, it should be using: %s or %s",
-						iDestination.getDestVersion(), IZGW_ADS_VERSION1, IZGW_ADS_VERSION2));
+		String[] versions = { 						
+				IDestination.IZGW_ADS_VERSION1, 
+				IDestination.IZGW_ADS_VERSION2,
+				IDestination.IZGW_AZURE_VERSION1,
+				IDestination.IZGW_AZURE_VERSION2
+		};
+
+		throw UnknownDestinationFault.invalidDestination(
+				iDestination.getDestId(),
+				String.format("This destination is using version %s of the ADS API, it should be using: %s", 
+					iDestination.getDestVersion(), versions)
+		);
 	}
 
 	private void checkDestinationAndEvent(MetadataImpl meta) throws MetadataFault {
@@ -571,15 +600,20 @@ public class ADSController implements ADSChecker {
 		if (tData != null) {
 			tData.setProcessError(ex);
 			Object response = tData.getResponse();
+			Map<String, Object> m2 = null;
 			if (response instanceof Map<?, ?>) {
 				@SuppressWarnings("unchecked")
 				Map<String, Object> m = (Map<String, Object>) response;
-				m.put("error", err);
+				m2 = m;
 			} else {
-				if (response != null) {
-					log.warn(Markers2.append("originalResponse", response), "Error overwrites response object");
-				}
-				tData.setResponse(singletonMap("error", err));
+				m2 = new TreeMap<>();
+				tData.setResponse(m2);
+			}
+			m2.put("error", err);
+			if (ex instanceof HubClientFault hcf && hcf.getOriginalBody() != null) {
+				m2.put("detail", hcf.getOriginalBody());
+			} else if (response != null && response != m2) {
+				m2.put("originalResponse", response);
 			}
 		}
 		return new ResponseEntity<>(err, updateStatusFromRetryStrategy(ex, err));

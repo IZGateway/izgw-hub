@@ -100,7 +100,7 @@ public class StatusCheckScheduler {
         Map<String, String> map = StatusCheckerService.setupMDC();
         try {
             // First thing to do is refresh status and destinations.
-            log.info("Updating schedule");
+            log.debug("Updating schedule");
             endpointStatusService.refresh();
             dests.refresh();
 
@@ -157,7 +157,7 @@ public class StatusCheckScheduler {
      * @param myInstanceOffset
      */
     private void buildMySchedule(List<IDestination> dList, List<String> hosts, int myInstanceOffset) {
-        log.info("Building status check schedule for {}", SystemUtils.getHostname());
+        log.debug("Building status check schedule for {}", SystemUtils.getHostname());
         long now = System.currentTimeMillis();
         int numberOfDestsToCheckPerSync = (dList.size() + RESYNCS_PER_CYCLE - 1) / RESYNCS_PER_CYCLE;
         long periodBetweenChecks = RESYNC_DURATION.toMillis() / numberOfDestsToCheckPerSync;

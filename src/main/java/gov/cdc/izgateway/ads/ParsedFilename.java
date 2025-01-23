@@ -85,7 +85,7 @@ class ParsedFilename {
 		// Monthly files
 		filetype = parts.length > 0 ? parts[0] : "";
 		if (StringUtils.containsIgnoreCase(filetype, "farmer")) {
-		    filetype = "genericImmunization";
+		    filetype = "farmerFluVaccination";
 		} else if (StringUtils.containsIgnoreCase(filetype, "flu")) {
 		    filetype = "influenzaVaccination";
 		} else if (StringUtils.containsIgnoreCase(filetype, "rsv")) {

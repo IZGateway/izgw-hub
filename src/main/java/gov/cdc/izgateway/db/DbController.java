@@ -292,10 +292,11 @@ public class DbController {
 			// Send refresh request in parallel to all known endpoints
 			String eventId = MDC.get(EventId.EVENTID_KEY);
 			for (String host : hosts) {
-				if (host.equalsIgnoreCase(me)) {
-					continue;
+				// Don't recursively refresh yourself
+				if (!host.equalsIgnoreCase(me)) {
+					ex.execute(() -> results.put(host, refreshEndpoint(host, eventId)));
 				}
-				ex.execute(() -> results.put(host, refreshEndpoint(host, eventId)));
+				ex.execute(() -> resetEndpoint(host, eventId));
 			}
 
 			ex.shutdown();
@@ -313,20 +314,28 @@ public class DbController {
 	}
 
 	private String refreshEndpoint(String host, String eventId) {
+		return callEndpoint(host, eventId, "/rest/refresh");
+	}
+
+	private String resetEndpoint(String host, String eventId) {
+		return callEndpoint(host, eventId, "/rest/reset");
+	}
+
+	private String callEndpoint(String host, String eventId, String path) {
 		URL url = null;
 		MDC.put(EventId.EVENTID_KEY, eventId);
 		try {
-			url = new URL("https://" + host + "/rest/refresh");
+			url = new URL("https://" + host + path);
 			HttpsURLConnection con = (HttpsURLConnection) url.openConnection();
 
 			if (con.getResponseCode() != HttpStatus.OK.value()) {
 				String error = getErrorStream(con);
-				log.warn("Could not refresh {}: {}", host, error);
+				log.warn("Could not call {}{}: {}", host, path, error);
 				return con.getResponseCode() + error;
 			}
 			return "OK";
 		} catch (Exception e) {
-			log.error(Markers2.append(e), "Exception refreshing {}: {}", host, e.getMessage());
+			log.error(Markers2.append(e), "Exception calling {}{}: {}", host, path, e.getMessage());
 			return Objects.toString(e.getMessage(), "NOT OK");
 		}
 	}

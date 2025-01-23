@@ -92,6 +92,8 @@ public class MetadataBuilder {
     	// on meta_ext_event as well as meta_ext_event_type
     	if (DEX_REPORT_TYPES.contains(reportType.toLowerCase())) {
     		meta.setExtEvent(reportType);
+    	} else if ("farmerFlu".equalsIgnoreCase(reportType)) {
+    		meta.setExtEvent("farmerFluVaccination");
     	} else {
     		meta.setExtEvent(GENERIC);
     		// Force V2 if Generic is used.
@@ -183,11 +185,18 @@ public class MetadataBuilder {
 		}
 		Calendar metaDate = meta.getPeriodAsCalendar(); 
 		int divisor = pf.getFiletype().equals(ParsedFilename.ROUTINE_IMMUNIZATION) ? 3 : 1;
-		if (cal.get(Calendar.MONTH) / divisor != metaDate.get(Calendar.MONTH) / divisor ||
-			cal.get(Calendar.YEAR) != metaDate.get(Calendar.YEAR)
-		) {
-			errors.add(String.format("File date from filename (%s) does not match period (%s)", meta.getFilename(), meta.getPeriod()));
+		if (!checkDate(cal, metaDate, divisor)) {
+			// Failed first time through, try JUST one day later on date from file name
+			cal.add(Calendar.DAY_OF_MONTH, 1);
+			if (!checkDate(cal, metaDate, divisor)) {
+				errors.add(String.format("File date from filename (%s) does not match period (%s)", meta.getFilename(), meta.getPeriod()));
+			}
 		}
+	}
+
+	private boolean checkDate(Calendar cal, Calendar metaDate, int divisor) {
+		return cal.get(Calendar.MONTH) / divisor == metaDate.get(Calendar.MONTH) / divisor &&
+			cal.get(Calendar.YEAR) == metaDate.get(Calendar.YEAR);
 	}
 
     /**
@@ -208,8 +217,8 @@ public class MetadataBuilder {
         meta.setDestination(dest);
         if (dest == null) {
             errors.add(String.format("Destination ID (%s) is not valid",  routeId));
-        } else if (!dest.isDex()) {
-            errors.add(String.format("Destination ID (%s) is not a valid DEX endpoint", routeId));
+        } else if (!dest.isDex() && !dest.isAzure()) {
+            errors.add(String.format("Destination ID (%s) is not a valid ADS endpoint", routeId));
         } else {
             // Normalize it
             meta.setRouteId(dest.getDestId());
@@ -217,11 +226,11 @@ public class MetadataBuilder {
             setDestinationId("ndlp");
             // Set the value for ExtSourceVersion based on version of DEX Endpoint
 	        switch (dest.getDestVersion()) {
-	        case ADSController.IZGW_ADS_VERSION1:
+	        case IDestination.IZGW_ADS_VERSION1:
 	        	meta.setExtSourceVersion(Metadata.DEX_VERSION1);
 	        	break;
+	        case IDestination.IZGW_ADS_VERSION2, IDestination.IZGW_AZURE_VERSION1:
 	        default:
-	        case ADSController.IZGW_ADS_VERSION2:
 	        	meta.setExtSourceVersion(Metadata.DEX_VERSION2);
 	        	break;
 	        }

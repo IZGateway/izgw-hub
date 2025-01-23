@@ -5,14 +5,14 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.3.5</version>
+		<version>3.4.1</version>
 		<relativePath />
 	</parent>
 	<groupId>gov.cdc.izgw</groupId>
 	<artifactId>izgw-hub</artifactId>
 	<version>2.2.0-IZGW-SNAPSHOT</version>
 	<packaging>jar</packaging>
-	<name>IZ Gateway Hub 2.1.5</name>
+	<name>IZ Gateway Hub 2.1.8</name>
 	<description>IZ Gateway Hub</description>
 	<properties>
 		<maven.build.timestamp.format>yyyyMMddHHmm</maven.build.timestamp.format>
@@ -25,16 +25,16 @@
 		<image.tag>${project.artifactId}-${project.version}-${buildno}</image.tag>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.java.package>${project.groupId}</project.java.package>
-		<spring-security.version>6.3.4</spring-security.version>
+		<spring-security.version>6.3.5</spring-security.version>
 		<spring.version>6.2.0</spring.version>
 		<spring-framework.version>6.2.0</spring-framework.version>
-		<netty.version>4.1.115.Final</netty.version>
+		<logback.version>1.5.16</logback.version>
 	</properties>
 	<dependencies>
 		<dependency>
 			<groupId>gov.cdc.izgw</groupId>
 			<artifactId>izgw-core</artifactId>
-			<version>2.1.4-izgw-core-SNAPSHOT</version>
+			<version>2.1.8-izgw-core-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>ca.uhn.hapi</groupId>
@@ -188,12 +188,12 @@
 		<dependency>
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
-			<version>2.6.0</version>
+			<version>2.7.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-			<version>2.6.0</version>
+			<version>2.7.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework</groupId>
@@ -230,6 +230,10 @@
 		<dependency>
 			<groupId>org.springframework.data</groupId>
 			<artifactId>spring-data-jpa</artifactId>
+		</dependency>
+		<dependency>
+		    <groupId>org.springframework.retry</groupId>
+		    <artifactId>spring-retry</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.projectlombok</groupId>
@@ -335,41 +339,41 @@
 					</includes>
 				</configuration>
 			</plugin>
-			<plugin>
-				<groupId>com.spotify</groupId>
-				<artifactId>dockerfile-maven-plugin</artifactId>
-				<version>1.4.13</version>
-				<configuration>
-					<repository>iz-gateway</repository>
-					<buildArgs>
-						<JAR_FILENAME>${image.tag}.jar</JAR_FILENAME>
-						<IZGW_VERSION>${project.version}</IZGW_VERSION>
-					</buildArgs>
-				</configuration>
-				<executions>
-					<execution>
-						<id>build-image</id>
-						<goals>
-							<goal>build</goal>
-							<goal>tag</goal>
-						</goals>
-						<phase>install</phase>
-						<configuration>
-							<tag>${image.tag}</tag>
-						</configuration>
-					</execution>
-					<execution>
-						<id>tag-latest</id>
-						<goals>
-							<goal>tag</goal>
-						</goals>
-						<phase>install</phase>
-						<configuration>
-							<tag>latest</tag>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
+                       <plugin>
+                               <groupId>com.spotify</groupId>
+                               <artifactId>dockerfile-maven-plugin</artifactId>
+                               <version>1.4.13</version>
+                               <configuration>
+                                       <repository>iz-gateway</repository>
+                                       <buildArgs>
+                                               <JAR_FILENAME>${image.tag}.jar</JAR_FILENAME>
+                                               <IZGW_VERSION>${project.version}</IZGW_VERSION>
+                                       </buildArgs>
+                               </configuration>
+                               <executions>
+                                       <execution>
+                                               <id>build-image</id>
+                                               <goals>
+                                                       <goal>build</goal>
+                                                       <goal>tag</goal>
+                                               </goals>
+                                               <phase>install</phase>
+                                               <configuration>
+                                                       <tag>${image.tag}</tag>
+                                               </configuration>
+                                       </execution>
+                                       <execution>
+                                               <id>tag-latest</id>
+                                               <goals>
+                                                       <goal>tag</goal>
+                                               </goals>
+                                               <phase>install</phase>
+                                               <configuration>
+                                                       <tag>latest</tag>
+                                               </configuration>
+                                       </execution>
+                               </executions>
+                       </plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-dependency-plugin</artifactId>
@@ -474,4 +478,28 @@
 			<url>https://maven.pkg.github.com/izgateway/izgw-core</url>
 		</repository>
 	</repositories>
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework</groupId>
+				<artifactId>spring-tx</artifactId>
+				<version>[6.1.14,)</version>
+			</dependency>
+			<dependency>
+				<groupId>org.springframework</groupId>
+				<artifactId>spring-web</artifactId>
+				<version>[6.1.14,)</version>
+			</dependency>
+			<dependency>
+				<groupId>org.springframework</groupId>
+				<artifactId>spring-webflux</artifactId>
+				<version>[6.1.14,)</version>
+			</dependency>
+			<dependency>
+				<groupId>org.springframework</groupId>
+				<artifactId>spring-webmvc</artifactId>
+				<version>[6.1.14,)</version>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 </project>
