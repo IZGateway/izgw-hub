@@ -115,7 +115,7 @@ public class StatusCheckerService implements IStatusCheckerService {
 
     public IEndpointStatus updateDestinationStatus(IDestination dest) {
         EndpointStatus s = new EndpointStatus(dest);
-        if (dest.isDex()) {
+        if (dest.isDex() || dest.isAzure()) {
             doAdsStatusCheck(dest, s);
         } else {
             doHubStatusCheck(s);
@@ -227,7 +227,7 @@ public class StatusCheckerService implements IStatusCheckerService {
 
         tData.setCipherSuite("INTERNAL_JAVA_CALL");
         source.setCipherSuite("INTERNAL_JAVA_CALL");
-        source.setCertificate(clientTlsSupport.getCertificate());
+        source.setPrincipal(RequestContext.getPrincipal());
         source.setFacilityId("IZGW");
         source.setHost(SystemUtils.getHostname());
         source.setId("izgw");
