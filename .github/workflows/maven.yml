@@ -5,15 +5,13 @@ on:
     branches:
       - Release*
       - main
-      - testrelease
-      - testmain
+      - develop
 
   pull_request:
     branches:
       - Release*
       - main
-      - testrelease
-      - testmain
+      - develop
 
 # Ensure only one build changes dev environment at the same time    
 concurrency: dev
@@ -108,8 +106,6 @@ jobs:
         echo IMAGE_BRANCH_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout` >> $GITHUB_ENV
         # default to force a revision check unless releasing
         echo DO_REVISION_CHECK=true >> $GITHUB_ENV
-        # Skip dependency check
-        echo SKIP_DEPENDENCY_CHECK=false >> $GITHUB_ENV
 
     # If pulling to main branch (cutting a release), set branch tag appropriately  
     - name: Sets env vars for pull to main 
@@ -123,8 +119,6 @@ jobs:
 
         # Skip revision check on merge
         echo DO_REVISION_CHECK=false >> $GITHUB_ENV
-        # Skip dependency check
-        echo SKIP_DEPENDENCY_CHECK=false >> $GITHUB_ENV
 
     # If pushing to main branch (cutting a release), set branch tag appropriately  
     - name: Sets env vars for pull to main 
@@ -149,8 +143,6 @@ jobs:
         fi
         # Disable revision check on push to main. 
         echo DO_REVISION_CHECK=false >> $GITHUB_ENV
-        # But enable dependency check
-        echo SKIP_DEPENDENCY_CHECK=false >> $GITHUB_ENV
 
     - name: List m2
       shell: bash
@@ -163,7 +155,6 @@ jobs:
         echo EVENT_NAME ${{ github.event_name }}
         echo TAG: $BASE_TAG
         echo DO_REVISION_CHECK: $DO_REVISION_CHECK 
-        echo SKIP_DEPENDENCY_CHECK: $SKIP_DEPENDENCY_CHECK
         echo IMAGE_TAG: $IMAGE_TAG 
         echo IMAGE_BRANCH_TAG: $IMAGE_BRANCH_TAG 
         cd ~/.m2
@@ -185,7 +176,7 @@ jobs:
       run: |
         env && mvn -B clean package install -Dbuildno=${{github.run_number}} \
             -DdoRevisionCheck=${{env.DO_REVISION_CHECK}} \
-            -DskipDependencyCheck=${{env.SKIP_DEPENDENCY_CHECK}} \
+            -DskipDependencyCheck=false \
             -Dimage.tag=$IMAGE_TAG
 
     - name: Configure AWS credentials
