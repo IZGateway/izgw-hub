@@ -26,6 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.Header;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 
 import org.springframework.stereotype.Component;
@@ -74,41 +75,32 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
     protected HttpURLConnection getConnection(String type, IDestination route, Metadata meta, DataHandler data) throws IOException, MetadataFault, DestinationConnectionFault, URISyntaxException {
         HttpURLConnection con = null;
         URL base;
+        String token = null;
         if (meta != null) {
             base = getUrl(meta, route);
-            // Remove any query parameters
             meta.setPath(StringUtils.substringBefore(base.toString(), "?"));
         } else {
-            base = new URL(route.getDestUri());        
+            base = new URL(route.getDestUri());
         }
-
-        URL queryUrl;
+    	token = ADSUtils.getAzureToken(route.getPassword());
+    	base = new URL(base + "?" + token);
+    	
         switch (type) {
         case "DELETE":
             con = getConnection(base);
             con.setRequestMethod("DELETE");
             // Set the headers from the metadata provided.
+            break;
             
-            break;
-        case "LIST":
-            queryUrl = new URL(base + "?" + route.getPassword() );
-            con = getConnection(queryUrl);
-            // This is a GET, there is nothing else to write
-            con.setDoOutput(false);
-            con.setRequestMethod("GET");
-            break;
         case "PING":
-            queryUrl = new URL(base +
-            		"?restype=container&comp=list&maxresults=1&" 
-            		+ route.getPassword() );
-            con = getConnection(queryUrl);
-            // This is a GET, there is nothing else to write
-            con.setDoOutput(false);
-            con.setRequestMethod("GET");
-            break;
-
-        case "GET":
+            // Remove any query parameters
+            base = new URL(base + "&restype=container&comp=list&maxresults=1");
+            
+            // Fall through
+            
+        case "LIST", "GET":
             con = getConnection(base);
+            // This is a GET, there is nothing else to write
             con.setDoOutput(false);
             con.setRequestMethod("GET");
             break;
@@ -121,7 +113,7 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
             // Azure uses PUT for it's CREATE/WRITE API Calls
             // If the blob already exists, we will overwrite it.
             con.setRequestMethod("PUT");
-    		    con.setRequestProperty("x-ms-blob-type", "BlockBlob");
+   		    con.setRequestProperty("x-ms-blob-type", "BlockBlob");
             break;
 
         case "STATUS":
@@ -131,6 +123,7 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
         
         // Set the headers from the metadata provided.
         if (meta != null) {
+        	meta.setPath(StringUtils.substringBefore(con.getURL().toString(), "?"));
             for (Header h: getHeaders(meta, data)) {
                 con.addRequestProperty(h.getName(), h.getValue());
             }
