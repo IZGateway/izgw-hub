@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.4.1</version>
+		<version>3.4.2</version>
 		<relativePath />
 	</parent>
 	<groupId>gov.cdc.izgw</groupId>
@@ -25,10 +25,6 @@
 		<image.tag>${project.artifactId}-${project.version}-${buildno}</image.tag>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.java.package>${project.groupId}</project.java.package>
-		<spring-security.version>6.3.5</spring-security.version>
-		<spring.version>6.2.0</spring.version>
-		<spring-framework.version>6.2.0</spring-framework.version>
-		<logback.version>1.5.16</logback.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -188,12 +184,12 @@
 		<dependency>
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
-			<version>2.7.0</version>
+			<version>2.8.3</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-			<version>2.7.0</version>
+			<version>2.8.3</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework</groupId>
@@ -478,28 +474,4 @@
 			<url>https://maven.pkg.github.com/izgateway/izgw-core</url>
 		</repository>
 	</repositories>
-	<dependencyManagement>
-		<dependencies>
-			<dependency>
-				<groupId>org.springframework</groupId>
-				<artifactId>spring-tx</artifactId>
-				<version>[6.1.14,)</version>
-			</dependency>
-			<dependency>
-				<groupId>org.springframework</groupId>
-				<artifactId>spring-web</artifactId>
-				<version>[6.1.14,)</version>
-			</dependency>
-			<dependency>
-				<groupId>org.springframework</groupId>
-				<artifactId>spring-webflux</artifactId>
-				<version>[6.1.14,)</version>
-			</dependency>
-			<dependency>
-				<groupId>org.springframework</groupId>
-				<artifactId>spring-webmvc</artifactId>
-				<version>[6.1.14,)</version>
-			</dependency>
-		</dependencies>
-	</dependencyManagement>
 </project>
