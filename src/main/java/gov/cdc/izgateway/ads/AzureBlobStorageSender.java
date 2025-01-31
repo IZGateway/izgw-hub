@@ -26,7 +26,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.Header;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 
 import org.springframework.stereotype.Component;
@@ -361,6 +360,10 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
 			String blockList = getBlockList(numBlocks);
 			byte[] data = blockList.getBytes(StandardCharsets.UTF_8);
 	
+			for (Header h: getHeaders(meta, null, null)) {
+				con.addRequestProperty(h.getName(), h.getValue());
+			}
+            
 			// Write the data
 			con.setFixedLengthStreamingMode(data.length);
 			con.getOutputStream().write(data);
