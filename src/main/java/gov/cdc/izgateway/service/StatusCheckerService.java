@@ -227,7 +227,7 @@ public class StatusCheckerService implements IStatusCheckerService {
 
         tData.setCipherSuite("INTERNAL_JAVA_CALL");
         source.setCipherSuite("INTERNAL_JAVA_CALL");
-        source.setPrincipal(RequestContext.getPrincipal());
+        source.setCertificate(clientTlsSupport.getCertificate());
         source.setFacilityId("IZGW");
         source.setHost(SystemUtils.getHostname());
         source.setId("izgw");
