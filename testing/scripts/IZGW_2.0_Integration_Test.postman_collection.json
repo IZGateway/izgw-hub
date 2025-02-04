@@ -2681,6 +2681,7 @@
 											"const interval = setTimeout(() => {}, 3000);\r",
 											"async function moreTests() {\r",
 											"    utils.getLogs(null, pm).then((logData) => {\r",
+											"        var logs = logData.json();\r",
 											"        txData = utils.getTxData(logs);\r",
 											"        var isV2 = txData[0].transactionData.serverRequest !== undefined;\r",
 											"\r",
