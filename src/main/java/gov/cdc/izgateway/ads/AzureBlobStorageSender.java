@@ -361,6 +361,10 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
 			String blockList = getBlockList(numBlocks);
 			byte[] data = blockList.getBytes(StandardCharsets.UTF_8);
 	
+			for (Header h: getHeaders(meta, null, null)) {
+				con.addRequestProperty(h.getName(), h.getValue());
+			}
+            
 			// Write the data
 			con.setFixedLengthStreamingMode(data.length);
 			con.getOutputStream().write(data);

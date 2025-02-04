@@ -79,6 +79,7 @@ import gov.cdc.izgateway.soap.mock.perf.PerformanceSimulatorMultiton;
 import gov.cdc.izgateway.soap.net.SoapMessageConverter;
 import gov.cdc.izgateway.soap.net.SoapMessageWriter;
 import gov.cdc.izgateway.status.StatusCheckScheduler;
+import gov.cdc.izgateway.utils.SystemUtils;
 import gov.cdc.izgateway.utils.UtilizationService;
 import gov.cdc.izgateway.common.HealthService;
 import gov.cdc.izgateway.configuration.AppProperties;
@@ -259,19 +260,20 @@ public class Application implements WebMvcConfigurer {
         }
         StatusCheckScheduler sc = ctx.getBean(StatusCheckScheduler.class);
         Application app = ctx.getBean(Application.class);
-    	new Thread(() -> {
+    	new Thread(() -> 
     		// Load Mock IIS in background
-    		PerformanceSimulatorMultiton.getInstance(PerformanceSimulatorMultiton.PERFORMANCE_PROFILE_MOCK_IIS);
-    	}).start();
+    		PerformanceSimulatorMultiton.getInstance(PerformanceSimulatorMultiton.PERFORMANCE_PROFILE_MOCK_IIS)
+    	).start();
     	String database = HealthService.getHealth().getDatabase();
         try {
             // Test for database connectivity and prefetch caches.
             List<IDestination> list = destinationService.getAllDestinations();
 
             if (list.isEmpty() && abortOnNoIIS) {
-            	HealthService.setHealthy(false, "No IIS Connections available");
-                log.error("No IIS Connections are available from {}", database);
-                throw new ServiceConfigurationError("No IIS Connections are available from " + database);
+            	HealthService.setHealthy(false, "No IIS Connections available in " + SystemUtils.getDestTypeAsString());
+                log.error("No IIS Connections are available from {} in {}", database, SystemUtils.getDestTypeAsString());
+                throw new ServiceConfigurationError(
+                	"No IIS Connections are available from " + database + " in " + SystemUtils.getDestTypeAsString());
             } else {
                 // Prefetch to populate cache
                 messageHeaderService.getAllMessageHeaders();

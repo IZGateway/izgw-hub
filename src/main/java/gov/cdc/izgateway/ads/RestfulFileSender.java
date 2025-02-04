@@ -350,10 +350,18 @@ public abstract class RestfulFileSender implements FileSender {
             if (ic.getHash().length != 0) {
             	headers.add(new BasicHeader("Content-MD5", ic.toString()));
             }
-            headers.add(new BasicHeader("Content-Length", Long.toString(ic.getLength())));
             meta.setFileSize(ic.getLength());
         }
-
+        
+        return getHeaders(meta, headers, ic == null ? null : ic.getMimeType());
+    }
+    
+	protected List<Header> getHeaders(Metadata meta, List<Header> headers, String mimeType) {
+		if (headers == null) {
+	        headers = new ArrayList<>();
+		}
+		
+		headers.add(new BasicHeader("Content-Length", Long.toString(meta.getFileSize())));
         addHeadersFromMetadata(meta, headers);
         // Set the Content-Type from the filename.
         switch (StringUtils.substringAfterLast(meta.getFilename(), ".").toLowerCase()) {
@@ -371,8 +379,8 @@ public abstract class RestfulFileSender implements FileSender {
             headers.add(new BasicHeader(HttpHeaders.CONTENT_TYPE, "application/x-zip-compressed"));
             break;
         default:
-            if (ic != null && ic.hasMimeType()) {
-                headers.add(new BasicHeader(HttpHeaders.CONTENT_TYPE, ic.getMimeType()));
+            if (!StringUtils.isBlank(mimeType)) {
+                headers.add(new BasicHeader(HttpHeaders.CONTENT_TYPE, mimeType));
             } else {
                 headers.add(new BasicHeader(HttpHeaders.CONTENT_TYPE, "application/x-zip-compressed"));
             }
@@ -380,7 +388,7 @@ public abstract class RestfulFileSender implements FileSender {
         }
         headers.add(new BasicHeader("x-ms-client-request-id", meta.getExtObjectKey()));
         return headers;
-    }
+	}
     
 	protected void addHeadersFromMetadata(Metadata meta, List<Header> headers) {
     	boolean isProd = !"test".equals(meta.getDestinationId());
