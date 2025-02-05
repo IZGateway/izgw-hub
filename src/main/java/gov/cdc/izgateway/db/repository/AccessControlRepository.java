@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,8 +38,8 @@ public interface AccessControlRepository extends JpaRepository<AccessControl, Ac
 	 * 
 	 * @return	The list of access control records with the given destination type.
 	 */
-	@Query(value = "SELECT category, name, member, (allow & 1) as allow FROM accesscontrol WHERE (allow & (1 << ?1)) != 0", nativeQuery = true)
-	List<AccessControl> findAllByDestTypeId(int destType);
+	@Query(value = "SELECT category, name, member, (allow & 1) as allow FROM accesscontrol WHERE (allow & (1 << :destType)) != 0", nativeQuery = true)
+	List<AccessControl> findAllByDestTypeId(@Param("destType") int destType);
 
 	/**
 	 * Override the JPA default implementation with findAllByDestinationIdTypeId
@@ -59,8 +60,12 @@ public interface AccessControlRepository extends JpaRepository<AccessControl, Ac
 	 * @param allow		The flag settings.
 	 */
     @Modifying
-    @Query(value = "insert into accesscontrol(category, name, member, allow) values(?1, ?2, ?3, ?4)", nativeQuery = true)
-    void insertAccessControl(String category, String name, String member, int allow);
+    @Query(value = "insert into accesscontrol(category, name, member, allow) values(:category, :name, :member, :allow)", nativeQuery = true)
+    void insertAccessControl(
+    	@Param("category") String category, 
+    	@Param("name") String name, 
+    	@Param("member") String member, 
+    	@Param("allow") int allow);
     
     /**
      * Update a user.
