@@ -58,8 +58,8 @@
     <logger name="org.bouncycastle" level="INFO"/>
     
     <!-- Logs to Enable for debugging -->
-    <logger name="org.hibernate" level="DEBUG" /> <!-- Change from WARN to DEBUG for debugging -->
-    <logger name="org.hibernate.SQL" level="DEBUG" /> <!-- Change to DEBUG if needed for debugging -->
+    <logger name="org.hibernate" level="WARN" /> <!-- Change from WARN to DEBUG for debugging -->
+    <logger name="org.hibernate.SQL" level="WARN" /> <!-- Change to DEBUG if needed for debugging -->
     <logger name="org.hibernate.type" level="WARN" /> <!-- Change to TRACE if needed for ORM debugging -->
     <logger name="org.springframework.cache" level="INFO" /><!-- Change 
         from WARN to TRACE if needed for Cache debugging -->
