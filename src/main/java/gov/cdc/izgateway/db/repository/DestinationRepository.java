@@ -5,10 +5,13 @@ package gov.cdc.izgateway.db.repository;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import gov.cdc.izgateway.db.model.Destination;
 import gov.cdc.izgateway.db.model.Destination.DestinationId;
+import gov.cdc.izgateway.model.IDestination;
+import gov.cdc.izgateway.repository.IDestinationRepository;
 import gov.cdc.izgateway.utils.SystemUtils;
 
 /**
@@ -20,7 +23,7 @@ import gov.cdc.izgateway.utils.SystemUtils;
  *	from its own environment.  This is VERY simple partitioning.
  */
 @Repository
-public interface DestinationRepository extends JpaRepository<Destination, DestinationId>{
+public interface DestinationRepository extends JpaRepository<Destination, DestinationId>, IDestinationRepository {
 	/**
 	 * Asks SpringJPA to construct the query by dest_type.
 	 * 
@@ -32,11 +35,11 @@ public interface DestinationRepository extends JpaRepository<Destination, Destin
 	 * 
 	 * @return	The list of destinations with the given destination type.
 	 */
-	@Query(value = "SELECT * FROM destinations WHERE dest_type = ?1", nativeQuery = true)
-	List<Destination> findAllByDestTypeId(int destType);
+	@Query(value = "SELECT * FROM destinations WHERE dest_type = :destType ", nativeQuery = true)
+	List<Destination> findAllByDestTypeId(@Param("destType") int destType);
 
 	/**
-	 * Override the JPA default implementation with findAllByDestinationIdTypeId
+	 * Override the JPA default implementation with findAllByDestIdTypeId
 	 * 
 	 * @return The list of destinations for this instances environment
 	 */
@@ -46,7 +49,7 @@ public interface DestinationRepository extends JpaRepository<Destination, Destin
 	}
 
 	@Override
-	default <S extends Destination> S saveAndFlush(S entity) {
+	default IDestination store(IDestination entity) {
 		// Check for inadvertent write to wrong partition of DB
 		if (entity.getDestTypeId() != SystemUtils.getDestType()) {
 			String msg = String.format("Attempt to save %s from %s into %s",
@@ -54,8 +57,10 @@ public interface DestinationRepository extends JpaRepository<Destination, Destin
 			// This should not crash the service, but will at least log it.
 			throw new SecurityException("Partition Access Error: " + msg);
 		}
-		S result = save(entity);
-		flush();
-		return result;
+		if (entity instanceof Destination d) {
+			return saveAndFlush(d);
+		}
+		return saveAndFlush(new Destination(entity));
 	}
+	
 }

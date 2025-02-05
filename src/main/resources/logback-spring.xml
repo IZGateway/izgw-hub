@@ -66,9 +66,7 @@
     <logger name="gov.cdc.izgateway.web.ws" level="INFO" /> <!-- Change from INFO to DEBUG for debugging -->
     <logger name="org.springframework.transaction" level="INFO" /><!-- 
         Change from INFO to TRACE for debugging -->
-    <logger name="gov.cdc.izgateway.service" level="INFO" /><!-- Change 
-        from INFO to DEBUG for debugging -->
-    <logger name="org.flywaydb" level="INFO" />
+    <logger name="gov.cdc.izgateway.service" level="INFO" />
     <!-- Loggers that should report at INFO for functional tracking -->
     <logger name="gov.cdc.izgateway" level="INFO" />
 

@@ -1,10 +1,10 @@
 package gov.cdc.izgateway.status;
 
 import gov.cdc.izgateway.common.Constants;
-import gov.cdc.izgateway.db.service.DestinationService;
-import gov.cdc.izgateway.db.service.StatusCheckerService;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.model.IEndpointStatus;
+import gov.cdc.izgateway.service.DestinationService;
+import gov.cdc.izgateway.service.StatusCheckerService;
 import gov.cdc.izgateway.service.impl.EndpointStatusService;
 import gov.cdc.izgateway.soap.fault.FaultSupport;
 import gov.cdc.izgateway.soap.fault.MessageSupport;

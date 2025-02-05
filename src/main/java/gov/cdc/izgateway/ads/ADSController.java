@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import gov.cdc.izgateway.common.ResourceNotFoundException;
 import gov.cdc.izgateway.configuration.AppProperties;
-import gov.cdc.izgateway.db.service.StatusCheckerService.ADSChecker;
+import gov.cdc.izgateway.service.StatusCheckerService.ADSChecker;
 import gov.cdc.izgateway.logging.RequestContext;
 import gov.cdc.izgateway.logging.event.EventIdMdcConverter;
 import gov.cdc.izgateway.logging.event.TransactionData;
@@ -68,13 +68,16 @@ import javax.xml.ws.http.HTTPException;
 @Slf4j
 @RestController
 @CrossOrigin
-@RolesAllowed({ Roles.ADS, Roles.ADMIN })
-@RequestMapping({ "/rest" })
+@RolesAllowed({Roles.ADS, Roles.ADMIN})
+@RequestMapping({"/rest"})
 @Lazy(false)
 public class ADSController implements ADSChecker {
 	private static final String UNKNOWN = "UNKNOWN";
-	private static final List<String> METADATA_FIELDNAMES = getMetadataFieldNames();
-
+    private static final List<String> METADATA_FIELDNAMES = getMetadataFieldNames();
+    public static final String IZGW_ADS_VERSION1 = "DEX1.0";
+    public static final String IZGW_ADS_VERSION2 = "DEX2.0";
+    public static final List<String> DEX_VERSIONS = Collections.unmodifiableList(Arrays.asList(IZGW_ADS_VERSION1, IZGW_ADS_VERSION2)); 
+    
 	/**
 	 * An interface that can run a FileSender task
 	 * 
@@ -83,7 +86,6 @@ public class ADSController implements ADSChecker {
 	 * @param <T>
 	 */
 	public interface Execute<T> {
-
 		/**
 		 * Applies this function to the given arguments.
 		 *
@@ -92,13 +94,13 @@ public class ADSController implements ADSChecker {
 		T apply(IDestination r, FileSender s) throws Fault;
 	}
 
-	@Configuration
-	@Data
-	public static class ADSControllerConfiguration {
-		private final String mode;
-		private final IAccessControlService accessControls;
-		private final IDestinationService dests;
-		private final DEXStorageSender dexFileSender;
+    @Configuration
+    @Data
+    public static class ADSControllerConfiguration {
+        private final String mode;
+        private final IAccessControlService accessControls;
+        private final IDestinationService dests;
+        private final DEXStorageSender dexFileSender;
 		private final AzureBlobStorageSender azureFileSender;
 
 		public ADSControllerConfiguration(IAccessControlService accessControls, IDestinationService dests,
@@ -175,26 +177,25 @@ public class ADSController implements ADSChecker {
 	public String check(String dest) throws Fault {
 		return getDestinationStatus(null, null, null, dest);
 	}
-
-	@GetMapping(value = "/ads/{destinationId}/info/{tguid}", produces = { "application/json" })
+	
+    @GetMapping(value = "/ads/{destinationId}/info/{tguid}", produces = { "application/json" }) 
 	@Operation(summary = "Get the status of the specified upload", description = "Gets the upload status for the specified request")
-	@ApiResponse(responseCode = "200", description = "Success", content = @Content)
+    @ApiResponse(responseCode = "200", description = "Success", content = @Content)
 	public Object getSubmissionStatus(@RequestHeader(name = "X-Message-ID", required = false) String xMessageId,
-			@RequestHeader(name = "X-Request-ID", required = false) String xRequestId,
-			@RequestHeader(name = "X-Correlation-ID", required = false) String xCorrelationId,
+        @RequestHeader(name="X-Request-ID", required=false) String xRequestId,
+        @RequestHeader(name="X-Correlation-ID", required=false) String xCorrelationId,
 			@PathVariable String destinationId, @PathVariable String tguid) throws Fault {
-		MetadataBuilder m = new MetadataBuilder();
-		m.setRouteId(config.getDests(), destinationId);
-		m.setMessageId(getMessageId(xMessageId, xCorrelationId, xRequestId));
-		m.setProvenance(MetadataBuilder.FACILITY_IZG, RequestContext.getTransactionData());
-		m.setFileSize(0);
-
-		Metadata meta = m.build();
-		meta.setExtEvent("Status Check");
-		meta.setPath(tguid);
-
+        MetadataBuilder m = new MetadataBuilder();
+        m.setRouteId(config.getDests(), destinationId);
+        m.setMessageId(getMessageId(xMessageId, xCorrelationId, xRequestId));
+        m.setProvenance(MetadataBuilder.FACILITY_IZG, RequestContext.getTransactionData());
+        m.setFileSize(0);
+        
+        Metadata meta = m.build();
+        meta.setExtEvent("Status Check");
+        meta.setPath(tguid);
 		return logCall(meta, (IDestination r, FileSender f) -> f.getSubmissionStatus(r, meta));
-	}
+    }
 
 	private void startLogging(Metadata meta) {
 		TransactionData tData = RequestContext.getTransactionData();
@@ -265,8 +266,9 @@ public class ADSController implements ADSChecker {
 		String when = DateFormatUtils.ISO_8601_EXTENDED_DATETIME_TIME_ZONE_FORMAT.format(new Date());
 		log.info("{} deleted on {} by {}@{}, reason: {}", meta.getPath(), when, meta.getUsername(), meta.getIpAddress(),
 				reason);
-		return new ResponseEntity<>(result, null, HttpStatus.ACCEPTED);
+		return new ResponseEntity<>(result, (HttpHeaders)null, HttpStatus.ACCEPTED);
 	}
+
 
 	private RestfulFileSender getSender(IDestination route) {
 		if (route.isDex()) {
@@ -439,6 +441,7 @@ public class ADSController implements ADSChecker {
 				}
 			}
 			messageId = getMessageId(xMessageId, xCorrelationId, xRequestId);
+
 			meta = getMetadata(messageId, destinationId, facilityId, reportType, period, filename, force);
 			meta.setFileSize(file.getSize());
 			log.info(Markers2.append("Source", RequestContext.getSourceInfo()), "New ADS request ({} b) read in {} s",

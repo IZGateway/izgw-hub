@@ -10,11 +10,19 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Data;
 
+/**
+ * A record for a jurisdiction.
+ * @author Audacious Inquiry
+ */
 @SuppressWarnings("serial")
 @Entity
 @Table(name="jurisdiction")
 @Data
 public class Jurisdiction implements IJurisdiction {
+	/**
+	 * @author Audacious Inquiry
+	 *
+	 */
 	@Schema(properties= {
 			@StringToClassMapItem(key="Alaska", value=Destination.class),
 			@StringToClassMapItem(key="CDC", value=Destination.class),
@@ -22,6 +30,7 @@ public class Jurisdiction implements IJurisdiction {
 			@StringToClassMapItem(key="Maryland", value=Destination.class),
 			@StringToClassMapItem(key="Wyoming", value=Destination.class)
 		})
+	/** The map for Swagger documentation */
 	public static class Map extends MappableEntity<Jurisdiction>{}
 
     @Id
@@ -37,4 +46,21 @@ public class Jurisdiction implements IJurisdiction {
     @Schema(description="The prefix to use for destinations managed by this jurisdiction.")
     @Column(name="dest_prefix")
 	private String prefix;
+    
+	/**
+	 * Construct a new jurisidiction record.
+	 */
+	public Jurisdiction() {
+	}
+
+	/**
+	 * Construct a new jurisidiction record from an existing one
+	 * @param j The existing jurisdiction to copy from
+	 */
+	public Jurisdiction(IJurisdiction j) {
+		this.jurisdictionId = j.getJurisdictionId();
+		this.name = j.getName();
+		this.description = j.getDescription();
+		this.prefix = j.getPrefix();
+	}
 }

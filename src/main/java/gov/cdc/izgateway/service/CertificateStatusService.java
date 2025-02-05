@@ -1,12 +1,12 @@
-package gov.cdc.izgateway.db.service;
+package gov.cdc.izgateway.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import gov.cdc.izgateway.db.model.CertificateStatus;
-import gov.cdc.izgateway.db.repository.CertificateStatusRepository;
 import gov.cdc.izgateway.model.ICertificateStatus;
-import gov.cdc.izgateway.service.ICertificateStatusService;
+import gov.cdc.izgateway.repository.ICertificateStatusRepository;
+import gov.cdc.izgateway.repository.RepositoryFactory;
 
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
@@ -15,11 +15,11 @@ import java.util.List;
 
 @Service
 public class CertificateStatusService implements ICertificateStatusService {
-    private final CertificateStatusRepository certificateStatusRepository;
+    private final ICertificateStatusRepository certificateStatusRepository;
     
     @Autowired
-    public CertificateStatusService(CertificateStatusRepository certificateStatusRepository) {
-        this.certificateStatusRepository = certificateStatusRepository;
+    public CertificateStatusService(RepositoryFactory factory) {
+        this.certificateStatusRepository = factory.certificateStatusRepository();
     }
     
     @Override
@@ -29,12 +29,7 @@ public class CertificateStatusService implements ICertificateStatusService {
 
     @Override
 	public ICertificateStatus save(ICertificateStatus certificateStatus){
-    	if (certificateStatus instanceof CertificateStatus s) {
-    		return certificateStatusRepository.saveAndFlush(s);
-    	} else {
-    		CertificateStatus s = new CertificateStatus(certificateStatus);
-    		return certificateStatusRepository.saveAndFlush(s);
-    	}
+		return certificateStatusRepository.store(certificateStatus);
     }
     
     @Override
@@ -44,7 +39,6 @@ public class CertificateStatusService implements ICertificateStatusService {
 
 	@Override
 	public void refresh() {
-		// Do nothing, since no refresh needed on this one.
 	}
 
 	@Override

@@ -44,7 +44,8 @@ JAVA_TOOL_OPTS=
 if [[ $DEBUG ]]
 then
     # To enable remote debugging, set JAVA_OPTS=-Xdebug -Xrunjdwp:transport=dt_socket,address=*:8000,server=y,suspend=n
-    # NOTE: The * below is important.  It enables your debugger to attach through whatever IP Address Docker is using
+    #
+    # The * below is important.  It enables your debugger to attach through whatever IP Address Docker is using
     # to recieve connections on port 8000.  If not used, then only connections from 127.0.0.1 are accepted, and while
     # you may think your IP Address of the host is 127.0.0.1, it's not inside the container.  Change suspend=n to suspend=y to
     # debug application startup, but revert to suspend=n before final checkin.
