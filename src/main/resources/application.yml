@@ -1,4 +1,5 @@
 spring:
+    database: jpa
     autoconfigure:
         exclude:
             - org.springframework.boot.autoconfigure.websocket.servlet.WebSocketServletAutoConfiguration
@@ -81,7 +82,7 @@ server:
         
     ssl:
         enabled: true
-        client-auth: need
+        client-auth: want
         enabled-protocols: 
             - TLSv1.2
             - TLSv1.3
@@ -142,6 +143,7 @@ client:
         trust-store-password: ${COMMON_PASS:}
         trust-store-provider: BCFIPS
         trust-store-type: bcfks
+        certificate-header: ${PHIZ_CERTIFICATE_HEADER:x-amzn-mtls-clientcert-leaf}
         
 ads:
     version: ${PHIZ_WS_ADS_VERSION:V2023-09-01}
