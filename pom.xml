@@ -63,7 +63,7 @@
 		<dependency>
 		    <groupId>io.netty</groupId>
 		    <artifactId>netty-handler</artifactId>
-		    <version>4.1.118.Final</version>
+		    <version>4.1.118.Final</version><!--$NO-MVN-MAN-VER$-->
 		</dependency>
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>

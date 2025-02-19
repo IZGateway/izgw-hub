@@ -115,7 +115,7 @@ public class Application implements WebMvcConfigurer {
 	@Value("${spring.application.enable-status-check:false}")
 	private boolean statusCheck;
 	
-	@Value("${spring.database:jpa")
+	@Value("${spring.database:jpa}")
 	private String databaseType;
 	
     // Heartbeat needs it's own thread in order to not be blocked by other background tasks.
