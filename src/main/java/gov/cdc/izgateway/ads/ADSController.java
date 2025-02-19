@@ -88,8 +88,11 @@ public class ADSController implements ADSChecker {
 	public interface Execute<T> {
 		/**
 		 * Applies this function to the given arguments.
+		 * @param r The destination to send to
+		 * @param s The sender to use
 		 *
 		 * @return the function result
+		 * @throws Fault If an error occurs
 		 */
 		T apply(IDestination r, FileSender s) throws Fault;
 	}
@@ -130,6 +133,7 @@ public class ADSController implements ADSChecker {
 	 * @param xCorrelationId
 	 * @param destinationId
 	 * @return OK if the service is available, or throws an exception if it is not
+	 * @throws Fault If a generic fault occurs
 	 * @throws UnknownDestinationFault    If the destination is not known.
 	 * @throws MetadataFault              If there is an error in metadata
 	 * @throws DestinationConnectionFault If the destination could not be reached

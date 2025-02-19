@@ -110,7 +110,6 @@ public class StatusController {
 	 * connecting because of a circuit-breaker failure, this will clear the failure
 	 * until the next time the circuit breaker is thrown.
 	 * 
-	 * @param servletResp
 	 * @param id          The destination whose history should be removed.
 	 */
     @Operation(summary = "Delete the status history for a destination",

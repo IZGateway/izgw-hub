@@ -65,7 +65,6 @@ public class AppController {
 	
 	/**
 	 * Report the health of the application, returning 200 OK and the health status.
-	 * @param resp	The response.
 	 * @return The Health of the application.
 	 */
 	@Operation(summary = "Get the health status of the application",

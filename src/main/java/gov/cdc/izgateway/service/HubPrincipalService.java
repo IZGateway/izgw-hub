@@ -23,7 +23,7 @@ public class HubPrincipalService implements PrincipalService {
     /**
      * Get the principal from the request. This will first try to get the principal from the certificate, if that fails, it will return an UnauthenticatedPrincipal.
      * @param request
-     * @return
+     * @return The new principal
      */
     @Override
     public IzgPrincipal getPrincipal(HttpServletRequest request) {

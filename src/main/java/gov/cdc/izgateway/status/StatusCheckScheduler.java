@@ -56,6 +56,9 @@ public class StatusCheckScheduler {
 
     /**
      *	Bridges the diagnostic lookup in the repository.
+     * @param faultName The name of the fault
+     * @param faultCode The code of the fault
+     * @return The diagnostic string for the fault
      */
     public String getDiagnostics(String faultName, String faultCode) {
         FaultSupport s = MessageSupport.getTemplate(faultCode, faultName);

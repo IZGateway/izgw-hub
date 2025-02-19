@@ -46,7 +46,9 @@ public class IntegrityCheck {
     private final String mimeType;
     
     /** Construct a new integity check object
-     * @param mimeType 
+     * @param hash The hash code value
+     * @param length The length of the content
+     * @param mimeType The mime type of the content
      */
     public IntegrityCheck(byte[] hash, long length, String mimeType) {
         this.hash = hash;
