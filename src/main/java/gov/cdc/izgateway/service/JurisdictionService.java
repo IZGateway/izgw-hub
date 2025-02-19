@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import gov.cdc.izgateway.model.IJurisdiction;
 import gov.cdc.izgateway.repository.IJurisdictionRepository;
 import gov.cdc.izgateway.repository.RepositoryFactory;
-import gov.cdc.izgateway.utils.SystemUtils;
 
 @Service
 @Lazy(false)

@@ -3,12 +3,10 @@ package gov.cdc.izgateway.service;
 import gov.cdc.izgateway.security.IzgPrincipal;
 import gov.cdc.izgateway.security.UnauthenticatedPrincipal;
 import gov.cdc.izgateway.principal.provider.CertificatePrincipalProvider;
-import gov.cdc.izgateway.principal.provider.JwtPrincipalProvider;
 import gov.cdc.izgateway.security.service.PrincipalService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
