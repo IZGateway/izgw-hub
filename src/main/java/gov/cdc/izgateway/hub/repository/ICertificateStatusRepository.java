@@ -1,4 +1,4 @@
-package gov.cdc.izgateway.repository;
+package gov.cdc.izgateway.hub.repository;
 
 import java.util.List;
 

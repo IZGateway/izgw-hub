@@ -6,12 +6,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Configuration;
-import gov.cdc.izgateway.repository.IAccessControlRepository;
-import gov.cdc.izgateway.repository.ICertificateStatusRepository;
-import gov.cdc.izgateway.repository.IDestinationRepository;
-import gov.cdc.izgateway.repository.IJurisdictionRepository;
-import gov.cdc.izgateway.repository.IMessageHeaderRepository;
-import gov.cdc.izgateway.repository.RepositoryFactory;
+
+import gov.cdc.izgateway.hub.repository.IAccessControlRepository;
+import gov.cdc.izgateway.hub.repository.ICertificateStatusRepository;
+import gov.cdc.izgateway.hub.repository.IDestinationRepository;
+import gov.cdc.izgateway.hub.repository.IJurisdictionRepository;
+import gov.cdc.izgateway.hub.repository.IMessageHeaderRepository;
+import gov.cdc.izgateway.hub.repository.RepositoryFactory;
 
 /**
  * Creates the necessary Beans for DynamoDB repository access

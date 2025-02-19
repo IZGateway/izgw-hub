@@ -1,4 +1,4 @@
-package gov.cdc.izgateway.service;
+package gov.cdc.izgateway.hub.service;
 
 import net.logstash.logback.util.StringUtils;
 
@@ -6,9 +6,10 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import gov.cdc.izgateway.hub.repository.IMessageHeaderRepository;
+import gov.cdc.izgateway.hub.repository.RepositoryFactory;
 import gov.cdc.izgateway.model.IMessageHeader;
-import gov.cdc.izgateway.repository.IMessageHeaderRepository;
-import gov.cdc.izgateway.repository.RepositoryFactory;
+import gov.cdc.izgateway.service.IMessageHeaderService;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;

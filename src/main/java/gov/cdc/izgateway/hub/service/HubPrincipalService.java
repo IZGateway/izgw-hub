@@ -1,4 +1,4 @@
-package gov.cdc.izgateway.service;
+package gov.cdc.izgateway.hub.service;
 
 import gov.cdc.izgateway.security.IzgPrincipal;
 import gov.cdc.izgateway.security.UnauthenticatedPrincipal;

@@ -3,8 +3,8 @@ package gov.cdc.izgateway.dynamodb.repository;
 import org.springframework.beans.factory.annotation.Autowired;
 import gov.cdc.izgateway.dynamodb.DynamoDbRepository;
 import gov.cdc.izgateway.dynamodb.model.Jurisdiction;
+import gov.cdc.izgateway.hub.repository.IJurisdictionRepository;
 import gov.cdc.izgateway.model.IJurisdiction;
-import gov.cdc.izgateway.repository.IJurisdictionRepository;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 
 /**
