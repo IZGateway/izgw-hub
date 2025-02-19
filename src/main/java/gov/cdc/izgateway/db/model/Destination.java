@@ -102,6 +102,11 @@ public class Destination implements IEndpoint, Serializable, HasDestinationUri, 
 	@JsonIgnore
 	@Schema(description = "The destination endpoint password", hidden=true)
 	private String password;
+	
+	@Column(name = "pass_expiry")
+	@JsonIgnore
+	@Schema(description = "The expiration date of the password", hidden=true)
+	private Date passExpiry;
 
 	@Column(name = "dest_version")
 	@Schema(description = "The schema or protocol version for use with the endpoint", 

@@ -8,6 +8,7 @@ import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbConvertedBy;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbIgnore;
 import org.apache.commons.lang3.StringUtils;
+import org.joda.time.Period;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -122,6 +123,10 @@ public class Destination extends DynamoDbEntity implements IEndpoint, Serializab
 	@JsonIgnore
 	@Schema(description = "The destination endpoint password", hidden=true)
 	private String password;
+	
+	@JsonIgnore
+	@Schema(description = "The expiration date of the password", hidden=true)
+	private Date passExpiry;
 
 	@Schema(description = "The schema or protocol version for use with the endpoint", 
 		hidden=true, pattern="2011|2014|V2022-12-31|DEX1.0")
@@ -148,8 +153,13 @@ public class Destination extends DynamoDbEntity implements IEndpoint, Serializab
 	public Date getMaintEnd() {
 		return maintEnd;
 	}
+	
+	@DynamoDbConvertedBy(DateConverter.class)
+	public Date getPassExpiry() {
+		return passExpiry;
+	}
 
-  @Schema(description = "The identifier of the facility to use with test messages for this endpoint")
+	@Schema(description = "The identifier of the facility to use with test messages for this endpoint")
 	private String facilityId;
 
 	@Schema(description = "The MSH3 value to use with test messages for this endpoint")
@@ -195,6 +205,7 @@ public class Destination extends DynamoDbEntity implements IEndpoint, Serializab
 		this.maintReason = that.getMaintReason();
 		this.maintStart = that.getMaintStart();
 		this.maintEnd = that.getMaintEnd();
+		this.passExpiry = that.getPassExpiry();
 		this.facilityId = that.getFacilityId();
 		this.msh3 = that.getMsh3();
 		this.msh4 = that.getMsh4();
@@ -221,6 +232,7 @@ public class Destination extends DynamoDbEntity implements IEndpoint, Serializab
 		dest.maintReason = null;
 		dest.maintStart = null;
 		dest.maintEnd = null;
+		dest.passExpiry = new Date(System.currentTimeMillis() + Period.days(365).getMillis());
 		dest.facilityId = null;
 		dest.msh3 = "IZGW";
 		dest.msh4 = "IZGW";
@@ -294,6 +306,7 @@ public class Destination extends DynamoDbEntity implements IEndpoint, Serializab
 		Destination p = new Destination(this);
 		p.username = null;
 		p.password = null;
+		p.passExpiry = null;
 		return p;
 	}
 
