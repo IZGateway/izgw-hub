@@ -1,9 +1,5 @@
-package gov.cdc.izgateway.repository;
+package gov.cdc.izgateway.hub.repository;
 
-import java.util.List;
-import java.util.Map;
-
-import gov.cdc.izgateway.db.model.Jurisdiction;
 import gov.cdc.izgateway.model.IJurisdiction;
 
 /**

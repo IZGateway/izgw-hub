@@ -82,7 +82,7 @@ public class ADSUtils {
      * @return	True if no invalid characters are found.
      */
     public static boolean validateFilename(String filename) {
-        if (filename.length() == 0 && filename.length() >= 1024) {
+        if (StringUtils.isEmpty(filename) || filename.length() >= 1024) {
             return false;
         }
         return filename.codePoints().allMatch(c -> c > 0x1f && c < 0xd7ff && Arrays.binarySearch(DISALLOWED, (char)c) < 0);
@@ -159,7 +159,7 @@ public class ADSUtils {
 				return token;
 			}
 		}
-		return null;
+		return "";
 	}
 	
 	/**

@@ -1,4 +1,4 @@
-package gov.cdc.izgateway.service;
+package gov.cdc.izgateway.hub.service;
 
 import java.time.Duration;
 import java.util.LinkedHashMap;
@@ -7,10 +7,10 @@ import java.util.Map;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
+import gov.cdc.izgateway.hub.repository.IJurisdictionRepository;
+import gov.cdc.izgateway.hub.repository.RepositoryFactory;
 import gov.cdc.izgateway.model.IJurisdiction;
-import gov.cdc.izgateway.repository.IJurisdictionRepository;
-import gov.cdc.izgateway.repository.RepositoryFactory;
-import gov.cdc.izgateway.utils.SystemUtils;
+import gov.cdc.izgateway.service.IJurisdictionService;
 
 @Service
 @Lazy(false)

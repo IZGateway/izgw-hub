@@ -1,6 +1,4 @@
-package gov.cdc.izgateway.repository;
-
-import java.util.List;
+package gov.cdc.izgateway.hub.repository;
 
 import gov.cdc.izgateway.model.IMessageHeader;
 

@@ -1,4 +1,4 @@
-package gov.cdc.izgateway.service;
+package gov.cdc.izgateway.hub.service;
 
 import gov.cdc.izgateway.configuration.AppProperties;
 import gov.cdc.izgateway.configuration.StatusCheckerConfiguration;
@@ -227,7 +227,7 @@ public class StatusCheckerService implements IStatusCheckerService {
 
         tData.setCipherSuite("INTERNAL_JAVA_CALL");
         source.setCipherSuite("INTERNAL_JAVA_CALL");
-        source.setPrincipal(RequestContext.getPrincipal());
+        source.setCertificate(clientTlsSupport.getCertificate());
         source.setFacilityId("IZGW");
         source.setHost(SystemUtils.getHostname());
         source.setId("izgw");

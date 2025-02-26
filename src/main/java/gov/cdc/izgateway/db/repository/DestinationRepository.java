@@ -5,12 +5,13 @@ package gov.cdc.izgateway.db.repository;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import gov.cdc.izgateway.db.model.Destination;
 import gov.cdc.izgateway.db.model.Destination.DestinationId;
+import gov.cdc.izgateway.hub.repository.IDestinationRepository;
 import gov.cdc.izgateway.model.IDestination;
-import gov.cdc.izgateway.repository.IDestinationRepository;
 import gov.cdc.izgateway.utils.SystemUtils;
 
 /**
@@ -34,8 +35,8 @@ public interface DestinationRepository extends JpaRepository<Destination, Destin
 	 * 
 	 * @return	The list of destinations with the given destination type.
 	 */
-	@Query(value = "SELECT * FROM destinations WHERE dest_type = ?1", nativeQuery = true)
-	List<Destination> findAllByDestTypeId(int destType);
+	@Query(value = "SELECT * FROM destinations WHERE dest_type = :destType ", nativeQuery = true)
+	List<Destination> findAllByDestTypeId(@Param("destType") int destType);
 
 	/**
 	 * Override the JPA default implementation with findAllByDestIdTypeId

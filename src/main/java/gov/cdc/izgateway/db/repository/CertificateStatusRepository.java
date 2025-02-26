@@ -6,8 +6,8 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import gov.cdc.izgateway.db.model.CertificateStatus;
+import gov.cdc.izgateway.hub.repository.ICertificateStatusRepository;
 import gov.cdc.izgateway.model.ICertificateStatus;
-import gov.cdc.izgateway.repository.ICertificateStatusRepository;
 
 /**
  * Interface for the CertificateStatusRepository

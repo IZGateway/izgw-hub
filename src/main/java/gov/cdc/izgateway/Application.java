@@ -39,7 +39,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.boot.web.embedded.tomcat.TomcatConnectorCustomizer;
 import org.springframework.boot.web.embedded.tomcat.TomcatContextCustomizer;
@@ -50,7 +49,6 @@ import org.springframework.boot.web.servlet.ServletContextInitializer;
 import org.springframework.context.ApplicationContextException;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.security.config.Customizer;
@@ -74,14 +72,15 @@ import gov.cdc.izgateway.security.SSLImplementation;
 import gov.cdc.izgateway.security.ocsp.RevocationChecker;
 import gov.cdc.izgateway.service.IDestinationService;
 import gov.cdc.izgateway.service.IMessageHeaderService;
-import gov.cdc.izgateway.service.MessageHeaderService;
 import gov.cdc.izgateway.soap.mock.perf.PerformanceSimulatorMultiton;
 import gov.cdc.izgateway.soap.net.SoapMessageConverter;
 import gov.cdc.izgateway.soap.net.SoapMessageWriter;
 import gov.cdc.izgateway.status.StatusCheckScheduler;
+import gov.cdc.izgateway.utils.SystemUtils;
 import gov.cdc.izgateway.utils.UtilizationService;
 import gov.cdc.izgateway.common.HealthService;
 import gov.cdc.izgateway.configuration.AppProperties;
+import gov.cdc.izgateway.hub.service.MessageHeaderService;
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.annotations.info.Contact;
 import io.swagger.v3.oas.annotations.info.License;
@@ -116,7 +115,7 @@ public class Application implements WebMvcConfigurer {
 	@Value("${spring.application.enable-status-check:false}")
 	private boolean statusCheck;
 	
-	@Value("${spring.database:jpa")
+	@Value("${spring.database:jpa}")
 	private String databaseType;
 	
     // Heartbeat needs it's own thread in order to not be blocked by other background tasks.
@@ -259,19 +258,20 @@ public class Application implements WebMvcConfigurer {
         }
         StatusCheckScheduler sc = ctx.getBean(StatusCheckScheduler.class);
         Application app = ctx.getBean(Application.class);
-    	new Thread(() -> {
+    	new Thread(() -> 
     		// Load Mock IIS in background
-    		PerformanceSimulatorMultiton.getInstance(PerformanceSimulatorMultiton.PERFORMANCE_PROFILE_MOCK_IIS);
-    	}).start();
+    		PerformanceSimulatorMultiton.getInstance(PerformanceSimulatorMultiton.PERFORMANCE_PROFILE_MOCK_IIS)
+    	).start();
     	String database = HealthService.getHealth().getDatabase();
         try {
             // Test for database connectivity and prefetch caches.
             List<IDestination> list = destinationService.getAllDestinations();
 
             if (list.isEmpty() && abortOnNoIIS) {
-            	HealthService.setHealthy(false, "No IIS Connections available");
-                log.error("No IIS Connections are available from {}", database);
-                throw new ServiceConfigurationError("No IIS Connections are available from " + database);
+            	HealthService.setHealthy(false, "No IIS Connections available in " + SystemUtils.getDestTypeAsString());
+                log.error("No IIS Connections are available from {} in {}", database, SystemUtils.getDestTypeAsString());
+                throw new ServiceConfigurationError(
+                	"No IIS Connections are available from " + database + " in " + SystemUtils.getDestTypeAsString());
             } else {
                 // Prefetch to populate cache
                 messageHeaderService.getAllMessageHeaders();

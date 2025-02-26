@@ -1,4 +1,4 @@
-package gov.cdc.izgateway.service;
+package gov.cdc.izgateway.hub.service;
 
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.InitializingBean;
@@ -7,10 +7,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestMethod;
 
+import gov.cdc.izgateway.hub.repository.IAccessControlRepository;
+import gov.cdc.izgateway.hub.repository.RepositoryFactory;
 import gov.cdc.izgateway.model.IAccessControl;
-import gov.cdc.izgateway.repository.IAccessControlRepository;
-import gov.cdc.izgateway.repository.RepositoryFactory;
 import gov.cdc.izgateway.security.Roles;
+import gov.cdc.izgateway.service.IAccessControlRegistry;
+import gov.cdc.izgateway.service.IAccessControlService;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -62,7 +64,7 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 
     /**
      * Create a new AccessControlService
-     * @param accessControlRepository	The repository for accessing access control entries in the database
+     * @param factory The repository factory to use
      * @param registry	The registry for managing access control to methods
      */
     @Autowired

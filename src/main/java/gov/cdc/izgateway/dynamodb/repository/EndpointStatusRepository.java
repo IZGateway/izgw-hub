@@ -1,6 +1,5 @@
 package gov.cdc.izgateway.dynamodb.repository;
 
-import java.time.Period;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 

@@ -259,7 +259,6 @@ abstract class AbstractPerformanceSimulator  implements PerformanceSimulatorInte
 
     /**
      * Given an inbound message, return an appropriately sized response.
-     * @param hl7RequestMessage The inbound message
      * @return An appropriate response
      */
     @Override

@@ -3,8 +3,8 @@ package gov.cdc.izgateway.dynamodb.repository;
 import org.springframework.beans.factory.annotation.Autowired;
 import gov.cdc.izgateway.dynamodb.DynamoDbRepository;
 import gov.cdc.izgateway.dynamodb.model.MessageHeader;
+import gov.cdc.izgateway.hub.repository.IMessageHeaderRepository;
 import gov.cdc.izgateway.model.IMessageHeader;
-import gov.cdc.izgateway.repository.IMessageHeaderRepository;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 
 /**

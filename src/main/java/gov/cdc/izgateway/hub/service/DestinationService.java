@@ -1,4 +1,4 @@
-package gov.cdc.izgateway.service;
+package gov.cdc.izgateway.hub.service;
 
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.InitializingBean;
@@ -6,10 +6,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import gov.cdc.izgateway.db.model.Destination;
+import gov.cdc.izgateway.hub.repository.IDestinationRepository;
+import gov.cdc.izgateway.hub.repository.RepositoryFactory;
 import gov.cdc.izgateway.logging.markers.Markers2;
 import gov.cdc.izgateway.model.IDestination;
-import gov.cdc.izgateway.repository.IDestinationRepository;
-import gov.cdc.izgateway.repository.RepositoryFactory;
+import gov.cdc.izgateway.service.IDestinationService;
 import gov.cdc.izgateway.utils.SystemUtils;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -90,7 +91,7 @@ public class DestinationService implements InitializingBean, IDestinationService
     
     /**
      * Construct a service using the specified repository
-     * @param destinationRepository the repository
+     * @param factory the repository factory
      */
     public DestinationService(RepositoryFactory factory) {
         this.destinationRepository = factory.destinationRepository();

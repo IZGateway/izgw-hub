@@ -2,6 +2,7 @@ package gov.cdc.izgateway.ads;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import gov.cdc.izgateway.hub.service.StatusCheckerService;
 import gov.cdc.izgateway.logging.RequestContext;
 import gov.cdc.izgateway.logging.event.TransactionData;
 import gov.cdc.izgateway.logging.info.HostInfo;
@@ -9,7 +10,6 @@ import gov.cdc.izgateway.logging.markers.Markers2;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.security.ClientTlsSupport;
 import gov.cdc.izgateway.service.IDestinationService;
-import gov.cdc.izgateway.service.StatusCheckerService;
 import gov.cdc.izgateway.soap.fault.*;
 import gov.cdc.izgateway.utils.*;
 import jakarta.activation.DataHandler;
@@ -350,10 +350,18 @@ public abstract class RestfulFileSender implements FileSender {
             if (ic.getHash().length != 0) {
             	headers.add(new BasicHeader("Content-MD5", ic.toString()));
             }
-            headers.add(new BasicHeader("Content-Length", Long.toString(ic.getLength())));
             meta.setFileSize(ic.getLength());
         }
-
+        
+        return getHeaders(meta, headers, ic == null ? null : ic.getMimeType());
+    }
+    
+	protected List<Header> getHeaders(Metadata meta, List<Header> headers, String mimeType) {
+		if (headers == null) {
+	        headers = new ArrayList<>();
+		}
+		
+		headers.add(new BasicHeader("Content-Length", Long.toString(meta.getFileSize())));
         addHeadersFromMetadata(meta, headers);
         // Set the Content-Type from the filename.
         switch (StringUtils.substringAfterLast(meta.getFilename(), ".").toLowerCase()) {
@@ -371,8 +379,8 @@ public abstract class RestfulFileSender implements FileSender {
             headers.add(new BasicHeader(HttpHeaders.CONTENT_TYPE, "application/x-zip-compressed"));
             break;
         default:
-            if (ic != null && ic.hasMimeType()) {
-                headers.add(new BasicHeader(HttpHeaders.CONTENT_TYPE, ic.getMimeType()));
+            if (!StringUtils.isBlank(mimeType)) {
+                headers.add(new BasicHeader(HttpHeaders.CONTENT_TYPE, mimeType));
             } else {
                 headers.add(new BasicHeader(HttpHeaders.CONTENT_TYPE, "application/x-zip-compressed"));
             }
@@ -380,7 +388,7 @@ public abstract class RestfulFileSender implements FileSender {
         }
         headers.add(new BasicHeader("x-ms-client-request-id", meta.getExtObjectKey()));
         return headers;
-    }
+	}
     
 	protected void addHeadersFromMetadata(Metadata meta, List<Header> headers) {
     	boolean isProd = !"test".equals(meta.getDestinationId());
@@ -476,12 +484,7 @@ public abstract class RestfulFileSender implements FileSender {
         throws MetadataFault {
         try {
             URI base = new URI(r.getDestinationUri());
-            base = base.resolve(ADSUtils.createUrl(base, meta));
-            String token = r.getPassword();
-            if (r.isAzure()) {
-            	token = ADSUtils.getAzureToken(token);
-            }
-            return new URL(base.getScheme(), base.getHost(), base.getPort(), base.getPath() + "?" + token);
+            return base.resolve(ADSUtils.createUrl(base, meta)).toURL();
         } catch (Exception e) {
             throw new MetadataFault(meta, e, e.getMessage());
         }

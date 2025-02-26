@@ -1,4 +1,4 @@
-package gov.cdc.izgateway.repository;
+package gov.cdc.izgateway.hub.repository;
 
 import java.util.List;
 
@@ -13,6 +13,7 @@ public interface IDestinationRepository extends IRepository<IDestination> {
 
 	/**
 	 * Get all destinations for the specified environment.
+	 * @param destType The type of destination to find
 	 * @return	All destinations enabled for the specified environment.
 	 */
 	List<? extends IDestination> findAllByDestTypeId(int destType);

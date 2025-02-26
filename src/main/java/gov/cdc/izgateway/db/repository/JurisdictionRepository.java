@@ -4,8 +4,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import gov.cdc.izgateway.db.model.Jurisdiction;
+import gov.cdc.izgateway.hub.repository.IJurisdictionRepository;
 import gov.cdc.izgateway.model.IJurisdiction;
-import gov.cdc.izgateway.repository.IJurisdictionRepository;
 
 /**
  * The interface for the MySql Jurisdiction repository
