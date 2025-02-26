@@ -39,7 +39,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.boot.web.embedded.tomcat.TomcatConnectorCustomizer;
 import org.springframework.boot.web.embedded.tomcat.TomcatContextCustomizer;
@@ -50,7 +49,6 @@ import org.springframework.boot.web.servlet.ServletContextInitializer;
 import org.springframework.context.ApplicationContextException;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.security.config.Customizer;
@@ -117,7 +115,7 @@ public class Application implements WebMvcConfigurer {
 	@Value("${spring.application.enable-status-check:false}")
 	private boolean statusCheck;
 	
-	@Value("${spring.database:jpa")
+	@Value("${spring.database:jpa}")
 	private String databaseType;
 	
     // Heartbeat needs it's own thread in order to not be blocked by other background tasks.

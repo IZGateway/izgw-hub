@@ -1,10 +1,6 @@
 package gov.cdc.izgateway.repository;
 
-import java.util.List;
-import java.util.Optional;
-
 import gov.cdc.izgateway.model.IAccessControl;
-import gov.cdc.izgateway.model.IAccessControlId;
 
 /**
  * The IAccessControlRepository interface supports access to access control

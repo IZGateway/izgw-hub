@@ -37,6 +37,7 @@ public interface Histogram {
 
     /**
      * Given a histogram return a random variate from the distribution described it.
+     * @param rand The random number generator
      * @param max
      * @return The random variate or 0 if out of range.
      */

@@ -62,7 +62,7 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 
     /**
      * Create a new AccessControlService
-     * @param accessControlRepository	The repository for accessing access control entries in the database
+     * @param factory The repository factory to use
      * @param registry	The registry for managing access control to methods
      */
     @Autowired

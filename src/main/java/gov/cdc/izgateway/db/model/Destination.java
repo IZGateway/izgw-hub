@@ -12,7 +12,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonFormat.Shape;
 
-import gov.cdc.izgateway.ads.ADSController;
 import gov.cdc.izgateway.common.Constants;
 import gov.cdc.izgateway.common.HasDestinationUri;
 import gov.cdc.izgateway.model.IDestination;

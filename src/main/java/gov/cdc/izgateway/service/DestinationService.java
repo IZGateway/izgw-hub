@@ -90,7 +90,7 @@ public class DestinationService implements InitializingBean, IDestinationService
     
     /**
      * Construct a service using the specified repository
-     * @param destinationRepository the repository
+     * @param factory the repository factory
      */
     public DestinationService(RepositoryFactory factory) {
         this.destinationRepository = factory.destinationRepository();
