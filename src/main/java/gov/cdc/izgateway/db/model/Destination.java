@@ -14,11 +14,11 @@ import com.fasterxml.jackson.annotation.JsonFormat.Shape;
 
 import gov.cdc.izgateway.common.Constants;
 import gov.cdc.izgateway.common.HasDestinationUri;
+import gov.cdc.izgateway.hub.service.JurisdictionService;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.model.IDestinationId;
 import gov.cdc.izgateway.model.IEndpoint;
 import gov.cdc.izgateway.model.IJurisdiction;
-import gov.cdc.izgateway.service.JurisdictionService;
 import gov.cdc.izgateway.utils.SystemUtils;
 import io.swagger.v3.oas.annotations.StringToClassMapItem;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -102,6 +102,11 @@ public class Destination implements IEndpoint, Serializable, HasDestinationUri, 
 	@JsonIgnore
 	@Schema(description = "The destination endpoint password", hidden=true)
 	private String password;
+	
+	@Column(name = "pass_expiry")
+	@JsonIgnore
+	@Schema(description = "The expiration date of the password", hidden=true)
+	private Date passExpiry;
 
 	@Column(name = "dest_version")
 	@Schema(description = "The schema or protocol version for use with the endpoint", 

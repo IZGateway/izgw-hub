@@ -12,8 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import gov.cdc.izgateway.db.model.AccessControl;
 import gov.cdc.izgateway.db.model.AccessControlId;
+import gov.cdc.izgateway.hub.repository.IAccessControlRepository;
 import gov.cdc.izgateway.model.IAccessControl;
-import gov.cdc.izgateway.repository.IAccessControlRepository;
 import gov.cdc.izgateway.service.IAccessControlService;
 import gov.cdc.izgateway.utils.SystemUtils;
 

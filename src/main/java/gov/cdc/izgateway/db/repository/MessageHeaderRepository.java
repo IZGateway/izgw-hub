@@ -5,8 +5,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import gov.cdc.izgateway.db.model.MessageHeader;
+import gov.cdc.izgateway.hub.repository.IMessageHeaderRepository;
 import gov.cdc.izgateway.model.IMessageHeader;
-import gov.cdc.izgateway.repository.IMessageHeaderRepository;
 
 /**
  * Message Header Repository stores information about which MSH values map to individual use cases

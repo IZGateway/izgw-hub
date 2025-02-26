@@ -1,4 +1,4 @@
-package gov.cdc.izgateway.service;
+package gov.cdc.izgateway.hub.service;
 
 import gov.cdc.izgateway.configuration.AppProperties;
 import gov.cdc.izgateway.configuration.StatusCheckerConfiguration;
@@ -16,6 +16,8 @@ import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.model.IEndpointStatus;
 import gov.cdc.izgateway.model.RetryStrategy;
 import gov.cdc.izgateway.security.ClientTlsSupport;
+import gov.cdc.izgateway.service.IDestinationService;
+import gov.cdc.izgateway.service.IStatusCheckerService;
 import gov.cdc.izgateway.service.impl.EndpointStatusService;
 import gov.cdc.izgateway.soap.fault.Fault;
 import gov.cdc.izgateway.soap.fault.FaultSupport;

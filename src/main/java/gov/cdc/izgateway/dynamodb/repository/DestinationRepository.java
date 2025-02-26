@@ -5,8 +5,8 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import gov.cdc.izgateway.dynamodb.DynamoDbRepository;
 import gov.cdc.izgateway.dynamodb.model.Destination;
+import gov.cdc.izgateway.hub.repository.IDestinationRepository;
 import gov.cdc.izgateway.model.IDestination;
-import gov.cdc.izgateway.repository.IDestinationRepository;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 
 /**

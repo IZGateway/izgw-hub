@@ -10,8 +10,8 @@ import org.springframework.stereotype.Repository;
 
 import gov.cdc.izgateway.db.model.Destination;
 import gov.cdc.izgateway.db.model.Destination.DestinationId;
+import gov.cdc.izgateway.hub.repository.IDestinationRepository;
 import gov.cdc.izgateway.model.IDestination;
-import gov.cdc.izgateway.repository.IDestinationRepository;
 import gov.cdc.izgateway.utils.SystemUtils;
 
 /**

@@ -1,12 +1,13 @@
-package gov.cdc.izgateway.service;
+package gov.cdc.izgateway.hub.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import gov.cdc.izgateway.db.model.CertificateStatus;
+import gov.cdc.izgateway.hub.repository.ICertificateStatusRepository;
+import gov.cdc.izgateway.hub.repository.RepositoryFactory;
 import gov.cdc.izgateway.model.ICertificateStatus;
-import gov.cdc.izgateway.repository.ICertificateStatusRepository;
-import gov.cdc.izgateway.repository.RepositoryFactory;
+import gov.cdc.izgateway.service.ICertificateStatusService;
 
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;

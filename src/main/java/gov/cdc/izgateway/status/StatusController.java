@@ -2,13 +2,13 @@ package gov.cdc.izgateway.status;
 
 import gov.cdc.izgateway.common.ResourceNotFoundException;
 import gov.cdc.izgateway.db.model.EndpointStatus;
+import gov.cdc.izgateway.hub.service.DestinationService;
+import gov.cdc.izgateway.hub.service.StatusCheckerService;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.model.IEndpointStatus;
 import gov.cdc.izgateway.repository.EndpointStatusRepository;
 import gov.cdc.izgateway.security.AccessControlRegistry;
 import gov.cdc.izgateway.security.Roles;
-import gov.cdc.izgateway.service.DestinationService;
-import gov.cdc.izgateway.service.StatusCheckerService;
 import gov.cdc.izgateway.service.impl.EndpointStatusService;
 import gov.cdc.izgateway.utils.ExecUtils;
 import io.swagger.v3.oas.annotations.Operation;

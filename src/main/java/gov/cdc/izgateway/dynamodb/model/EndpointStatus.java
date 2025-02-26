@@ -5,12 +5,12 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 import gov.cdc.izgateway.common.Constants;
 import gov.cdc.izgateway.dynamodb.DynamoDbEntity;
+import gov.cdc.izgateway.hub.service.JurisdictionService;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.model.IEndpoint;
 import gov.cdc.izgateway.model.IEndpointStatus;
 import gov.cdc.izgateway.model.IJurisdiction;
 import gov.cdc.izgateway.model.RetryStrategy;
-import gov.cdc.izgateway.service.JurisdictionService;
 import gov.cdc.izgateway.utils.SystemUtils;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AccessLevel;

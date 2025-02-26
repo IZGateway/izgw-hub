@@ -8,6 +8,7 @@ import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbConvertedBy;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbIgnore;
 import org.apache.commons.lang3.StringUtils;
+import org.joda.time.Period;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -19,11 +20,12 @@ import gov.cdc.izgateway.common.Constants;
 import gov.cdc.izgateway.common.HasDestinationUri;
 import gov.cdc.izgateway.dynamodb.DateConverter;
 import gov.cdc.izgateway.dynamodb.DynamoDbEntity;
+import gov.cdc.izgateway.hub.service.JurisdictionService;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.model.IDestinationId;
 import gov.cdc.izgateway.model.IEndpoint;
 import gov.cdc.izgateway.model.IJurisdiction;
-import gov.cdc.izgateway.service.JurisdictionService;
+import gov.cdc.izgateway.service.IJurisdictionService;
 import gov.cdc.izgateway.utils.SystemUtils;
 import io.swagger.v3.oas.annotations.StringToClassMapItem;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -100,6 +102,8 @@ public class Destination extends DynamoDbEntity implements IEndpoint, Serializab
 
 	@Schema(hidden = true)
 	private DestinationId id = new DestinationId();
+	
+	@Override
 	public void setId(IDestinationId id) {
 		if (id instanceof DestinationId did) {
 			this.id = did;
@@ -107,6 +111,8 @@ public class Destination extends DynamoDbEntity implements IEndpoint, Serializab
 			this.id = new DestinationId(id);
 		}
 	}
+	
+	@Override
 	@DynamoDbIgnore
 	public DestinationId getId() {
 		return this.id;
@@ -122,6 +128,10 @@ public class Destination extends DynamoDbEntity implements IEndpoint, Serializab
 	@JsonIgnore
 	@Schema(description = "The destination endpoint password", hidden=true)
 	private String password;
+	
+	@JsonIgnore
+	@Schema(description = "The expiration date of the password", hidden=true)
+	private Date passExpiry;
 
 	@Schema(description = "The schema or protocol version for use with the endpoint", 
 		hidden=true, pattern="2011|2014|V2022-12-31|DEX1.0")
@@ -137,6 +147,8 @@ public class Destination extends DynamoDbEntity implements IEndpoint, Serializab
 	@Schema(description = "The start of the maintenance period")
 	@JsonFormat(shape = Shape.STRING, pattern = Constants.TIMESTAMP_FORMAT)
 	private Date maintStart;
+	
+	@Override
 	@DynamoDbConvertedBy(DateConverter.class)
 	public Date getMaintStart() {
 		return maintStart;
@@ -144,12 +156,20 @@ public class Destination extends DynamoDbEntity implements IEndpoint, Serializab
 
 	@Schema(description = "The end of the maintenance period, or null if unspecified")
 	private Date maintEnd;
+
+	@Override
 	@DynamoDbConvertedBy(DateConverter.class)
 	public Date getMaintEnd() {
 		return maintEnd;
 	}
+	
+	@Override
+	@DynamoDbConvertedBy(DateConverter.class)
+	public Date getPassExpiry() {
+		return passExpiry;
+	}
 
-  @Schema(description = "The identifier of the facility to use with test messages for this endpoint")
+	@Schema(description = "The identifier of the facility to use with test messages for this endpoint")
 	private String facilityId;
 
 	@Schema(description = "The MSH3 value to use with test messages for this endpoint")
@@ -195,6 +215,7 @@ public class Destination extends DynamoDbEntity implements IEndpoint, Serializab
 		this.maintReason = that.getMaintReason();
 		this.maintStart = that.getMaintStart();
 		this.maintEnd = that.getMaintEnd();
+		this.passExpiry = that.getPassExpiry();
 		this.facilityId = that.getFacilityId();
 		this.msh3 = that.getMsh3();
 		this.msh4 = that.getMsh4();
@@ -221,6 +242,7 @@ public class Destination extends DynamoDbEntity implements IEndpoint, Serializab
 		dest.maintReason = null;
 		dest.maintStart = null;
 		dest.maintEnd = null;
+		dest.passExpiry = new Date(System.currentTimeMillis() + Period.days(365).getMillis());
 		dest.facilityId = null;
 		dest.msh3 = "IZGW";
 		dest.msh4 = "IZGW";
@@ -234,12 +256,14 @@ public class Destination extends DynamoDbEntity implements IEndpoint, Serializab
 	/**
 	 * The destination type name.
 	 */
+	@Override
 	@DynamoDbIgnore
 	@Schema(description = "The type of destination")
 	public String getDestType() {
 		return SystemUtils.getDestTypes().get(id.getDestType()-1);
 	}
 
+	@Override
 	@JsonIgnore
 	public int getDestTypeId() {
 		return id.getDestType();
@@ -253,15 +277,19 @@ public class Destination extends DynamoDbEntity implements IEndpoint, Serializab
 	@DynamoDbIgnore
 	@Schema(description = "The IIS or other name for the jurisdiction")
 	public String getJurisdictionName() {
-		IJurisdiction j = JurisdictionService.getInstance().getJurisdiction(jurisdictionId);
+		IJurisdiction j = getJurisdictionService().getJurisdiction(jurisdictionId);
 		return j == null ? null : j.getName();
 	}
 
 	@DynamoDbIgnore
 	@Schema(description = "A description of the jurisdiction (typically the state or other name)")
 	public String getJurisdictionDesc() {
-		IJurisdiction j = JurisdictionService.getInstance().getJurisdiction(jurisdictionId);
+		IJurisdiction j = getJurisdictionService().getJurisdiction(jurisdictionId);
 		return j == null ? null : j.getDescription();
+	}
+	
+	public IJurisdictionService getJurisdictionService() {
+		return JurisdictionService.getInstance();
 	}
 
 	@Override
@@ -294,6 +322,7 @@ public class Destination extends DynamoDbEntity implements IEndpoint, Serializab
 		Destination p = new Destination(this);
 		p.username = null;
 		p.password = null;
+		p.passExpiry = null;
 		return p;
 	}
 

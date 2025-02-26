@@ -34,17 +34,17 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 
 import gov.cdc.izgateway.Application;
 import gov.cdc.izgateway.db.model.CertificateStatus;
+import gov.cdc.izgateway.hub.repository.IAccessControlRepository;
+import gov.cdc.izgateway.hub.repository.ICertificateStatusRepository;
+import gov.cdc.izgateway.hub.repository.IDestinationRepository;
+import gov.cdc.izgateway.hub.repository.IJurisdictionRepository;
+import gov.cdc.izgateway.hub.repository.IMessageHeaderRepository;
+import gov.cdc.izgateway.hub.repository.RepositoryFactory;
+import gov.cdc.izgateway.hub.service.CertificateStatusService;
 import gov.cdc.izgateway.model.ICertificateStatus;
-import gov.cdc.izgateway.repository.IAccessControlRepository;
-import gov.cdc.izgateway.repository.ICertificateStatusRepository;
-import gov.cdc.izgateway.repository.IDestinationRepository;
-import gov.cdc.izgateway.repository.IJurisdictionRepository;
-import gov.cdc.izgateway.repository.IMessageHeaderRepository;
-import gov.cdc.izgateway.repository.RepositoryFactory;
 import gov.cdc.izgateway.security.ocsp.CertificateStatusType;
 import gov.cdc.izgateway.security.ocsp.RevocationChecker;
 import gov.cdc.izgateway.security.ocsp.RevocationChecker.SslLocation;
-import gov.cdc.izgateway.service.CertificateStatusService;
 import gov.cdc.izgateway.service.ICertificateStatusService;
 import gov.cdc.izgateway.utils.X500Utils;
 import lombok.extern.slf4j.Slf4j; 
