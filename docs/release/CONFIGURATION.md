@@ -82,6 +82,8 @@ Task configuration properties can be passed in environment variables.
 
 Turns IP filtering on or off in the application. If set to true, it is expected that HUB_SECURITY_IP_FILTER_ALLOWED_CIDR has been configured with allowed IP CIDR blocks. If set to false, any connection from any IP address will be able to connect (assuming they have satisfied the other security requirements of the application).
 
+By default, this is set to false.
+
 * __HUB_SECURITY_IP_FILTER_ALLOWED_CIDR__
 
 A comma separate list of IP CIDR blocks which are allowed to connect to the application. This is ignored if HUB_SECURITY_IP_FILTER_ENABLED is set to false.
