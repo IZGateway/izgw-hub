@@ -60,10 +60,10 @@ public class StatusController {
         } else if (count > 4) {
             count = 4;
         }
-        // Sort the map to make it easier to work with, otherwise it returns in hash
-        // order, which is garbage.
-        String[] includeArray = include == null ? EndpointStatusRepository.INCLUDE_ALL : include.split("[\\s,]+");
+        String[] includeArray = include != null ? include.split("[\\s,]+") : 
+        	destinationService.getAllDestinations().stream().map(t -> t.getDestinationId()).toArray(String[]::new);
         List<String> included = Arrays.asList(includeArray);
+        included.sort(String::compareTo);
         List<? extends IEndpointStatus> found = endpointStatusService.find(count, includeArray);
 
         Map<String, List<IEndpointStatus>> t = new TreeMap<>();
@@ -78,6 +78,7 @@ public class StatusController {
                 		continue;
                 	}
                 }
+                
                 List<IEndpointStatus> l = t.computeIfAbsent(f.getDestId(), k -> new ArrayList<>());
                 l.add(f);
             }
