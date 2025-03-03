@@ -388,6 +388,7 @@ jobs:
         env:
           ECR_REGISTRY: 357442695278.dkr.ecr.us-east-1.amazonaws.com
           ECR_REPOSITORY: izgateway-dev-phiz-web-ws
+          IMAGE_TAG: ${{needs.build.outputs.image_tag}}
         run: |
           docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY:latest iz-gateway:$IMAGE_TAG
