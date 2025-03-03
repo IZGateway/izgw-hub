@@ -6,6 +6,7 @@ on:
       - Release*
       - main
       - develop
+      - IGDD-1786_pipeline_pushes_to_aphl_ecr
 
   pull_request:
     branches:
@@ -354,6 +355,23 @@ jobs:
         path: |
             .
             !testing/newman.key
+
+  push-to-aphl:
+    needs: verify
+    runs-on: ubuntu-latest
+    # This step should only be done on PUSH to main
+    if: github.ref == 'refs/heads/IGDD-1786_pipeline_pushes_to_aphl_ecr'
+    steps:
+      - name: Configure AWS credentials for APHL
+        if: ${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/IGDD-1786_pipeline_pushes_to_aphl_ecr')) }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.APHL_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.APHL_AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      - name: Sample log
+        run: |
+          echo Test from APHL section 
 
   release:
     needs: verify
