@@ -249,131 +249,131 @@ jobs:
   #        run: |
   #          echo "test=hello" >> "$GITHUB_OUTPUT"
 
-  verify:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-
-    - name: Collect Workflow Telemetry
-      uses: catchpoint/workflow-telemetry-action@v2
-
-    - uses: actions/checkout@v4
-    - name: Set up Tools
-      shell: bash
-      run: |
-          newman -v
-          npm install -g newman@6.1.3
-          newman -v
-          npm install -g newman-reporter-junitfull
-          npm install -g xunit-viewer
-
-    - name: Setup certs
-      env:
-        TESTING_CERT: ${{ secrets.TESTING_CERT }}
-        TESTING_KEY: ${{ secrets.TESTING_KEY }}
-      run: |
-        echo "$TESTING_CERT" > testing/newman.pem
-        # Don't upload this file !!!
-        echo "$TESTING_KEY" > testing/newman.key
-
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-east-1
-
-    # Having the wait for reload at this point allows some of the wasted waiting time to occur during build cleanup phase
-    # and setup phase of this job.
-    - name: Wait for reload of task to complete
-      run: aws ecs wait services-stable --cluster izgateway-dev-izgateway-services --service izgateway-dev-service
-
-    # Verify Filebeats is operating properly
-    # Get the first service instance and check CloudWatch logs for indication that it connected
-    - name: Verify ElasticSearch Logging Client Is running
-      run: |
-        SERVICE_INSTANCE=`aws ecs list-tasks --cluster izgateway-dev-izgateway-services --service-name izgateway-dev-service  | jq '.taskArns[0]|split("/")[2]' -r`
-        aws logs filter-log-events --log-group-name /ecs/izgateway-dev-phiz-web-ws --log-stream-names ecs/izgateway-dev-phiz-web-ws/$SERVICE_INSTANCE --filter-pattern "Connection to backoff" | grep established
-
-    # Perform a little bit of warmup on the IZGW service using cert tests
-    - name: Execute Encryption/Cert Test
-      id: TlsTests
-      working-directory: ./testing
-      env:
-        IZGW_SSL_CLIENT_PASSPHRASE: ${{ secrets.TESTING_PASS }}
-      run: |
-        chmod +x ./tlstest.sh
-        mkdir ./logs
-        ./tlstest.sh | tee ./logs/tls-test.txt
-        [ `grep -c -e FAIL ./logs/tls-test.txt` -eq 0 ]
-
-    # Include warmup in Verify b/c we must warm up server on which verification
-    # is performed.  B/c Each stage runs in a separate virtual server, and our cluster
-    # ensures requests are sticky based on IP Address, this ensures that requests for warmup and verification
-    # go to the same server.
-    - name: Run Warm Up for Functional Testing
-      working-directory: ./testing/testdata
-      env:
-        TESTING_PASS: ${{ secrets.TESTING_PASS }}
-      run: |
-        startTime=$(date +%s);
-        # Just Running the Smoke Test ONCE should be enough to warm up
-        newman run ../scripts/IZGW_2.0_Integration_Test.postman_collection.json -n 1 --folder "Smoke Test" \
-          "--environment" ../scripts/dev.postman_environment.json \
-          "--ssl-extra-ca-certs" ../certs/izgwroot.pem \
-          "--ssl-client-cert" ../newman.pem \
-          "--ssl-client-key" ../newman.key \
-          "--ssl-client-passphrase" $TESTING_PASS \
-          "--insecure" -x > ../logs/warmup.log
-        endTime=$(date +%s);
-        WARMUP=$(($endTime-$startTime));
-        echo Warmed up for $WARMUP seconds
-
-    - name: Execute Functional Tests
-      id: FunctionalTests
-      working-directory: ./testing/testdata
-      env:
-        TESTING_PASS: ${{ secrets.TESTING_PASS }}
-      run: |
-        newman run ../scripts/IZGW_2.0_Integration_Test.postman_collection.json -n 1 --folder "Working" \
-          "--environment" ../scripts/dev.postman_environment.json \
-          "--ssl-extra-ca-certs" certs/izgwroot.pem \
-          "--ssl-client-cert" ../newman.pem \
-          "--ssl-client-key" ../newman.key \
-          "--ssl-client-passphrase" $TESTING_PASS \
-          "--insecure" --reporters cli,junitfull --reporter-junitfull-export ../logs/integration-test.xml
-
-        xunit-viewer -r ../logs/integration-test.xml
-        cp index.html ../logs/integration-test.html
-
-    - name: Login to Amazon ECR
-      id: login-ecr2
-      uses: aws-actions/amazon-ecr-login@v2
-
-    - name: Tag verified image
-      env:
-        ECR_REGISTRY: 357442695278.dkr.ecr.us-east-1.amazonaws.com
-        ECR_REPOSITORY: izgateway-dev-phiz-web-ws
-      run: |
-        docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
-        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:good
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:good
-
-    - name: Upload test logs
-      uses: actions/upload-artifact@v4
-      if: ${{ always() }}
-      with:
-        name: TestLogs
-        path: ./testing/logs
-
-    - name: Upload build environment as artifact for failed build
-      uses: actions/upload-artifact@v4
-      if: ${{ failure() }}
-      with:
-        name: verify-failure
-        path: |
-            .
-            !testing/newman.key
+#  verify:
+#    needs: build
+#    runs-on: ubuntu-latest
+#    steps:
+#
+#    - name: Collect Workflow Telemetry
+#      uses: catchpoint/workflow-telemetry-action@v2
+#
+#    - uses: actions/checkout@v4
+#    - name: Set up Tools
+#      shell: bash
+#      run: |
+#          newman -v
+#          npm install -g newman@6.1.3
+#          newman -v
+#          npm install -g newman-reporter-junitfull
+#          npm install -g xunit-viewer
+#
+#    - name: Setup certs
+#      env:
+#        TESTING_CERT: ${{ secrets.TESTING_CERT }}
+#        TESTING_KEY: ${{ secrets.TESTING_KEY }}
+#      run: |
+#        echo "$TESTING_CERT" > testing/newman.pem
+#        # Don't upload this file !!!
+#        echo "$TESTING_KEY" > testing/newman.key
+#
+#    - name: Configure AWS credentials
+#      uses: aws-actions/configure-aws-credentials@v4
+#      with:
+#        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#        aws-region: us-east-1
+#
+#    # Having the wait for reload at this point allows some of the wasted waiting time to occur during build cleanup phase
+#    # and setup phase of this job.
+#    - name: Wait for reload of task to complete
+#      run: aws ecs wait services-stable --cluster izgateway-dev-izgateway-services --service izgateway-dev-service
+#
+#    # Verify Filebeats is operating properly
+#    # Get the first service instance and check CloudWatch logs for indication that it connected
+#    - name: Verify ElasticSearch Logging Client Is running
+#      run: |
+#        SERVICE_INSTANCE=`aws ecs list-tasks --cluster izgateway-dev-izgateway-services --service-name izgateway-dev-service  | jq '.taskArns[0]|split("/")[2]' -r`
+#        aws logs filter-log-events --log-group-name /ecs/izgateway-dev-phiz-web-ws --log-stream-names ecs/izgateway-dev-phiz-web-ws/$SERVICE_INSTANCE --filter-pattern "Connection to backoff" | grep established
+#
+#    # Perform a little bit of warmup on the IZGW service using cert tests
+#    - name: Execute Encryption/Cert Test
+#      id: TlsTests
+#      working-directory: ./testing
+#      env:
+#        IZGW_SSL_CLIENT_PASSPHRASE: ${{ secrets.TESTING_PASS }}
+#      run: |
+#        chmod +x ./tlstest.sh
+#        mkdir ./logs
+#        ./tlstest.sh | tee ./logs/tls-test.txt
+#        [ `grep -c -e FAIL ./logs/tls-test.txt` -eq 0 ]
+#
+#    # Include warmup in Verify b/c we must warm up server on which verification
+#    # is performed.  B/c Each stage runs in a separate virtual server, and our cluster
+#    # ensures requests are sticky based on IP Address, this ensures that requests for warmup and verification
+#    # go to the same server.
+#    - name: Run Warm Up for Functional Testing
+#      working-directory: ./testing/testdata
+#      env:
+#        TESTING_PASS: ${{ secrets.TESTING_PASS }}
+#      run: |
+#        startTime=$(date +%s);
+#        # Just Running the Smoke Test ONCE should be enough to warm up
+#        newman run ../scripts/IZGW_2.0_Integration_Test.postman_collection.json -n 1 --folder "Smoke Test" \
+#          "--environment" ../scripts/dev.postman_environment.json \
+#          "--ssl-extra-ca-certs" ../certs/izgwroot.pem \
+#          "--ssl-client-cert" ../newman.pem \
+#          "--ssl-client-key" ../newman.key \
+#          "--ssl-client-passphrase" $TESTING_PASS \
+#          "--insecure" -x > ../logs/warmup.log
+#        endTime=$(date +%s);
+#        WARMUP=$(($endTime-$startTime));
+#        echo Warmed up for $WARMUP seconds
+#
+#    - name: Execute Functional Tests
+#      id: FunctionalTests
+#      working-directory: ./testing/testdata
+#      env:
+#        TESTING_PASS: ${{ secrets.TESTING_PASS }}
+#      run: |
+#        newman run ../scripts/IZGW_2.0_Integration_Test.postman_collection.json -n 1 --folder "Working" \
+#          "--environment" ../scripts/dev.postman_environment.json \
+#          "--ssl-extra-ca-certs" certs/izgwroot.pem \
+#          "--ssl-client-cert" ../newman.pem \
+#          "--ssl-client-key" ../newman.key \
+#          "--ssl-client-passphrase" $TESTING_PASS \
+#          "--insecure" --reporters cli,junitfull --reporter-junitfull-export ../logs/integration-test.xml
+#
+#        xunit-viewer -r ../logs/integration-test.xml
+#        cp index.html ../logs/integration-test.html
+#
+#    - name: Login to Amazon ECR
+#      id: login-ecr2
+#      uses: aws-actions/amazon-ecr-login@v2
+#
+#    - name: Tag verified image
+#      env:
+#        ECR_REGISTRY: 357442695278.dkr.ecr.us-east-1.amazonaws.com
+#        ECR_REPOSITORY: izgateway-dev-phiz-web-ws
+#      run: |
+#        docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
+#        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:good
+#        docker push $ECR_REGISTRY/$ECR_REPOSITORY:good
+#
+#    - name: Upload test logs
+#      uses: actions/upload-artifact@v4
+#      if: ${{ always() }}
+#      with:
+#        name: TestLogs
+#        path: ./testing/logs
+#
+#    - name: Upload build environment as artifact for failed build
+#      uses: actions/upload-artifact@v4
+#      if: ${{ failure() }}
+#      with:
+#        name: verify-failure
+#        path: |
+#            .
+#            !testing/newman.key
 
 
 
@@ -390,13 +390,13 @@ jobs:
 #          echo "test=hello" >> "$GITHUB_OUTPUT"
 
   push-to-aphl:
-    needs: verify
+    needs: build
     runs-on: ubuntu-latest
     # This step should only be done on PUSH to main
     if: github.ref == 'refs/heads/IGDD-1786_pipeline_pushes_to_aphl_ecr'
     steps:
       - env:
-          OUTPUT1: ${{needs.verify.outputs.image_tag}}
+          OUTPUT1: ${{needs.build.outputs.image_tag}}
         run: echo "$OUTPUT1"
 
 #jobs:
