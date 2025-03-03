@@ -390,7 +390,7 @@ jobs:
           ECR_REPOSITORY: izgateway-dev-phiz-web-ws
         run: |
           docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:latest iz-gateway:${{env.IMAGE_TAG}}
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:latest iz-gateway:$IMAGE_TAG
 
       - name: Configure AWS credentials for APHL
         if: ${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/IGDD-1786_pipeline_pushes_to_aphl_ecr')) }}
@@ -411,8 +411,8 @@ jobs:
           ECR_REGISTRY: ${{ secrets.APHL_ECR_REGISTRY }}
           ECR_REPOSITORY: ${{ secrets.APHL_ECR_REPOSITORY }}
         run: |
-          echo "About to push to APHL image tag: iz-gateway_${{env.IMAGE_TAG}}"
-          docker image tag iz-gateway:${{env.IMAGE_TAG}} $ECR_REGISTRY/$ECR_REPOSITORY:iz-gateway_${{env.IMAGE_TAG}}
+          echo "About to push to APHL image tag: iz-gateway_$IMAGE_TAG"
+          docker image tag iz-gateway:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:iz-gateway_$IMAGE_TAG
 #          docker image push --all-tags $ECR_REGISTRY/$ECR_REPOSITORY
 
 #jobs:
