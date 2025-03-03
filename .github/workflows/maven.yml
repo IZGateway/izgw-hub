@@ -357,7 +357,6 @@ jobs:
 #            !testing/newman.key
 #
   push-to-aphl:
-    needs: verify
     runs-on: ubuntu-latest
     # This step should only be done on PUSH to main
     if: github.ref == 'refs/heads/IGDD-1786_pipeline_pushes_to_aphl_ecr'
