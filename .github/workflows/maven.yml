@@ -356,14 +356,19 @@ jobs:
 #            .
 #            !testing/newman.key
 #
+
+
   verify:
     runs-on: ubuntu-latest
+    outputs:
+      output1: ${{ steps.verify.outputs.test }}
     # This step should only be done on PUSH to main
     if: github.ref == 'refs/heads/IGDD-1786_pipeline_pushes_to_aphl_ecr'
     steps:
       - name: Sample log
+        id: verify
         run: |
-          echo Test from Verify section 
+          echo "test=hello" >> "$GITHUB_OUTPUT" 
 
   push-to-aphl:
     needs: verify
@@ -371,16 +376,9 @@ jobs:
     # This step should only be done on PUSH to main
     if: github.ref == 'refs/heads/IGDD-1786_pipeline_pushes_to_aphl_ecr'
     steps:
-      - name: Configure AWS credentials for APHL
-        if: ${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/IGDD-1786_pipeline_pushes_to_aphl_ecr')) }}
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.APHL_AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.APHL_AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-      - name: Sample log
-        run: |
-          echo Test from APHL section 
+      - env:
+          OUTPUT1: ${{needs.verify.outputs.output1}}
+        run: echo "$OUTPUT1"
 
   release:
     needs: verify
