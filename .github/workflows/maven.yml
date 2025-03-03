@@ -380,6 +380,10 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
+      - name: Login to Amazon ECR
+        id: login-ecr2
+        uses: aws-actions/amazon-ecr-login@v2
+
       - name: Tag verified image
         env:
           ECR_REGISTRY: 357442695278.dkr.ecr.us-east-1.amazonaws.com
