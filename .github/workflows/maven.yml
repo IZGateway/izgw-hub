@@ -17,358 +17,377 @@ on:
 # Ensure only one build changes dev environment at the same time    
 concurrency: dev
 # GITHUB_REF=refs/heads/testmain
-#   
+#
+
 jobs:
-#  build:
-#
-#    runs-on: ubuntu-latest
-#
-#    steps:
-#
-#    - name: Checkout the software
-#      uses: actions/checkout@v4
-#      # Necessary to enable push to protected branch
-#      with:
-#        ssh-key: ${{secrets.ACTIONS_KEY}}
-#
-#    - name: Set up JDK 17
-#      uses: actions/setup-java@v4
-#      with:
-#        java-version: '17'
-#        distribution: 'adopt'
-#        cache: maven
-#
-#    - name: Set up Maven
-#      uses: stCarolas/setup-maven@v5
-#      with:
-#        maven-version: 3.9.0
-#
-#    - name: Set up Toolchain
-#      shell: bash
-#      run: |
-#          echo BASE_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout` >> $GITHUB_ENV
-#          echo COMPUTERNAME=`hostname` >> $GITHUB_ENV
-#          # Set up for unit testing against JPA repository
-#          echo SPRING_DATABASE=jpa >> $GITHUB_ENV
-#          mkdir -p ~/.m2 \
-#          && cat << EOF > ~/.m2/toolchains.xml
-#          <?xml version="1.0" encoding="UTF8"?>
-#          <toolchains>
-#            <toolchain>
-#              <type>jdk</type>
-#                <provides>
-#                  <version>11</version>
-#                  <vendor>sun</vendor>
-#                </provides>
-#                <configuration>
-#                  <jdkHome>$JAVA_HOME_11_X64</jdkHome>
-#                </configuration>
-#            </toolchain>
-#            <toolchain>
-#              <type>jdk</type>
-#                <provides>
-#                  <version>17</version>
-#                  <vendor>sun</vendor>
-#                </provides>
-#                <configuration>
-#                  <jdkHome>$JAVA_HOME_17_X64</jdkHome>
-#                </configuration>
-#            </toolchain>
-#          </toolchains>
-#          EOF
-#
-#          cat << EOF > ~/.m2/settings.xml
-#          <?xml version="1.0" encoding="UTF8"?>
-#          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
-#            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-#            xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
-#            https://maven.apache.org/xsd/settings-1.0.0.xsd">
-#            <localRepository>~/.m2/repository</localRepository>
-#            <interactiveMode />
-#            <usePluginRegistry />
-#            <offline />
-#            <servers>
-#              <server>
-#                <id>github</id>
-#                <username>${{ env.GITHUB_ACTOR }}</username>
-#                <password>${{ secrets.IZGW_ALL_REPO_ACCESS_TOKEN }}</password>
-#              </server>
-#            </servers>
-#            <mirrors />
-#            <proxies />
-#            <profiles />
-#            <activeProfiles />
-#          </settings>
-#          EOF
-#
-#    - name: Sets env vars for push or pull request to release branch (default behavior)
-#      run: |
-#        echo IMAGE_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed "s/-SNAPSHOT$/-SNAPSHOT-${{github.run_number}}/"` >> $GITHUB_ENV
-#        echo IMAGE_BRANCH_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout` >> $GITHUB_ENV
-#        # default to force a revision check unless releasing
-#        echo DO_REVISION_CHECK=true >> $GITHUB_ENV
-#
-#    # If pulling to main branch (cutting a release), set branch tag appropriately
-#    - name: Sets env vars for pull to main
-#      if: ${{ github.base_ref == 'main' }}
-#      run: |
-#        IMAGE_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed "s/-.*$/-IZGW-SNAPSHOT-${{github.run_number}}/"`
-#        echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
-#        IMAGE_BRANCH_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed "s/-.*$/-IZGW-SNAPSHOT/"`
-#        echo IMAGE_BRANCH_TAG=$IMAGE_BRANCH_TAG >> $GITHUB_ENV
-#        mvn versions:set -DnewVersion=$IMAGE_BRANCH_TAG -f pom.xml
-#
-#        # Skip revision check on merge
-#        echo DO_REVISION_CHECK=false >> $GITHUB_ENV
-#
-#    # If pushing to main branch (cutting a release), set branch tag appropriately
-#    - name: Sets env vars for pull to main
-#      if: ${{ github.ref_name == 'main' }}
-#      run: |
-#        IMAGE_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed "s/-.*$/-IZGW-RELEASE-${{github.run_number}}/"`
-#        echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
-#        IMAGE_BRANCH_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed "s/-.*$/-IZGW-RELEASE/"`
-#        echo IMAGE_BRANCH_TAG=$IMAGE_BRANCH_TAG >> $GITHUB_ENV
-#        mvn versions:set -DnewVersion=$IMAGE_BRANCH_TAG -f pom.xml
-#        if [ ${{ github.event_name }} == 'push' ]
-#        then
-#          git config user.name github-actions
-#          git config user.email github-actions@github.com
-#          git add -A
-#          # Only push if something was committed
-#          if git commit -m "Update version to $IMAGE_BRANCH_TAG"
-#          then
-#            git pull
-#            git push
-#          fi
-#        fi
-#        # Disable revision check on push to main.
-#        echo DO_REVISION_CHECK=false >> $GITHUB_ENV
-#
-#    - name: List m2
-#      shell: bash
-#      run: |
-#        # Display data for DX
-#        echo BASE_REF: ${{ github.base_ref }}
-#        echo HEAD_REF: ${{ github.head_ref }}
-#        echo REF_NAME: ${{ github.ref_name }}
-#        echo REF: ${{ github.ref }}
-#        echo EVENT_NAME ${{ github.event_name }}
-#        echo TAG: $BASE_TAG
-#        echo DO_REVISION_CHECK: $DO_REVISION_CHECK
-#        echo IMAGE_TAG: $IMAGE_TAG
-#        echo IMAGE_BRANCH_TAG: $IMAGE_BRANCH_TAG
-#        cd ~/.m2
-#        ls -l
-#
-#    - name: Check that push to main is from release branch
-#      # Don't filter on testmain to test push to main route
-#      if: ${{ ! startsWith(github.base_ref, 'Release_v') && github.head_ref == 'main' }}
-#      run: |
-#        echo ${{ github.head_ref }} is NOT a Release branch and cannot be pushed to main
-#        # Force failure
-#        false
-#
-#    - name: Maven Install
-#      env:
-#        COMMON_PASS: ${{ secrets.COMMON_PASS }}
-#        ELASTIC_API_KEY: ${{ secrets.ELASTIC_API_KEY }}
-#
-#      run: |
-#        env && mvn -B clean package install -Dbuildno=${{github.run_number}} \
-#            -DdoRevisionCheck=${{env.DO_REVISION_CHECK}} \
-#            -DskipDependencyCheck=false \
-#            -Dimage.tag=$IMAGE_TAG
-#
-#    - name: Configure AWS credentials
-#      uses: aws-actions/configure-aws-credentials@v4
-#      with:
-#        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-#        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-#        aws-region: us-east-1
-#
-#    - name: Login to Amazon ECR
-#      id: login-ecr
-#      uses: aws-actions/amazon-ecr-login@v2
-#
-#    - name: Tag, push and deploy image to Amazon ECR
-#      env:
-#        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-#        ECR_REPOSITORY: izgateway-dev-phiz-web-ws
-#      run: |
-#        docker image tag iz-gateway:${{env.IMAGE_TAG}} $ECR_REGISTRY/$ECR_REPOSITORY:${{env.IMAGE_TAG}}
-#        docker image tag iz-gateway:${{env.IMAGE_TAG}} $ECR_REGISTRY/$ECR_REPOSITORY:${{env.IMAGE_BRANCH_TAG}}
-#        docker image tag iz-gateway:${{env.IMAGE_TAG}} $ECR_REGISTRY/$ECR_REPOSITORY:latest
-#        docker image push --all-tags $ECR_REGISTRY/$ECR_REPOSITORY
-#        aws ecs update-service --cluster izgateway-dev-izgateway-services --service izgateway-dev-service --force-new-deployment --enable-execute-command --desired-count 4 | jq ".service.deployments[].id"
-#
-#    - name: Login to GitHub Repository
-#      uses: docker/login-action@v3
-#      with:
-#        registry: ghcr.io
-#        username: ${{ github.actor }}
-#        password: ${{ secrets.GITHUB_TOKEN }}
-#
-#    - name: Tag, push and deploy image to Github Repository
-#      run: |
-#        docker image tag iz-gateway:${{env.IMAGE_TAG}} ghcr.io/izgateway/izgw-hub:${{env.IMAGE_TAG}}
-#        docker image tag iz-gateway:${{env.IMAGE_TAG}} ghcr.io/izgateway/izgw-hub:${{env.IMAGE_BRANCH_TAG}}
-#        docker image tag iz-gateway:${{env.IMAGE_TAG}} ghcr.io/izgateway/izgw-hub:latest
-#        docker image push --all-tags ghcr.io/izgateway/izgw-hub
-#
-#    - name: Upload build environment as artifact for failed build
-#      uses: actions/upload-artifact@v4
-#      if: ${{ failure() }}
-#      with:
-#        name: build-failure
-#        path: .
-#
-#    - name: Upload dependency check log
-#      uses: actions/upload-artifact@v4
-#      if: ${{ always() }}
-#      with:
-#        name: DependencyCheck
-#        path: ./target/dependency-check-report.*
-#
-#  verify:
-#    needs: build
-#    runs-on: ubuntu-latest
-#    steps:
-#
-#    - name: Collect Workflow Telemetry
-#      uses: catchpoint/workflow-telemetry-action@v2
-#
-#    - uses: actions/checkout@v4
-#    - name: Set up Tools
-#      shell: bash
-#      run: |
-#          newman -v
-#          npm install -g newman@6.1.3
-#          newman -v
-#          npm install -g newman-reporter-junitfull
-#          npm install -g xunit-viewer
-#
-#    - name: Setup certs
-#      env:
-#        TESTING_CERT: ${{ secrets.TESTING_CERT }}
-#        TESTING_KEY: ${{ secrets.TESTING_KEY }}
-#      run: |
-#        echo "$TESTING_CERT" > testing/newman.pem
-#        # Don't upload this file !!!
-#        echo "$TESTING_KEY" > testing/newman.key
-#
-#    - name: Configure AWS credentials
-#      uses: aws-actions/configure-aws-credentials@v4
-#      with:
-#        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-#        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-#        aws-region: us-east-1
-#
-#    # Having the wait for reload at this point allows some of the wasted waiting time to occur during build cleanup phase
-#    # and setup phase of this job.
-#    - name: Wait for reload of task to complete
-#      run: aws ecs wait services-stable --cluster izgateway-dev-izgateway-services --service izgateway-dev-service
-#
-#    # Verify Filebeats is operating properly
-#    # Get the first service instance and check CloudWatch logs for indication that it connected
-#    - name: Verify ElasticSearch Logging Client Is running
-#      run: |
-#        SERVICE_INSTANCE=`aws ecs list-tasks --cluster izgateway-dev-izgateway-services --service-name izgateway-dev-service  | jq '.taskArns[0]|split("/")[2]' -r`
-#        aws logs filter-log-events --log-group-name /ecs/izgateway-dev-phiz-web-ws --log-stream-names ecs/izgateway-dev-phiz-web-ws/$SERVICE_INSTANCE --filter-pattern "Connection to backoff" | grep established
-#
-#    # Perform a little bit of warmup on the IZGW service using cert tests
-#    - name: Execute Encryption/Cert Test
-#      id: TlsTests
-#      working-directory: ./testing
-#      env:
-#        IZGW_SSL_CLIENT_PASSPHRASE: ${{ secrets.TESTING_PASS }}
-#      run: |
-#        chmod +x ./tlstest.sh
-#        mkdir ./logs
-#        ./tlstest.sh | tee ./logs/tls-test.txt
-#        [ `grep -c -e FAIL ./logs/tls-test.txt` -eq 0 ]
-#
-#    # Include warmup in Verify b/c we must warm up server on which verification
-#    # is performed.  B/c Each stage runs in a separate virtual server, and our cluster
-#    # ensures requests are sticky based on IP Address, this ensures that requests for warmup and verification
-#    # go to the same server.
-#    - name: Run Warm Up for Functional Testing
-#      working-directory: ./testing/testdata
-#      env:
-#        TESTING_PASS: ${{ secrets.TESTING_PASS }}
-#      run: |
-#        startTime=$(date +%s);
-#        # Just Running the Smoke Test ONCE should be enough to warm up
-#        newman run ../scripts/IZGW_2.0_Integration_Test.postman_collection.json -n 1 --folder "Smoke Test" \
-#          "--environment" ../scripts/dev.postman_environment.json \
-#          "--ssl-extra-ca-certs" ../certs/izgwroot.pem \
-#          "--ssl-client-cert" ../newman.pem \
-#          "--ssl-client-key" ../newman.key \
-#          "--ssl-client-passphrase" $TESTING_PASS \
-#          "--insecure" -x > ../logs/warmup.log
-#        endTime=$(date +%s);
-#        WARMUP=$(($endTime-$startTime));
-#        echo Warmed up for $WARMUP seconds
-#
-#    - name: Execute Functional Tests
-#      id: FunctionalTests
-#      working-directory: ./testing/testdata
-#      env:
-#        TESTING_PASS: ${{ secrets.TESTING_PASS }}
-#      run: |
-#        newman run ../scripts/IZGW_2.0_Integration_Test.postman_collection.json -n 1 --folder "Working" \
-#          "--environment" ../scripts/dev.postman_environment.json \
-#          "--ssl-extra-ca-certs" certs/izgwroot.pem \
-#          "--ssl-client-cert" ../newman.pem \
-#          "--ssl-client-key" ../newman.key \
-#          "--ssl-client-passphrase" $TESTING_PASS \
-#          "--insecure" --reporters cli,junitfull --reporter-junitfull-export ../logs/integration-test.xml
-#
-#        xunit-viewer -r ../logs/integration-test.xml
-#        cp index.html ../logs/integration-test.html
-#
-#    - name: Login to Amazon ECR
-#      id: login-ecr2
-#      uses: aws-actions/amazon-ecr-login@v2
-#
-#    - name: Tag verified image
-#      env:
-#        ECR_REGISTRY: 357442695278.dkr.ecr.us-east-1.amazonaws.com
-#        ECR_REPOSITORY: izgateway-dev-phiz-web-ws
-#      run: |
-#        docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
-#        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:good
-#        docker push $ECR_REGISTRY/$ECR_REPOSITORY:good
-#
-#    - name: Upload test logs
-#      uses: actions/upload-artifact@v4
-#      if: ${{ always() }}
-#      with:
-#        name: TestLogs
-#        path: ./testing/logs
-#
-#    - name: Upload build environment as artifact for failed build
-#      uses: actions/upload-artifact@v4
-#      if: ${{ failure() }}
-#      with:
-#        name: verify-failure
-#        path: |
-#            .
-#            !testing/newman.key
-#
+  build:
 
-
-  verify:
     runs-on: ubuntu-latest
     outputs:
-      output1: ${{ steps.verify.outputs.test }}
-    # This step should only be done on PUSH to main
-    if: github.ref == 'refs/heads/IGDD-1786_pipeline_pushes_to_aphl_ecr'
+      image_tag: ${{ steps.output_image_tag.outputs.image_tag }}
+
     steps:
-      - name: Sample log
-        id: verify
-        run: |
-          echo "test=hello" >> "$GITHUB_OUTPUT" 
+
+    - name: Checkout the software
+      uses: actions/checkout@v4
+      # Necessary to enable push to protected branch
+      with:
+        ssh-key: ${{secrets.ACTIONS_KEY}}
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'adopt'
+        cache: maven
+
+    - name: Set up Maven
+      uses: stCarolas/setup-maven@v5
+      with:
+        maven-version: 3.9.0
+
+    - name: Set up Toolchain
+      shell: bash
+      run: |
+          echo BASE_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout` >> $GITHUB_ENV
+          echo COMPUTERNAME=`hostname` >> $GITHUB_ENV
+          # Set up for unit testing against JPA repository
+          echo SPRING_DATABASE=jpa >> $GITHUB_ENV
+          mkdir -p ~/.m2 \
+          && cat << EOF > ~/.m2/toolchains.xml
+          <?xml version="1.0" encoding="UTF8"?>
+          <toolchains>
+            <toolchain>
+              <type>jdk</type>
+                <provides>
+                  <version>11</version>
+                  <vendor>sun</vendor>
+                </provides>
+                <configuration>
+                  <jdkHome>$JAVA_HOME_11_X64</jdkHome>
+                </configuration>
+            </toolchain>
+            <toolchain>
+              <type>jdk</type>
+                <provides>
+                  <version>17</version>
+                  <vendor>sun</vendor>
+                </provides>
+                <configuration>
+                  <jdkHome>$JAVA_HOME_17_X64</jdkHome>
+                </configuration>
+            </toolchain>
+          </toolchains>
+          EOF
+
+          cat << EOF > ~/.m2/settings.xml
+          <?xml version="1.0" encoding="UTF8"?>
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+            https://maven.apache.org/xsd/settings-1.0.0.xsd">
+            <localRepository>~/.m2/repository</localRepository>
+            <interactiveMode />
+            <usePluginRegistry />
+            <offline />
+            <servers>
+              <server>
+                <id>github</id>
+                <username>${{ env.GITHUB_ACTOR }}</username>
+                <password>${{ secrets.IZGW_ALL_REPO_ACCESS_TOKEN }}</password>
+              </server>
+            </servers>
+            <mirrors />
+            <proxies />
+            <profiles />
+            <activeProfiles />
+          </settings>
+          EOF
+
+    - name: Sets env vars for push or pull request to release branch (default behavior)
+      run: |
+        echo IMAGE_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed "s/-SNAPSHOT$/-SNAPSHOT-${{github.run_number}}/"` >> $GITHUB_ENV
+        echo IMAGE_BRANCH_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout` >> $GITHUB_ENV
+        # default to force a revision check unless releasing
+        echo DO_REVISION_CHECK=true >> $GITHUB_ENV
+
+    # If pulling to main branch (cutting a release), set branch tag appropriately
+    - name: Sets env vars for pull to main
+      if: ${{ github.base_ref == 'main' }}
+      run: |
+        IMAGE_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed "s/-.*$/-IZGW-SNAPSHOT-${{github.run_number}}/"`
+        echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
+        IMAGE_BRANCH_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed "s/-.*$/-IZGW-SNAPSHOT/"`
+        echo IMAGE_BRANCH_TAG=$IMAGE_BRANCH_TAG >> $GITHUB_ENV
+        mvn versions:set -DnewVersion=$IMAGE_BRANCH_TAG -f pom.xml
+
+        # Skip revision check on merge
+        echo DO_REVISION_CHECK=false >> $GITHUB_ENV
+
+    # If pushing to main branch (cutting a release), set branch tag appropriately
+    - name: Sets env vars for pull to main
+      if: ${{ github.ref_name == 'main' }}
+      run: |
+        IMAGE_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed "s/-.*$/-IZGW-RELEASE-${{github.run_number}}/"`
+        echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
+        IMAGE_BRANCH_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed "s/-.*$/-IZGW-RELEASE/"`
+        echo IMAGE_BRANCH_TAG=$IMAGE_BRANCH_TAG >> $GITHUB_ENV
+        mvn versions:set -DnewVersion=$IMAGE_BRANCH_TAG -f pom.xml
+        if [ ${{ github.event_name }} == 'push' ]
+        then
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add -A
+          # Only push if something was committed
+          if git commit -m "Update version to $IMAGE_BRANCH_TAG"
+          then
+            git pull
+            git push
+          fi
+        fi
+        # Disable revision check on push to main.
+        echo DO_REVISION_CHECK=false >> $GITHUB_ENV
+
+    - name: List m2
+      shell: bash
+      run: |
+        # Display data for DX
+        echo BASE_REF: ${{ github.base_ref }}
+        echo HEAD_REF: ${{ github.head_ref }}
+        echo REF_NAME: ${{ github.ref_name }}
+        echo REF: ${{ github.ref }}
+        echo EVENT_NAME ${{ github.event_name }}
+        echo TAG: $BASE_TAG
+        echo DO_REVISION_CHECK: $DO_REVISION_CHECK
+        echo IMAGE_TAG: $IMAGE_TAG
+        echo IMAGE_BRANCH_TAG: $IMAGE_BRANCH_TAG
+        cd ~/.m2
+        ls -l
+
+    - name: Check that push to main is from release branch
+      # Don't filter on testmain to test push to main route
+      if: ${{ ! startsWith(github.base_ref, 'Release_v') && github.head_ref == 'main' }}
+      run: |
+        echo ${{ github.head_ref }} is NOT a Release branch and cannot be pushed to main
+        # Force failure
+        false
+
+    - name: Maven Install
+      env:
+        COMMON_PASS: ${{ secrets.COMMON_PASS }}
+        ELASTIC_API_KEY: ${{ secrets.ELASTIC_API_KEY }}
+
+      run: |
+        env && mvn -B clean package install -Dbuildno=${{github.run_number}} \
+            -DdoRevisionCheck=${{env.DO_REVISION_CHECK}} \
+            -DskipDependencyCheck=false \
+            -Dimage.tag=$IMAGE_TAG
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Tag, push and deploy image to Amazon ECR
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: izgateway-dev-phiz-web-ws
+      run: |
+        docker image tag iz-gateway:${{env.IMAGE_TAG}} $ECR_REGISTRY/$ECR_REPOSITORY:${{env.IMAGE_TAG}}
+        docker image tag iz-gateway:${{env.IMAGE_TAG}} $ECR_REGISTRY/$ECR_REPOSITORY:${{env.IMAGE_BRANCH_TAG}}
+        docker image tag iz-gateway:${{env.IMAGE_TAG}} $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        docker image push --all-tags $ECR_REGISTRY/$ECR_REPOSITORY
+        aws ecs update-service --cluster izgateway-dev-izgateway-services --service izgateway-dev-service --force-new-deployment --enable-execute-command --desired-count 4 | jq ".service.deployments[].id"
+
+    - name: Login to GitHub Repository
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Tag, push and deploy image to Github Repository
+      run: |
+        docker image tag iz-gateway:${{env.IMAGE_TAG}} ghcr.io/izgateway/izgw-hub:${{env.IMAGE_TAG}}
+        docker image tag iz-gateway:${{env.IMAGE_TAG}} ghcr.io/izgateway/izgw-hub:${{env.IMAGE_BRANCH_TAG}}
+        docker image tag iz-gateway:${{env.IMAGE_TAG}} ghcr.io/izgateway/izgw-hub:latest
+        docker image push --all-tags ghcr.io/izgateway/izgw-hub
+
+    - name: Upload build environment as artifact for failed build
+      uses: actions/upload-artifact@v4
+      if: ${{ failure() }}
+      with:
+        name: build-failure
+        path: .
+
+    - name: Upload dependency check log
+      uses: actions/upload-artifact@v4
+      if: ${{ always() }}
+      with:
+        name: DependencyCheck
+        path: ./target/dependency-check-report.*
+
+    - name: Output the image tag
+      id: output_image_tag
+      run: echo "image_tag=${{env.IMAGE_TAG}}" >> "$GITHUB_OUTPUT"
+
+  #  verify:
+  #    runs-on: ubuntu-latest
+  #    outputs:
+  #      output1: ${{ steps.verify.outputs.test }}
+  #    # This step should only be done on PUSH to main
+  #    if: github.ref == 'refs/heads/IGDD-1786_pipeline_pushes_to_aphl_ecr'
+  #    steps:
+  #      - name: Sample log
+  #        id: verify
+  #        run: |
+  #          echo "test=hello" >> "$GITHUB_OUTPUT"
+
+  verify:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Collect Workflow Telemetry
+      uses: catchpoint/workflow-telemetry-action@v2
+
+    - uses: actions/checkout@v4
+    - name: Set up Tools
+      shell: bash
+      run: |
+          newman -v
+          npm install -g newman@6.1.3
+          newman -v
+          npm install -g newman-reporter-junitfull
+          npm install -g xunit-viewer
+
+    - name: Setup certs
+      env:
+        TESTING_CERT: ${{ secrets.TESTING_CERT }}
+        TESTING_KEY: ${{ secrets.TESTING_KEY }}
+      run: |
+        echo "$TESTING_CERT" > testing/newman.pem
+        # Don't upload this file !!!
+        echo "$TESTING_KEY" > testing/newman.key
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    # Having the wait for reload at this point allows some of the wasted waiting time to occur during build cleanup phase
+    # and setup phase of this job.
+    - name: Wait for reload of task to complete
+      run: aws ecs wait services-stable --cluster izgateway-dev-izgateway-services --service izgateway-dev-service
+
+    # Verify Filebeats is operating properly
+    # Get the first service instance and check CloudWatch logs for indication that it connected
+    - name: Verify ElasticSearch Logging Client Is running
+      run: |
+        SERVICE_INSTANCE=`aws ecs list-tasks --cluster izgateway-dev-izgateway-services --service-name izgateway-dev-service  | jq '.taskArns[0]|split("/")[2]' -r`
+        aws logs filter-log-events --log-group-name /ecs/izgateway-dev-phiz-web-ws --log-stream-names ecs/izgateway-dev-phiz-web-ws/$SERVICE_INSTANCE --filter-pattern "Connection to backoff" | grep established
+
+    # Perform a little bit of warmup on the IZGW service using cert tests
+    - name: Execute Encryption/Cert Test
+      id: TlsTests
+      working-directory: ./testing
+      env:
+        IZGW_SSL_CLIENT_PASSPHRASE: ${{ secrets.TESTING_PASS }}
+      run: |
+        chmod +x ./tlstest.sh
+        mkdir ./logs
+        ./tlstest.sh | tee ./logs/tls-test.txt
+        [ `grep -c -e FAIL ./logs/tls-test.txt` -eq 0 ]
+
+    # Include warmup in Verify b/c we must warm up server on which verification
+    # is performed.  B/c Each stage runs in a separate virtual server, and our cluster
+    # ensures requests are sticky based on IP Address, this ensures that requests for warmup and verification
+    # go to the same server.
+    - name: Run Warm Up for Functional Testing
+      working-directory: ./testing/testdata
+      env:
+        TESTING_PASS: ${{ secrets.TESTING_PASS }}
+      run: |
+        startTime=$(date +%s);
+        # Just Running the Smoke Test ONCE should be enough to warm up
+        newman run ../scripts/IZGW_2.0_Integration_Test.postman_collection.json -n 1 --folder "Smoke Test" \
+          "--environment" ../scripts/dev.postman_environment.json \
+          "--ssl-extra-ca-certs" ../certs/izgwroot.pem \
+          "--ssl-client-cert" ../newman.pem \
+          "--ssl-client-key" ../newman.key \
+          "--ssl-client-passphrase" $TESTING_PASS \
+          "--insecure" -x > ../logs/warmup.log
+        endTime=$(date +%s);
+        WARMUP=$(($endTime-$startTime));
+        echo Warmed up for $WARMUP seconds
+
+    - name: Execute Functional Tests
+      id: FunctionalTests
+      working-directory: ./testing/testdata
+      env:
+        TESTING_PASS: ${{ secrets.TESTING_PASS }}
+      run: |
+        newman run ../scripts/IZGW_2.0_Integration_Test.postman_collection.json -n 1 --folder "Working" \
+          "--environment" ../scripts/dev.postman_environment.json \
+          "--ssl-extra-ca-certs" certs/izgwroot.pem \
+          "--ssl-client-cert" ../newman.pem \
+          "--ssl-client-key" ../newman.key \
+          "--ssl-client-passphrase" $TESTING_PASS \
+          "--insecure" --reporters cli,junitfull --reporter-junitfull-export ../logs/integration-test.xml
+
+        xunit-viewer -r ../logs/integration-test.xml
+        cp index.html ../logs/integration-test.html
+
+    - name: Login to Amazon ECR
+      id: login-ecr2
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Tag verified image
+      env:
+        ECR_REGISTRY: 357442695278.dkr.ecr.us-east-1.amazonaws.com
+        ECR_REPOSITORY: izgateway-dev-phiz-web-ws
+      run: |
+        docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:good
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:good
+
+    - name: Upload test logs
+      uses: actions/upload-artifact@v4
+      if: ${{ always() }}
+      with:
+        name: TestLogs
+        path: ./testing/logs
+
+    - name: Upload build environment as artifact for failed build
+      uses: actions/upload-artifact@v4
+      if: ${{ failure() }}
+      with:
+        name: verify-failure
+        path: |
+            .
+            !testing/newman.key
+
+
+
+#  verify:
+#    runs-on: ubuntu-latest
+#    outputs:
+#      output1: ${{ steps.verify.outputs.test }}
+#    # This step should only be done on PUSH to main
+#    if: github.ref == 'refs/heads/IGDD-1786_pipeline_pushes_to_aphl_ecr'
+#    steps:
+#      - name: Sample log
+#        id: verify
+#        run: |
+#          echo "test=hello" >> "$GITHUB_OUTPUT"
 
   push-to-aphl:
     needs: verify
@@ -377,8 +396,15 @@ jobs:
     if: github.ref == 'refs/heads/IGDD-1786_pipeline_pushes_to_aphl_ecr'
     steps:
       - env:
-          OUTPUT1: ${{needs.verify.outputs.output1}}
+          OUTPUT1: ${{needs.verify.outputs.image_tag}}
         run: echo "$OUTPUT1"
+
+#jobs:
+#  build:
+#
+#    runs-on: ubuntu-latest
+#    outputs:
+#      image_tag: ${{ steps.output_image_tag.outputs.image_tag }}
 
   release:
     needs: verify
