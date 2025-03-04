@@ -414,8 +414,8 @@ jobs:
           IMAGE_TAG: ${{needs.build.outputs.image_tag}}
         run: |
           echo "About to push to APHL image tag: iz-gateway_${IMAGE_TAG}"
-#          docker image tag iz-gateway:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:iz-gateway_$IMAGE_TAG
-#          docker image push --all-tags $ECR_REGISTRY/$ECR_REPOSITORY
+          docker image tag iz-gateway:${IMAGE_TAG} $ECR_REGISTRY/$ECR_REPOSITORY:iz-gateway_${IMAGE_TAG}
+          docker image push --all-tags $ECR_REGISTRY/$ECR_REPOSITORY
 
 #jobs:
 #  build:
