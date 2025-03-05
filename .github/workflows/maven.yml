@@ -363,7 +363,7 @@ jobs:
             !testing/newman.key
 
   push-to-aphl:
-    needs: [build]
+    needs: [verify]
     runs-on: ubuntu-latest
     # This step should only be done on PUSH to a Release branch
     if: ${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/Release')) }}
