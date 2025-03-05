@@ -1,0 +1,89 @@
+name: Java CI with Maven
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+# Ensure only one build changes dev environment at the same time    
+concurrency: dev
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    # This step should only be done on PUSH to main
+    if: github.ref == 'refs/heads/testmain' || github.ref == 'refs/heads/main'
+    steps:
+    - uses: actions/checkout@v4
+      # Necessary to enable push to protected branch
+      with:
+        ssh-key: ${{secrets.ACTIONS_KEY}}
+
+    - name: Check that push to main is from release branch
+      # Don't filter on testmain to test push to main route
+      if: ${{ ! startsWith(github.base_ref, 'Release_v') && github.head_ref == 'main' }}
+      run: |
+        echo ${{ github.head_ref }} is NOT a Release branch and cannot be pushed to main
+        # Force failure
+        false
+
+    - name: Copy Documentation to Docs
+      shell: bash
+      run: |
+        # Create the tag
+        TAG=v`mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed "s/-.*$//"`
+        echo TAG=$TAG >> $GITHUB_ENV
+        # Create folder if it does not exist
+        mkdir -p ./docs/release
+        cp *.md ./docs/release
+        # Remove md files we don't need or are creating another way
+        rm ./docs/release/README.md
+        rm ./docs/release/RELEASE_NOTES.md
+        # Just take notes from first release in documentation
+        A=`tail +2 RELEASE_NOTES.md | grep -n "^# " | head -1 | cut -d: -f1`
+        head -n $A RELEASE_NOTES.md > ./docs/release/RELEASE_NOTES.md
+        # Check for existing release tagged with same name.
+        # Enforces rule that TAG must be unique and cannot be reused.
+        # On failure, change from 1.4.1 to 1.4.1.0, then 1.4.1.1, et cetera.
+        # ?? Could we auto-increment the tag in a loop somehow ??
+        if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo $TAG already exists
+            false
+        fi
+
+    - name: Create GitHub Release
+      id: create_release
+      uses: softprops/action-gh-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{env.TAG}}
+        name: IZ Gateway ${{env.TAG}} Release
+        body_path: ./docs/release/RELEASE_NOTES.md
+        draft: true
+        generate_release_notes: true
+        files: |
+          ./docs/release/*.md
+
+    - name: Upload release documentation as artifact for failed release
+      uses: actions/upload-artifact@v4
+      if: ${{ failure() }}
+      with:
+        name: release-failure
+        path: ./docs/release/*.md
+
+    - name: Checkin Release Documentation to Build
+      run: |
+        git config user.name github-actions
+        git config user.email github-actions@github.com
+        git config pull.rebase false
+        git add ./docs/release
+        if git commit -m "generated"
+        then
+          git pull
+          git push
+        fi
