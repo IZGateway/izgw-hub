@@ -365,8 +365,8 @@ jobs:
   push-to-aphl:
     needs: [build]
     runs-on: ubuntu-latest
-    # This step should only be done on PUSH to main
-    if: ${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/main')) }}
+    # This step should only be done on PUSH to a Release branch
+    if: ${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/Release')) }}
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
