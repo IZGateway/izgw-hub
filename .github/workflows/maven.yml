@@ -16,38 +16,41 @@ on:
 # Ensure only one build changes dev environment at the same time    
 concurrency: dev
 # GITHUB_REF=refs/heads/testmain
-#   
+#
+
 jobs:
   build:
 
-    runs-on: ubuntu-latest 
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.output_image_tag.outputs.image_tag }}
 
     steps:
-    
-    - name: Checkout the software  
+
+    - name: Checkout the software
       uses: actions/checkout@v4
       # Necessary to enable push to protected branch
       with:
         ssh-key: ${{secrets.ACTIONS_KEY}}
-        
+
     - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'adopt'
         cache: maven
-        
+
     - name: Set up Maven
       uses: stCarolas/setup-maven@v5
       with:
         maven-version: 3.9.0
-        
+
     - name: Set up Toolchain
       shell: bash
       run: |
           echo BASE_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout` >> $GITHUB_ENV
           echo COMPUTERNAME=`hostname` >> $GITHUB_ENV
-          # Set up for unit testing against JPA repository 
+          # Set up for unit testing against JPA repository
           echo SPRING_DATABASE=jpa >> $GITHUB_ENV
           mkdir -p ~/.m2 \
           && cat << EOF > ~/.m2/toolchains.xml
@@ -62,7 +65,7 @@ jobs:
                 <configuration>
                   <jdkHome>$JAVA_HOME_11_X64</jdkHome>
                 </configuration>
-            </toolchain>            
+            </toolchain>
             <toolchain>
               <type>jdk</type>
                 <provides>
@@ -72,10 +75,10 @@ jobs:
                 <configuration>
                   <jdkHome>$JAVA_HOME_17_X64</jdkHome>
                 </configuration>
-            </toolchain>            
+            </toolchain>
           </toolchains>
           EOF
-          
+
           cat << EOF > ~/.m2/settings.xml
           <?xml version="1.0" encoding="UTF8"?>
           <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
@@ -99,7 +102,7 @@ jobs:
             <activeProfiles />
           </settings>
           EOF
-          
+
     - name: Sets env vars for push or pull request to release branch (default behavior)
       run: |
         echo IMAGE_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed "s/-SNAPSHOT$/-SNAPSHOT-${{github.run_number}}/"` >> $GITHUB_ENV
@@ -107,11 +110,11 @@ jobs:
         # default to force a revision check unless releasing
         echo DO_REVISION_CHECK=true >> $GITHUB_ENV
 
-    # If pulling to main branch (cutting a release), set branch tag appropriately  
-    - name: Sets env vars for pull to main 
+    # If pulling to main branch (cutting a release), set branch tag appropriately
+    - name: Sets env vars for pull to main
       if: ${{ github.base_ref == 'main' }}
       run: |
-        IMAGE_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed "s/-.*$/-IZGW-SNAPSHOT-${{github.run_number}}/"` 
+        IMAGE_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed "s/-.*$/-IZGW-SNAPSHOT-${{github.run_number}}/"`
         echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
         IMAGE_BRANCH_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed "s/-.*$/-IZGW-SNAPSHOT/"`
         echo IMAGE_BRANCH_TAG=$IMAGE_BRANCH_TAG >> $GITHUB_ENV
@@ -120,16 +123,16 @@ jobs:
         # Skip revision check on merge
         echo DO_REVISION_CHECK=false >> $GITHUB_ENV
 
-    # If pushing to main branch (cutting a release), set branch tag appropriately  
-    - name: Sets env vars for pull to main 
+    # If pushing to main branch (cutting a release), set branch tag appropriately
+    - name: Sets env vars for pull to main
       if: ${{ github.ref_name == 'main' }}
       run: |
-        IMAGE_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed "s/-.*$/-IZGW-RELEASE-${{github.run_number}}/"` 
+        IMAGE_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed "s/-.*$/-IZGW-RELEASE-${{github.run_number}}/"`
         echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
         IMAGE_BRANCH_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed "s/-.*$/-IZGW-RELEASE/"`
         echo IMAGE_BRANCH_TAG=$IMAGE_BRANCH_TAG >> $GITHUB_ENV
         mvn versions:set -DnewVersion=$IMAGE_BRANCH_TAG -f pom.xml
-        if [ ${{ github.event_name }} == 'push' ] 
+        if [ ${{ github.event_name }} == 'push' ]
         then
           git config user.name github-actions
           git config user.email github-actions@github.com
@@ -141,7 +144,7 @@ jobs:
             git push
           fi
         fi
-        # Disable revision check on push to main. 
+        # Disable revision check on push to main.
         echo DO_REVISION_CHECK=false >> $GITHUB_ENV
 
     - name: List m2
@@ -154,19 +157,19 @@ jobs:
         echo REF: ${{ github.ref }}
         echo EVENT_NAME ${{ github.event_name }}
         echo TAG: $BASE_TAG
-        echo DO_REVISION_CHECK: $DO_REVISION_CHECK 
-        echo IMAGE_TAG: $IMAGE_TAG 
-        echo IMAGE_BRANCH_TAG: $IMAGE_BRANCH_TAG 
+        echo DO_REVISION_CHECK: $DO_REVISION_CHECK
+        echo IMAGE_TAG: $IMAGE_TAG
+        echo IMAGE_BRANCH_TAG: $IMAGE_BRANCH_TAG
         cd ~/.m2
         ls -l
-          
+
     - name: Check that push to main is from release branch
       # Don't filter on testmain to test push to main route
       if: ${{ ! startsWith(github.base_ref, 'Release_v') && github.head_ref == 'main' }}
       run: |
         echo ${{ github.head_ref }} is NOT a Release branch and cannot be pushed to main
         # Force failure
-        false    
+        false
 
     - name: Maven Install
       env:
@@ -229,6 +232,10 @@ jobs:
         name: DependencyCheck
         path: ./target/dependency-check-report.*
 
+    - name: Output the image tag
+      id: output_image_tag
+      run: echo "image_tag=${{env.IMAGE_TAG}}" >> "$GITHUB_OUTPUT"
+
   verify:
     needs: build
     runs-on: ubuntu-latest
@@ -241,7 +248,7 @@ jobs:
     - name: Set up Tools
       shell: bash
       run: |
-          newman -v 
+          newman -v
           npm install -g newman@6.1.3
           newman -v
           npm install -g newman-reporter-junitfull
@@ -295,7 +302,7 @@ jobs:
       working-directory: ./testing/testdata
       env:
         TESTING_PASS: ${{ secrets.TESTING_PASS }}
-      run: |    
+      run: |
         startTime=$(date +%s);
         # Just Running the Smoke Test ONCE should be enough to warm up
         newman run ../scripts/IZGW_2.0_Integration_Test.postman_collection.json -n 1 --folder "Smoke Test" \
@@ -304,7 +311,7 @@ jobs:
           "--ssl-client-cert" ../newman.pem \
           "--ssl-client-key" ../newman.key \
           "--ssl-client-passphrase" $TESTING_PASS \
-          "--insecure" -x > ../logs/warmup.log 
+          "--insecure" -x > ../logs/warmup.log
         endTime=$(date +%s);
         WARMUP=$(($endTime-$startTime));
         echo Warmed up for $WARMUP seconds
@@ -338,8 +345,8 @@ jobs:
         docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
         docker tag $ECR_REGISTRY/$ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:good
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:good
-          
-    - name: Upload test logs 
+
+    - name: Upload test logs
       uses: actions/upload-artifact@v4
       if: ${{ always() }}
       with:
@@ -354,6 +361,52 @@ jobs:
         path: |
             .
             !testing/newman.key
+
+  push-to-aphl:
+    needs: [build]
+    runs-on: ubuntu-latest
+    # This step should only be done on PUSH to main
+    if: ${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/main')) }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr2
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Tag verified image
+        env:
+          ECR_REGISTRY: 357442695278.dkr.ecr.us-east-1.amazonaws.com
+          ECR_REPOSITORY: izgateway-dev-phiz-web-ws
+          IMAGE_TAG: ${{needs.build.outputs.image_tag}}
+        run: |
+          docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:latest iz-gateway:$IMAGE_TAG
+
+      - name: Configure AWS credentials for APHL
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.APHL_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.APHL_AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to APHL Amazon ECR
+        id: login-aphl-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Tag and push image to APHL Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ secrets.APHL_ECR_REGISTRY }}
+          ECR_REPOSITORY: ${{ secrets.APHL_ECR_REPOSITORY }}
+          IMAGE_TAG: ${{needs.build.outputs.image_tag}}
+        run: |
+          docker image tag iz-gateway:${IMAGE_TAG} $ECR_REGISTRY/$ECR_REPOSITORY:iz-gateway_${IMAGE_TAG}
+          docker image push --all-tags $ECR_REGISTRY/$ECR_REPOSITORY
 
   release:
     needs: verify
@@ -415,7 +468,7 @@ jobs:
       run: |
         git config user.name github-actions
         git config user.email github-actions@github.com
-        git config pull.rebase false 
+        git config pull.rebase false
         git add ./docs/release
         if git commit -m "generated"
         then
