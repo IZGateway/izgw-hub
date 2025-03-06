@@ -78,3 +78,16 @@ Task configuration properties can be passed in environment variables.
   The source version to use for ADS Metadata.  The V2023-09-01 version is for the version 
   supporting RSV reporting, previously this was set to V2022-12-31.
 
+* __HUB_SECURITY_IP_FILTER_ENABLED__
+
+Turns IP filtering on or off in the application. If set to true, it is expected that HUB_SECURITY_IP_FILTER_ALLOWED_CIDR has been configured with allowed IP CIDR blocks. If set to false, any connection from any IP address will be able to connect (assuming they have satisfied the other security requirements of the application).
+
+By default, this is set to false.
+
+* __HUB_SECURITY_IP_FILTER_ALLOWED_CIDR__
+
+A comma separate list of IP CIDR blocks which are allowed to connect to the application. This is ignored if HUB_SECURITY_IP_FILTER_ENABLED is set to false.
+
+IP CIDRs can be specified for IPv4 and IPv6.
+
+To specify, for example, allowing localhost for both IPv4 and IPv6 you would set this to: 127.0.0.1/32,::1/128
