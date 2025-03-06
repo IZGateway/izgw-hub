@@ -10,3 +10,4 @@ The IZ Gateway Hub 2.2.0 release
 * IGDD-1923 IZG Hub shall validate a secret in an http header to ensure the call came from the load balancer
 * IGDD-1924 The IZG Hub service shall verify the incoming IP is from the ALB
 * IGDD-1929 Status History is reporting out of date endpoints that no longer exist
+
