@@ -92,6 +92,8 @@ class ParsedFilename {
 			filetype = "rsvPrevention";
 		} else if (StringUtils.containsIgnoreCase(filetype, "all")) {
 			filetype = "covidallMonthlyVaccination";
+		} else if (StringUtils.containsIgnoreCase(filetype, "measles")) {
+			filetype = "measlesVaccination";
 		} else {
 		    filetype = "genericImmunization";
 		}

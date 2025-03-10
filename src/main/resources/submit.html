@@ -221,6 +221,7 @@
                 <option value="rsvPrevention">Monthly RSV Prevention Report</option>
                 <option value="routineImmunization">Quarterly Routine Immunization Report</option>
                 <option value="farmerFlu">Farmer Flu Report</option>
+                <option value="measlesVaccination">Monthly Measles Report</option>
               </select>
             </div>
           </div>
@@ -451,6 +452,9 @@
         } else if (type.includes("flu")) {
             $("#reportType").val("influenzaVaccination");
             reportType = "influenzaVaccination";
+        } else if (type.includes("measles")) {
+            $("#reportType").val("measlesVaccination");
+            reportType = "measlesVaccination";
         } else {
           errors.push("The filename is not properly formatted. The report type (" + type + ") is invalid");
           reportType = "";

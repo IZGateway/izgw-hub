@@ -138,6 +138,7 @@ public interface Metadata extends Serializable {
 	 * -	rsv-prevention
 	 * -	covid-all-monthly-vaccination
 	 * -	covid-bridge-vaccination
+	 * -	measles-vaccination
 	 */
     @JsonProperty("data_stream_id")
     default String getDataStreamId() {
@@ -157,6 +158,8 @@ public interface Metadata extends Serializable {
 			return "covid-bridge-vaccination";
 		case "genericimmunization":
 			return "generic-immunization";
+		case "measlesvaccination":
+			return "measles-vaccination";
 		default:
 			return value;
     	}

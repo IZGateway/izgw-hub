@@ -321,8 +321,6 @@ public class ADSController implements ADSChecker {
 				.filter(e -> e.equalsIgnoreCase(reportType)).findFirst();
 		if (normalizedReportType.isPresent()) {
 			m.setReportType(normalizedReportType.get());
-		} else if (reportType.equalsIgnoreCase(MetadataBuilder.GENERIC)) {
-			m.setReportType(MetadataBuilder.GENERIC);
 		} else {
 			m.getErrors().add(reportType + " is not a valid reportType value. This must be one of "
 					+ config.getAccessControls().getEventTypes());
@@ -420,7 +418,7 @@ public class ADSController implements ADSChecker {
 			@RequestParam("facilityId") @Schema(description = "The submitting jurisdiction in scA format where sc = the jurisidiction state code (e.g., MAA for Massachusetts). XXA can be used for testing", pattern = "[A-Z][A-Z]A") String facilityId,
 			@Schema(description = "The type of report", allowableValues = { "covidAllMonthlyVaccination",
 					"influenzaVaccination", "rsvPrevention", "routineImmunization",
-					"farmerFlu" }) @RequestParam("reportType") String reportType,
+					"farmerFlu", "measlesVaccination" }) @RequestParam("reportType") String reportType,
 			@Schema(description = "The file to upload, either a CSV file for RVR submissions, or a .ZIP file for Routine Immunization Reporting") @RequestParam("file") MultipartFile file,
 			@Schema(description = "The period in YYYY-MMM format for RVR files, or YYYYQ# for RI files") @RequestParam("period") String period,
 			@RequestParam(required = false) String filename,
