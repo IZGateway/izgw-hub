@@ -5198,7 +5198,7 @@
 											"        }           \r",
 											"    });\r",
 											"}\r",
-											" if(pm.environment.get(\"testingEnvironment\") !== \"test\") moreTests();"
+											" if(!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -8947,7 +8947,7 @@
 											"script": {
 												"exec": [
 													"// Disable while DEX Staging is down.\r",
-													"if (false) {\r",
+													"if (true) {\r",
 													"    pm.test(\"Status code is 200\", function () {\r",
 													"        pm.response.to.have.status(200);\r",
 													"    });\r",
@@ -9272,6 +9272,129 @@
 												{
 													"key": "filename",
 													"value": "MonthlyFarmerFlu_XXA_2022SEP.csv",
+													"type": "text"
+												}
+											]
+										},
+										"url": {
+											"raw": "https://{{host}}:{{port}}/rest/ads/{{dex-endpoint}}",
+											"protocol": "https",
+											"host": [
+												"{{host}}"
+											],
+											"port": "{{port}}",
+											"path": [
+												"rest",
+												"ads",
+												"{{dex-endpoint}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Write Measles Submission to DEX Mock",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"utils.setup(pm);"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 200\", function () {\r",
+													"    pm.response.to.have.status(200);\r",
+													"});\r",
+													"\r",
+													"pm.test(\"Response is As Expected\", function () {\r",
+													"    checkDexResponse(pm, 844);\r",
+													"    var metadata = pm.response.json();\r",
+													"    pm.expect(metadata.meta_ext_event_type, \"meta_ext_event_type\").to.be.eql(\"measlesVaccination\");\r",
+													"    pm.expect(metadata.meta_ext_event, \"meta_ext_event\").to.be.eql(\"measlesVaccination\");\r",
+													"    pm.expect(metadata.data_stream_id, \"data_stream_id\").to.be.eql(\"measles-vaccination\");\r",
+													"\r",
+													"});\r",
+													"\r",
+													"if (pm.variables.get(\"host\").endsWith('phiz-project.org')) {\r",
+													"    return;\r",
+													"}\r",
+													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) utils.testSLA(pm, 300000);\r",
+													"\r",
+													"const interval = setTimeout(() => {}, 3000);\r",
+													"async function moreTests() {\r",
+													"    utils.getLogs(null, pm).then((logData) => {\r",
+													"        logs = logData.json();\r",
+													"        txData = utils.getTxData(logs);\r",
+													"        pm.test(\"Log does not contain HL7 Error\", function() {\r",
+													"            pm.expect(txData[0].transactionData.hasHL7Error).to.be.eql(false);\r",
+													"            pm.expect(txData[0].transactionData.hl7Error).to.be.eql(\"\");\r",
+													"        });\r",
+													"        utils.testLogs(logs, pm, 300000);\r",
+													"    });\r",
+													"}\r",
+													"\r",
+													"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();\r",
+													""
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"protocolProfileBehavior": {
+										"disabledSystemHeaders": {}
+									},
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{token}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "POST",
+										"header": [
+											{
+												"key": "X-Message-ID",
+												"value": "Basic Submission MAA/routineImmuniziation/MAA_16M.zip/2023Q1/RIA_16M.zip"
+											}
+										],
+										"body": {
+											"mode": "formdata",
+											"formdata": [
+												{
+													"key": "facilityId",
+													"value": "XXA",
+													"type": "text"
+												},
+												{
+													"key": "reportType",
+													"value": "measlesVaccination",
+													"type": "text"
+												},
+												{
+													"key": "file",
+													"type": "file",
+													"src": "MonthlyAllCOVID_ARA_2022SEP.csv"
+												},
+												{
+													"key": "period",
+													"value": "2022-SEP",
+													"type": "text"
+												},
+												{
+													"key": "filename",
+													"value": "MonthlyMeasles_XXA_2022SEP.csv",
 													"type": "text"
 												}
 											]
@@ -9809,7 +9932,7 @@
 									"        pm.expect(metadata.version).to.be.eql(metadata.meta_schema_version);",
 									"        pm.expect(metadata.data_stream_route, \"data_stream_route\").to.match(/other|csv/);",
 									"        pm.expect(metadata.data_stream_id, \"data_stream_id\").to.match(",
-									"            /routine-immunization|covid-bridge-vaccination|covid-all-monthly-vaccination|rsv-prevention|influenza-vaccination|generic-immunization|farmer-flu-vaccination/);",
+									"            /routine-immunization|covid-bridge-vaccination|covid-all-monthly-vaccination|rsv-prevention|influenza-vaccination|generic-immunization|farmer-flu-vaccination|measles-vaccination/);",
 									"        pm.expect(metadata.izgw_submission_status, \"izgw_submission_status\").to.be.eql(\"SUCCESS\");",
 									"        pm.expect(metadata.izgw_submission_location, \"izgw_submission_location\").to.not.be.eql(null);",
 									"    } catch (err) {",

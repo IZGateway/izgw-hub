@@ -79,7 +79,8 @@ public class MetadataBuilder {
     		"covidallmonthlyvaccination",
     		"influenzavaccination",
     		"routineimmunization",
-    		"rsvprevention"
+    		"rsvprevention",
+    		"measlesvaccination"
     		));
     static final String GENERIC = "genericImmunization";
     /**

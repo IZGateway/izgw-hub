@@ -1,3 +1,7 @@
+# IZ Gateway Release 2.2.1
+The IZ Gateway Hub 2.2.1 release
+* IGDD-1934 Add support for Measles reporting to ADS
+
 # IZ Gateway Release 2.2.0
 The IZ Gateway Hub 2.2.0 release
 * IGDD-1207 Remove aliased log values not in use in Elastic Visualizations
