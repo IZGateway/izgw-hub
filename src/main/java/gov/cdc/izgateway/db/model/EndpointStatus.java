@@ -69,19 +69,19 @@ public class EndpointStatus implements IEndpoint, Serializable, IEndpointStatus 
 	private int jurisdictionId;
 
 	public EndpointStatus() { }
-	public EndpointStatus(EndpointStatus that) { 
-		statusId = that.statusId;
-		destId = that.destId;
-		destType = that.destType;
-		statusAt = that.statusAt;
-		statusBy = that.statusBy;
-		detail = that.detail;
-		retryStrategy = that.retryStrategy;
-		destUri = that.destUri;
-		diagnostics = that.diagnostics;
-		jurisdictionId = that.jurisdictionId;
-		destVersion = that.destVersion;
-		status = that.status;
+	public EndpointStatus(IEndpointStatus that) { 
+		statusId = that.getStatusId();
+		destId = that.getDestId();
+		destType = that.getDestTypeId();
+		statusAt = that.getStatusAt();
+		statusBy = that.getStatusBy();
+		detail = that.getDetail();
+		retryStrategy = that.getRetryStrategy();
+		destUri = that.getDestUri();
+		diagnostics = that.getDiagnostics();
+		jurisdictionId = that.getJurisdictionId();
+		destVersion = that.getDestVersion();
+		status = that.getStatus();
 	}
 
 	public EndpointStatus(IDestination dest) {

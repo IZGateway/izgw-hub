@@ -147,7 +147,7 @@ public class StatusCheckScheduler {
      */
     private boolean isInteresting(IDestination d) {
         boolean isUnderMaintenance = d.isUnderMaintenance();
-        boolean isWorthChecking = isWorthChecking(d);
+        boolean isWorthChecking = isNotLocalOrInvalid(d);
         boolean isExempt = isExempt(d.getDestId());
         return !isUnderMaintenance && isWorthChecking && !isExempt;
     }
@@ -188,7 +188,8 @@ public class StatusCheckScheduler {
     }
 
     private boolean isExempt(String destId) {
-        return statusCheckerService.getConfig().getExempt().contains(destId);
+        return statusCheckerService.getConfig().getExempt().contains(destId) ||
+        	   statusCheckerService.getConfig().getTestingEndpoints().contains(destId);
     }
 
     private IEndpointStatus checkDestination(String destId) {
@@ -224,7 +225,7 @@ public class StatusCheckScheduler {
         return statusCheckerService.getConfig().getTestingEndpoints().contains(d.getDestId());
     }
 
-    private boolean isWorthChecking(IDestination d) {
+    private boolean isNotLocalOrInvalid(IDestination d) {
         if (d == null) {
             return false;
         }

@@ -26,7 +26,7 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
  * 
  * @author Audacious Inquiry
  */
-public class EndpointStatusRepository extends DynamoDbRepository<EndpointStatus> implements gov.cdc.izgateway.repository.EndpointStatusRepository {
+public class EndpointStatusRepository extends DynamoDbRepository<EndpointStatus> implements gov.cdc.izgateway.repository.EndpointStatusRepository<EndpointStatus> {
 	/**
 	 * Construct a new EndpointStatusRepository from the DynamoDb enhanced client.
 	 * @param client The client
@@ -36,7 +36,7 @@ public class EndpointStatusRepository extends DynamoDbRepository<EndpointStatus>
 	}
 	
 	@Override
-	public IEndpointStatus saveAndFlush(IEndpointStatus dest) {
+	public EndpointStatus saveAndFlush(IEndpointStatus dest) {
 		if (dest == null) {
 			throw new NullPointerException("Entity cannot be null");
 		}
@@ -47,7 +47,7 @@ public class EndpointStatusRepository extends DynamoDbRepository<EndpointStatus>
 	}
 
 	@Override
-	public IEndpointStatus findById(String id) {
+	public EndpointStatus findById(String id) {
 		return find(id);
 	}
 
@@ -59,7 +59,7 @@ public class EndpointStatusRepository extends DynamoDbRepository<EndpointStatus>
 	}
 
 	@Override
-	public List<? extends IEndpointStatus> find(int maxQuarterHours, String[] include) {
+	public List<EndpointStatus> find(int maxQuarterHours, String[] include) {
 		// TODO Whatever is needed for actual implementation
 		long time = System.currentTimeMillis() - (TimeUnit.MINUTES.toMillis(15) * maxQuarterHours);
 		return null;
@@ -73,12 +73,12 @@ public class EndpointStatusRepository extends DynamoDbRepository<EndpointStatus>
 	}
 
 	@Override
-	public IEndpointStatus newEndpointStatus() {
+	public EndpointStatus newEndpointStatus() {
 		return new EndpointStatus();
 	}
 
 	@Override
-	public IEndpointStatus newEndpointStatus(IDestination dest) {
+	public EndpointStatus newEndpointStatus(IDestination dest) {
 		return new EndpointStatus(dest);
 	}
 

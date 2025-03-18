@@ -245,9 +245,7 @@ public class StatusCheckerService implements IStatusCheckerService {
         }
 
         // We did not succeed, set checks for the future if there are any to be scheduled.
-        if (++failureCount < CHECK_INTERVALS.length) {
-        	lookForReset(dest, failureCount);
-        }
+    	lookForReset(dest, Math.max(failureCount, CHECK_INTERVALS.length - 1));
     }
     
 	private void lookForReset(IDestination dest, int count) {
@@ -276,7 +274,8 @@ public class StatusCheckerService implements IStatusCheckerService {
         }
     }
 	
-    private static void logCircuitBreakerReset(IEndpointStatus status) {
+	@Override
+    public void logCircuitBreakerReset(IEndpointStatus status) {
         // Ensure that there is an event id if not set.
         Map<String, String> mdcValues = setupMDC();
         // This was previously a broken connection.  We've reset the circuit breaker,
@@ -287,7 +286,8 @@ public class StatusCheckerService implements IStatusCheckerService {
         restoreMDC(mdcValues);
     }
 
-    private static void logCircuitBreakerThrown(IEndpointStatus status, Throwable why) {
+	@Override
+    public void logCircuitBreakerThrown(IEndpointStatus status, Throwable why) {
         Map<String, String> mdcValues = setupMDC();
         log.info(Markers2.append(why, "status", status),
                 "Circuit Breaker Thrown for {} ({}) in {}: {}", status.getDestId(),

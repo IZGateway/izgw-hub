@@ -158,8 +158,6 @@ hub:
     max-retries: 3
     status-check:
         period: 5
-        exemptions: 
-          - fl
         testing-endpoints:
           - "404"
           - down
