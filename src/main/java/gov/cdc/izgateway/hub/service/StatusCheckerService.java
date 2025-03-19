@@ -192,6 +192,7 @@ public class StatusCheckerService implements IStatusCheckerService {
         Map<String, String> map = setupMDC();
         TransactionData tDataOriginal = RequestContext.getTransactionData();
         TransactionData tData = new TransactionData(new Date(), statusCheckerEventId);
+        tData.setServiceType("Gateway");
         RequestContext.setTransactionData(tData);
         setDestinationInfoFromDestination(RequestContext.getDestinationInfo(), dest);
         tData.setMessageType(MessageType.CONNECTIVITY_TEST);
