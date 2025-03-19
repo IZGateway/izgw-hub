@@ -262,18 +262,34 @@ public class StatusCheckerService implements IStatusCheckerService {
 		return config.getExempt().contains(destId);
 	}
 	
-	public void updateStatus(IEndpointStatus s, boolean wasCircuitBreakerThrown, Throwable reason) {
-		endpointStatusService.save(s);
-        if (s.isCircuitBreakerThrown() != wasCircuitBreakerThrown) {
-            if (wasCircuitBreakerThrown) {
-                logCircuitBreakerReset(s);
-            } else {
-                logCircuitBreakerThrown(s, reason);
-                // If the Circuit breaker was thrown, this destination needs to go on a list of destinations to check again
-            }
-        }
-    }
 	
+	/**
+	 * Update status after successful or failed message send. This keeps status fresh and avoids
+	 * unnecessary status checks.
+	 * @param status	Current status
+	 * @param dest		Destination (needed on failure states to look for a reset of the circuit breaker)
+	 * @param success	true if the request worked, false if the circuit break should be thrown.
+	 * @param reason	The reason for the failure
+	 */
+	@Override
+	public void updateStatus(IEndpointStatus status, IDestination dest, boolean success, Fault reason) {
+		boolean wasCircuitBreakerThrown = status.isCircuitBreakerThrown();
+		if (success) {
+			status.connected();
+			if (wasCircuitBreakerThrown) {
+				logCircuitBreakerReset(status);
+			}
+		} else {
+			status.setStatus(IEndpointStatus.CIRCUIT_BREAKER_THROWN);
+			if (!wasCircuitBreakerThrown && reason.shouldBreakCircuit()) {
+				logCircuitBreakerThrown(status, reason);
+				lookForReset(dest);
+			}
+		}
+		endpointStatusService.save(status);
+	}
+	
+
 	@Override
     public void logCircuitBreakerReset(IEndpointStatus status) {
         // Ensure that there is an event id if not set.
@@ -301,6 +317,10 @@ public class StatusCheckerService implements IStatusCheckerService {
         // where this request came from.
         Map<String, String> m = new HashMap<>();
         LoggingValve.MDC_EVENTS.forEach(s -> m.put(s,  MDC.get(s)));
+        // Don't mess with MDC if values are already present.
+        if (MDC.get(LoggingValve.EVENT_ID) != null && MDC.get(LoggingValve.REQUEST_URI) != null) {
+        	return m;
+        }
         MDC.put(LoggingValve.EVENT_ID, statusCheckerEventId);
         MDC.put(LoggingValve.REQUEST_URI, Thread.currentThread().getName());
         MDC.put(LoggingValve.METHOD, "INTERNAL");

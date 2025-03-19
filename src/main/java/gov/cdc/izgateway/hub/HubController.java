@@ -117,7 +117,7 @@ public class HubController extends SoapControllerBase {
 		
 		// We got a good result, update status
 		s.setStatus(IEndpointStatus.CONNECTED);
-		messageSender.getStatusChecker().updateStatus(s, wasCircuitBreakerThrown, null);
+		messageSender.getStatusChecker().updateStatus(s, dest, wasCircuitBreakerThrown, null);
 		return result;
 	}
 	
@@ -178,7 +178,7 @@ public class HubController extends SoapControllerBase {
 		response.getHubHeader().setDestinationUri(uri);
 		ResponseEntity<?> result = checkResponseEntitySize(new ResponseEntity<>(response, HttpStatus.OK));
 		// A good result updates the status.
-		messageSender.getStatusChecker().updateStatus(s, wasCircuitBreakerThrown, null);
+		messageSender.getStatusChecker().updateStatus(s, dest, wasCircuitBreakerThrown, null);
 		return result;
 	}
 	
