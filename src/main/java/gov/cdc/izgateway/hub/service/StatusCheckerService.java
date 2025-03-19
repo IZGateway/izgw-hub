@@ -268,20 +268,20 @@ public class StatusCheckerService implements IStatusCheckerService {
 	 * unnecessary status checks.
 	 * @param status	Current status
 	 * @param dest		Destination (needed on failure states to look for a reset of the circuit breaker)
-	 * @param success	true if the request worked, false if the circuit break should be thrown.
 	 * @param reason	The reason for the failure
 	 */
 	@Override
-	public void updateStatus(IEndpointStatus status, IDestination dest, boolean success, Fault reason) {
+	public void updateStatus(IEndpointStatus status, IDestination dest, Fault reason) {
 		boolean wasCircuitBreakerThrown = status.isCircuitBreakerThrown();
-		if (success) {
+		if (reason == null) {
 			status.connected();
 			if (wasCircuitBreakerThrown) {
 				logCircuitBreakerReset(status);
 			}
 		} else {
-			status.setStatus(IEndpointStatus.CIRCUIT_BREAKER_THROWN);
+			status = new EndpointStatus(dest).fromFault(reason);
 			if (!wasCircuitBreakerThrown && reason.shouldBreakCircuit()) {
+				status.setStatus(IEndpointStatus.CIRCUIT_BREAKER_THROWN);
 				logCircuitBreakerThrown(status, reason);
 				lookForReset(dest);
 			}
