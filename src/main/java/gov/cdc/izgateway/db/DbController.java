@@ -278,25 +278,36 @@ public class DbController {
 	@RolesAllowed({ Roles.ADMIN, Roles.INTERNAL })
 	public HostMap getRefreshed(
 		@Parameter(description = "If true, refresh all instances, otherwise refresh only the current instance.", required = false)
-		@RequestParam(name = "all", defaultValue = "false") boolean all
+		@RequestParam(name = "all", defaultValue = "false") boolean all,
+		@Parameter(description = "If true, reset circuit breakers as well.", required = false)
+		@RequestParam(name = "reset", defaultValue = "false") boolean reset
+
 	) {
 		HostMap results = new HostMap();
 		refresh();
 		String me = SystemUtils.getHostname();
+		// Send refresh request in parallel to all known endpoints
+		String eventId = MDC.get(EventId.EVENTID_KEY);
+		
 		results.put(me, "OK (Local)");
+		if (reset) {
+			resetEndpoint(me, eventId);
+		} 
+		
 		if (all) {
 
 			ExecutorService ex = Executors.newFixedThreadPool(4);
 
 			List<String> hosts = getRunningHosts(false);
-			// Send refresh request in parallel to all known endpoints
-			String eventId = MDC.get(EventId.EVENTID_KEY);
 			for (String host : hosts) {
 				// Don't recursively refresh yourself
-				if (!host.equalsIgnoreCase(me)) {
-					ex.execute(() -> results.put(host, refreshEndpoint(host, eventId)));
+				if (host.equalsIgnoreCase(me)) {
+					continue;
 				}
-				ex.execute(() -> resetEndpoint(host, eventId));
+				ex.execute(() -> results.put(host, refreshEndpoint(host, eventId)));
+				if (reset) {
+					ex.execute(() -> resetEndpoint(host, eventId));
+				}
 			}
 
 			ex.shutdown();
@@ -496,7 +507,7 @@ public class DbController {
 
 		configuration.getDestinationService().saveAndFlush(dest);
 		// Refresh other services.
-		getRefreshed(true);
+		getRefreshed(true, false);
 		return getConfigById(id);
 	}
 

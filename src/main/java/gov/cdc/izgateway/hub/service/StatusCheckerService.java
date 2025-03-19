@@ -192,6 +192,7 @@ public class StatusCheckerService implements IStatusCheckerService {
         Map<String, String> map = setupMDC();
         TransactionData tDataOriginal = RequestContext.getTransactionData();
         TransactionData tData = new TransactionData(new Date(), statusCheckerEventId);
+        tData.setServiceType("Gateway");
         RequestContext.setTransactionData(tData);
         setDestinationInfoFromDestination(RequestContext.getDestinationInfo(), dest);
         tData.setMessageType(MessageType.CONNECTIVITY_TEST);
@@ -245,9 +246,7 @@ public class StatusCheckerService implements IStatusCheckerService {
         }
 
         // We did not succeed, set checks for the future if there are any to be scheduled.
-        if (++failureCount < CHECK_INTERVALS.length) {
-        	lookForReset(dest, failureCount);
-        }
+    	lookForReset(dest, Math.max(failureCount, CHECK_INTERVALS.length - 1));
     }
     
 	private void lookForReset(IDestination dest, int count) {
@@ -264,19 +263,36 @@ public class StatusCheckerService implements IStatusCheckerService {
 		return config.getExempt().contains(destId);
 	}
 	
-	public void updateStatus(IEndpointStatus s, boolean wasCircuitBreakerThrown, Throwable reason) {
-		endpointStatusService.save(s);
-        if (s.isCircuitBreakerThrown() != wasCircuitBreakerThrown) {
-            if (wasCircuitBreakerThrown) {
-                logCircuitBreakerReset(s);
-            } else {
-                logCircuitBreakerThrown(s, reason);
-                // If the Circuit breaker was thrown, this destination needs to go on a list of destinations to check again
-            }
-        }
-    }
 	
-    private static void logCircuitBreakerReset(IEndpointStatus status) {
+	/**
+	 * Update status after successful or failed message send. This keeps status fresh and avoids
+	 * unnecessary status checks.
+	 * @param status	Current status
+	 * @param dest		Destination (needed on failure states to look for a reset of the circuit breaker)
+	 * @param reason	The reason for the failure
+	 */
+	@Override
+	public void updateStatus(IEndpointStatus status, IDestination dest, Fault reason) {
+		boolean wasCircuitBreakerThrown = status.isCircuitBreakerThrown();
+		if (reason == null) {
+			status.connected();
+			if (wasCircuitBreakerThrown) {
+				logCircuitBreakerReset(status);
+			}
+		} else {
+			status = new EndpointStatus(dest).fromFault(reason);
+			if (!wasCircuitBreakerThrown && reason.shouldBreakCircuit()) {
+				status.setStatus(IEndpointStatus.CIRCUIT_BREAKER_THROWN);
+				logCircuitBreakerThrown(status, reason);
+				lookForReset(dest);
+			}
+		}
+		endpointStatusService.save(status);
+	}
+	
+
+	@Override
+    public void logCircuitBreakerReset(IEndpointStatus status) {
         // Ensure that there is an event id if not set.
         Map<String, String> mdcValues = setupMDC();
         // This was previously a broken connection.  We've reset the circuit breaker,
@@ -287,7 +303,8 @@ public class StatusCheckerService implements IStatusCheckerService {
         restoreMDC(mdcValues);
     }
 
-    private static void logCircuitBreakerThrown(IEndpointStatus status, Throwable why) {
+	@Override
+    public void logCircuitBreakerThrown(IEndpointStatus status, Throwable why) {
         Map<String, String> mdcValues = setupMDC();
         log.info(Markers2.append(why, "status", status),
                 "Circuit Breaker Thrown for {} ({}) in {}: {}", status.getDestId(),
@@ -301,6 +318,10 @@ public class StatusCheckerService implements IStatusCheckerService {
         // where this request came from.
         Map<String, String> m = new HashMap<>();
         LoggingValve.MDC_EVENTS.forEach(s -> m.put(s,  MDC.get(s)));
+        // Don't mess with MDC if values are already present.
+        if (MDC.get(LoggingValve.EVENT_ID) != null && MDC.get(LoggingValve.REQUEST_URI) != null) {
+        	return m;
+        }
         MDC.put(LoggingValve.EVENT_ID, statusCheckerEventId);
         MDC.put(LoggingValve.REQUEST_URI, Thread.currentThread().getName());
         MDC.put(LoggingValve.METHOD, "INTERNAL");

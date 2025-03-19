@@ -6,7 +6,6 @@ import gov.cdc.izgateway.hub.service.DestinationService;
 import gov.cdc.izgateway.hub.service.StatusCheckerService;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.model.IEndpointStatus;
-import gov.cdc.izgateway.repository.EndpointStatusRepository;
 import gov.cdc.izgateway.security.AccessControlRegistry;
 import gov.cdc.izgateway.security.Roles;
 import gov.cdc.izgateway.service.impl.EndpointStatusService;
@@ -158,5 +157,18 @@ public class StatusController {
 		checkerService.checkDestination(d);
 		return checkerService.updateDestinationStatus(d);
 	}
-
+	
+	@GetMapping("/reset")
+	@Operation(summary = "Reset the circuit breakers on this host",
+			description = "Reset the circuit breaker for all destinations on this host")
+	@ApiResponse(responseCode = "200", description = "Success", 
+	content = @Content(mediaType = "application/json",
+		schema = @Schema(implementation=EndpointStatus.class))
+	)
+	public Map<String, IEndpointStatus> resetCircuitBreakers() {
+		endpointStatusService.resetCircuitBreakers();
+		Map<String, IEndpointStatus> l2 = new TreeMap<>();
+		endpointStatusService.findAll().forEach(s -> l2.put(s.getDestId(), s));
+		return l2;
+	}
 }

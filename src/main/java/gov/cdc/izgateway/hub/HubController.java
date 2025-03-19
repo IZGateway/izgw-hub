@@ -102,8 +102,6 @@ public class HubController extends SoapControllerBase {
 		logDestination(dest);
 		
 		IEndpointStatus s = endpointStatusService.getEndpointStatus(dest);
-		boolean wasCircuitBreakerThrown = s.isCircuitBreakerThrown();
-		
 		ResponseEntity<?> result = null;
 		if (dest.isDex()) {
 			// Do a status check on DEX Endpoint.
@@ -116,8 +114,7 @@ public class HubController extends SoapControllerBase {
 		}
 		
 		// We got a good result, update status
-		s.setStatus(IEndpointStatus.CONNECTED);
-		messageSender.getStatusChecker().updateStatus(s, wasCircuitBreakerThrown, null);
+		messageSender.getStatusChecker().updateStatus(s, dest, null);
 		return result;
 	}
 	
@@ -165,8 +162,6 @@ public class HubController extends SoapControllerBase {
 
 		checkAccess(destinationId);
 		IEndpointStatus s = endpointStatusService.getEndpointStatus(dest);
-		boolean wasCircuitBreakerThrown = s.isCircuitBreakerThrown();
-
 		checkMessage(submitSingleMessage);
 		SubmitSingleMessageResponse response = messageSender.sendSubmitSingleMessage(dest, submitSingleMessage);
 		response.setSchema(SoapMessage.HUB_NS);	// Shift from client to Hub Schema
@@ -178,7 +173,7 @@ public class HubController extends SoapControllerBase {
 		response.getHubHeader().setDestinationUri(uri);
 		ResponseEntity<?> result = checkResponseEntitySize(new ResponseEntity<>(response, HttpStatus.OK));
 		// A good result updates the status.
-		messageSender.getStatusChecker().updateStatus(s, wasCircuitBreakerThrown, null);
+		messageSender.getStatusChecker().updateStatus(s, dest, null);
 		return result;
 	}
 	
