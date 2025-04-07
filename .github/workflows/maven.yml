@@ -3,15 +3,9 @@ name: Java CI with Maven
 on:
   push:
     branches:
-      - Release*
-      - develop
+      - debug-verify-step
 
-  pull_request:
-    branches:
-      - Release*
-      - develop
-
-# Ensure only one build changes dev environment at the same time    
+# Ensure only one build changes dev environment at the same time
 concurrency: dev
 # GITHUB_REF=refs/heads/testmain
 #
@@ -283,6 +277,13 @@ jobs:
         mkdir ./logs
         ./tlstest.sh | tee ./logs/tls-test.txt
         [ `grep -c -e FAIL ./logs/tls-test.txt` -eq 0 ]
+
+    - name: Upload TLS test logs
+      uses: actions/upload-artifact@v3
+      with:
+        name: tls-test-logs
+        path: ./testing/logs/tls-test.txt
+        retention-days: 2
 
     # Include warmup in Verify b/c we must warm up server on which verification
     # is performed.  B/c Each stage runs in a separate virtual server, and our cluster
