@@ -279,7 +279,7 @@ jobs:
         [ `grep -c -e FAIL ./logs/tls-test.txt` -eq 0 ]
 
     - name: Upload TLS test logs
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: tls-test-logs
         path: ./testing/logs/tls-test.txt
