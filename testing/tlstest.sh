@@ -10,6 +10,7 @@ CHECK="echo GET /IISHubService?wsdl "
 FAILURES=0
 
 #set -x
+openssl -v > ./logs/openssl-version.txt 2>&1
 
 echo
 TEST="openssl s_client $IZGW_CA $IZGW_GK -tls1 $IZGW_EP" > ./logs/tls1.openssl.txt 2>&1
