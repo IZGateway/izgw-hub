@@ -79,7 +79,7 @@
 			<artifactId>jackson-databind</artifactId>
 		</dependency>
 		<!-- Uncomment the following to get a startup report at [host]/startup-report -->
-		<!-- dependency> <groupId>com.maciejwalkowiak.spring</groupId> <artifactId>spring-boot-startup-report</artifactId> 
+		<!-- dependency> <groupId>com.maciejwalkowiak.spring</groupId> <artifactId>spring-boot-startup-report</artifactId>
 			<version>0.2.0</version> <optional>true</optional> </dependency -->
 		<dependency>
 			<groupId>com.mysql</groupId>
@@ -157,7 +157,7 @@
 			<groupId>org.apache.httpcomponents</groupId>
 			<artifactId>httpcore</artifactId>
 		</dependency>
-		<!-- if you change any of the three BC components below, be sure to update 
+		<!-- if you change any of the three BC components below, be sure to update
 			Dockerfile to use same versions -->
 		<dependency>
 			<groupId>org.bouncycastle</groupId>
@@ -323,9 +323,7 @@
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
 					<useSystemClassLoader>true</useSystemClassLoader>
-					<!-- GitHub Action Troubleshooting -->
-					<reuseForks>false</reuseForks>
-					<forkedProcessExitTimeoutInSeconds>300</forkedProcessExitTimeoutInSeconds>
+					<forkCount>0</forkCount>
 					<testFailureIgnore>false</testFailureIgnore>
 					<systemPropertyVariables>
 						<elastic.api.key>${env.ELASTIC_API_KEY}</elastic.api.key>
