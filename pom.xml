@@ -323,9 +323,9 @@
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
 					<useSystemClassLoader>true</useSystemClassLoader>
-					<reuseForks>true</reuseForks>
-					<!-- Troubleshooting GitHub Action -->
-					<forkCount>0</forkCount>
+					<!-- GitHub Action Troubleshooting -->
+					<reuseForks>false</reuseForks>
+					<forkedProcessExitTimeoutInSeconds>300</forkedProcessExitTimeoutInSeconds>
 					<testFailureIgnore>false</testFailureIgnore>
 					<systemPropertyVariables>
 						<elastic.api.key>${env.ELASTIC_API_KEY}</elastic.api.key>
