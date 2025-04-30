@@ -91,7 +91,7 @@ jobs:
               <server>
                 <id>github</id>
                 <username>${{ env.GITHUB_ACTOR }}</username>
-                <password>${{ secrets.IZGW_ALL_REPO_ACCESS_TOKEN }}</password>
+                <password>${{ secrets.IZGW_ALL_REPO_ACCESS_TOKEN_AUSTIN }}</password>
               </server>
             </servers>
             <mirrors />
