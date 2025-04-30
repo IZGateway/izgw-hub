@@ -1,3 +1,13 @@
+# IZ Gateway Release 2.3.0
+The IZ Gateway Hub 2.3.0 release
+* IGDD-1988 - Adding logic to provide a way to bypass the SecretHeaderFilter if the request URI matches one of the configured paths.  This is useful for healthchecks that cannot attach an http header with the secret.
+* IGDD-1986 Fix to TLS test issue when IZG Hub pipeline runs.
+* IGDD-2006 Address two HIGH CVE's before 2.3.0 release - CVE-2025-22235, CVE-2025-30706
+
+# IZ Gateway Release 2.2.2
+The IZ Gateway Hub 2.2.2 release
+* IGDD-1962 Fix for CVE-2025-22228. Description of the CVE that is being fixed: BCryptPasswordEncoder.matches(CharSequence,String) will incorrectly return true for passwords larger than 72 characters as long as the first 72 characters are the same.
+
 # IZ Gateway Release 2.2.1
 The IZ Gateway Hub 2.2.1 release
 * IGDD-1934 Add support for Measles reporting to ADS
