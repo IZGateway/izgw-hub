@@ -1,3 +1,7 @@
+# IZ Gateway Release 2.3.1
+The IZ Gateway Hub 2.3.1 release
+* IGDD-2009 Fix to the ALB-related logic that validates the certificate coming from the ALB.
+
 # IZ Gateway Release 2.3.0
 The IZ Gateway Hub 2.3.0 release
 * IGDD-1988 - Adding logic to provide a way to bypass the SecretHeaderFilter if the request URI matches one of the configured paths.  This is useful for healthchecks that cannot attach an http header with the secret.
