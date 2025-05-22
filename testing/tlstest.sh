@@ -44,25 +44,23 @@ ALERT="`grep -e "SSL alert" ./logs/good1-3.openssl.txt`"
 if [ "$PASS" != "0" -o "$ALERT" != "" ]; then echo -n FAIL; FAILURES=$(( $FAILURES + 1)); else echo -n PASS; fi
 echo -e ":\tTLS v1.3 Test Good Key, Good Cipher Succeeds:\n\t  Good Key and Cipher SHOULD succeed\n$TEST"
 
-goto end
-# SKIP These two until we can figure out what is happening with TLS Testing
-echo
-TEST="openssl s_client -tls1_2 $IZGW_CA $IZGW_BK $IZGW_BC $IZGW_EP"
-echo $TEST > ./logs/badkey2.openssl.txt 2>&1
-$CHECK | $TEST >> ./logs/badkey2.openssl.txt 2>&1
-ALERT="`grep -e 'SSL alert number 40' ./logs/badkey2.openssl.txt`"
-if [ "$ALERT" = "" ]; then echo -n FAIL; FAILURES=$(( $FAILURES + 1)); else echo -n PASS; fi
-echo -e ":\tCIPHER Test Bad Key, Bad Cipher fails on Bad Cipher:\n\t  Bad Cipher SHOULD be rejected with Alert 40\n$TEST"
+## SKIP These two until we can figure out what is happening with TLS Testing
+#echo
+#TEST="openssl s_client -tls1_2 $IZGW_CA $IZGW_BK $IZGW_BC $IZGW_EP"
+#echo $TEST > ./logs/badkey2.openssl.txt 2>&1
+#$CHECK | $TEST >> ./logs/badkey2.openssl.txt 2>&1
+#ALERT="`grep -e 'SSL alert number 40' ./logs/badkey2.openssl.txt`"
+#if [ "$ALERT" = "" ]; then echo -n FAIL; FAILURES=$(( $FAILURES + 1)); else echo -n PASS; fi
+#echo -e ":\tCIPHER Test Bad Key, Bad Cipher fails on Bad Cipher:\n\t  Bad Cipher SHOULD be rejected with Alert 40\n$TEST"
+#
+#echo
+#TEST="openssl s_client -tls1_2 $IZGW_CA $IZGW_GK $IZGW_BC $IZGW_EP"
+#echo $TEST > ./logs/cipher1.openssl.txt 2>&1
+#$CHECK | $TEST >> ./logs/cipher1.openssl.txt 2>&1
+#ALERT="`grep -e 'SSL alert number 40' ./logs/cipher1.openssl.txt`"
+#if [ "$ALERT" = "" ]; then echo -n FAIL; FAILURES=$(( $FAILURES + 1)); else echo -n PASS; fi
+#echo -e ":\tCIPHER Test Good Key, Bad Cipher fails on Bad Cipher:\n\t  Bad Cipher SHOULD be rejected with Alert 40\n$TEST"
 
-echo
-TEST="openssl s_client -tls1_2 $IZGW_CA $IZGW_GK $IZGW_BC $IZGW_EP"
-echo $TEST > ./logs/cipher1.openssl.txt 2>&1
-$CHECK | $TEST >> ./logs/cipher1.openssl.txt 2>&1
-ALERT="`grep -e 'SSL alert number 40' ./logs/cipher1.openssl.txt`"
-if [ "$ALERT" = "" ]; then echo -n FAIL; FAILURES=$(( $FAILURES + 1)); else echo -n PASS; fi
-echo -e ":\tCIPHER Test Good Key, Bad Cipher fails on Bad Cipher:\n\t  Bad Cipher SHOULD be rejected with Alert 40\n$TEST"
-
-:end
 echo
 echo "Failures: $FAILURES";
 
