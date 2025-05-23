@@ -273,16 +273,17 @@ jobs:
         aws logs filter-log-events --log-group-name /ecs/izgateway-dev-phiz-web-ws --log-stream-names ecs/izgateway-dev-phiz-web-ws/$SERVICE_INSTANCE --filter-pattern "Connection to backoff" | grep established
 
     # Perform a little bit of warmup on the IZGW service using cert tests
-    - name: Execute Encryption/Cert Test
-      id: TlsTests
-      working-directory: ./testing
-      env:
-        IZGW_SSL_CLIENT_PASSPHRASE: ${{ secrets.TESTING_PASS }}
-      run: |
-        chmod +x ./tlstest.sh
-        mkdir ./logs
-        ./tlstest.sh | tee ./logs/tls-test.txt
-        [ `grep -c -e FAIL ./logs/tls-test.txt` -eq 0 ]
+    # TLS Testing can be Disabled per Security Team 5/23/2025, as it will be addressed via endpoint monitoring
+#    - name: Execute Encryption/Cert Test
+#      id: TlsTests
+#      working-directory: ./testing
+#      env:
+#        IZGW_SSL_CLIENT_PASSPHRASE: ${{ secrets.TESTING_PASS }}
+#      run: |
+#        chmod +x ./tlstest.sh
+#        mkdir ./logs
+#        ./tlstest.sh | tee ./logs/tls-test.txt
+#        [ `grep -c -e FAIL ./logs/tls-test.txt` -eq 0 ]
 
     # Include warmup in Verify b/c we must warm up server on which verification
     # is performed.  B/c Each stage runs in a separate virtual server, and our cluster
@@ -293,6 +294,7 @@ jobs:
       env:
         TESTING_PASS: ${{ secrets.TESTING_PASS }}
       run: |
+        mkdir ./logs
         startTime=$(date +%s);
         # Just Running the Smoke Test ONCE should be enough to warm up
         newman run ../scripts/IZGW_2.0_Integration_Test.postman_collection.json -n 1 --folder "Smoke Test" \
