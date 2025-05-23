@@ -294,7 +294,7 @@ jobs:
       env:
         TESTING_PASS: ${{ secrets.TESTING_PASS }}
       run: |
-        mkdir ./logs
+        mkdir ../logs
         startTime=$(date +%s);
         # Just Running the Smoke Test ONCE should be enough to warm up
         newman run ../scripts/IZGW_2.0_Integration_Test.postman_collection.json -n 1 --folder "Smoke Test" \
