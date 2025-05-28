@@ -212,8 +212,7 @@ public class DbController {
 	@ApiResponse(responseCode = "400", description = "The identifier cannot be changed.", 
 		content = @Content)
 	@PostMapping("/headers/{id}")
-	public IMessageHeader setMessageHeadersById(@PathVariable String id,
-			@RequestBody MessageHeader newValues) {
+	public IMessageHeader setMessageHeadersById(@PathVariable String id, @RequestBody MessageHeader newValues) {
 		IMessageHeader old;
 		old = getMessageHeadersById(id);
 		if (!id.equals(newValues.getMsh())) {
@@ -235,8 +234,7 @@ public class DbController {
 	    content = @Content(mediaType = "application/json", 
 	     schema = @Schema(implementation = MessageHeader.class))
 	)
-	@ApiResponse(responseCode = "404", description = "The header record cannot be found.", 
-		content = @Content)
+	@ApiResponse(responseCode = "404", description = "The header record cannot be found.", content = @Content)
 	@DeleteMapping("/headers/{id}")
 	public IMessageHeader deleteMessageHeadersById(@PathVariable String id) {
 		refresh();
@@ -251,13 +249,10 @@ public class DbController {
 	    content = @Content(mediaType = "application/json", 
 	     schema = @Schema(implementation = MessageHeader.class))
 	)
-	@ApiResponse(responseCode = "400", description = "The identifier cannot be changed.", 
-		content = @Content)
+	@ApiResponse(responseCode = "400", description = "The identifier cannot be changed.", content = @Content)
 	@PutMapping("/headers")
 	@ResponseStatus(HttpStatus.CREATED)
-	public IMessageHeader createMessageHeadersById(
-			@RequestBody MessageHeader newValues
-	) {
+	public IMessageHeader createMessageHeadersById(@RequestBody MessageHeader newValues) {
 		try {
 			IMessageHeader old = getMessageHeadersById(newValues.getMsh());
 			throw new BadRequestException(String.format("A Message Header already exists for %s", newValues.getDestId()));

@@ -193,6 +193,7 @@ jobs:
         docker image tag iz-gateway:${{env.IMAGE_TAG}} $ECR_REGISTRY/$ECR_REPOSITORY:latest
         docker image push --all-tags $ECR_REGISTRY/$ECR_REPOSITORY
         aws ecs update-service --cluster izgateway-dev-izgateway-services --service izgateway-dev-service --force-new-deployment --enable-execute-command --desired-count 4 | jq ".service.deployments[].id"
+        aws ecs update-service --cluster izgateway-dev-izgateway-services --service izgateway-devalb-service --force-new-deployment --enable-execute-command --desired-count 4 | jq ".service.deployments[].id"
 
     - name: Login to GitHub Repository
       uses: docker/login-action@v3
@@ -263,7 +264,7 @@ jobs:
     # Having the wait for reload at this point allows some of the wasted waiting time to occur during build cleanup phase
     # and setup phase of this job.
     - name: Wait for reload of task to complete
-      run: aws ecs wait services-stable --cluster izgateway-dev-izgateway-services --service izgateway-dev-service
+      run: aws ecs wait services-stable --cluster izgateway-dev-izgateway-services --service izgateway-devalb-service
 
     # Verify Filebeats is operating properly
     # Get the first service instance and check CloudWatch logs for indication that it connected
