@@ -423,7 +423,7 @@
 											"});\r",
 											"\r",
 											"pm.test(\"Contains WSDL definitions element\", function () {\r",
-											"    pm.expect(responseBody).to.match(/\\/(<[a-zA-Z0-9_]+:)?definitions/);\r",
+											"    pm.expect(pm.response.text()).to.match(/(<[a-zA-Z0-9_]+:)?schema/);\r",
 											"});"
 										],
 										"type": "text/javascript",
@@ -2668,7 +2668,10 @@
 													"    pm.expect(pm.response.code).to.be.eq(201);\r",
 													"});\r",
 													"\r",
-													"var obj = pm.response.json();\r",
+													"var obj = null;\r",
+													"pm.test(\"Response has JSON Body\", function () {\r",
+													"    pm.expect(obj = pm.response.json()).to.not.be.equal(null);\r",
+													"});\r",
 													"pm.test(\"Response has expected values\", function () {\r",
 													"    pm.expect(obj?.msh).to.be.eq(\"NEW\");\r",
 													"    pm.expect(obj?.destId).to.be.eq(\"devwup\");\r",
@@ -12817,6 +12820,59 @@
 								"rest",
 								"ads",
 								"{{dex-endpoint}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "TC_92E Create New Header Record Copy",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {\r",
+									"    pm.expect(pm.response.code).to.be.eq(201);\r",
+									"});\r",
+									"\r",
+									"var obj = pm.response.json();\r",
+									"pm.test(\"Response has expected values\", function () {\r",
+									"    pm.expect(obj?.msh).to.be.eq(\"NEW\");\r",
+									"    pm.expect(obj?.destId).to.be.eq(\"devwup\");\r",
+									"    pm.expect(obj?.iis).to.be.eq(\"devwup\");\r",
+									"    pm.expect(obj?.sourceType).to.be.eq(null);\r",
+									"    pm.expect(obj?.username).to.be.eq(\"username\");\r",
+									"    pm.expect(obj?.password).to.be.eq(\"password\");\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"msh\": \"NEW\",\r\n    \"destId\": \"devwup\",\r\n    \"iis\": \"devwup\",\r\n    \"sourceType\": null,\r\n    \"username\": \"username\",\r\n    \"password\": \"password\",\r\n    \"facilityId\": \"facility\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{protocol}}://{{host}}:{{port}}{{prefix}}/headers",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{host}}"
+							],
+							"port": "{{port}}{{prefix}}",
+							"path": [
+								"headers"
 							]
 						}
 					},
