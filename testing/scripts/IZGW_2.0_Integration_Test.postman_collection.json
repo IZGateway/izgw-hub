@@ -401,6 +401,88 @@
 							"response": []
 						},
 						{
+							"name": "TC_03c Retrieval of Schema",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Content-Type is correct\", function () {\r",
+											"    var contentType = null;\r",
+											"    for (header in pm.response.headers.members) {\r",
+											"        if (pm.response.headers.members[header].key == \"Content-Type\") {\r",
+											"            contentType = pm.response.headers.members[header].value;\r",
+											"            break;\r",
+											"        }\r",
+											"    }\r",
+											"    pm.expect(contentType).to.match(/[\\/+]xml/);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Contains WSDL definitions element\", function () {\r",
+											"    pm.expect(responseBody).to.match(/\\/(<[a-zA-Z0-9_]+:)?definitions/);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"utils.setup(pm);"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {
+									"host": true
+								}
+							},
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Host",
+										"value": "{{hostHeader}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/xml"
+									},
+									{
+										"key": "X-Message-ID",
+										"value": "{{testMessageId}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{host}}:{{port}}/IISHubService?xsd=cdc-iis.xsd",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{host}}"
+									],
+									"port": "{{port}}",
+									"path": [
+										"IISHubService"
+									],
+									"query": [
+										{
+											"key": "xsd",
+											"value": "cdc-iis.xsd"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
 							"name": "TC_04/05a/06/07a/16/19 Send correctly formatted SOAP Request to the  endpoint",
 							"event": [
 								{
@@ -2498,6 +2580,253 @@
 											"port": "{{port}}",
 											"path": [
 												"IISHubService"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						},
+						{
+							"name": "Header Methods",
+							"item": [
+								{
+									"name": "TC_92D-H Setup",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													""
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [],
+										"url": {
+											"raw": "{{protocol}}://{{host}}:{{port}}{{prefix}}/headers/NEW",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{host}}"
+											],
+											"port": "{{port}}{{prefix}}",
+											"path": [
+												"headers",
+												"NEW"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "TC_92D Delete Non Existing Header Record",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"var m = pm.response.status\r",
+													"pm.test(\"Status code is 404\", function () {\r",
+													"    pm.expect(pm.response.code).to.be.eq(404);\r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [],
+										"url": {
+											"raw": "{{protocol}}://{{host}}:{{port}}{{prefix}}/headers/nonexisting",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{host}}"
+											],
+											"port": "{{port}}{{prefix}}",
+											"path": [
+												"headers",
+												"nonexisting"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "TC_92E Create New Header Record",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 201\", function () {\r",
+													"    pm.expect(pm.response.code).to.be.eq(201);\r",
+													"});\r",
+													"\r",
+													"var obj = pm.response.json();\r",
+													"pm.test(\"Response has expected values\", function () {\r",
+													"    pm.expect(obj?.msh).to.be.eq(\"NEW\");\r",
+													"    pm.expect(obj?.destId).to.be.eq(\"devwup\");\r",
+													"    pm.expect(obj?.iis).to.be.eq(\"devwup\");\r",
+													"    pm.expect(obj?.sourceType).to.be.eq(null);\r",
+													"    pm.expect(obj?.username).to.be.eq(\"username\");\r",
+													"    pm.expect(obj?.password).to.be.eq(\"password\");\r",
+													"});\r",
+													""
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"msh\": \"NEW\",\r\n    \"destId\": \"devwup\",\r\n    \"iis\": \"devwup\",\r\n    \"sourceType\": null,\r\n    \"username\": \"username\",\r\n    \"password\": \"password\",\r\n    \"facilityId\": \"facility\"\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{protocol}}://{{host}}:{{port}}{{prefix}}/headers",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{host}}"
+											],
+											"port": "{{port}}{{prefix}}",
+											"path": [
+												"headers"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "TC_92F Create Existing Header Record",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"var m = pm.response.status\r",
+													"pm.test(\"Status code is 400\", function () {\r",
+													"    pm.expect(pm.response.code).to.be.eq(400);\r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"msh\": \"NEW\",\r\n    \"destId\": \"devwup\",\r\n    \"iis\": \"devwup\",\r\n    \"sourceType\": null,\r\n    \"username\": \"username\",\r\n    \"password\": \"password\",\r\n    \"facilityId\": \"facility\"\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{protocol}}://{{host}}:{{port}}{{prefix}}/headers",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{host}}"
+											],
+											"port": "{{port}}{{prefix}}",
+											"path": [
+												"headers"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "TC_92G Delete newly created record",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 200\", function () {\r",
+													"    pm.expect(pm.response.code).to.be.eq(200);\r",
+													"});\r",
+													"\r",
+													"var obj = pm.response.json();\r",
+													"pm.test(\"Response has expected values\", function () {\r",
+													"    pm.expect(obj?.msh).to.be.eq(\"NEW\");\r",
+													"    pm.expect(obj?.destId).to.be.eq(\"devwup\");\r",
+													"    pm.expect(obj?.iis).to.be.eq(\"devwup\");\r",
+													"    pm.expect(obj?.sourceType).to.be.eq(null);\r",
+													"    pm.expect(obj?.username).to.be.eq(\"username\");\r",
+													"    pm.expect(obj?.password).to.be.eq(\"password\");\r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [],
+										"url": {
+											"raw": "{{protocol}}://{{host}}:{{port}}{{prefix}}/headers/NEW",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{host}}"
+											],
+											"port": "{{port}}{{prefix}}",
+											"path": [
+												"headers",
+												"NEW"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "TC_92H Delete already deleted record",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"var m = pm.response.status\r",
+													"pm.test(\"Status code is 404\", function () {\r",
+													"    pm.expect(pm.response.code).to.be.eq(404);\r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [],
+										"url": {
+											"raw": "{{protocol}}://{{host}}:{{port}}{{prefix}}/headers/NEW",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{host}}"
+											],
+											"port": "{{port}}{{prefix}}",
+											"path": [
+												"headers",
+												"NEW"
 											]
 										}
 									},
@@ -13636,6 +13965,7 @@
 					"        }",
 					"        for (entry of txData) {",
 					"            pm.test(\"Check Service Type\", function() {",
+					"                console.log(entry.transactionData.serviceType);",
 					"                pm.expect(entry.transactionData.serviceType).to.match(/Mock|Gateway/);",
 					"                if (entry?.requestUri == \"/IISHubService\" || entry?.requestUri.includes(\"/rest/\")) {",
 					"                    pm.expect(entry?.transactionData?.serviceType).to.eql(\"Gateway\");",

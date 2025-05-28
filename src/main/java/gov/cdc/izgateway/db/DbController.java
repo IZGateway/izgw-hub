@@ -39,6 +39,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import gov.cdc.izgateway.common.BadRequestException;
@@ -228,20 +229,37 @@ public class DbController {
 		return configuration.getMessageHeaderService().saveAndFlush(old);
 	}
 	
+	@Operation(summary = "Delete the header record for the specified MSH-3 value",
+			description = "Deletes the Message Header and username password values for HL7 Message for the given MSH3 or MSH4 value")
+	@ApiResponse(responseCode = "200", description = "The deleted message Header information values", 
+	    content = @Content(mediaType = "application/json", 
+	     schema = @Schema(implementation = MessageHeader.class))
+	)
+	@ApiResponse(responseCode = "404", description = "The header record cannot be found.", 
+		content = @Content)
+	@DeleteMapping("/headers/{id}")
+	public IMessageHeader deleteMessageHeadersById(@PathVariable String id) {
+		refresh();
+		IMessageHeader old = getMessageHeadersById(id);
+		configuration.getMessageHeaderService().delete(id);
+		return old;
+	}
+	
 	@Operation(summary = "Create a header mapping, setting the username and password for the specified MSH-3 value",
 			description = "Returns the Message Header Values for HL7 Message for the given MSH3 or MSH4 value")
-	@ApiResponse(responseCode = "200", description = "The Message Header information values", 
+	@ApiResponse(responseCode = "201", description = "The created Message Header information values", 
 	    content = @Content(mediaType = "application/json", 
 	     schema = @Schema(implementation = MessageHeader.class))
 	)
 	@ApiResponse(responseCode = "400", description = "The identifier cannot be changed.", 
 		content = @Content)
 	@PutMapping("/headers")
+	@ResponseStatus(HttpStatus.CREATED)
 	public IMessageHeader createMessageHeadersById(
 			@RequestBody MessageHeader newValues
 	) {
 		try {
-			IMessageHeader old = getMessageHeadersById(newValues.getDestId());
+			IMessageHeader old = getMessageHeadersById(newValues.getMsh());
 			throw new BadRequestException(String.format("A Message Header already exists for %s", newValues.getDestId()));
 		} catch (ResourceNotFoundException ignored) {
 			// We expect it to be not found.
