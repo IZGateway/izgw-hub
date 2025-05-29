@@ -21,8 +21,8 @@
 									"script": {
 										"exec": [
 											"// Set build and timestamp in global variables to check the build version\r",
-											"var build = new RegExp(pm.globals.get(\"build\") || \".*\");\r",
-											"var timestamp = new RegExp(pm.globals.get(\"timestamp\") || \".*\");\r",
+											"var build = new RegExp(pm.environment.get(\"build\") || \".*\");\r",
+											"var timestamp = new RegExp(pm.environment.get(\"timestamp\") || \".*\");\r",
 											"pm.test(\"Must be a 2.x build\", function() {\r",
 											"    var theBuild = responseBody.match(/^\\s*Build: izgateway-2\\.$/m);\r",
 											"});\r",
@@ -36,7 +36,8 @@
 											"    pm.expect(theTimestamp[1]).matches(timestamp);\r",
 											"});"
 										],
-										"type": "text/javascript"
+										"type": "text/javascript",
+										"packages": {}
 									}
 								}
 							],
@@ -12826,7 +12827,7 @@
 					"response": []
 				},
 				{
-					"name": "TC_92E Create New Header Record Copy",
+					"name": "Create Test Header Records for Password Change",
 					"event": [
 						{
 							"listen": "test",

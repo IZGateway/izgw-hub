@@ -316,6 +316,8 @@ jobs:
         TESTING_PASS: ${{ secrets.TESTING_PASS }}
       run: |
         newman run ../scripts/IZGW_2.0_Integration_Test.postman_collection.json -n 1 --folder "Working" \
+          "--env-var" "build=`grep Build target\classes\build.txt | cut '-d:' -f2 | cut -c2-99`" \
+          "--env-var" "timestamp=`grep Timestamp target\classes\build.txt | cut '-d:' -f2 | cut -c2-99`" \
           "--environment" ../scripts/dev.postman_environment.json \
           "--ssl-extra-ca-certs" certs/izgwroot.pem \
           "--ssl-client-cert" ../newman.pem \

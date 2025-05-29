@@ -255,7 +255,7 @@ public class DbController {
 	public IMessageHeader createMessageHeadersById(@RequestBody MessageHeader newValues) {
 		try {
 			IMessageHeader old = getMessageHeadersById(newValues.getMsh());
-			throw new BadRequestException(String.format("A Message Header already exists for %s", newValues.getDestId()));
+			throw new BadRequestException(String.format("A Message Header already exists for %s", newValues.getMsh()));
 		} catch (ResourceNotFoundException ignored) {
 			// We expect it to be not found.
 		} 
