@@ -27,7 +27,6 @@ public class MessageHeaderService implements InitializingBean, IMessageHeaderSer
 
     private final IMessageHeaderRepository messageHeaderRepository;
     private Map<String, IMessageHeader> cache = Collections.emptyMap();
-    private List<IMessageHeader> list = Collections.emptyList();
 
     @Value("${data.cache.timeToLive:300}")
     private int refreshPeriod;
@@ -46,7 +45,7 @@ public class MessageHeaderService implements InitializingBean, IMessageHeaderSer
     
     @Override
 	public void refresh() {
-        list = Collections.unmodifiableList(messageHeaderRepository.findAll());
+        List<? extends IMessageHeader> list = Collections.unmodifiableList(messageHeaderRepository.findAll());
         Map<String, IMessageHeader> map = new LinkedHashMap<>();
         // Initialize new cache
         for (IMessageHeader msh: list) {
@@ -89,7 +88,7 @@ public class MessageHeaderService implements InitializingBean, IMessageHeaderSer
         if (cache.isEmpty()) {
             refresh();
         }
-        return list;
+        return new ArrayList<>(cache.values());
     }
     
     @Override
@@ -114,10 +113,14 @@ public class MessageHeaderService implements InitializingBean, IMessageHeaderSer
 	public IMessageHeader saveAndFlush(IMessageHeader h) {
 		h = messageHeaderRepository.store(h);
 		// Update cache
-		if (cache.get(h.getMsh()) != null) {
-			cache.put(h.getMsh(), h);
-		}
+		cache.put(h.getMsh(), h);
 		return h;
+	}
+
+	@Override
+	public void delete(String id) {
+		cache.remove(id);
+		messageHeaderRepository.deleteById(id);
 	}
 
 }
