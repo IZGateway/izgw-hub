@@ -22,14 +22,24 @@ class ParsedFilename {
 	String period = "";
 	String filetype = "";
 	Date date = null;
+	String originalFilename;
 	String filename;
 	String[] parts;
 	List<String> errors;
 	boolean formatError = false;
+	boolean testfile = false;
 	
 	private ParsedFilename(String filename, List<String> errors) {
 		if (errors == null) {
 			errors = new ArrayList<>();
+		}
+		// Save the original filename in case we need it later.
+		this.originalFilename = filename;
+		// If this file is for testing (based on name)
+		if (StringUtils.containsIgnoreCase("filename", "test")) {
+			// Set testing flag and adjust filename.
+			testfile = true;
+			filename = StringUtils.removeIgnoreCase(filename, "test");
 		}
 		this.filename = filename;
 		this.errors = errors;

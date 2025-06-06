@@ -75,6 +75,7 @@ import java.util.Date;
 })
 public interface Metadata extends Serializable {
 	
+	public static final String TESTFILE = "meta_ext_testfile";
 	public static final String RFC2616_DATE_FORMAT_PATTERN = "EEE, dd MMM yyyy HH:mm:ss zzz";
 	public static final FastDateFormat RFC2616_DATE_FORMAT = FastDateFormat.getInstance(RFC2616_DATE_FORMAT_PATTERN);
 	public static final String DEX_VERSION1 = "V2023-09-01";
@@ -229,6 +230,10 @@ public interface Metadata extends Serializable {
     @JsonProperty("meta_schema_version")
     String getSchemaVersion();
     void setSchemaVersion(String version);
+    
+    @JsonProperty(TESTFILE)
+    boolean isTestFile();
+    void setTestFile(boolean testFile);
     
     // Our additions to NDLP Specification
     @JsonProperty("izgw_route_id")
