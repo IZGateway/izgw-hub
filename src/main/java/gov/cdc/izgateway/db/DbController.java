@@ -35,9 +35,11 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import gov.cdc.izgateway.common.BadRequestException;
@@ -210,8 +212,7 @@ public class DbController {
 	@ApiResponse(responseCode = "400", description = "The identifier cannot be changed.", 
 		content = @Content)
 	@PostMapping("/headers/{id}")
-	public IMessageHeader setMessageHeadersById(@PathVariable String id,
-			@RequestBody MessageHeader newValues) {
+	public IMessageHeader setMessageHeadersById(@PathVariable String id, @RequestBody MessageHeader newValues) {
 		IMessageHeader old;
 		old = getMessageHeadersById(id);
 		if (!id.equals(newValues.getMsh())) {
@@ -225,6 +226,46 @@ public class DbController {
 		old.setPassword(newValues.getPassword());
 
 		return configuration.getMessageHeaderService().saveAndFlush(old);
+	}
+	
+	@Operation(summary = "Delete the header record for the specified MSH-3 value",
+			description = "Deletes the Message Header and username password values for HL7 Message for the given MSH3 or MSH4 value")
+	@ApiResponse(responseCode = "200", description = "The deleted message Header information values", 
+	    content = @Content(mediaType = "application/json", 
+	     schema = @Schema(implementation = MessageHeader.class))
+	)
+	@ApiResponse(responseCode = "404", description = "The header record cannot be found.", content = @Content)
+	@DeleteMapping("/headers/{id}")
+	public IMessageHeader deleteMessageHeadersById(@PathVariable String id) {
+		refresh();
+		IMessageHeader old = getMessageHeadersById(id);
+		configuration.getMessageHeaderService().delete(id);
+		return old;
+	}
+	
+	@Operation(summary = "Create a header mapping, setting the username and password for the specified MSH-3 value",
+			description = "Returns the Message Header Values for HL7 Message for the given MSH3 or MSH4 value")
+	@ApiResponse(responseCode = "201", description = "The created Message Header information values", 
+	    content = @Content(mediaType = "application/json", 
+	     schema = @Schema(implementation = MessageHeader.class))
+	)
+	@ApiResponse(responseCode = "400", description = "The identifier cannot be changed.", content = @Content)
+	@PutMapping("/headers")
+	@ResponseStatus(HttpStatus.CREATED)
+	public IMessageHeader createMessageHeadersById(@RequestBody MessageHeader newValues) {
+		try {
+			IMessageHeader old = getMessageHeadersById(newValues.getMsh());
+			throw new BadRequestException(String.format("A Message Header already exists for %s", newValues.getMsh()));
+		} catch (ResourceNotFoundException ignored) {
+			// We expect it to be not found.
+		} 
+		// Don't allow a MessageHeader record to reference a non-existant destination.
+		IDestination dest = configuration.getDestinationService().findByDestId(newValues.getDestId());
+		if (dest == null) {
+			throw new ResourceNotFoundException(String.format("Destination %s does not exist", newValues.getDestId()));
+		}
+		
+		return configuration.getMessageHeaderService().saveAndFlush(newValues);
 	}
 
 	@Operation(summary = "Report the configuration for all endpoints",

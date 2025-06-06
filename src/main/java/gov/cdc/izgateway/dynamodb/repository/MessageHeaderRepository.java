@@ -28,4 +28,9 @@ public class MessageHeaderRepository extends DynamoDbRepository<MessageHeader> i
 		}
 		return saveAndFlush(new MessageHeader(h));
 	}
+	
+	@Override
+	public void deleteById(String primaryId) {
+		super.delete(primaryId);
+	}
 }
