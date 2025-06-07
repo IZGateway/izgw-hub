@@ -436,7 +436,11 @@ public class DEXStorageSender extends RestfulFileSender implements FileSender {
                 try {
                     Object value = m.invoke(meta);
                     if (value != null) {
-                        map.put(name,  value.toString());
+                    	if (Metadata.TESTFILE.equals(name) && value instanceof Boolean b) {
+                    		map.put(name, b ? "yes" : "no");
+                    	} else {
+                    		map.put(name,  value.toString());
+                    	}
                     }
                 } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
                     throw new MetadataFault(meta, e, String.format("Error retrieving %s", name));
