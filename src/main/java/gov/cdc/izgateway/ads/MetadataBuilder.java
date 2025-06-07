@@ -53,7 +53,7 @@ public class MetadataBuilder {
     public MetadataImpl build() throws MetadataFault {
         meta.setSchemaVersion(DEFAULT_SCHEMA_VERSION);
         meta.setEventId(MDC.get(EventIdMdcConverter.EVENT_ID_MDC_KEY));
-        if (errors.isEmpty()) {
+        if (errors.isEmpty() || !isMetadataValidationEnabled()) {
             return meta;
         }
         throw new MetadataFault(meta, errors.toArray(new String[0]));
