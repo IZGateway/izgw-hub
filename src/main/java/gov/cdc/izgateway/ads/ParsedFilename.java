@@ -36,7 +36,7 @@ class ParsedFilename {
 		// Save the original filename in case we need it later.
 		this.originalFilename = filename;
 		// If this file is for testing (based on name)
-		if (StringUtils.containsIgnoreCase("filename", "test")) {
+		if (StringUtils.containsIgnoreCase(filename, "test")) {
 			// Set testing flag and adjust filename.
 			testfile = true;
 			filename = StringUtils.removeIgnoreCase(filename, "test");
