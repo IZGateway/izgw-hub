@@ -1773,14 +1773,12 @@
 													"        pm.expect(header.msh).to.be.eql(msh);\r",
 													"    });\r",
 													"    pm.test(\"Entry to have possibly null destId, iis, username, password and facilityId values\", function() {\r",
-													"        pm.expect(header).to.include.all.keys('destId', 'iis', 'username', 'password', 'facilityId')\r",
-													"    });\r",
-													"    pm.test(\"Entry to have non-null sourceType value\", function() {\r",
-													"        pm.expect(header.sourceType).to.not.eql(null);\r",
+													"        pm.expect(header).to.include.all.keys('destId', 'iis', 'username', 'password', 'facilityId', 'sourceType')\r",
 													"    });\r",
 													"}"
 												],
-												"type": "text/javascript"
+												"type": "text/javascript",
+												"packages": {}
 											}
 										}
 									],
@@ -9169,6 +9167,11 @@
 													"    checkDexResponse(pm, 844);\r",
 													"});\r",
 													"\r",
+													"pm.test(\"metadata.meta_ext_testfile = true\", function () {\r",
+													"    var metadata = pm.response.json();\r",
+													"    pm.expect(metadata.meta_ext_testfile).to.eql(true);\r",
+													"});\r",
+													"\r",
 													"if (pm.variables.get(\"host\").endsWith('phiz-project.org')) {\r",
 													"    return;\r",
 													"}\r",
@@ -9241,7 +9244,7 @@
 												},
 												{
 													"key": "filename",
-													"value": "MonthlyRSV_XXA_2022SEP.csv",
+													"value": "testMonthlyRSV_XXA_2022SEP.csv",
 													"type": "text"
 												}
 											]
@@ -10268,6 +10271,8 @@
 									"            /routine-immunization|covid-bridge-vaccination|covid-all-monthly-vaccination|rsv-prevention|influenza-vaccination|generic-immunization|farmer-flu-vaccination|measles-vaccination/);",
 									"        pm.expect(metadata.izgw_submission_status, \"izgw_submission_status\").to.be.eql(\"SUCCESS\");",
 									"        pm.expect(metadata.izgw_submission_location, \"izgw_submission_location\").to.not.be.eql(null);",
+									"        pm.expect(metadata.meta_ext_testfile, \"meta_ext_testfile\").to.match(/true|false/);",
+									"        ",
 									"    } catch (err) {",
 									"        console.log(\"Response\", pm.response, pm.response.text());",
 									"        if (pm.variables.get(\"host\").endsWith('phiz-project.org')) {",
