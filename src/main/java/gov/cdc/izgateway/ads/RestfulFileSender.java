@@ -404,10 +404,15 @@ public abstract class RestfulFileSender implements FileSender {
                 }
                 try {
                     Object o = m.invoke(meta);
-                    if (o != null && m.getReturnType() == Date.class) {
+                    if (o == null) {
+                    	continue;
+                    }
+                    if (m.getReturnType() == Date.class) {
                    		value = Metadata.RFC2616_DATE_FORMAT.format(m.invoke(meta));
-                    } else if (o != null) {
-                        value = o.toString();
+                    } else if (Metadata.TESTFILE.equals(name) && o instanceof Boolean b) {
+                		value = b ? "yes" : "no";
+                	} else {
+                		value = o.toString();
                     }
                 } catch (Exception e) {
                     log.error(Markers2.append(e), "Error serializing Metadata: {}", e.getMessage(), e);

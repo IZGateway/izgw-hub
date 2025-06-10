@@ -41,6 +41,7 @@ public class MetadataImpl implements Metadata {
 	private String eventId;
 	private String submissionStatus;
 	private String submissionLocation;
+	private boolean isTestFile;
 	@JsonIgnore
     private transient IDestination destination;
 
@@ -77,6 +78,8 @@ public class MetadataImpl implements Metadata {
         eventId = resp.getEventId();
     	submissionStatus = resp.getSubmissionStatus();
     	submissionLocation = resp.getSubmissionLocation();
+    	isTestFile = resp.isTestFile();
+    	
         if (resp instanceof MetadataImpl r2) {
         	destination = r2.getDestination();
         }
@@ -122,6 +125,9 @@ public class MetadataImpl implements Metadata {
 			break;
 		case "meta_schema_version":
 			setSchemaVersion(value);
+			break;
+		case Metadata.TESTFILE:
+			setTestFile("yes".equalsIgnoreCase(value));
 			break;
 		case "izgw_route_id":
 			setRouteId(value);
