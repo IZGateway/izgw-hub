@@ -1,3 +1,7 @@
+# IZ Gateway Release 2.4.0
+* IGDD-2002 Added PUT and DELETE operations on MessageHeader
+* IGDD-1989 Add ADS Support for Test File Marking in Metadata
+
 # IZ Gateway Release 2.3.0
 The IZ Gateway Hub 2.3.0 release
 * IGDD-1988 - Adding logic to provide a way to bypass the SecretHeaderFilter if the request URI matches one of the configured paths.  This is useful for healthchecks that cannot attach an http header with the secret.
