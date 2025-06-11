@@ -27,6 +27,7 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.java.package>${project.groupId}</project.java.package>
 		<spring-security.version>6.4.6</spring-security.version>
+		<mysql.version>9.3.0</mysql.version>
 	</properties>
 	<dependencies>
 		<dependency>
