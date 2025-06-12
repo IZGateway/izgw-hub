@@ -90,8 +90,8 @@ jobs:
             <servers>
               <server>
                 <id>github</id>
-                <username>austinmoody</username>
-                <password>${{ secrets.IZGW_ALL_REPO_ACCESS_TOKEN_AUSTIN }}</password>
+                <username>${{ env.GITHUB_ACTOR }}</username>
+                <password>${{ secrets.IZGW_ALL_REPO_ACCESS_TOKEN }}</password>
               </server>
             </servers>
             <mirrors />
@@ -193,6 +193,7 @@ jobs:
         docker image tag iz-gateway:${{env.IMAGE_TAG}} $ECR_REGISTRY/$ECR_REPOSITORY:latest
         docker image push --all-tags $ECR_REGISTRY/$ECR_REPOSITORY
         aws ecs update-service --cluster izgateway-dev-izgateway-services --service izgateway-dev-service --force-new-deployment --enable-execute-command --desired-count 4 | jq ".service.deployments[].id"
+        aws ecs update-service --cluster izgateway-dev-izgateway-services --service izgateway-devalb-service --force-new-deployment --enable-execute-command --desired-count 4 | jq ".service.deployments[].id"
 
     - name: Login to GitHub Repository
       uses: docker/login-action@v3
@@ -263,7 +264,7 @@ jobs:
     # Having the wait for reload at this point allows some of the wasted waiting time to occur during build cleanup phase
     # and setup phase of this job.
     - name: Wait for reload of task to complete
-      run: aws ecs wait services-stable --cluster izgateway-dev-izgateway-services --service izgateway-dev-service
+      run: aws ecs wait services-stable --cluster izgateway-dev-izgateway-services --service izgateway-devalb-service
 
     # Verify Filebeats is operating properly
     # Get the first service instance and check CloudWatch logs for indication that it connected
@@ -273,16 +274,17 @@ jobs:
         aws logs filter-log-events --log-group-name /ecs/izgateway-dev-phiz-web-ws --log-stream-names ecs/izgateway-dev-phiz-web-ws/$SERVICE_INSTANCE --filter-pattern "Connection to backoff" | grep established
 
     # Perform a little bit of warmup on the IZGW service using cert tests
-    - name: Execute Encryption/Cert Test
-      id: TlsTests
-      working-directory: ./testing
-      env:
-        IZGW_SSL_CLIENT_PASSPHRASE: ${{ secrets.TESTING_PASS }}
-      run: |
-        chmod +x ./tlstest.sh
-        mkdir ./logs
-        ./tlstest.sh | tee ./logs/tls-test.txt
-        [ `grep -c -e FAIL ./logs/tls-test.txt` -eq 0 ]
+    # TLS Testing can be Disabled per Security Team 5/23/2025, as it will be addressed via endpoint monitoring
+#    - name: Execute Encryption/Cert Test
+#      id: TlsTests
+#      working-directory: ./testing
+#      env:
+#        IZGW_SSL_CLIENT_PASSPHRASE: ${{ secrets.TESTING_PASS }}
+#      run: |
+#        chmod +x ./tlstest.sh
+#        mkdir ./logs
+#        ./tlstest.sh | tee ./logs/tls-test.txt
+#        [ `grep -c -e FAIL ./logs/tls-test.txt` -eq 0 ]
 
     # Include warmup in Verify b/c we must warm up server on which verification
     # is performed.  B/c Each stage runs in a separate virtual server, and our cluster
@@ -293,6 +295,7 @@ jobs:
       env:
         TESTING_PASS: ${{ secrets.TESTING_PASS }}
       run: |
+        mkdir ../logs
         startTime=$(date +%s);
         # Just Running the Smoke Test ONCE should be enough to warm up
         newman run ../scripts/IZGW_2.0_Integration_Test.postman_collection.json -n 1 --folder "Smoke Test" \
@@ -313,6 +316,8 @@ jobs:
         TESTING_PASS: ${{ secrets.TESTING_PASS }}
       run: |
         newman run ../scripts/IZGW_2.0_Integration_Test.postman_collection.json -n 1 --folder "Working" \
+          "--env-var" "build=`grep Build target\classes\build.txt | cut '-d:' -f2 | cut -c2-99`" \
+          "--env-var" "timestamp=`grep Timestamp target\classes\build.txt | cut '-d:' -f2 | cut -c2-99`" \
           "--environment" ../scripts/dev.postman_environment.json \
           "--ssl-extra-ca-certs" certs/izgwroot.pem \
           "--ssl-client-cert" ../newman.pem \

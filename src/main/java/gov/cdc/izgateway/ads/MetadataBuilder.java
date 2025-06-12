@@ -53,7 +53,7 @@ public class MetadataBuilder {
     public MetadataImpl build() throws MetadataFault {
         meta.setSchemaVersion(DEFAULT_SCHEMA_VERSION);
         meta.setEventId(MDC.get(EventIdMdcConverter.EVENT_ID_MDC_KEY));
-        if (errors.isEmpty()) {
+        if (errors.isEmpty() || !isMetadataValidationEnabled()) {
             return meta;
         }
         throw new MetadataFault(meta, errors.toArray(new String[0]));
@@ -142,8 +142,11 @@ public class MetadataBuilder {
         if (!ADSUtils.validateFilename(filename)) {
             errors.add(String.format("Filename (%s) is invalid. Characters must be in the range of [0x20, 0xD7FF] and must not include  *, \\, ?, >, <, :, |, /, \\ or <DEL>", filename));
         } 
+    	ParsedFilename pf = ParsedFilename.parse(filename, errors);
+   		meta.setTestFile(pf.isTestfile());
+   		
         if (isMetadataValidationEnabled()) {
-        	validateMetadata(filename);
+           	validateMetadata(pf);
         }
         return this;
     }
@@ -171,8 +174,7 @@ public class MetadataBuilder {
         return this;
     }
     
-    private void validateMetadata(String filename) {
-    	ParsedFilename pf = ParsedFilename.parse(filename, errors);
+    private void validateMetadata(ParsedFilename pf ) {
 		if (!pf.getEntityId().equalsIgnoreCase(meta.getExtEntity())) {
 			errors.add(String.format("Entity ID (%s) does not match Entity (%s) in filename (%s)", meta.getExtEntity(), pf.getEntityId(), meta.getFilename()));
 		}
