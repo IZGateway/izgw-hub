@@ -13,7 +13,7 @@
 	<artifactId>izgw-hub</artifactId>
 	<version>2.4.0-IZGW-RELEASE</version>
 	<packaging>jar</packaging>
-	<name>IZ Gateway Hub 2.2.1</name>
+	<name>IZ Gateway Hub 2.4.0</name>
 	<description>IZ Gateway Hub</description>
 	<properties>
 		<maven.build.timestamp.format>yyyyMMddHHmm</maven.build.timestamp.format>
