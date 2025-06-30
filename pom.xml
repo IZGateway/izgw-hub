@@ -387,7 +387,7 @@
 				<artifactId>dependency-check-maven</artifactId>
 				<!-- 9.0 line uses NVD API and requires a key, which has flakey response 
 					right now -->
-				<version>12.1.1</version>
+				<version>8.4.3</version>
 				<configuration>
 					<!--nvdApiKey>${env.NVDAPIKEY}</nvdApiKey -->
 					<formats>
