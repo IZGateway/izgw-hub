@@ -54,7 +54,7 @@ fi
 
 # Have to externalize bc-fips jars
 exec java $JAVA_OPTS $JAVA_TOOL_OPTS \
-   -XX:+CreateCoredumpOnCrash -cp ./bc-fips-2.1.0.jar:./bcpkix-fips-2.1.9.jar:./bctls-fips-2.1.20.jar \
+   -XX:+CreateCoredumpOnCrash -cp "./lib/bcfips/*" \
    --add-opens=java.base/java.lang.reflect=ALL-UNNAMED \
    --add-opens=java.base/java.net=ALL-UNNAMED \
    --add-opens=jdk.management/com.sun.management.internal=ALL-UNNAMED \
