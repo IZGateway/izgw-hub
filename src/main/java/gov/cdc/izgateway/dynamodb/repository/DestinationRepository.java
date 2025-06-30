@@ -19,8 +19,8 @@ public class DestinationRepository extends DynamoDbRepository<Destination> imple
 	 * Construct a new DestinationRepository from the DynamoDb enhanced client.
 	 * @param client The client
 	 */
-	public DestinationRepository(@Autowired DynamoDbEnhancedClient client) {
-		super(Destination.class, client);
+	public DestinationRepository(@Autowired DynamoDbEnhancedClient client, String tableName) {
+		super(Destination.class, client, tableName);
 	}
 	
 	@Override
