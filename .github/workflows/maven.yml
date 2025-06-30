@@ -181,7 +181,7 @@ jobs:
       uses: dependency-check/Dependency-Check_Action@main
       with:
         project: V2 to FHIR
-        path: target/izgw-hub-${{env.IMAGE_BRANCH_TAG}}.jar
+        path: target/${{env.IMAGE_BRANCH_TAG}}.jar
         format: 'HTML'
         args: >
           --failOnCVSS 7
