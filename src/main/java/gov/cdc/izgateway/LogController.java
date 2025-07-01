@@ -1,9 +1,6 @@
 package gov.cdc.izgateway;
 
-import gov.cdc.izgateway.logging.LogstashMessageSerializer;
-import gov.cdc.izgateway.logging.MemoryAppender;
 import gov.cdc.izgateway.logging.RequestContext;
-import gov.cdc.izgateway.logging.event.LogEvent;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.model.IEndpointStatus;
 import gov.cdc.izgateway.security.AccessControlRegistry;
@@ -12,39 +9,15 @@ import gov.cdc.izgateway.service.IAccessControlService;
 import gov.cdc.izgateway.service.impl.EndpointStatusService;
 import gov.cdc.izgateway.soap.fault.SecurityFault;
 import gov.cdc.izgateway.service.IDestinationService;
-import gov.cdc.izgateway.utils.ListConverter;
-import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.ArraySchema;
-import io.swagger.v3.oas.annotations.media.Schema;
-
-import java.util.Collections;
-import java.util.List;
-
-import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-
-import ch.qos.logback.classic.spi.ILoggingEvent;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * The LogController provides access to in memory logging data on a server.
@@ -63,7 +36,6 @@ import jakarta.servlet.http.HttpServletResponse;
 @Lazy(false)
 public class LogController extends LogControllerBase {
 
-    private MemoryAppender logData = null;
     private final IDestinationService destinationService;
     private final EndpointStatusService endpointStatusService;
     private final IAccessControlService accessControlService;
@@ -78,7 +50,7 @@ public class LogController extends LogControllerBase {
 
     @Override
     public void deleteLogs(HttpServletRequest servletReq,
-                           @Parameter(required = false, description="If true, reset the specified endpoint, clearing maintenance")
+                           @Parameter(description="If true, reset the specified endpoint, clearing maintenance")
                            @RequestParam(required = false) String clear) throws SecurityFault {
         super.deleteLogs(servletReq, clear);
 
