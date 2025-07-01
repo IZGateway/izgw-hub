@@ -31,8 +31,8 @@ public class EndpointStatusRepository extends DynamoDbRepository<EndpointStatus>
 	 * Construct a new EndpointStatusRepository from the DynamoDb enhanced client.
 	 * @param client The client
 	 */
-	public EndpointStatusRepository(@Autowired DynamoDbEnhancedClient client) {
-		super(EndpointStatus.class, client);
+	public EndpointStatusRepository(@Autowired DynamoDbEnhancedClient client, String tableName) {
+		super(EndpointStatus.class, client, tableName);
 	}
 	
 	@Override

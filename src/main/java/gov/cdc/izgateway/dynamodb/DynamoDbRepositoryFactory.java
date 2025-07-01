@@ -1,4 +1,5 @@
 package gov.cdc.izgateway.dynamodb;
+import gov.cdc.izgateway.configuration.DynamoDbConfig;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Duration;
@@ -44,6 +45,7 @@ import software.amazon.awssdk.services.dynamodb.model.ListTablesResponse;
 public class DynamoDbRepositoryFactory implements RepositoryFactory {
 
 	private static final String DATABASE_EVENT = "Database";
+	private final String tableName;
 	private final DynamoDbEnhancedClient client;
 	// Used to check for existence of the database
 	private final DynamoDbClient ddbClient;
@@ -64,12 +66,14 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
 	public DynamoDbRepositoryFactory(
 		@Autowired DynamoDbEnhancedClient client, 
 		@Autowired DynamoDbClient ddbClient,
+		@Autowired DynamoDbConfig ddbConfig,
 		@Autowired(required=false) MySqlRepositoryFactory migrationFactory
 	) {
 		this.client = client;
 		this.ddbClient = ddbClient;
 		this.migrationFactory = migrationFactory;
-		this.eventRepository = new EventRepository(client);
+		this.tableName = ddbConfig.getDynamodbTable();
+		this.eventRepository = new EventRepository(client, this.tableName);
 		
 		if (!ensureDbExists()) {
 			Event e = markDbCreated(); 
@@ -81,7 +85,7 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
 				waitForMigrationToFinish();
 			}
 		} else {
-			log.info("Connected to existing {} in {}", DynamoDbRepository.TABLE_NAME, 
+			log.info("Connected to existing {} in {}", this.tableName,
 					DefaultAwsRegionProviderChain.builder().build().getRegion());
 		}
 	}
@@ -102,24 +106,24 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
 			found = eventRepository.findByNameAndTarget(Event.CREATED, DATABASE_EVENT); 
 		}	while ((found.isEmpty() || found.get(0).getCompleted() == null) && --retries > 0);
 		if (retries <= 0) {
-			log.error("Failed waiting for DB migration on {} in {}", DynamoDbRepository.TABLE_NAME, 
+			log.error("Failed waiting for DB migration on {} in {}", this.tableName,
 					DefaultAwsRegionProviderChain.builder().build().getRegion());
-			throw new ServiceConfigurationError("Database not migrated: " + DynamoDbRepository.TABLE_NAME, null);
+			throw new ServiceConfigurationError("Database not migrated: " + this.tableName, null);
 		}
 	}
 
 	private boolean ensureDbExists() {
 		ListTablesRequest lgtr = ListTablesRequest.builder().build();
 		ListTablesResponse response = ddbClient.listTables(lgtr);
-		if (response.hasTableNames() && response.tableNames().stream().anyMatch(DynamoDbRepository.TABLE_NAME::equals)) {
+		if (response.hasTableNames() && response.tableNames().stream().anyMatch(this.tableName::equals)) {
 			if (!isDbCreated()) {
 				return false;
 			}
-			log.info("Connected to existing database: {}", DynamoDbRepository.TABLE_NAME);
+			log.info("Connected to existing database: {}", this.tableName);
 			return true;
 		}
-		log.error("Database does not exist: {}", DynamoDbRepository.TABLE_NAME);
-		throw new ServiceConfigurationError("Database does not exist " + DynamoDbRepository.TABLE_NAME, null);
+		log.error("Database does not exist: {}", this.tableName);
+		throw new ServiceConfigurationError("Database does not exist " + this.tableName, null);
 	}
 
 	private boolean isDbCreated() {
@@ -134,16 +138,16 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
 
 	private void migrateAllTables() {
 		if (migrationFactory != null) {
-			acr = new AccessControlRepository(client);
+			acr = new AccessControlRepository(client, this.tableName);
 			migrateTo(migrationFactory.accessControlRepository(), acr);
 			// Migrating the CertificateStatus repository is not required. Any unchecked certificate will be rechecked.
-			jr = new JurisdictionRepository(client);
+			jr = new JurisdictionRepository(client, this.tableName);
 			migrateTo(migrationFactory.jurisdictionRepository(), jr);
-			dr = new DestinationRepository(client);
+			dr = new DestinationRepository(client, this.tableName);
 			migrateTo(migrationFactory.destinationRepository(), dr);
-			mhr = new MessageHeaderRepository(client);
+			mhr = new MessageHeaderRepository(client, this.tableName);
 			migrateTo(migrationFactory.messageHeaderRepository(), mhr);
-			log.info("Database Migration completed for {}", DynamoDbRepository.TABLE_NAME);
+			log.info("Database Migration completed for {}", this.tableName);
 		}
 	}
 	
@@ -153,7 +157,7 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
      */
     public IAccessControlRepository accessControlRepository() {
 		if (acr == null) {
-    		acr = new AccessControlRepository(client);
+    		acr = new AccessControlRepository(client, this.tableName);
     	}
     	return acr;
     }
@@ -164,7 +168,7 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
      */
     public ICertificateStatusRepository certificateStatusRepository() {
     	if (csr == null) {
-    		csr = new CertificateStatusRepository(client);
+    		csr = new CertificateStatusRepository(client, this.tableName);
     	}
     	return csr;
     }
@@ -176,7 +180,7 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
      */
     public IDestinationRepository destinationRepository() {
     	if (dr == null) {
-    		dr = new DestinationRepository(client);
+    		dr = new DestinationRepository(client, this.tableName);
     	}
     	return dr;
     }
@@ -187,7 +191,7 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
      */
     public IJurisdictionRepository jurisdictionRepository() {
     	if (jr == null) {
-    		jr = new JurisdictionRepository(client);
+    		jr = new JurisdictionRepository(client, this.tableName);
     	}
     	return jr;
     }
@@ -198,7 +202,7 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
      */
     public IMessageHeaderRepository messageHeaderRepository() {
     	if (mhr == null) {
-    		mhr = new MessageHeaderRepository(client);
+    		mhr = new MessageHeaderRepository(client, this.tableName);
     	}
     	return mhr;
     }

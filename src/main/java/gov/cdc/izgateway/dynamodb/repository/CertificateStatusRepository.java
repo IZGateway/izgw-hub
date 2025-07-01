@@ -17,8 +17,8 @@ public class CertificateStatusRepository extends DynamoDbRepository<CertificateS
 	 * Construct a new CertificateStatusRepository from the DynamoDb enhanced client.
 	 * @param client The client
 	 */
-	public CertificateStatusRepository(@Autowired DynamoDbEnhancedClient client) {
-		super(CertificateStatus.class, client);
+	public CertificateStatusRepository(@Autowired DynamoDbEnhancedClient client, String tableName) {
+		super(CertificateStatus.class, client, tableName);
 	}
 	
 	@Override
