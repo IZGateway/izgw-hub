@@ -80,7 +80,7 @@ public class LogController extends LogControllerBase {
     )
     @GetMapping("/logs")
     @Override
-    protected List<LogEvent> getLogs(
+    public List<LogEvent> getLogs(
             @Parameter(description = "The search string")
             @RequestParam(required = false) String search) {
         return super.getLogs(search);
