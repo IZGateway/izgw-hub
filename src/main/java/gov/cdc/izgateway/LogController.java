@@ -14,7 +14,6 @@ import gov.cdc.izgateway.service.IAccessControlService;
 import gov.cdc.izgateway.service.impl.EndpointStatusService;
 import gov.cdc.izgateway.soap.fault.SecurityFault;
 import gov.cdc.izgateway.service.IDestinationService;
-import gov.cdc.izgateway.utils.ListConverter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -22,7 +21,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.servlet.http.HttpServletResponse;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -31,8 +29,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.servlet.http.HttpServletRequest;
-
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -86,9 +82,8 @@ public class LogController extends LogControllerBase {
     @Override
     protected List<LogEvent> getLogs(
             @Parameter(description = "The search string")
-            @RequestParam(required = false) String search,
-            HttpServletResponse resp) {
-        return super.getLogs(search, resp);
+            @RequestParam(required = false) String search) {
+        return super.getLogs(search);
     }
 
     @Operation(summary = "Clear log records")
