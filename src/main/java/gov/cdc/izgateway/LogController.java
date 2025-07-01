@@ -65,7 +65,7 @@ public class LogController extends LogControllerBase {
 
     @Autowired
     public LogController(AccessControlRegistry registry, IDestinationService destinationService, EndpointStatusService endpointStatusService, IAccessControlService accessControlService) {
-        super(registry);
+        registry.register(this);
         this.destinationService = destinationService;
         this.endpointStatusService = endpointStatusService;
         this.accessControlService = accessControlService;
