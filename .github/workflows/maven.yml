@@ -181,7 +181,7 @@ jobs:
       uses: dependency-check/Dependency-Check_Action@main
       with:
         project: V2 to FHIR
-        path: target/${{env.IMAGE_BRANCH_TAG}}.jar
+        path: target/$IMAGE_TAG.jar
         format: 'HTML'
         args: >
           --failOnCVSS 7
