@@ -17,8 +17,8 @@ public class MessageHeaderRepository extends DynamoDbRepository<MessageHeader> i
 	 * Construct a new JurisdictionRepository from the DynamoDb enhanced client.
 	 * @param client The client
 	 */
-	public MessageHeaderRepository(@Autowired DynamoDbEnhancedClient client) {
-		super(MessageHeader.class, client);
+	public MessageHeaderRepository(@Autowired DynamoDbEnhancedClient client, String tableName) {
+		super(MessageHeader.class, client, tableName);
 	}
 	
 	@Override

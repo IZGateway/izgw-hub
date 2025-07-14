@@ -169,8 +169,33 @@ jobs:
       run: |
         env && mvn -B clean package install -Dbuildno=${{github.run_number}} \
             -DdoRevisionCheck=${{env.DO_REVISION_CHECK}} \
-            -DskipDependencyCheck=false \
+            -DskipDependencyCheck=true \
             -Dimage.tag=$IMAGE_TAG
+            
+# Use GitHub Action to speed up and improve dependency checking
+# NOTE: Disable automatic dependency checking in the build, this replaces it          
+    - name: Dependency Check
+      env:  
+        # Per https://github.com/marketplace/actions/dependency-check, fix JAVA_HOME location for action
+        JAVA_HOME: /opt/jdk
+      uses: dependency-check/Dependency-Check_Action@main
+      with:
+        project: V2 to FHIR
+        path: target/${{env.IMAGE_TAG}}.jar
+        format: 'HTML'
+        args: >
+          --failOnCVSS 7
+          --suppression ./dependency-suppression.xml
+          --disableNuspec    
+          --disableNugetconf  
+          --disableAssembly            
+
+    - name: Upload dependency check log
+      uses: actions/upload-artifact@v4
+      if: ${{ always() }}
+      with:
+        name: DependencyCheck
+        path: ./reports                      
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
