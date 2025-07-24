@@ -65,7 +65,14 @@ public class StatusController {
         included.sort(String::compareTo);
         List<? extends IEndpointStatus> found = endpointStatusService.find(count, includeArray);
 
-        Map<String, List<IEndpointStatus>> t = new TreeMap<>();
+        Map<String, List<IEndpointStatus>> t = collectHistory(status, included, found);
+        addMisssingHistory(includeArray, t);
+        return t;
+    }
+
+	private Map<String, List<IEndpointStatus>> collectHistory(String status, List<String> included,
+			List<? extends IEndpointStatus> found) {
+		Map<String, List<IEndpointStatus>> t = new TreeMap<>();
         for (IEndpointStatus f : found) {
             if (included.isEmpty() || included.contains(f.getDestId())) {
                 // To check for history values of a certain status, specify ?status=<DesiredStatus> in the URL
@@ -82,7 +89,11 @@ public class StatusController {
                 l.add(f);
             }
         }
-        // Some destinations will not have a status history (they are not routinely checked b/c they
+		return t;
+	}
+
+	private void addMisssingHistory(String[] includeArray, Map<String, List<IEndpointStatus>> t) {
+		// Some destinations will not have a status history (they are not routinely checked b/c they
         // are for internal testing, so report it as unknown (see IGDD-2156).
         for (String dest: includeArray) {
         	if (!t.containsKey(dest)) {
@@ -93,8 +104,7 @@ public class StatusController {
         		}
         	}
         }
-        return t;
-    }
+	}
     
     @Operation(summary = "Get the status history for a destination",
             description = "Returns the status history of the destination")
