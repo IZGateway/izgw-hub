@@ -14,8 +14,8 @@ import java.util.UUID;
 
 import org.apache.commons.lang3.StringUtils;
 
-import gov.cdc.izgateway.dynamodb.DateConverter;
-import gov.cdc.izgateway.dynamodb.DynamoDbEntity;
+import gov.cdc.izgateway.model.DateConverter;
+import gov.cdc.izgateway.model.DynamoDbEntity;
 import gov.cdc.izgateway.model.MappableEntity;
 import gov.cdc.izgateway.utils.SystemUtils;
 
@@ -31,7 +31,7 @@ import gov.cdc.izgateway.utils.SystemUtils;
 @AllArgsConstructor
 @NoArgsConstructor
 @DynamoDbBean
-public class Event extends DynamoDbEntity implements Serializable {
+public class Event implements DynamoDbEntity, Serializable {
 	// Well known events.
 	/** The Migration event */
 	public static final String MIGRATION = "Migration";

@@ -1,7 +1,7 @@
 package gov.cdc.izgateway.status;
 
 import gov.cdc.izgateway.common.ResourceNotFoundException;
-import gov.cdc.izgateway.db.model.EndpointStatus;
+import gov.cdc.izgateway.dynamodb.model.EndpointStatus;
 import gov.cdc.izgateway.hub.service.DestinationService;
 import gov.cdc.izgateway.hub.service.StatusCheckerService;
 import gov.cdc.izgateway.model.IDestination;

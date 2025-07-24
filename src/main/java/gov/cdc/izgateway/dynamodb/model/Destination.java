@@ -18,9 +18,9 @@ import com.fasterxml.jackson.annotation.JsonFormat.Shape;
 import gov.cdc.izgateway.ads.ADSController;
 import gov.cdc.izgateway.common.Constants;
 import gov.cdc.izgateway.common.HasDestinationUri;
-import gov.cdc.izgateway.dynamodb.DateConverter;
-import gov.cdc.izgateway.dynamodb.DynamoDbEntity;
 import gov.cdc.izgateway.hub.service.JurisdictionService;
+import gov.cdc.izgateway.model.DateConverter;
+import gov.cdc.izgateway.model.DynamoDbEntity;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.model.IDestinationId;
 import gov.cdc.izgateway.model.IEndpoint;
@@ -44,7 +44,7 @@ import java.util.Date;
 		"msh22", "rxa11" })
 @Data
 @EqualsAndHashCode(callSuper=false)
-public class Destination extends DynamoDbEntity implements IEndpoint, Serializable, HasDestinationUri, IDestination {
+public class Destination implements DynamoDbEntity, IEndpoint, Serializable, HasDestinationUri, IDestination {
 	/**
 	 * A destination id.
 	 * A composite of the destination endpoint identifier, and the environment id (a.k.a., destination type). 
@@ -288,6 +288,10 @@ public class Destination extends DynamoDbEntity implements IEndpoint, Serializab
 		return j == null ? null : j.getDescription();
 	}
 	
+	/**
+	 * Get the JurisdictionService
+	 * @return the JurisdictionService
+	 */
 	public IJurisdictionService getJurisdictionService() {
 		return JurisdictionService.getInstance();
 	}

@@ -26,6 +26,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.io.Serializable;
 import java.util.Date;
 
+/**
+ * Implementation for RDS/MyDQL Destination entity
+ * @author Audacious Inquiry
+ */
 @SuppressWarnings("serial")
 @Entity
 @Table(name = "destinations")
@@ -33,6 +37,11 @@ import java.util.Date;
 		"msh22", "rxa11" })
 @Data
 public class Destination implements IEndpoint, Serializable, HasDestinationUri, IDestination {
+	/**
+	 * Embeddable destination id type for RDS/MySQL entity
+	 * @author Audacious Inquiry
+	 *
+	 */
 	@Schema(properties= {
 		@StringToClassMapItem(key="ak", value=Destination.class),
 		@StringToClassMapItem(key="dev", value=Destination.class),
@@ -52,6 +61,10 @@ public class Destination implements IEndpoint, Serializable, HasDestinationUri, 
 		@Column(name = "dest_type")
 		private int destType;
 
+		/**
+		 * Construct a destination id from another destination id.
+		 * @param id
+		 */
 		public DestinationId(IDestinationId id) {
 			this.destId = id.getDestId();
 			this.destType = id.getDestType();
@@ -159,10 +172,17 @@ public class Destination implements IEndpoint, Serializable, HasDestinationUri, 
 	@Schema(description = "The RXA11 value to use with test messages for this endpoint")
 	private String rxa11;
 
+	/**
+	 * Create a destination
+	 */
 	public Destination() {
 		id.setDestType(SystemUtils.getDestType());
 	}
 
+	/**
+	 * Create a new destination that is a copy of another one
+	 * @param that The destination to copy
+	 */
 	public Destination(IDestination that) {
 		if (that.getId() instanceof DestinationId did) {
 			this.id = did;
@@ -186,6 +206,11 @@ public class Destination implements IEndpoint, Serializable, HasDestinationUri, 
 		this.rxa11 = that.getRxa11();
 	}
 	
+	/**
+	 * Get an example destination with the specified id (used for swagger)
+	 * @param destId	The destId value to report in the example
+	 * @return	An example destination object
+	 */
 	public static Destination getExample(String destId) {
 		Destination dest = new Destination();
 		dest.id.setDestId(destId);
