@@ -97,6 +97,7 @@ public class EndpointStatus implements IEndpoint, Serializable, IEndpointStatus 
 		this.statusBy = SystemUtils.getHostname();
 		this.statusAt = new Date();
 		this.jurisdictionId = dest.getJurisdictionId();
+		this.status = UNKNOWN;
 	}
 	
 	@Override

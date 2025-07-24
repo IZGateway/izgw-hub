@@ -82,6 +82,17 @@ public class StatusController {
                 l.add(f);
             }
         }
+        // Some destinations will not have a status history (they are not routinely checked b/c they
+        // are for internal testing, so report it as unknown (see IGDD-2156).
+        for (String dest: includeArray) {
+        	if (!t.containsKey(dest)) {
+        		IDestination d = destinationService.findByDestId(dest);
+        		if (d != null) {
+        			IEndpointStatus ds = endpointStatusService.getEndpointStatus(d);
+            		t.put(dest, Collections.singletonList(ds));
+        		}
+        	}
+        }
         return t;
     }
     

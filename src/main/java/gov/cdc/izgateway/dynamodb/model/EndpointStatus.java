@@ -123,6 +123,7 @@ public class EndpointStatus extends DynamoDbEntity implements IEndpoint, Seriali
 		this.statusBy = SystemUtils.getHostname();
 		this.statusAt = new Date();
 		this.jurisdictionId = dest.getJurisdictionId();
+		this.status = UNKNOWN;
 	}
 	
 	@Override
