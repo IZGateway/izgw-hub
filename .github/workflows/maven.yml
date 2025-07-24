@@ -170,7 +170,7 @@ jobs:
         env && mvn -B clean package install -Dbuildno=${{github.run_number}} \
             -DdoRevisionCheck=${{env.DO_REVISION_CHECK}} \
             -DskipDependencyCheck=false \
-            -Dimage.tag=$IMAGE_TAG
+            -Dimage.tag=$IMAGE_TAG -X
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
