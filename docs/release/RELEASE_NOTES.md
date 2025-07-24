@@ -1,4 +1,2 @@
-# IZ Gateway Release 2.2.2
-The IZ Gateway Hub 2.2.2 release
-* IGDD-1962 Fix for CVE-2025-22228. Description of the CVE that is being fixed: BCryptPasswordEncoder.matches(CharSequence,String) will incorrectly return true for passwords larger than 72 characters as long as the first 72 characters are the same.
-
+# IZ Gateway Release 2.4.1
+* IGDD-2092 Bumping spring boot to 3.4.7 to address CVE-2025-49125 (embedded Tomcat will now be at version 10.1.42 to resolve the CVE)
