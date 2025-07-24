@@ -4,9 +4,23 @@
 # IZ Gateway Release 2.5.1
 * IGDD-2155 Rebuild using latest base image to resolve CVE-2025-50106 and CVE-2025-30749
 
+# IZ Gateway Release 2.5.0
+* IGDD-2045 Refactoring LogController in Hub and Xform Service to move common code to Core.
+* IGDD-2140 Fixed NPE in TransactionData.matches test
+
+# IZ Gateway Release 2.4.2
+* IGDD-2123 Rebuilding with new alpine image that addresses CVE-2025-32463
+
+# IZ Gateway Release 2.4.1
+* IGDD-2092 Bumping spring boot to 3.4.7 to address CVE-2025-49125 (embedded Tomcat will now be at version 10.1.42 to resolve the CVE)
+
 # IZ Gateway Release 2.4.0
 * IGDD-2002 Added PUT and DELETE operations on MessageHeader
 * IGDD-1989 Add ADS Support for Test File Marking in Metadata
+
+# IZ Gateway Release 2.3.1
+The IZ Gateway Hub 2.3.1 release
+* IGDD-2009 Fix to the ALB-related logic that validates the certificate coming from the ALB.
 
 # IZ Gateway Release 2.3.0
 The IZ Gateway Hub 2.3.0 release

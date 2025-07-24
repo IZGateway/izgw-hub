@@ -30,7 +30,6 @@ public class DynamoDbRepository<T extends DynamoDbEntity> {
 	 * The table name for the repository of entities.  Because we are using a single table 
 	 * design, there is only one table name.
 	 */
-	public static final String TABLE_NAME = "izgw-hub";
 	private final Class<T> entityClass;
 	private final DynamoDbTable<T> table;
 	
@@ -39,11 +38,11 @@ public class DynamoDbRepository<T extends DynamoDbEntity> {
 	 * @param entityClass	The class representing the entity to create the repository for.
 	 * @param client	The DynamoDbEnhancedClient to use to create the repository.
 	 */
-	public DynamoDbRepository(Class<T> entityClass, DynamoDbEnhancedClient client) {
+	public DynamoDbRepository(Class<T> entityClass, DynamoDbEnhancedClient client, String tableName) {
 		this.entityClass = entityClass;
 		// This creates the schema from the class, but does not get subclass attributes.
 		BeanTableSchema<T> schema = TableSchema.fromBean(entityClass);
-		table = client.table(TABLE_NAME, schema);
+		table = client.table(tableName, schema);
 		log.info("Table initialized for {}", entityClass.getSimpleName());
 	}
 	
