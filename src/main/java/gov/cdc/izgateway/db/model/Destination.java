@@ -45,10 +45,4 @@ public class Destination extends AbstractDestination implements IEndpoint, Seria
 	public IJurisdictionService getJurisdictionService() {
 		return JurisdictionService.getInstance();
 	}
-
-	@Override
-	public void setId(IDestinationId id) {
-		// TODO Auto-generated method stub
-		
-	}
 }
