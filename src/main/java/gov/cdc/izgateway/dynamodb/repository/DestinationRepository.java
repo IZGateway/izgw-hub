@@ -42,7 +42,7 @@ public class DestinationRepository extends DynamoDbRepository<Destination> imple
 	}
 
 	@Override
-	public AbstractDestination newDestination() {
+	public IDestination newDestination() {
 		return new Destination();
 	}
 }

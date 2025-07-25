@@ -63,4 +63,8 @@ public interface DestinationRepository extends JpaRepository<Destination, Destin
 		return saveAndFlush(new Destination(entity));
 	}
 	
+	@Override
+	default IDestination newDestination() {
+		return new Destination();
+	}
 }
