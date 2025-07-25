@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.ServiceConfigurationError;
 
 import gov.cdc.izgateway.logging.markers.Markers2;
+import gov.cdc.izgateway.model.DynamoDbEntity;
 import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;

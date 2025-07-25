@@ -28,7 +28,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 
 import gov.cdc.izgateway.common.Constants;
-import gov.cdc.izgateway.db.model.EndpointStatus;
+import gov.cdc.izgateway.dynamodb.model.EndpointStatus;
 import gov.cdc.izgateway.soap.fault.FaultSupport;
 import gov.cdc.izgateway.soap.fault.MessageSupport;
 import gov.cdc.izgateway.logging.markers.Markers2;
@@ -52,13 +52,13 @@ import javax.net.ssl.HttpsURLConnection;
  */
 @Slf4j
 @Component
-public class ElasticStatusRepository extends ElasticRepository implements EndpointStatusRepository {
+public class ElasticStatusRepository extends ElasticRepository implements EndpointStatusRepository<EndpointStatus> {
 	private static final Duration QUARTER_HOUR = Duration.ofMinutes(15);
 	private static final String STATUS_QUERY = "statusquery.json";
 	private static final FastDateFormat FORMATTER = FastDateFormat.getInstance(Constants.TIMESTAMP_FORMAT);
 	
 	private final ObjectMapper mapper = new ObjectMapper();
-	private Map<String, IEndpointStatus> cache = new ConcurrentHashMap<>();
+	private Map<String, EndpointStatus> cache = new ConcurrentHashMap<>();
     @Value("${hub.statuscheck.maxfailures:3}")
 	private int maxFailuresBeforeCircuitBreaker;
     @Value("${hub.statuscheck.period:5}")
@@ -82,12 +82,12 @@ public class ElasticStatusRepository extends ElasticRepository implements Endpoi
 	}
 
 	@Override
-	public List<IEndpointStatus> findAll() {
+	public List<EndpointStatus> findAll() {
 		return find(1, INCLUDE_ALL);
 	}
 	
 	@Override
-	public List<IEndpointStatus> find(int maxQuarterHours, String[] include) {
+	public List<EndpointStatus> find(int maxQuarterHours, String[] include) {
 		if (cache.isEmpty()) {
 			refresh();
 		}
@@ -96,12 +96,12 @@ public class ElasticStatusRepository extends ElasticRepository implements Endpoi
 		} else if (maxQuarterHours > 4) {
 			maxQuarterHours = 4;
 		}
-		List<IEndpointStatus> l = new ArrayList<>();
+		List<EndpointStatus> l = new ArrayList<>();
 		if (include.length == 0) {
 			l.addAll(cache.values());
 		} else {
 			for (String inc: include) {
-				IEndpointStatus s = cache.get(inc);
+				EndpointStatus s = cache.get(inc);
 				if (s != null) {
 					l.add(s);
 				}
@@ -117,12 +117,12 @@ public class ElasticStatusRepository extends ElasticRepository implements Endpoi
 			}
 			from -= QUARTER_HOUR.toMillis();
 		}
-		
+
 		return l;
 	}
 
 	@Override
-	public IEndpointStatus findById(String id) {
+	public EndpointStatus findById(String id) {
 		if (cache.isEmpty()) {
 			refresh();
 		}
@@ -149,7 +149,7 @@ public class ElasticStatusRepository extends ElasticRepository implements Endpoi
 	public boolean refresh() {
 		boolean refreshed = false;
 		try {
-			Map<String, IEndpointStatus> m = getData(new Date(), INCLUDE_ALL);
+			Map<String, EndpointStatus> m = getData(new Date(), INCLUDE_ALL);
 			// Add any values for which we previously had a status, but we didn't compute one.
 			// These at least keeps the system safe from a complete failure to track status
 			// if it cannot reach the data in the repository (ElasticSearch).
@@ -163,7 +163,7 @@ public class ElasticStatusRepository extends ElasticRepository implements Endpoi
 		return refreshed;
 	}
 	
-	private Map<String, IEndpointStatus> getData(Date from, String[] include) throws IOException, NoSuchAlgorithmException {
+	private Map<String, EndpointStatus> getData(Date from, String[] include) throws IOException, NoSuchAlgorithmException {
 		
 		if (config.getUrl() == null) {
 			return new ConcurrentHashMap<>(); 
@@ -336,7 +336,7 @@ public class ElasticStatusRepository extends ElasticRepository implements Endpoi
 	 * 						firstTxTime.buckets[].key is a long value giving the time of the last transaction to this destination with the given status.
 	 * @return
 	 */
-	private Map<String, IEndpointStatus> parseResult(String result) {
+	private Map<String, EndpointStatus> parseResult(String result) {
 		Map<String, ParsedResponse> map = new ConcurrentHashMap<>();
 		try {
 			JsonNode node = getBucket(result);
@@ -350,9 +350,9 @@ public class ElasticStatusRepository extends ElasticRepository implements Endpoi
 			log.error(Markers2.append(e), "Error reading status response from ElasticSearch: {}", e.getMessage());
 			return cache;
 		}
-		Map<String, IEndpointStatus> newCache = new HashMap<>();
+		Map<String, EndpointStatus> newCache = new HashMap<>();
 		for (ParsedResponse r: map.values()) {
-			IEndpointStatus s = convertToStatus(r);
+			EndpointStatus s = convertToStatus(r);
             if ( s != null) {
             	newCache.put(s.getDestId(), s);
             }
@@ -370,8 +370,8 @@ public class ElasticStatusRepository extends ElasticRepository implements Endpoi
 		return node;
 	}
 
-	private IEndpointStatus convertToStatus(ParsedResponse r) {
-		IEndpointStatus s = newEndpointStatus();
+	private EndpointStatus convertToStatus(ParsedResponse r) {
+		EndpointStatus s = newEndpointStatus();
 
         IDestination d = destinationService.findByDestId(r.destinationId);
         if (d == null) {
@@ -595,11 +595,12 @@ public class ElasticStatusRepository extends ElasticRepository implements Endpoi
 	}
 
 	@Override
-	public IEndpointStatus saveAndFlush(IEndpointStatus status) {
+	public EndpointStatus saveAndFlush(IEndpointStatus status) {
+		EndpointStatus s = status instanceof EndpointStatus t ? t : new EndpointStatus(status);
 		if (status != null) {
-			cache.put(status.getDestId(), status);
+			cache.put(status.getDestId(), s);
 		}
-		return status;
+		return s;
 	}
 
 	@Override
@@ -608,13 +609,12 @@ public class ElasticStatusRepository extends ElasticRepository implements Endpoi
 	}
 
 	@Override
-	public IEndpointStatus newEndpointStatus() {
+	public EndpointStatus newEndpointStatus() {
 		return new EndpointStatus();
 	}
 
 	@Override
-	public IEndpointStatus newEndpointStatus(IDestination dest) {
-		// TODO Auto-generated method stub
+	public EndpointStatus newEndpointStatus(IDestination dest) {
 		return new EndpointStatus(dest);
 	}
 }

@@ -9,8 +9,8 @@ import java.security.cert.X509Certificate;
 import java.sql.Timestamp;
 import java.util.Date;
 
-import gov.cdc.izgateway.dynamodb.DateConverter;
-import gov.cdc.izgateway.dynamodb.DynamoDbEntity;
+import gov.cdc.izgateway.model.DateConverter;
+import gov.cdc.izgateway.model.DynamoDbEntity;
 import gov.cdc.izgateway.model.ICertificateStatus;
 import gov.cdc.izgateway.utils.X500Utils;
 
@@ -24,7 +24,7 @@ import gov.cdc.izgateway.utils.X500Utils;
 @Data
 @EqualsAndHashCode(callSuper=false)
 @DynamoDbBean
-public class CertificateStatus extends DynamoDbEntity implements Serializable, ICertificateStatus {
+public class CertificateStatus implements DynamoDbEntity, Serializable, ICertificateStatus {
 	/** certificateId is the SHA-1 Message Digest of the Certificate
 	 *  It is guaranteed to be unique across all certificates within the
 	 *  limits of the hash function (2^160 possible unique values, resulting 

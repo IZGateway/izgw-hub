@@ -1,6 +1,6 @@
 package gov.cdc.izgateway.dynamodb.model;
 
-import gov.cdc.izgateway.dynamodb.DynamoDbEntity;
+import gov.cdc.izgateway.model.DynamoDbEntity;
 import gov.cdc.izgateway.model.IJurisdiction;
 import gov.cdc.izgateway.model.MappableEntity;
 import io.swagger.v3.oas.annotations.StringToClassMapItem;
@@ -19,7 +19,7 @@ import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 @Data
 @EqualsAndHashCode(callSuper=false)
 @DynamoDbBean
-public class Jurisdiction extends DynamoDbEntity implements IJurisdiction {
+public class Jurisdiction implements DynamoDbEntity, IJurisdiction {
 	/**
 	 * A map of jurisdictions.
 	 * 

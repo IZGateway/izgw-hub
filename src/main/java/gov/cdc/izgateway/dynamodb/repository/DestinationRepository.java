@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import gov.cdc.izgateway.dynamodb.DynamoDbRepository;
 import gov.cdc.izgateway.dynamodb.model.Destination;
 import gov.cdc.izgateway.hub.repository.IDestinationRepository;
+import gov.cdc.izgateway.model.AbstractDestination;
 import gov.cdc.izgateway.model.IDestination;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 
@@ -18,6 +19,7 @@ public class DestinationRepository extends DynamoDbRepository<Destination> imple
 	/**
 	 * Construct a new DestinationRepository from the DynamoDb enhanced client.
 	 * @param client The client
+	 * @param tableName The table to use
 	 */
 	public DestinationRepository(@Autowired DynamoDbEnhancedClient client, String tableName) {
 		super(Destination.class, client, tableName);
@@ -37,5 +39,10 @@ public class DestinationRepository extends DynamoDbRepository<Destination> imple
 			return saveAndFlush(d);
 		} 
 		return saveAndFlush(new Destination(dest));
+	}
+
+	@Override
+	public IDestination newDestination() {
+		return new Destination();
 	}
 }
