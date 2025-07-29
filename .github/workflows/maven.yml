@@ -170,7 +170,7 @@ jobs:
         env && mvn -B clean package install -Dbuildno=${{github.run_number}} \
             -DdoRevisionCheck=${{env.DO_REVISION_CHECK}} \
             -DskipDependencyCheck=true \
-            -Dimage.tag=$IMAGE_TAG -X
+            -Dimage.tag=$IMAGE_TAG
             
 # Use GitHub Action to speed up and improve dependency checking
 # NOTE: Disable automatic dependency checking in the build, this replaces it          
