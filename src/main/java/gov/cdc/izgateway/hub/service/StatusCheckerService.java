@@ -2,7 +2,7 @@ package gov.cdc.izgateway.hub.service;
 
 import gov.cdc.izgateway.configuration.AppProperties;
 import gov.cdc.izgateway.configuration.StatusCheckerConfiguration;
-import gov.cdc.izgateway.db.model.EndpointStatus;
+import gov.cdc.izgateway.dynamodb.model.EndpointStatus;
 import gov.cdc.izgateway.logging.LoggingValve;
 import gov.cdc.izgateway.logging.RequestContext;
 import gov.cdc.izgateway.logging.event.EventId;
