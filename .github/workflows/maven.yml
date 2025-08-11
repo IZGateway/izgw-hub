@@ -330,7 +330,7 @@ jobs:
     - name: Verify ElasticSearch Logging Client Is running
       run: |
         SERVICE_INSTANCE=`aws ecs list-tasks --cluster izgateway-dev-izgateway-services --service-name izgateway-devalb-service  | jq '.taskArns[0]|split("/")[2]' -r`
-        aws logs filter-log-events --log-group-name /ecs/izgateway-dev-phiz-web-ws --log-stream-names ecs/izgateway-dev-phiz-web-ws/$SERVICE_INSTANCE --filter-pattern "Connection to backoff" | grep established
+        aws logs filter-log-events --log-group-name /ecs/izgateway-devalb-phiz-web-ws --log-stream-names ecs/izgateway-devalb-phiz-web-ws/$SERVICE_INSTANCE --filter-pattern "Connection to backoff" | grep established
 
     # Perform a little bit of warmup on the IZGW service using cert tests
     # TLS Testing can be Disabled per Security Team 5/23/2025, as it will be addressed via endpoint monitoring
