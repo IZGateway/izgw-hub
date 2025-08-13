@@ -3,6 +3,8 @@ package gov.cdc.izgateway;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
@@ -78,6 +80,7 @@ import gov.cdc.izgateway.soap.net.SoapMessageWriter;
 import gov.cdc.izgateway.status.StatusCheckScheduler;
 import gov.cdc.izgateway.utils.SystemUtils;
 import gov.cdc.izgateway.utils.UtilizationService;
+import gov.cdc.izgateway.ads.ADSUtils;
 import gov.cdc.izgateway.common.HealthService;
 import gov.cdc.izgateway.configuration.AppProperties;
 import gov.cdc.izgateway.hub.service.MessageHeaderService;
@@ -205,7 +208,7 @@ public class Application implements WebMvcConfigurer {
 		Thread.currentThread().setName("IZ Gateway");
 		// Initialize the Utilization Service
 		UtilizationService.getUtilization();
-		
+		setIpAddresses();
 		System.setProperty("java.util.logging.config.class", JulInit.class.getName());
 		
 		// This should no longer be necessary, but it doesn't hurt to leave it here
@@ -233,6 +236,20 @@ public class Application implements WebMvcConfigurer {
         // Set the eventId for startup log records to 0
         MDC.put(EventId.EVENTID_KEY, EventId.DEFAULT_TX_ID);
         MDC.put("sessionId", "0");
+	}
+
+	private static void setIpAddresses() throws ServiceConfigurationError {
+		try {
+			InetAddress[] addresses = InetAddress.getAllByName(HealthService.getHealth().getServerName());
+			String[] dnsAddresses = Arrays.stream(addresses)
+					.map(InetAddress::getHostAddress)
+					.toArray(String[]::new);
+			HealthService.setIngressDnsAddress(dnsAddresses);
+		} catch (UnknownHostException e) {
+			log.error("Cannot resolve server name {}: {}", HealthService.getHealth().getServerName(), e.getMessage());
+			throw new ServiceConfigurationError("Cannot resolve server name " + HealthService.getHealth().getServerName(), e);
+		}
+		HealthService.setEgressDnsAddress(ADSUtils.getMyIpAddress());
 	}
 	
     public static void shutdown() {
