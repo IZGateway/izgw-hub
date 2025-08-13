@@ -170,7 +170,7 @@ jobs:
         env && mvn -B clean package install -Dbuildno=${{github.run_number}} \
             -DdoRevisionCheck=${{env.DO_REVISION_CHECK}} \
             -DskipDependencyCheck=true \
-            -Dimage.tag=$IMAGE_TAG -X
+            -Dimage.tag=$IMAGE_TAG
             
 # Use GitHub Action to speed up and improve dependency checking
 # NOTE: Disable automatic dependency checking in the build, this replaces it          
@@ -217,8 +217,42 @@ jobs:
         docker image tag iz-gateway:${{env.IMAGE_TAG}} $ECR_REGISTRY/$ECR_REPOSITORY:${{env.IMAGE_BRANCH_TAG}}
         docker image tag iz-gateway:${{env.IMAGE_TAG}} $ECR_REGISTRY/$ECR_REPOSITORY:latest
         docker image push --all-tags $ECR_REGISTRY/$ECR_REPOSITORY
-        aws ecs update-service --cluster izgateway-dev-izgateway-services --service izgateway-dev-service --force-new-deployment --enable-execute-command --desired-count 4 | jq ".service.deployments[].id"
-        aws ecs update-service --cluster izgateway-dev-izgateway-services --service izgateway-devalb-service --force-new-deployment --enable-execute-command --desired-count 4 | jq ".service.deployments[].id"
+
+    # AWS_REGIONS can be set in GitHub Settings -> Secrets and variables -> Actions -> Variables -> Repository Variables
+    # Format: space-separated regions (e.g., "us-east-1 us-west-2")
+    # Default of us-east-1 will be used if this is not set
+    # ECS_DESIRED_COUNT can be set in GitHub Settings -> Secrets and variables -> Actions -> Variables -> Repository Variables
+    # This is used to know how many container instances to start. Default is 1 if not set
+    - name: Update ECS service to force new deployment of latest image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: transformation-service
+        AWS_REGIONS: ${{ vars.AWS_REGIONS }}
+        ECS_DESIRED_COUNT: ${{ vars.ECS_DESIRED_COUNT }}
+      run: |
+        if [ -z "$AWS_REGIONS" ]; then
+          echo "AWS_REGIONS not set, defaulting to us-east-1"
+          AWS_REGIONS="us-east-1"
+        fi
+        
+        if [ -z "$ECS_DESIRED_COUNT" ]; then
+          echo "ECS_DESIRED_COUNT not set, defaulting to 1"
+          ECS_DESIRED_COUNT="1"
+        fi
+        
+        for region in $AWS_REGIONS; do
+          echo "Update ECS services in $region (starting $ECS_DESIRED_COUNT containers)"
+          aws ecs update-service --region $region --cluster izgateway-dev-izgateway-services --service izgateway-devalb-service --force-new-deployment --enable-execute-command --desired-count $ECS_DESIRED_COUNT | jq ".service.deployments[].id" &
+        done
+        
+        wait
+        
+        for region in $AWS_REGIONS; do
+          echo "Wait for ECS service stability in $region"
+          aws ecs wait services-stable --region $region --cluster izgateway-dev-izgateway-services --service izgateway-devalb-service &
+        done
+        
+        wait
 
     - name: Login to GitHub Repository
       uses: docker/login-action@v3
@@ -295,8 +329,8 @@ jobs:
     # Get the first service instance and check CloudWatch logs for indication that it connected
     - name: Verify ElasticSearch Logging Client Is running
       run: |
-        SERVICE_INSTANCE=`aws ecs list-tasks --cluster izgateway-dev-izgateway-services --service-name izgateway-dev-service  | jq '.taskArns[0]|split("/")[2]' -r`
-        aws logs filter-log-events --log-group-name /ecs/izgateway-dev-phiz-web-ws --log-stream-names ecs/izgateway-dev-phiz-web-ws/$SERVICE_INSTANCE --filter-pattern "Connection to backoff" | grep established
+        SERVICE_INSTANCE=`aws ecs list-tasks --cluster izgateway-dev-izgateway-services --service-name izgateway-devalb-service  | jq '.taskArns[0]|split("/")[2]' -r`
+        aws logs filter-log-events --log-group-name /ecs/izgateway-devalb-phiz-web-ws --log-stream-names ecs/izgateway-devalb-phiz-web-ws/$SERVICE_INSTANCE --filter-pattern "Connection to backoff" | grep established
 
     # Perform a little bit of warmup on the IZGW service using cert tests
     # TLS Testing can be Disabled per Security Team 5/23/2025, as it will be addressed via endpoint monitoring

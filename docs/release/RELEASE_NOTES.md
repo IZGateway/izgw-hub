@@ -1,2 +1,3 @@
-# IZ Gateway Release 2.4.1
-* IGDD-2092 Bumping spring boot to 3.4.7 to address CVE-2025-49125 (embedded Tomcat will now be at version 10.1.42 to resolve the CVE)
+# IZ Gateway Release 2.5.1
+* IGDD-2155 Rebuild using latest base image to resolve CVE-2025-50106 and CVE-2025-30749
+
