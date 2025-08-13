@@ -6,12 +6,29 @@ import org.apache.commons.lang3.StringUtils;
 
 import gov.cdc.izgateway.model.IAccessControlId;
 
+/**
+ * The AccessControl identifier object
+ * @author Audacious Inquiry
+ */
 @SuppressWarnings("serial")
 public class AccessControlId implements Serializable, IAccessControlId {
     private String category;
     private String name;
     private String member;
-    
+
+    /**
+     * Default constructor
+     */
+	public AccessControlId() {
+    }
+
+    /**
+     * Construct an AccessControl identifier object
+     * @author Audacious Inquiry
+     * @param category The access control category
+     * @param name 	The entity name
+     * @param member The member name
+     */
     public AccessControlId(String category, String name, String member) {
     	this.category = category;
     	this.name = name;
@@ -59,7 +76,4 @@ public class AccessControlId implements Serializable, IAccessControlId {
 	public void setMember(String member) {
 		this.member = member;
 	}
-	public AccessControlId() {
-    	
-    }
 }

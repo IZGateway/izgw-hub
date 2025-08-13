@@ -5,7 +5,6 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import gov.cdc.izgateway.db.model.Destination;
 import gov.cdc.izgateway.hub.repository.IDestinationRepository;
 import gov.cdc.izgateway.hub.repository.RepositoryFactory;
 import gov.cdc.izgateway.logging.markers.Markers2;
@@ -175,6 +174,6 @@ public class DestinationService implements InitializingBean, IDestinationService
 
 	@Override
 	public IDestination getExample(String destinationId) {
-		return Destination.getExample(destinationId);
+		return IDestination.getExample(destinationRepository.newDestination(), destinationId);
 	}
 }
