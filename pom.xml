@@ -29,6 +29,7 @@
 		<spring-security.version>6.4.6</spring-security.version>
 		<mysql.version>9.3.0</mysql.version>
         <commons-lang3.version>3.18.0</commons-lang3.version>
+        <tomcat.version>10.1.44</tomcat.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -261,6 +262,20 @@
                 <groupId>com.nimbusds</groupId>
                 <artifactId>nimbus-jose-jwt</artifactId>
                 <version>10.4.1</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-bom</artifactId>
+                <version>4.2.4.Final</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-framework-bom</artifactId>
+                <version>6.2.10</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>
