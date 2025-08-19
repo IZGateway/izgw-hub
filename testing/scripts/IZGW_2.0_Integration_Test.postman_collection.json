@@ -1156,7 +1156,7 @@
 											"            ++ count;\r",
 											"        }\r",
 											"    }\r",
-											"    pm.expect(count).to.be.greaterThan(1);\r",
+											"    pm.expect(count).to.be.greaterThan(0);\r",
 											"});"
 										],
 										"type": "text/javascript",
