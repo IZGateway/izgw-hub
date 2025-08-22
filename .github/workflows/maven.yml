@@ -461,5 +461,5 @@ jobs:
           IMAGE_TAG: ${{needs.build.outputs.image_tag}}
         run: |
           echo "About to push image to APHL ECR: izgw-hub-${{env.VERSION}}_${{github.run_number}}"
-          docker image tag iz-gateway:${IMAGE_TAG} $ECR_REGISTRY/$ECR_REPOSITORY:izgw-hub-${{env.VERSION}}_${{github.run_number}}
+          docker image tag iz-gateway:${IMAGE_TAG} $ECR_REGISTRY/$ECR_REPOSITORY:izgw-hub-${{env.VERSION}}-${{github.run_number}}
           docker image push --all-tags $ECR_REGISTRY/$ECR_REPOSITORY
