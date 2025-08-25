@@ -209,7 +209,8 @@ public class Application implements WebMvcConfigurer {
 		UtilizationService.getUtilization();
 		
 		initializeHealth();
-		System.setProperty("java.util.logging.config.class", JulInit.class.getName());
+
+    System.setProperty("java.util.logging.config.class", JulInit.class.getName());
 		
 		// This should no longer be necessary, but it doesn't hurt to leave it here
 		// in case JUL logging doesn't install it for some reason.
@@ -239,8 +240,8 @@ public class Application implements WebMvcConfigurer {
 	}
 
 	private static void initializeHealth() {
-        HealthService.setBuildName(getBuild());
-        HealthService.setServerName(serverName);
+    HealthService.setBuildName(getBuild());
+    HealthService.setServerName(serverName);
 		setIpAddresses();
 	}
 

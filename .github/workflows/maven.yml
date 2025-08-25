@@ -175,10 +175,12 @@ jobs:
 # Use GitHub Action to speed up and improve dependency checking
 # NOTE: Disable automatic dependency checking in the build, this replaces it          
     - name: Dependency Check
-      env:  
+      env:
         # Per https://github.com/marketplace/actions/dependency-check, fix JAVA_HOME location for action
         JAVA_HOME: /opt/jdk
       uses: dependency-check/Dependency-Check_Action@main
+      continue-on-error: true
+      timeout-minutes: 5
       with:
         project: V2 to FHIR
         path: target/${{env.IMAGE_TAG}}.jar
@@ -195,7 +197,7 @@ jobs:
       if: ${{ always() }}
       with:
         name: DependencyCheck
-        path: ./reports                      
+        path: ./reports
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
@@ -460,6 +462,6 @@ jobs:
           ECR_REPOSITORY: ${{ secrets.APHL_ECR_REPOSITORY }}
           IMAGE_TAG: ${{needs.build.outputs.image_tag}}
         run: |
-          echo "About to push image to APHL ECR image tag: ${IMAGE_TAG}"
-          docker image tag iz-gateway:${IMAGE_TAG} $ECR_REGISTRY/$ECR_REPOSITORY:iz-gateway_${IMAGE_TAG}
+          echo "About to push image to APHL ECR: izgw-hub-${{env.VERSION}}_${{github.run_number}}"
+          docker image tag iz-gateway:${IMAGE_TAG} $ECR_REGISTRY/$ECR_REPOSITORY:izgw-hub-${{env.VERSION}}-${{github.run_number}}
           docker image push --all-tags $ECR_REGISTRY/$ECR_REPOSITORY

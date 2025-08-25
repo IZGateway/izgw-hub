@@ -1146,7 +1146,7 @@
 											"    pm.expect(Object.keys(status).length).to.be.greaterThan(1);\r",
 											"});\r",
 											"\r",
-											"pm.test(\"At least two keys report OK\", function() {\r",
+											"pm.test(\"At least one key reports OK\", function() {\r",
 											"    if (pm.request.url.toString().startsWith(\"https://localhost\")) {\r",
 											"        return;\r",
 											"    }\r",
