@@ -246,7 +246,7 @@ public class Application implements WebMvcConfigurer {
 
 	private static void setIpAddresses() throws ServiceConfigurationError {
 		try {
-			InetAddress[] addresses = InetAddress.getAllByName(HealthService.getHealth().getServerName());
+			InetAddress[] addresses = InetAddress.getAllByName(serverName);
 			String[] dnsAddresses = Arrays.stream(addresses)
 					.map(InetAddress::getHostAddress)
 					.toArray(String[]::new);
