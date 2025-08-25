@@ -238,8 +238,8 @@ public class Application implements WebMvcConfigurer {
 	}
 
 	private static void initializeHealth() {
-        HealthService.setBuildName(getBuild());
-        HealthService.setServerName(serverName);
+    HealthService.setBuildName(getBuild());
+    HealthService.setServerName(serverName);
 		setIpAddresses();
 	}
 

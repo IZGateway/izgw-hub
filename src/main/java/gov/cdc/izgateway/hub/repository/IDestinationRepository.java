@@ -18,4 +18,9 @@ public interface IDestinationRepository extends IRepository<IDestination> {
 	 */
 	List<? extends IDestination> findAllByDestTypeId(int destType);
 
+	/**
+	 * @return a new Destination for a repository
+	 */
+	IDestination newDestination();
+
 }

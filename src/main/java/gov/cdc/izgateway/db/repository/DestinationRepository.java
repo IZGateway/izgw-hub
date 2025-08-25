@@ -9,8 +9,8 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import gov.cdc.izgateway.db.model.Destination;
-import gov.cdc.izgateway.db.model.Destination.DestinationId;
 import gov.cdc.izgateway.hub.repository.IDestinationRepository;
+import gov.cdc.izgateway.model.AbstractDestination.DestinationId;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.utils.SystemUtils;
 
@@ -63,4 +63,8 @@ public interface DestinationRepository extends JpaRepository<Destination, Destin
 		return saveAndFlush(new Destination(entity));
 	}
 	
+	@Override
+	default IDestination newDestination() {
+		return new Destination();
+	}
 }
