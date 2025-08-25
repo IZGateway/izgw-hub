@@ -208,7 +208,6 @@ public class Application implements WebMvcConfigurer {
 		// Initialize the Utilization Service
 		UtilizationService.getUtilization();
 		
-		initializeHealth();
 		System.setProperty("java.util.logging.config.class", JulInit.class.getName());
 		
 		// This should no longer be necessary, but it doesn't hurt to leave it here
@@ -252,8 +251,8 @@ public class Application implements WebMvcConfigurer {
 					.toArray(String[]::new);
 			HealthService.setIngressDnsAddress(dnsAddresses);
 		} catch (UnknownHostException e) {
-			log.error("Cannot resolve server name {}: {}", HealthService.getHealth().getServerName(), e.getMessage());
-			throw new ServiceConfigurationError("Cannot resolve server name " + HealthService.getHealth().getServerName(), e);
+			log.error("Cannot resolve server name {}: {}", serverName, e.getMessage());
+			throw new ServiceConfigurationError("Cannot resolve server name " + serverName, e);
 		}
 		HealthService.setEgressDnsAddress(ADSUtils.getMyIpAddress());
 	}
@@ -271,9 +270,10 @@ public class Application implements WebMvcConfigurer {
     
 	private static void checkApplication(ConfigurableApplicationContext ctx) {
         IDestinationService destinationService = ctx.getBean(IDestinationService.class);
-        serverName = destinationService.getServerName();
         AppProperties props = ctx.getBean(AppProperties.class); 
         serverMode = props.getServerMode();
+        serverName = props.getServerName();
+		initializeHealth();
         IMessageHeaderService messageHeaderService = ctx.getBean(MessageHeaderService.class);
         DataSourceProperties ds = ctx.getBean(DataSourceProperties.class);
         if (Arrays.asList("jpa", "migrate").contains(props.getDatabaseType())) {
