@@ -20,7 +20,7 @@ filebeat.inputs:
 
     processors:
       - add_host_metadata: ~
-      - add_cloud_metadata: ~
+      - add_cloud_metadata: ~ 
       - copy_fields:
           fields:
             - from: host.hostname.keyword
@@ -31,6 +31,7 @@ filebeat.inputs:
           target: 'cloud'
           fields:
             service: "${SERVICE_NAME:unknown}"
+            region: "${AWS_REGION:unknown}"
             
     # change tag to dev/onboard/prod for selected environment
     tags: ["${ELASTIC_ENV_TAG:dev}"] # https://www.elastic.co/guide/en/beats/filebeat/7.14/configuration-general-options.html#_tags_21

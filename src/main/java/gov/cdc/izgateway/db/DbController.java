@@ -3,14 +3,17 @@ package gov.cdc.izgateway.db;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
+import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
 import java.util.concurrent.ExecutorService;
@@ -43,6 +46,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import gov.cdc.izgateway.common.BadRequestException;
+import gov.cdc.izgateway.common.HealthService;
 import gov.cdc.izgateway.common.ResourceNotFoundException;
 import gov.cdc.izgateway.db.model.Destination;
 import gov.cdc.izgateway.db.model.MessageHeader;
@@ -84,7 +88,8 @@ import javax.net.ssl.HttpsURLConnection;
 @Lazy(false)
 public class DbController {
 	private static final long DEFAULT_MAINT_PERIOD = TimeUnit.MINUTES.toMillis(30);
-
+	/** Cached list of ingress addresses for THIS host */
+	private transient List<String> ingressAddresses = null;
 	/**
 	 * Configuration for the DB Controller.
 	 * 
@@ -318,8 +323,8 @@ public class DbController {
   	@GetMapping("/refresh")
 	@RolesAllowed({ Roles.ADMIN, Roles.INTERNAL })
 	public HostMap getRefreshed(
-		@Parameter(description = "If true, refresh all instances, otherwise refresh only the current instance.", required = false)
-		@RequestParam(name = "all", defaultValue = "false") boolean all,
+		@Parameter(description = "If true or local, refresh all accessible instances, otherwise refresh only the current instance.", required = false)
+		@RequestParam(name = "all", defaultValue = "false") String all,
 		@Parameter(description = "If true, reset circuit breakers as well.", required = false)
 		@RequestParam(name = "reset", defaultValue = "false") boolean reset
 
@@ -335,36 +340,86 @@ public class DbController {
 			resetEndpoint(me, eventId);
 		} 
 		
-		if (all) {
-
-			ExecutorService ex = Executors.newFixedThreadPool(4);
-
-			List<String> hosts = getRunningHosts(false);
-			for (String host : hosts) {
-				// Don't recursively refresh yourself
-				if (host.equalsIgnoreCase(me)) {
-					continue;
-				}
-				ex.execute(() -> results.put(host, refreshEndpoint(host, eventId)));
-				if (reset) {
-					ex.execute(() -> resetEndpoint(host, eventId));
-				}
-			}
-
-			ex.shutdown();
-			try {
-				ex.awaitTermination(30, TimeUnit.SECONDS);
-			} catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-			}
-			// Log status for any not done due to timeout
-			for (String host : hosts) {
-				results.computeIfAbsent(host, k -> "Timed out");
-			}
+		if ("true".equalsIgnoreCase(all) || "local".equalsIgnoreCase(all)) {
+			refreshLocalEndpoints(reset, results, me, eventId);
+		}
+		if ("true".equalsIgnoreCase(all)) {
+			refreshRegionalEndpoints(reset, results, me, eventId);
 		}
 		return results;
 	}
 
+	/**
+	 * Send a refresh to all local endpoints (those with an IP ingress address that is the same as this host).
+	 * @param reset	 If true, reset circuit breakers as well
+	 * @param results	The map to add results to
+	 * @param me	 The name of this host
+	 * @param eventId	The event ID to use in logging
+	 */
+	private void refreshLocalEndpoints(boolean reset, HostMap results, String me, String eventId) {
+		ExecutorService ex = Executors.newFixedThreadPool(4);
+
+		List<String> hosts = getRunningHosts(false);
+		for (String host : hosts) {
+			// Don't recursively refresh yourself
+			if (host.equalsIgnoreCase(me)) {
+				continue;
+			}
+			ex.execute(() -> results.put(host, refreshEndpoint(host, eventId)));
+			if (reset) {
+				ex.execute(() -> resetEndpoint(host, eventId));
+			}
+		}
+
+		ex.shutdown();
+		try {
+			ex.awaitTermination(30, TimeUnit.SECONDS);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		}
+		// Log status for any not done due to timeout
+		for (String host : hosts) {
+			results.computeIfAbsent(host, k -> "Timed out");
+		}
+	}
+	
+	/**
+	 * Send a refresh to all regional endpoints (those with an IP ingress address that differs from this host).
+	 * @param reset	 If true, reset circuit breakers as well
+	 * @param results	The map to add results to
+	 * @param me	 The name of this host
+	 * @param eventId	The event ID to use in logging
+	 */
+	private void refreshRegionalEndpoints(boolean reset, HostMap results, String me, String eventId) {
+		Map<String, List<String>> hosts = getRunningHosts2(false);
+		ExecutorService ex = Executors.newFixedThreadPool(2);
+		List<String> remoteHosts = new ArrayList<>();
+		for (List<String> values : hosts.values()) {
+			if (values.stream().anyMatch(addr -> ingressAddresses.contains(addr))) {
+				// This is the same as the local host ingress, skip it.  We shouldn't get these, but just in case.
+				// and we don't want to get into a recursive loop.
+				continue;
+			}
+			String host = values.get(0);
+			remoteHosts.add(host);
+			ex.execute(() -> results.put(host, refreshLocalEndpoint(host, reset, eventId)));
+		}
+		ex.shutdown();
+		try {
+			ex.awaitTermination(30, TimeUnit.SECONDS);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		}
+		// Log status for any not done due to timeout
+		for (String host : remoteHosts) {
+			results.computeIfAbsent(host, k -> "Timed out");
+		}
+	}
+
+	private String refreshLocalEndpoint(String host, boolean reset, String eventId) {
+		return callEndpoint(host, eventId, "/rest/refresh?all=local" + (reset ? "&reset=true" : ""));
+	}
+	
 	private String refreshEndpoint(String host, String eventId) {
 		return callEndpoint(host, eventId, "/rest/refresh");
 	}
@@ -377,7 +432,7 @@ public class DbController {
 		URL url = null;
 		MDC.put(EventId.EVENTID_KEY, eventId);
 		try {
-			url = new URL("https://" + host + path);
+			url = new URI("https://" + host + path).toURL();
 			HttpsURLConnection con = (HttpsURLConnection) url.openConnection();
 
 			if (con.getResponseCode() != HttpStatus.OK.value()) {
@@ -407,7 +462,7 @@ public class DbController {
 
 	@Operation(summary = "Report the host instances running.",
 			description = "Refresh the list of running hosts.  Returns an array of hostnames.")
-	@ApiResponse(responseCode = "200", description = "A map indicating the refresh status for each host.", 
+	@ApiResponse(responseCode = "200", description = "A list identifying running host.", 
 	    content = @Content(
 	    		mediaType = "application/json", 
 	    		array = @ArraySchema(schema = @Schema(implementation = String.class))
@@ -419,7 +474,7 @@ public class DbController {
 		@RequestParam(name = "raw", defaultValue = "false") boolean raw) {
 		List<String> l = hostService.findAll();
 		Iterator<String> i = l.iterator();
-		// Filter the output to active hosts
+		// Filter the output to reachable hosts
 		if (!raw) {
 			while (i.hasNext()) {
 				String host = i.next();
@@ -429,15 +484,68 @@ public class DbController {
 					i.remove();
 				}
 			}
-
-			if (!l.contains(SystemUtils.getHostname())) {
-				l.add(SystemUtils.getHostname());
-			}
+		}
+		if (!l.contains(SystemUtils.getHostname())) {
+			l.add(SystemUtils.getHostname());
 		}
 		Collections.sort(l);
 		return l;
 	}
 
+	@Operation(summary = "Report the running host instances and their ingress IP addresses.",
+			description = "Refresh the list of running hosts.  Returns a map of hostnames and ingress IP addresses.")
+	@ApiResponse(responseCode = "200", description = "A map of hostnames and ingress IP addresses", 
+	    content = @Content(
+	    		mediaType = "application/json", 
+	    		array = @ArraySchema(schema = @Schema(implementation = String.class))
+	    )
+	)
+	@GetMapping("/hosts2")
+	public Map<String, List<String>> getRunningHosts2(
+		@Parameter(required=false, 
+			description="If true, return only locally accessible hosts, if false, return only non-locally accessible hosts, if omitted return all hosts.")
+		@RequestParam(name = "local", required = false) Boolean local) {
+		
+		Map<String, List<String>> m = hostService.getHostsAndIngressAddresses();
+		if (ingressAddresses == null) {
+			ingressAddresses = Arrays.asList(HealthService.getHealth().getIngressDnsAddress());
+		}
+		for (Iterator<Map.Entry<String, List<String>>> i = m.entrySet().iterator(); i.hasNext();) {
+			Map.Entry<String, List<String>> e = i.next();
+			if (e.getValue() == null || e.getValue().isEmpty()) {
+				i.remove();
+			} else if (Boolean.TRUE.equals(local)) {
+				try {
+					// This will throw an exception if not locally reachable
+					InetAddress.getAllByName(e.getKey());
+					// If none of the ingress addresses match, remove it
+					if (e.getValue().stream().noneMatch(ipAddress -> ingressAddresses.contains(ipAddress))) {
+						i.remove();
+					}
+				} catch (Exception ex) {
+					i.remove();
+				}
+			} else if (Boolean.FALSE.equals(local)) {
+				// Remove any that are locally reachable
+				try {
+					// This will throw an exception if not locally reachable
+					InetAddress.getAllByName(e.getKey());
+					i.remove();
+				} catch (Exception ex) {
+					// Ignore it
+				}
+			} 
+		}
+		if (Boolean.FALSE.equals(local)) {
+			// Remove this server 
+			m.remove(SystemUtils.getHostname());
+		} else {
+			// Include this server (overwrites data from repository with locally known data) 
+			m.put(SystemUtils.getHostname(), ingressAddresses);
+		}
+		return m;
+	}
+	
 	/**
 	 * Return status of all destinations scheduled for maintenance
 	 * 
@@ -548,7 +656,7 @@ public class DbController {
 
 		configuration.getDestinationService().saveAndFlush(dest);
 		// Refresh other services.
-		getRefreshed(true, false);
+		getRefreshed("true", false);
 		return getConfigById(id);
 	}
 

@@ -37,12 +37,8 @@ import javax.net.ssl.SSLSocketFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -283,48 +279,7 @@ public class DEXStorageSender extends RestfulFileSender implements FileSender {
     public DEXStorageSender(SenderConfig config, final ClientTlsSupport tlsSupport, final DexConfiguration dexConfig) {
     	super(config, tlsSupport);
     	this.dexConfig = dexConfig;
-    	hackThePatch();
     }
-
-	/**
-     * OpenJDK does not support PATCH as an allowed method.
-     * Some Tus Servers (e.g., tusd in DEX) don't appear to accept X-HTTP-Method-Override header.
-     * Something has to give.
-     * See https://stackoverflow.com/questions/25163131/httpurlconnection-invalid-http-method-patch/40606633#40606633
-     * In the future, after the next JDK upgrade, you might need: 
-     * https://stackoverflow.com/questions/56039341/get-declared-fields-of-java-lang-reflect-fields-in-jdk12
-     */
-    
-    private static void hackThePatch() {  
-        VarHandle MODIFIERS = null;
-    	try {
-            var lookup = MethodHandles.privateLookupIn(Field.class, MethodHandles.lookup());
-            MODIFIERS = lookup.findVarHandle(Field.class, "modifiers", int.class);
-            
-    		String[] methods = { "PATCH" };
-            Field methodsField = HttpURLConnection.class.getDeclaredField("methods");
-            
-            MODIFIERS.set(methodsField, methodsField.getModifiers() & ~Modifier.FINAL);
-            methodsField.setAccessible(true); // NOSONAR: Reflection OK
-
-            String[] oldMethods = (String[]) methodsField.get(null);
-            Set<String> methodsSet = new LinkedHashSet<>(Arrays.asList(oldMethods));
-            methodsSet.addAll(Arrays.asList(methods));
-            String[] newMethods = methodsSet.toArray(new String[0]);
-
-            methodsField.set(null/*static field*/, newMethods); // NOSONAR: Reflection OK
-            
-            URL url = new URL("https://localhost");
-            HttpURLConnection con = (HttpURLConnection)url.openConnection();
-            
-            con.setRequestMethod("PATCH");
-            // Turn off caching
-            con.setDefaultUseCaches(false);
-            log.info("PATCH updated in HttpURLConnection");
-	     } catch (Exception ex) {
-    		log.info(Markers2.append(ex), "Could not adjust HttpURLConnection to accept PATCH: {}", ex.getMessage());
-    	}
-	}
 
 	@Override
     public HttpURLConnection getConnection(String type, IDestination route, Metadata meta, DataHandler data) throws IOException, DestinationConnectionFault, MetadataFault {

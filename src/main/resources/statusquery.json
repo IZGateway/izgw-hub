@@ -1,0 +1,245 @@
+{
+  "aggs": {
+    "histogram": {
+      "date_histogram": {
+        "field": "transactionData.dateTime",
+        "fixed_interval": "1m",
+        "time_zone": "America/New_York",
+        "extended_bounds": {
+          "min": ${startLong},
+          "max": ${endLong}
+        }
+      },
+      "aggs": {
+        "destination": {
+          "terms": {
+            "field": "transactionData.destination.id.keyword",
+            "order": {
+              "_count": "desc"
+            },
+            "size": 65
+          },
+          "aggs": {
+            "hasProcessError": {
+              "terms": {
+                "field": "transactionData.hasProcessError",
+                "order": {
+                  "_count": "desc"
+                },
+                "size": 2,
+                "shard_size": 25
+              },
+              "aggs": {
+                "latestTxTime": {
+                  "max": {
+                    "field": "transactionData.dateTime"
+                  }
+                },
+                "firstTxTime": {
+                  "min": {
+                    "field": "transactionData.dateTime"
+                  }
+                },
+                "errorSummary-bucket": {
+                  "filter": {
+                    "bool": {
+                      "must": [],
+                      "filter": [],
+                      "should": [],
+                      "must_not": []
+                    }
+                  },
+                  "aggs": {
+                    "errorSummary-metric": {
+                      "top_metrics": {
+                        "metrics": {
+                          "field": "transactionData.processErrorSummary.keyword"
+                        },
+                        "size": 1,
+                        "sort": {
+                          "transactionData.dateTime": "desc"
+                        }
+                      }
+                    }
+                  }
+                },
+                "errorDetail-bucket": {
+                  "filter": {
+                    "bool": {
+                      "must": [],
+                      "filter": [],
+                      "should": [],
+                      "must_not": []
+                    }
+                  },
+                  "aggs": {
+                    "errorDetail-metric": {
+                      "top_metrics": {
+                        "metrics": {
+                          "field": "transactionData.processErrorDetail.keyword"
+                        },
+                        "size": 1,
+                        "sort": {
+                          "transactionData.dateTime": "desc"
+                        }
+                      }
+                    }
+                  }
+                },
+                "url-bucket": {
+                  "filter": {
+                    "bool": {
+                      "must": [],
+                      "filter": [],
+                      "should": [],
+                      "must_not": []
+                    }
+                  },
+                  "aggs": {
+                    "url-metric": {
+                      "top_metrics": {
+                        "metrics": {
+                          "field": "transactionData.destination.url.keyword"
+                        },
+                        "size": 1,
+                        "sort": {
+                          "transactionData.dateTime": "desc"
+                        }
+                      }
+                    }
+                  }
+                },
+                "faultName-bucket": {
+                  "filter": {
+                    "bool": {
+                      "must": [],
+                      "filter": [],
+                      "should": [],
+                      "must_not": []
+                    }
+                  },
+                  "aggs": {
+                    "faultName-metric": {
+                      "top_metrics": {
+                        "metrics": {
+                          "field": "transactionData.faultName.keyword"
+                        },
+                        "size": 1,
+                        "sort": {
+                          "transactionData.dateTime": "desc"
+                        }
+                      }
+                    }
+                  }
+                },
+                "faultCode-bucket": {
+                  "filter": {
+                    "bool": {
+                      "must": [],
+                      "filter": [],
+                      "should": [],
+                      "must_not": []
+                    }
+                  },
+                  "aggs": {
+                    "faultCode-metric": {
+                      "top_metrics": {
+                        "metrics": {
+                          "field": "transactionData.faultCode.keyword"
+                        },
+                        "size": 1,
+                        "sort": {
+                          "@timestamp": "desc"
+                        }
+                      }
+                    }
+                  }
+                },
+                "destVersion-bucket": {
+                  "filter": {
+                    "bool": {
+                      "must": [],
+                      "filter": [],
+                      "should": [],
+                      "must_not": []
+                    }
+                  },
+                  "aggs": {
+                    "destVersion-metric": {
+                      "top_metrics": {
+                        "metrics": {
+                          "field": "transactionData.wsdlVersion.keyword"
+                        },
+                        "size": 1,
+                        "sort": {
+                          "@timestamp": "desc"
+                        }
+                      }
+                    }
+                  }
+                },
+ 				"tags-bucket": {
+                  "filter": {
+                    "bool": {
+                      "must": [],
+                      "filter": [],
+                      "should": [],
+                      "must_not": []
+                    }
+                  },
+                  "aggs": {
+                    "tags-metric": {
+                      "top_metrics": {
+                        "metrics": {
+                          "field": "tags.keyword"
+                        },
+                        "size": 1,
+                        "sort": {
+                          "@timestamp": "desc"
+                        }
+                      }
+                    }
+                  }
+                }                
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "size": 0,
+  "fields": [
+  ],
+  "script_fields": {},
+  "stored_fields": [
+    "*"
+  ],
+  "runtime_mappings": {},
+  "_source": {
+    "excludes": []
+  },
+  "query": {
+    "bool": {
+      "must": [],
+      "filter": [
+        {
+          "match_phrase": {
+            "tags.keyword": "${environment}"
+          }
+        },
+        {
+          "range": {
+            "transactionData.dateTime": {
+              "format": "strict_date_optional_time",
+              "gte": "${start}",
+              "lte": "${end}"
+            }
+          }
+        }
+      ],
+      "should": [],
+      "must_not": []
+    }
+  }
+}
