@@ -1,10 +1,8 @@
 package gov.cdc.izgateway.db;
 
 import org.apache.commons.lang3.SystemUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import gov.cdc.izgateway.logging.markers.Markers2;
+import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
@@ -25,8 +23,8 @@ import java.util.concurrent.Executors;
  * @author Audacious Inquiry
  *
  */
+@Slf4j
 public class RefreshQueueService {
-    private static final Logger log = LoggerFactory.getLogger(RefreshQueueService.class);
     private static final String WAITING_FOR_RESPONSE = "Waiting for Response";
     private static final Map<String, SqsClient> sqsClients = new TreeMap<>();
     private static final List<String> createdQueues = new java.util.ArrayList<>();
@@ -176,7 +174,7 @@ public class RefreshQueueService {
 			createQueue(requestQueueName, sqsClient);
 			createQueue(responseQueueName, sqsClient);
 		} catch (Exception e) {
-			log.error("Failed to create SQS queues: {}", e.getMessage());
+			log.error(Markers2.append(e), "Failed to create SQS queues: {}", e.getMessage());
 		}
 	}
 
@@ -199,7 +197,7 @@ public class RefreshQueueService {
 		        deleteQueue(sqsClient, queueName);
 		    }
 		} catch (Exception e) {
-		    log.error("Error during shutdown hook for SQS queue deletion: {}", e.getMessage());
+		    log.error(Markers2.append(e), "Error during shutdown hook for SQS queue deletion: {}", e.getMessage());
 		}
 	}
 
@@ -209,7 +207,7 @@ public class RefreshQueueService {
 		    sqsClient.deleteQueue(DeleteQueueRequest.builder().queueUrl(queueUrl).build());
 		    log.info("Deleted SQS queue '{}' on shutdown", queueName);
 		} catch (Exception e) {
-		    log.error("Failed to delete SQS queue '{}' on shutdown: {}", queueName, e.getMessage());
+		    log.error(Markers2.append(e), "Failed to delete SQS queue '{}' on shutdown: {}", queueName, e.getMessage());
 		}
 	}
 
@@ -246,7 +244,7 @@ public class RefreshQueueService {
             String queueUrl = sqsClient.getQueueUrl(r -> r.queueName(queueName)).queueUrl();
             sqsClient.sendMessage(request.toSendMessageRequest(queueUrl));
         } catch (Exception e) {
-            log.error("Exception sending SQS message to {}: {}", queueName, e.getMessage());
+            log.error(Markers2.append(e), "Exception sending SQS message to {}: {}", queueName, e.getMessage());
             results.put(endpointName, "Send Failure");
             return results;
         }
@@ -268,7 +266,7 @@ public class RefreshQueueService {
         try {
             queueUrl = sqsClient.getQueueUrl(r -> r.queueName(queueName)).queueUrl();
         } catch (Exception e) {
-            log.error("Could not get response queue URL: {}", e.getMessage());
+            log.error(Markers2.append(e), "Could not get response queue URL: {}", e.getMessage());
             results.replaceAll((k, v) -> v.equals(WAITING_FOR_RESPONSE) ? "Internal Error" : v);
             return results;
         }
@@ -283,8 +281,7 @@ public class RefreshQueueService {
             			.waitTimeSeconds(2)
             		).messages();
             for (Message msg : messages) {
-            	// TODO: Change to log.debug after testing
-            	log.info("Received message: {} {}", msg.body(), msg.messageAttributes());
+            	log.debug("Received message: {} {}", msg.body(), msg.messageAttributes());
             	if (!RefreshResponse.MESSAGE.equals(msg.body())) {
             		continue;
             	}
@@ -321,7 +318,7 @@ public class RefreshQueueService {
             try {
                 queueUrl = sqsClient.getQueueUrl(r -> r.queueName(queueName)).queueUrl();
             } catch (Exception e) {
-                log.error("Could not get refresh request queue URL: {}", e.getMessage());
+                log.error(Markers2.append(e), "Could not get refresh request queue URL: {}", e.getMessage());
                 return;
             }
             log.info("Started refresh listener on queue: {}", queueName);
@@ -339,8 +336,7 @@ public class RefreshQueueService {
 		        			.waitTimeSeconds(10)
 		        	).messages();
 		        for (Message msg : messages) {
-		        	// TODO: Change to log.debug after testing
-		        	log.info("Received message: {} {}", msg.body(), msg.messageAttributes());
+		        	log.debug("Received message: {} {}", msg.body(), msg.messageAttributes());
 		        	if (RefreshRequest.MESSAGE.equals(msg.body())) {
 		        		RefreshRequest request = RefreshRequest.fromMessage(msg);
 		        		handleRefreshRequest(sqsClient, queueUrl, request);
@@ -354,23 +350,23 @@ public class RefreshQueueService {
 	}
 
 	private void handleRefreshRequest(SqsClient sqsClient, String queueUrl, RefreshRequest request) {
-		log.info("Received refresh request: {}", request.toString());
+		log.info(Markers2.append("refreshRequest", request), "Refresh Request", request.toString());
 		dbController.refresh();
 		if (request.reset()) {
 		    dbController.resetEndpoint(SystemUtils.getHostName(), request.eventId());
 		}
 		RefreshResponse response = new RefreshResponse(SystemUtils.getHostName(), region, request.eventId(), "OK");
-		sendRefreshResponse(response);
+		sendRefreshResponse(request, response);
 	}
 
-    private void sendRefreshResponse(RefreshResponse response) {
-        String responseQueueName = getResponseQueueName(response.host());
+    private void sendRefreshResponse(RefreshRequest request, RefreshResponse response) {
+        String responseQueueName = getResponseQueueName(request.senderHost());
         try {
-            SqsClient sqsClient = getClient(response.region());
+            SqsClient sqsClient = getClient(request.senderRegion());
             String responseQueueUrl = sqsClient.getQueueUrl(r -> r.queueName(responseQueueName)).queueUrl();
             sqsClient.sendMessage(response.toSendMessageRequest(responseQueueUrl));
         } catch (Exception e) {
-            log.error("Failed to send refresh response to {}: {}", responseQueueName, e.getMessage());
+            log.error(Markers2.append(e), "Failed to send refresh response to {}: {}", responseQueueName, e.getMessage());
         }
     }
  
