@@ -8,6 +8,7 @@ import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 import software.amazon.awssdk.services.sqs.model.Message;
 import software.amazon.awssdk.services.sqs.model.MessageAttributeValue;
+import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeName;
 import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException;
 import software.amazon.awssdk.services.sqs.model.DeleteQueueRequest;
 import java.util.List;
@@ -263,7 +264,12 @@ public class RefreshQueueService {
         long start = System.currentTimeMillis();
         boolean allResponded = results.values().stream().noneMatch(v -> v.equals(WAITING_FOR_RESPONSE));
         while (!allResponded && System.currentTimeMillis() - start < timeoutMillis) {
-            List<Message> messages = sqsClient.receiveMessage(r -> r.queueUrl(queueUrl).maxNumberOfMessages(10).waitTimeSeconds(2)).messages();
+            List<Message> messages = sqsClient.receiveMessage(
+            	r -> r.queueUrl(queueUrl)
+            			.messageSystemAttributeNames(MessageSystemAttributeName.ALL)
+            			.maxNumberOfMessages(10)
+            			.waitTimeSeconds(2)
+            		).messages();
             for (Message msg : messages) {
             	// TODO: Change to log.debug after testing
             	log.info("Received message: {} {}", msg.body(), msg.messageAttributes());
@@ -314,7 +320,12 @@ public class RefreshQueueService {
 	private void refreshLoop(SqsClient sqsClient, String queueUrl) {
 		while (true) {
 		    try {
-		        List<Message> messages = sqsClient.receiveMessage(r -> r.queueUrl(queueUrl).maxNumberOfMessages(10).waitTimeSeconds(10)).messages();
+		        List<Message> messages = sqsClient.receiveMessage(
+		        	r -> r.queueUrl(queueUrl)
+		        			.messageSystemAttributeNames(MessageSystemAttributeName.ALL)
+		        			.maxNumberOfMessages(10)
+		        			.waitTimeSeconds(10)
+		        	).messages();
 		        for (Message msg : messages) {
 		        	// TODO: Change to log.debug after testing
 		        	log.info("Received message: {} {}", msg.body(), msg.messageAttributes());
