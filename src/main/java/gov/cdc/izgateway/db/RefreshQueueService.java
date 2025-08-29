@@ -144,7 +144,10 @@ public class RefreshQueueService {
     RefreshQueueService(String region, DbController dbController) {
 		this.dbController = dbController;
 		createRefreshQueues();
+		// Add a shutdown hook to delete the created queues
         Runtime.getRuntime().addShutdownHook(new Thread(RefreshQueueService::deleteQueues, "SQS-Queue-ShutdownHook"));
+        // Start the refresh loop to listen for refresh requests
+		startRefreshListener();
 	}
     
 	private static SqsClient getClient(String hostRegion) {

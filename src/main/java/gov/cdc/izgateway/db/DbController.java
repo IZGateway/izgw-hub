@@ -388,56 +388,22 @@ public class DbController {
 		return error;
 	}
 
-	@Operation(summary = "Report the host instances running.",
-			description = "Refresh the list of running hosts.  Returns an array of hostnames.")
-	@ApiResponse(responseCode = "200", description = "A list identifying running host.", 
+	@Operation(summary = "Report the running host instances and their regions.",
+			description = "Refresh the list of running hosts.  Returns a list region:hostname values.")
+	@ApiResponse(responseCode = "200", description = "a list region:hostname values", 
 	    content = @Content(
 	    		mediaType = "application/json", 
 	    		array = @ArraySchema(schema = @Schema(implementation = String.class))
 	    )
 	)
 	@GetMapping("/hosts")
-	public List<String> getRunningHosts(
-		@Parameter(required=false, description="If true, return unfiltered output.")
-		@RequestParam(name = "raw", defaultValue = "false") boolean raw) {
-		List<String> l = hostService.findAll();
-		Iterator<String> i = l.iterator();
-		// Filter the output to reachable hosts
-		if (!raw) {
-			while (i.hasNext()) {
-				String host = i.next();
-				try {
-					InetAddress.getAllByName(host);
-				} catch (Exception e) {
-					i.remove();
-				}
-			}
-		}
-		if (!l.contains(SystemUtils.getHostname())) {
-			l.add(SystemUtils.getHostname());
-		}
-		Collections.sort(l);
-		return l;
-	}
-
-	@Operation(summary = "Report the running host instances and their ingress IP addresses.",
-			description = "Refresh the list of running hosts.  Returns a map of hostnames and ingress IP addresses.")
-	@ApiResponse(responseCode = "200", description = "A map of hostnames and ingress IP addresses", 
-	    content = @Content(
-	    		mediaType = "application/json", 
-	    		array = @ArraySchema(schema = @Schema(implementation = String.class))
-	    )
-	)
-	@GetMapping("/hosts2")
-	public Map<String, String> getRunningHosts2(
+	public List<String> getRunningHosts2(
 		@Parameter(required=false, 
 			description="If true, return only locally accessible hosts, if false, return only non-locally accessible hosts, if omitted return all hosts.")
 		@RequestParam(name = "local", required = false) Boolean local) {
 		
 		Map<String, String> m = hostService.getHostsAndRegion();
-		if (region == null) {
-			;
-		}
+
 		for (Iterator<Map.Entry<String, String>> i = m.entrySet().iterator(); i.hasNext();) {
 			filterHosts(local, i); 
 		}
@@ -448,7 +414,7 @@ public class DbController {
 			// Include this server (overwrites data from repository with locally known data) 
 			m.put(SystemUtils.getHostname(), region);
 		}
-		return m;
+		return m.entrySet().stream().map(e -> e.getKey() + ":" + e.getValue()).toList();
 	}
 
 	/**
