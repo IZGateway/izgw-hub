@@ -61,6 +61,7 @@ public class HostRepository extends ElasticRepository implements IHostRepository
 	}
 	
 	@Override
+	@SuppressWarnings("java:S6204")
 	public List<String> findAll() {
 		Map<String, List<String>> map = getHostsAndIngressAddresses();
 		return map.keySet().stream().collect(Collectors.toList());
