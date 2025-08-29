@@ -7,7 +7,6 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
@@ -16,8 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
@@ -46,8 +43,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import gov.cdc.izgateway.common.BadRequestException;
-import gov.cdc.izgateway.common.HealthService;
 import gov.cdc.izgateway.common.ResourceNotFoundException;
+import gov.cdc.izgateway.db.RefreshQueueService.RefreshRequest;
 import gov.cdc.izgateway.db.model.Destination;
 import gov.cdc.izgateway.db.model.MessageHeader;
 import gov.cdc.izgateway.logging.event.EventId;
@@ -87,9 +84,10 @@ import javax.net.ssl.HttpsURLConnection;
 @RequestMapping({ "/rest"})
 @Lazy(false)
 public class DbController {
+	private static final String WAITING_FOR_RESPONSE = "Waiting for Response";
 	private static final long DEFAULT_MAINT_PERIOD = TimeUnit.MINUTES.toMillis(30);
-	/** Cached list of ingress addresses for THIS host */
-	private List<String> ingressAddresses = null;
+	private static final String region = Objects.toString(System.getenv("AWS_REGION"), "unknown");
+
 	/**
 	 * Configuration for the DB Controller.
 	 * 
@@ -137,6 +135,8 @@ public class DbController {
 	}
 	private final IHostRepository hostService;
 	private final DbControllerConfiguration configuration;
+	/** Cached region for THIS host */
+	private final RefreshQueueService refreshQueueService = new RefreshQueueService(region, this);
 
 	/**
 	 * Construct a new DBController class.
@@ -156,7 +156,7 @@ public class DbController {
 		registry.register(this);
 	}
 	
-	private void refresh() {
+	protected void refresh() {
 		configuration.refresh();
 	}
 	/**
@@ -323,107 +323,36 @@ public class DbController {
   	@GetMapping("/refresh")
 	@RolesAllowed({ Roles.ADMIN, Roles.INTERNAL })
 	public HostMap getRefreshed(
-		@Parameter(description = "If true or local, refresh all accessible instances, otherwise refresh only the current instance.", required = false)
-		@RequestParam(name = "all", defaultValue = "false") String all,
-		@Parameter(description = "If true, reset circuit breakers as well.", required = false)
-		@RequestParam(name = "reset", defaultValue = "false") boolean reset
-
+      @Parameter(description = "If true or local, refresh all accessible instances, otherwise refresh only the current instance.", required = false)
+      @RequestParam(name = "all", defaultValue = "false") String all,
+      @Parameter(description = "If true, reset circuit breakers as well.", required = false)
+      @RequestParam(name = "reset", defaultValue = "false") boolean reset
 	) {
-		HostMap results = new HostMap();
-		refresh();
-		String me = SystemUtils.getHostname();
-		// Send refresh request in parallel to all known endpoints
-		String eventId = MDC.get(EventId.EVENTID_KEY);
-		
-		results.put(me, "OK (Local)");
-		if (reset) {
-			resetEndpoint(me, eventId);
-		} 
-		
-		if ("true".equalsIgnoreCase(all) || "local".equalsIgnoreCase(all)) {
-			refreshLocalEndpoints(reset, results, me, eventId);
-		}
-		if ("true".equalsIgnoreCase(all)) {
-			refreshRegionalEndpoints(reset, results, eventId);
-		}
-		return results;
-	}
-
-	/**
-	 * Send a refresh to all local endpoints (those with an IP ingress address that is the same as this host).
-	 * @param reset	 If true, reset circuit breakers as well
-	 * @param results	The map to add results to
-	 * @param me	 The name of this host
-	 * @param eventId	The event ID to use in logging
-	 */
-	private void refreshLocalEndpoints(boolean reset, HostMap results, String me, String eventId) {
-		ExecutorService ex = Executors.newFixedThreadPool(4);
-
-		List<String> hosts = getRunningHosts(false);
-		for (String host : hosts) {
-			// Don't recursively refresh yourself
-			if (host.equalsIgnoreCase(me)) {
-				continue;
+      HostMap results = new HostMap();
+      refresh();
+      String me = SystemUtils.getHostname();
+      String eventId = MDC.get(EventId.EVENTID_KEY);
+      results.put(me, "OK (Local)");
+      if (reset) {
+         resetEndpoint(me, eventId);
+      }
+      if ("true".equalsIgnoreCase(all)) {
+         Map<String, String> hostsAndRegions = hostService.getHostsAndRegion();
+         for (Map.Entry<String, String> entry : hostsAndRegions.entrySet()) {
+            String hostName = entry.getKey();
+            String hostRegion = entry.getValue();
+            if (hostName.equalsIgnoreCase(me) && hostRegion.equals(region)) {
+			   continue;  // Yeah, we already did that one
 			}
-			ex.execute(() -> results.put(host, refreshEndpoint(host, eventId)));
-			if (reset) {
-				ex.execute(() -> resetEndpoint(host, eventId));
-			}
-		}
+            RefreshRequest request = new RefreshRequest(reset, eventId, me, region);
+            refreshQueueService.sendRefreshMessage(request, results, hostName, hostRegion);
+         }
+         refreshQueueService.awaitRefreshResponses(eventId, results);
+      }
+      return results;
+    }
 
-		ex.shutdown();
-		try {
-			ex.awaitTermination(30, TimeUnit.SECONDS);
-		} catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
-		}
-		// Log status for any not done due to timeout
-		for (String host : hosts) {
-			results.computeIfAbsent(host, k -> "Timed out");
-		}
-	}
-	
-	/**
-	 * Send a refresh to all regional endpoints (those with an IP ingress address that differs from this host).
-	 * @param reset	 If true, reset circuit breakers as well
-	 * @param results	The map to add results to
-	 * @param eventId	The event ID to use in logging
-	 */
-	private void refreshRegionalEndpoints(boolean reset, HostMap results, String eventId) {
-		Map<String, List<String>> hosts = getRunningHosts2(false);
-		ExecutorService ex = Executors.newFixedThreadPool(2);
-		List<String> remoteHosts = new ArrayList<>();
-		for (List<String> values : hosts.values()) {
-			if (values.stream().anyMatch(addr -> ingressAddresses.contains(addr))) {
-				// This is the same as the local host ingress, skip it.  We shouldn't get these, but just in case.
-				// and we don't want to get into a recursive loop.
-				continue;
-			}
-			String host = values.get(0);
-			remoteHosts.add(host);
-			ex.execute(() -> results.put(host, refreshLocalEndpoint(host, reset, eventId)));
-		}
-		ex.shutdown();
-		try {
-			ex.awaitTermination(30, TimeUnit.SECONDS);
-		} catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
-		}
-		// Log status for any not done due to timeout
-		for (String host : remoteHosts) {
-			results.computeIfAbsent(host, k -> "Timed out");
-		}
-	}
-
-	private String refreshLocalEndpoint(String host, boolean reset, String eventId) {
-		return callEndpoint(host, eventId, "/rest/refresh?all=local" + (reset ? "&reset=true" : ""));
-	}
-	
-	private String refreshEndpoint(String host, String eventId) {
-		return callEndpoint(host, eventId, "/rest/refresh");
-	}
-
-	private String resetEndpoint(String host, String eventId) {
+	protected String resetEndpoint(String host, String eventId) {
 		return callEndpoint(host, eventId, "/rest/reset");
 	}
 
@@ -500,16 +429,16 @@ public class DbController {
 	    )
 	)
 	@GetMapping("/hosts2")
-	public Map<String, List<String>> getRunningHosts2(
+	public Map<String, String> getRunningHosts2(
 		@Parameter(required=false, 
 			description="If true, return only locally accessible hosts, if false, return only non-locally accessible hosts, if omitted return all hosts.")
 		@RequestParam(name = "local", required = false) Boolean local) {
 		
-		Map<String, List<String>> m = hostService.getHostsAndIngressAddresses();
-		if (ingressAddresses == null) {
-			ingressAddresses = Arrays.asList(HealthService.getHealth().getIngressDnsAddress());
+		Map<String, String> m = hostService.getHostsAndRegion();
+		if (region == null) {
+			;
 		}
-		for (Iterator<Map.Entry<String, List<String>>> i = m.entrySet().iterator(); i.hasNext();) {
+		for (Iterator<Map.Entry<String, String>> i = m.entrySet().iterator(); i.hasNext();) {
 			filterHosts(local, i); 
 		}
 		if (Boolean.FALSE.equals(local)) {
@@ -517,26 +446,26 @@ public class DbController {
 			m.remove(SystemUtils.getHostname());
 		} else {
 			// Include this server (overwrites data from repository with locally known data) 
-			m.put(SystemUtils.getHostname(), ingressAddresses);
+			m.put(SystemUtils.getHostname(), region);
 		}
 		return m;
 	}
 
 	/**
 	 * Filter hosts based on local parameter
-	 * @param local If true, keep only locally reachable hosts, if false, keep only non-locally reachable hosts, if null, keep all
+	 * @param local If true, keep only hosts in the same region, if false, keep only hosts in other regions, if null, keep all
 	 * @param i The iterator to filter out entries from
 	 */
-	private void filterHosts(Boolean local, Iterator<Map.Entry<String, List<String>>> i) {
-		Map.Entry<String, List<String>> e = i.next();
+	private void filterHosts(Boolean local, Iterator<Map.Entry<String, String>> i) {
+		Map.Entry<String, String> e = i.next();
 		if (e.getValue() == null || e.getValue().isEmpty()) {
 			i.remove();
 		} else if (Boolean.TRUE.equals(local)) {
 			try {
 				// This will throw an exception if not locally reachable
 				InetAddress.getAllByName(e.getKey());
-				// If none of the ingress addresses match, remove it
-				if (e.getValue().stream().noneMatch(ipAddress -> ingressAddresses.contains(ipAddress))) {
+				// If the region doesn't match ours, remove it
+				if (!region.equals(e.getValue())) {
 					i.remove();
 				}
 			} catch (Exception ex) {

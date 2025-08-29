@@ -63,12 +63,12 @@ public class HostRepository extends ElasticRepository implements IHostRepository
 	@Override
 	@SuppressWarnings("java:S6204")
 	public List<String> findAll() {
-		Map<String, List<String>> map = getHostsAndIngressAddresses();
+		Map<String, String> map = getHostsAndRegion();
 		return map.keySet().stream().collect(Collectors.toList());
 	}
 	
 	@Override
-	public Map<String, List<String>> getHostsAndIngressAddresses() {
+	public Map<String, String> getHostsAndRegion() {
 		Date from = new Date();
 		if (!config.isConfigured()) {
 			return Collections.emptyMap(); 
@@ -99,20 +99,18 @@ public class HostRepository extends ElasticRepository implements IHostRepository
 	 * Parse aggregate status data from ElasticSearch into host list.
 	 * @return
 	 */
-	private Map<String, List<String>>  parseResult(String result) {
-		Map<String, List<String>>  hosts = new TreeMap<>();
+	private Map<String, String>  parseResult(String result) {
+		Map<String, String>  hosts = new TreeMap<>();
 		try {
 			JsonNode node = getNode("aggregations.0.buckets", mapper.readTree(result));
 			for (int i = 0; i < node.size(); i++) {
 				String value = node.get(i).get("key").asText();
 				if (value != null) {
-					List<String> ingressList = new ArrayList<>();
-					hosts.put(value, ingressList);
-					JsonNode ingressNode = getNode("1.buckets", node.get(i));
-					for (int j = 0; j < ingressNode.size(); j++) {
-						String ingress = ingressNode.get(j).get("key").asText();
-						if (ingress != null) {
-							ingressList.add(ingress);
+					JsonNode regionNode = getNode("1.buckets", node.get(i));
+					for (int j = 0; j < regionNode.size(); j++) {
+						String region = regionNode.get(j).get("key").asText();
+						if (region != null) {
+							hosts.put(value, region);
 						}
 					}
 				}

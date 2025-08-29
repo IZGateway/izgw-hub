@@ -11,7 +11,7 @@
       "aggs": {
         "1": {
           "terms": {
-            "field": "health.ingressDnsAddress.keyword",
+            "field": "health.region.keyword",
             "order": {
               "_count": "desc"
             },
