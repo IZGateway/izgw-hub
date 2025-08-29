@@ -332,7 +332,7 @@ public class DbController {
       refresh();
       String me = SystemUtils.getHostname();
       String eventId = MDC.get(EventId.EVENTID_KEY);
-      results.put(me, "OK (Local)");
+      results.put(region + ":" + me, "OK (Local)");
       if (reset) {
          resetEndpoint(me, eventId);
       }

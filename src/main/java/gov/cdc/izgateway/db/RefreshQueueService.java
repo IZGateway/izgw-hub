@@ -3,12 +3,13 @@ package gov.cdc.izgateway.db;
 import org.apache.commons.lang3.SystemUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import gov.cdc.izgateway.logging.markers.Markers2;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 import software.amazon.awssdk.services.sqs.model.Message;
 import software.amazon.awssdk.services.sqs.model.MessageAttributeValue;
-import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeName;
 import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException;
 import software.amazon.awssdk.services.sqs.model.DeleteQueueRequest;
 import java.util.List;
@@ -34,6 +35,17 @@ public class RefreshQueueService {
     private static MessageAttributeValue newStringAttribute(String value) {
     	return MessageAttributeValue.builder().stringValue(value).dataType("String").build();
     }
+    private static final MessageAttributeValue nullAttribute = newStringAttribute(null);
+    /**
+     * Helper to get an attribute from a message, returning null if not present.
+     * @param msg	The SQS message
+     * @param name	The name of the attribute to get
+     * @return	 The attribute value or null if not present
+     */
+    private static String getAttribute(Message msg, String name) {
+		return msg.messageAttributes().getOrDefault(name, nullAttribute).stringValue();
+	}
+    
     /**
      * A refresh request message to be sent via SQS.
      * 
@@ -60,10 +72,10 @@ public class RefreshQueueService {
          * @return	 The RefreshRequest
          */
         public static RefreshRequest fromMessage(Message msg) {
-			boolean reset = Boolean.parseBoolean(msg.messageAttributes().get("reset").stringValue());
-			String eventId = msg.messageAttributes().get("eventId").stringValue();
-			String senderHost = msg.messageAttributes().get("senderHost").stringValue();
-			String senderRegion = msg.messageAttributes().get("senderRegion").stringValue();
+			boolean reset = Boolean.parseBoolean(getAttribute(msg, "reset"));
+			String eventId = getAttribute(msg, "eventId");
+			String senderHost = getAttribute(msg, "senderHost");
+			String senderRegion = getAttribute(msg, "senderRegion");
 			return new RefreshRequest(reset, eventId, senderHost, senderRegion);
 		}
         
@@ -114,10 +126,10 @@ public class RefreshQueueService {
 		 * @return	 The RefreshResponse
 		 */
         public static RefreshResponse fromMessage(Message msg) {
-        	String host = msg.messageAttributes().get("host").stringValue();
-        	String region = msg.messageAttributes().get("region").stringValue();
-        	String eventId = msg.messageAttributes().get("eventId").stringValue();
-        	String status = msg.messageAttributes().get("status").stringValue();
+        	String host = getAttribute(msg, "host");
+        	String region = getAttribute(msg, "region");
+        	String eventId = getAttribute(msg, "eventId");
+        	String status = getAttribute(msg, "status");
         	return new RefreshResponse(host, region, eventId, status);
         }
         /**
@@ -266,7 +278,7 @@ public class RefreshQueueService {
         while (!allResponded && System.currentTimeMillis() - start < timeoutMillis) {
             List<Message> messages = sqsClient.receiveMessage(
             	r -> r.queueUrl(queueUrl)
-            			.messageSystemAttributeNames(MessageSystemAttributeName.ALL)
+    					.messageAttributeNames("All")
             			.maxNumberOfMessages(10)
             			.waitTimeSeconds(2)
             		).messages();
@@ -322,7 +334,7 @@ public class RefreshQueueService {
 		    try {
 		        List<Message> messages = sqsClient.receiveMessage(
 		        	r -> r.queueUrl(queueUrl)
-		        			.messageSystemAttributeNames(MessageSystemAttributeName.ALL)
+		        			.messageAttributeNames("All")
 		        			.maxNumberOfMessages(10)
 		        			.waitTimeSeconds(10)
 		        	).messages();
@@ -336,7 +348,7 @@ public class RefreshQueueService {
 		        	} 
 		        }
 		    } catch (Exception e) {
-		        log.error("Error processing refresh request: {}", e.getMessage());
+		        log.error(Markers2.append(e), "Error processing refresh request: {}", e.getMessage());
 		    }
 		}
 	}
