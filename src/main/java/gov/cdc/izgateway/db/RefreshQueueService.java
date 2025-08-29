@@ -265,7 +265,9 @@ public class RefreshQueueService {
         while (!allResponded && System.currentTimeMillis() - start < timeoutMillis) {
             List<Message> messages = sqsClient.receiveMessage(r -> r.queueUrl(queueUrl).maxNumberOfMessages(10).waitTimeSeconds(2)).messages();
             for (Message msg : messages) {
-            	if (!"RefreshResponse".equals(msg.body())) {
+            	// TODO: Change to log.debug after testing
+            	log.info("Received message: {} {}", msg.body(), msg.messageAttributes());
+            	if (!RefreshResponse.MESSAGE.equals(msg.body())) {
             		continue;
             	}
             	RefreshResponse response = RefreshResponse.fromMessage(msg);
@@ -314,11 +316,13 @@ public class RefreshQueueService {
 		    try {
 		        List<Message> messages = sqsClient.receiveMessage(r -> r.queueUrl(queueUrl).maxNumberOfMessages(10).waitTimeSeconds(10)).messages();
 		        for (Message msg : messages) {
+		        	// TODO: Change to log.debug after testing
+		        	log.info("Received message: {} {}", msg.body(), msg.messageAttributes());
 		        	if (RefreshRequest.MESSAGE.equals(msg.body())) {
 		        		RefreshRequest request = RefreshRequest.fromMessage(msg);
 		        		handleRefreshRequest(sqsClient, queueUrl, request);
 		        		sqsClient.deleteMessage(r -> r.queueUrl(queueUrl).receiptHandle(msg.receiptHandle()));
-		        	}
+		        	} 
 		        }
 		    } catch (Exception e) {
 		        log.error("Error processing refresh request: {}", e.getMessage());
