@@ -3,6 +3,7 @@ package gov.cdc.izgateway.db;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
+import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
@@ -11,10 +12,9 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
@@ -44,6 +44,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import gov.cdc.izgateway.common.BadRequestException;
 import gov.cdc.izgateway.common.ResourceNotFoundException;
+import gov.cdc.izgateway.db.RefreshQueueService.RefreshRequest;
 import gov.cdc.izgateway.db.model.Destination;
 import gov.cdc.izgateway.db.model.MessageHeader;
 import gov.cdc.izgateway.logging.event.EventId;
@@ -83,7 +84,9 @@ import javax.net.ssl.HttpsURLConnection;
 @RequestMapping({ "/rest"})
 @Lazy(false)
 public class DbController {
+	private static final String WAITING_FOR_RESPONSE = "Waiting for Response";
 	private static final long DEFAULT_MAINT_PERIOD = TimeUnit.MINUTES.toMillis(30);
+	private static final String region = Objects.toString(System.getenv("AWS_REGION"), "unknown");
 
 	/**
 	 * Configuration for the DB Controller.
@@ -132,6 +135,8 @@ public class DbController {
 	}
 	private final IHostRepository hostService;
 	private final DbControllerConfiguration configuration;
+	/** Cached region for THIS host */
+	private final RefreshQueueService refreshQueueService = new RefreshQueueService(region, this);
 
 	/**
 	 * Construct a new DBController class.
@@ -151,7 +156,7 @@ public class DbController {
 		registry.register(this);
 	}
 	
-	private void refresh() {
+	protected void refresh() {
 		configuration.refresh();
 	}
 	/**
@@ -318,58 +323,36 @@ public class DbController {
   	@GetMapping("/refresh")
 	@RolesAllowed({ Roles.ADMIN, Roles.INTERNAL })
 	public HostMap getRefreshed(
-		@Parameter(description = "If true, refresh all instances, otherwise refresh only the current instance.", required = false)
-		@RequestParam(name = "all", defaultValue = "false") boolean all,
-		@Parameter(description = "If true, reset circuit breakers as well.", required = false)
-		@RequestParam(name = "reset", defaultValue = "false") boolean reset
-
+      @Parameter(description = "If true or local, refresh all accessible instances, otherwise refresh only the current instance.", required = false)
+      @RequestParam(name = "all", defaultValue = "false") String all,
+      @Parameter(description = "If true, reset circuit breakers as well.", required = false)
+      @RequestParam(name = "reset", defaultValue = "false") boolean reset
 	) {
-		HostMap results = new HostMap();
-		refresh();
-		String me = SystemUtils.getHostname();
-		// Send refresh request in parallel to all known endpoints
-		String eventId = MDC.get(EventId.EVENTID_KEY);
-		
-		results.put(me, "OK (Local)");
-		if (reset) {
-			resetEndpoint(me, eventId);
-		} 
-		
-		if (all) {
-
-			ExecutorService ex = Executors.newFixedThreadPool(4);
-
-			List<String> hosts = getRunningHosts(false);
-			for (String host : hosts) {
-				// Don't recursively refresh yourself
-				if (host.equalsIgnoreCase(me)) {
-					continue;
-				}
-				ex.execute(() -> results.put(host, refreshEndpoint(host, eventId)));
-				if (reset) {
-					ex.execute(() -> resetEndpoint(host, eventId));
-				}
+      HostMap results = new HostMap();
+      refresh();
+      String me = SystemUtils.getHostname();
+      String eventId = MDC.get(EventId.EVENTID_KEY);
+      results.put(region + ":" + me, "OK (Local)");
+      if (reset) {
+         resetEndpoint(me, eventId);
+      }
+      if ("true".equalsIgnoreCase(all)) {
+         Map<String, String> hostsAndRegions = hostService.getHostsAndRegion();
+         for (Map.Entry<String, String> entry : hostsAndRegions.entrySet()) {
+            String hostName = entry.getKey();
+            String hostRegion = entry.getValue();
+            if (hostName.equalsIgnoreCase(me) && hostRegion.equals(region)) {
+			   continue;  // Yeah, we already did that one
 			}
+            RefreshRequest request = new RefreshRequest(reset, eventId, me, region);
+            refreshQueueService.sendRefreshMessage(request, results, hostName, hostRegion);
+         }
+         refreshQueueService.awaitRefreshResponses(eventId, results);
+      }
+      return results;
+    }
 
-			ex.shutdown();
-			try {
-				ex.awaitTermination(30, TimeUnit.SECONDS);
-			} catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-			}
-			// Log status for any not done due to timeout
-			for (String host : hosts) {
-				results.computeIfAbsent(host, k -> "Timed out");
-			}
-		}
-		return results;
-	}
-
-	private String refreshEndpoint(String host, String eventId) {
-		return callEndpoint(host, eventId, "/rest/refresh");
-	}
-
-	private String resetEndpoint(String host, String eventId) {
+	protected String resetEndpoint(String host, String eventId) {
 		return callEndpoint(host, eventId, "/rest/reset");
 	}
 
@@ -377,7 +360,7 @@ public class DbController {
 		URL url = null;
 		MDC.put(EventId.EVENTID_KEY, eventId);
 		try {
-			url = new URL("https://" + host + path);
+			url = new URI("https://" + host + path).toURL();
 			HttpsURLConnection con = (HttpsURLConnection) url.openConnection();
 
 			if (con.getResponseCode() != HttpStatus.OK.value()) {
@@ -405,39 +388,67 @@ public class DbController {
 		return error;
 	}
 
-	@Operation(summary = "Report the host instances running.",
-			description = "Refresh the list of running hosts.  Returns an array of hostnames.")
-	@ApiResponse(responseCode = "200", description = "A map indicating the refresh status for each host.", 
+	@Operation(summary = "Report the running host instances and their regions.",
+			description = "Refresh the list of running hosts.  Returns a list region:hostname values.")
+	@ApiResponse(responseCode = "200", description = "a list region:hostname values", 
 	    content = @Content(
 	    		mediaType = "application/json", 
 	    		array = @ArraySchema(schema = @Schema(implementation = String.class))
 	    )
 	)
 	@GetMapping("/hosts")
-	public List<String> getRunningHosts(
-		@Parameter(required=false, description="If true, return unfiltered output.")
-		@RequestParam(name = "raw", defaultValue = "false") boolean raw) {
-		List<String> l = hostService.findAll();
-		Iterator<String> i = l.iterator();
-		// Filter the output to active hosts
-		if (!raw) {
-			while (i.hasNext()) {
-				String host = i.next();
-				try {
-					InetAddress.getAllByName(host);
-				} catch (Exception e) {
-					i.remove();
-				}
-			}
+	public List<String> getRunningHosts2(
+		@Parameter(required=false, 
+			description="If true, return only locally accessible hosts, if false, return only non-locally accessible hosts, if omitted return all hosts.")
+		@RequestParam(name = "local", required = false) Boolean local) {
+		
+		Map<String, String> m = hostService.getHostsAndRegion();
 
-			if (!l.contains(SystemUtils.getHostname())) {
-				l.add(SystemUtils.getHostname());
-			}
+		for (Iterator<Map.Entry<String, String>> i = m.entrySet().iterator(); i.hasNext();) {
+			filterHosts(local, i); 
 		}
-		Collections.sort(l);
-		return l;
+		if (Boolean.FALSE.equals(local)) {
+			// Remove this server 
+			m.remove(SystemUtils.getHostname());
+		} else {
+			// Include this server (overwrites data from repository with locally known data) 
+			m.put(SystemUtils.getHostname(), region);
+		}
+		return m.entrySet().stream().map(e -> e.getKey() + ":" + e.getValue()).toList();
 	}
 
+	/**
+	 * Filter hosts based on local parameter
+	 * @param local If true, keep only hosts in the same region, if false, keep only hosts in other regions, if null, keep all
+	 * @param i The iterator to filter out entries from
+	 */
+	private void filterHosts(Boolean local, Iterator<Map.Entry<String, String>> i) {
+		Map.Entry<String, String> e = i.next();
+		if (e.getValue() == null || e.getValue().isEmpty()) {
+			i.remove();
+		} else if (Boolean.TRUE.equals(local)) {
+			try {
+				// This will throw an exception if not locally reachable
+				InetAddress.getAllByName(e.getKey());
+				// If the region doesn't match ours, remove it
+				if (!region.equals(e.getValue())) {
+					i.remove();
+				}
+			} catch (Exception ex) {
+				i.remove();
+			}
+		} else if (Boolean.FALSE.equals(local)) {
+			// Remove any that are locally reachable
+			try {
+				// This will throw an exception if not locally reachable
+				InetAddress.getAllByName(e.getKey());
+				i.remove();
+			} catch (Exception ex) {
+				// Ignore it
+			}
+		}
+	}
+	
 	/**
 	 * Return status of all destinations scheduled for maintenance
 	 * 
@@ -548,7 +559,7 @@ public class DbController {
 
 		configuration.getDestinationService().saveAndFlush(dest);
 		// Refresh other services.
-		getRefreshed(true, false);
+		getRefreshed("true", false);
 		return getConfigById(id);
 	}
 

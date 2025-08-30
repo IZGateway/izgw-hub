@@ -18,6 +18,21 @@ metricbeat.modules:
     metricsets:
       - task_stats
 
+    processors:
+    - add_host_metadata: ~
+    - add_cloud_metadata: ~ 
+    - copy_fields:
+        fields:
+          - from: host.hostname.keyword
+            to: host.keyword
+        fail_on_error: false
+        ignore_missing: true
+    - add_fields:
+        target: 'cloud'
+        fields:
+          service: "${SERVICE_NAME:unknown}"
+          region: "${AWS_REGION:unknown}"     
+           
 #================================= ES Output =================================
 # The Kibana section can be enabled to import dashboards and visualizations for specific Elastic Beats.
 # The ILM and Template settings are not recommended, as you should be controlling those from within Kibana and Elasticsearch itself.

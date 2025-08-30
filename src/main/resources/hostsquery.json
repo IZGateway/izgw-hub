@@ -1,0 +1,54 @@
+{
+  "aggs": {
+    "0": {
+      "terms": {
+        "field": "health.hostname.keyword",
+        "order": {
+          "_count": "desc"
+        },
+        "size": 30
+      },
+      "aggs": {
+        "1": {
+          "terms": {
+            "field": "health.region.keyword",
+            "order": {
+              "_count": "desc"
+            },
+            "size": 30
+          }
+        }
+      }
+    }
+  },
+  "size": 0,
+  "query": {
+    "bool": {
+      "filter": [
+        {
+          "match_phrase": {
+            "message.keyword": "Heartbeat"
+          }
+        },
+        {
+          "match_phrase": {
+            "health.serverName.keyword": "${serverName}"
+          }
+        },
+        {
+          "match_phrase": {
+            "tags.keyword": "${environment}"
+          }
+        },
+        {
+          "range": {
+            "@timestamp": {
+              "format": "strict_date_optional_time",
+              "gte": "${start}"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
