@@ -159,10 +159,6 @@ public class Application implements WebMvcConfigurer {
         
         updateJul();
         
-        loadStaticResource(BUILD, BUILD_FILE);
-        loadStaticResource(LOGO, LOGO_FILE);
-        HealthService.setBuildName(getBuild());
-        HealthService.setServerName(serverName);
         String build = new String(staticPages.get(BUILD), StandardCharsets.UTF_8);
         log.info("Application loaded\n{}", build);
         // FUTURE: Get from a configuration property
@@ -205,10 +201,13 @@ public class Application implements WebMvcConfigurer {
 	}
 	
 	private static void initialize() {
+        loadStaticResource(BUILD, BUILD_FILE);
+        loadStaticResource(LOGO, LOGO_FILE);
+        
 		Thread.currentThread().setName("IZ Gateway");
 		// Initialize the Utilization Service
 		UtilizationService.getUtilization();
-		setIpAddresses();
+		
 		System.setProperty("java.util.logging.config.class", JulInit.class.getName());
 		
 		// This should no longer be necessary, but it doesn't hurt to leave it here
@@ -238,16 +237,22 @@ public class Application implements WebMvcConfigurer {
         MDC.put("sessionId", "0");
 	}
 
+	private static void initializeHealth() {
+    HealthService.setBuildName(getBuild());
+    HealthService.setServerName(serverName);
+		setIpAddresses();
+	}
+
 	private static void setIpAddresses() throws ServiceConfigurationError {
 		try {
-			InetAddress[] addresses = InetAddress.getAllByName(HealthService.getHealth().getServerName());
+			InetAddress[] addresses = InetAddress.getAllByName(serverName);
 			String[] dnsAddresses = Arrays.stream(addresses)
 					.map(InetAddress::getHostAddress)
 					.toArray(String[]::new);
 			HealthService.setIngressDnsAddress(dnsAddresses);
 		} catch (UnknownHostException e) {
-			log.error("Cannot resolve server name {}: {}", HealthService.getHealth().getServerName(), e.getMessage());
-			throw new ServiceConfigurationError("Cannot resolve server name " + HealthService.getHealth().getServerName(), e);
+			log.error("Cannot resolve server name {}: {}", serverName, e.getMessage());
+			throw new ServiceConfigurationError("Cannot resolve server name " + serverName, e);
 		}
 		HealthService.setEgressDnsAddress(ADSUtils.getMyIpAddress());
 	}
@@ -265,9 +270,10 @@ public class Application implements WebMvcConfigurer {
     
 	private static void checkApplication(ConfigurableApplicationContext ctx) {
         IDestinationService destinationService = ctx.getBean(IDestinationService.class);
-        serverName = destinationService.getServerName();
         AppProperties props = ctx.getBean(AppProperties.class); 
         serverMode = props.getServerMode();
+        serverName = props.getServerName();
+		initializeHealth();
         IMessageHeaderService messageHeaderService = ctx.getBean(MessageHeaderService.class);
         DataSourceProperties ds = ctx.getBean(DataSourceProperties.class);
         if (Arrays.asList("jpa", "migrate").contains(props.getDatabaseType())) {
