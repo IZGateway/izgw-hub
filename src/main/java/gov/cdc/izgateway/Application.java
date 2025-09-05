@@ -371,7 +371,7 @@ public class Application implements WebMvcConfigurer {
 	@Override
     public void configureMessageConverters(List<HttpMessageConverter<?>> messageConverters) {
     	SoapMessageConverter smc = new SoapMessageConverter(SoapMessageConverter.INBOUND); 
-    	smc.setHub(true);
+    	smc.setHub(false); // TODO PAUL FIX THIS
         messageConverters.add(smc);
         // Sets up SoapMessageWriter to handle \r as &#xD; if true, otherwise 
         // \r in hl7Message will be replaced with \n due to XML Parsing rules.

@@ -26,7 +26,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -237,5 +242,33 @@ public class IISControllerNew extends SoapControllerBase {
 	protected void checkCredentials(HasCredentials s) throws SecurityFault {
 		// Hub Controller performs no credential checking. Credentials are not supplied in SOAP message, instead they 
 		// are supplied in client certificate in TLS Connection/
+	}
+
+	/**
+	 * Handle SOAP requests with destinationId as a path parameter
+	 * This allows requests to be made to /IISCDCService/{destinationId}
+	 */
+	@PostMapping(value = "/{destinationId}", produces = {
+		"application/soap+xml",
+		"application/soap",
+		MediaType.APPLICATION_XML_VALUE,
+		MediaType.TEXT_XML_VALUE,
+		MediaType.TEXT_PLAIN_VALUE,
+		MediaType.TEXT_HTML_VALUE
+	})
+	public ResponseEntity<?> submitSoapRequestWithDestination(
+		@RequestBody SoapMessage soapMessage,
+		@PathVariable String destinationId
+	) throws Fault {
+//		// Override the destination from the path parameter
+//		if (soapMessage.getHubHeader() != null) {
+//			soapMessage.getHubHeader().setDestinationId(destinationId);
+//		}
+		// Also set in WSA headers if present
+		if (soapMessage.getWsaHeaders() != null) {
+			soapMessage.getWsaHeaders().setTo(destinationId);
+		}
+
+		return submitSoapRequest(soapMessage, null);
 	}
 }
