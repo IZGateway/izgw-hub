@@ -17,7 +17,6 @@ filebeat.inputs:
           message_key: message
           overwrite_keys: true
           expand_keys: true
-
     processors:
       - add_host_metadata: ~
       - add_cloud_metadata: ~ 
@@ -32,6 +31,7 @@ filebeat.inputs:
           fields:
             service: "${SERVICE_NAME:unknown}"
             region: "${AWS_REGION:unknown}"
+
     # change tag to dev/onboard/prod for selected environment
     tags: ["${ELASTIC_ENV_TAG:dev}"] # https://www.elastic.co/guide/en/beats/filebeat/7.14/configuration-general-options.html#_tags_21
 
@@ -40,6 +40,7 @@ filebeat.inputs:
     enabled: true
     paths:
       - /var/log/dnsmasq.log
+
     # Add same processing for dnsmasq.log as for izgw.json log
     processors:
       - add_host_metadata: ~

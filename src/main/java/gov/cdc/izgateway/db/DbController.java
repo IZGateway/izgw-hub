@@ -446,6 +446,7 @@ public class DbController {
 				InetAddress.getAllByName(e.getKey());
 				i.remove();
 			} catch (Exception ex) {
+				// Ignore it
 			}
 		}
 	}
