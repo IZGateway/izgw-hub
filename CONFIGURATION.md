@@ -102,7 +102,7 @@ Thus, the hub Service Task Role will need to have the following SQS Permissions 
 For an ECS task to have full SQS queue management capabilities (create, delete, send, receive, and delete messages), you need to configure the task role with comprehensive SQS permissions. Here's the complete IAM policy:
 
 ## Complete IAM Policy for ECS Task Role:
-
+```
    {
      "Version": "2012-10-17",
      "Statement": [
@@ -125,7 +125,7 @@ For an ECS task to have full SQS queue management capabilities (create, delete, 
        }
      ]
    }
-
+```
 
 ## Breakdown of Required Actions:
 
