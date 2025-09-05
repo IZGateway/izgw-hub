@@ -91,3 +91,60 @@ A comma separate list of IP CIDR blocks which are allowed to connect to the appl
 IP CIDRs can be specified for IPv4 and IPv6.
 
 To specify, for example, allowing localhost for both IPv4 and IPv6 you would set this to: 127.0.0.1/32,::1/128
+
+# SQS Configuration 
+Each Hub instance creates a pair SQS queues when it starts up and delete them when it exits.  Each hub instance will need to be able to send messages to the SQS queues that have been created in any region, so a hub service in us-east-1 will need to be able to send a message to a hub service in us-west-2, and vice versa.  The messages being sent contain no PHI or sensitive data they just tell the other instances to refresh their database caches.
+
+The message contains the text “RefreshRequest”, with attributes indicating where to send the Refresh response, or the text “RefreshResponse”, with attributes indicating who sent the response, and the status of the RefreshRequest (either “OK”, or an error message indicating the reason for failure).
+
+Thus, the hub Service Task Role will need to have the following SQS Permissions added to it per Amazon Q:
+
+For an ECS task to have full SQS queue management capabilities (create, delete, send, receive, and delete messages), you need to configure the task role with comprehensive SQS permissions. Here's the complete IAM policy:
+
+## Complete IAM Policy for ECS Task Role:
+
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Effect": "Allow",
+         "Action": [
+           "sqs:CreateQueue",
+           "sqs:DeleteQueue",
+           "sqs:SendMessage",
+           "sqs:ReceiveMessage",
+           "sqs:DeleteMessage",
+           "sqs:GetQueueUrl",
+           "sqs:GetQueueAttributes",
+           "sqs:SetQueueAttributes",
+           "sqs:ListQueues",
+           "sqs:TagQueue",
+           "sqs:UntagQueue"
+         ],
+         "Resource": "arn:aws:sqs:*:YOUR-ACCOUNT-ID:*"
+       }
+     ]
+   }
+
+
+## Breakdown of Required Actions:
+
+### Queue Management:
+
+* sqs:CreateQueue - Create new queues
+* sqs:DeleteQueue - Delete existing queues
+* sqs:GetQueueUrl - Get queue URL by name
+* sqs:ListQueues - List all queues in account
+
+### Message Operations:
+
+* sqs:SendMessage - Send messages to queues
+* sqs:ReceiveMessage - Receive messages from queues
+* sqs:DeleteMessage - Delete messages after processing
+
+### Queue Configuration:
+
+* sqs:GetQueueAttributes - Read queue properties
+* sqs:SetQueueAttributes - Modify queue settings
+* sqs:TagQueue - Add tags to queues
+* sqs:UntagQueue - Remove tags from queues

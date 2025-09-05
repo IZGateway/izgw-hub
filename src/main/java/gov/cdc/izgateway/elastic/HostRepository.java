@@ -11,6 +11,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -19,6 +20,7 @@ import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
@@ -45,6 +47,7 @@ public class HostRepository extends ElasticRepository implements IHostRepository
 	private final String serverName;
 	private static final String HOSTS_QUERY = "hostsquery.json";
 	private static final FastDateFormat FORMATTER = FastDateFormat.getInstance(Constants.TIMESTAMP_FORMAT);
+	private static final TimeZone UTC_TIMEZONE = TimeZone.getTimeZone("UTC");
 	
 	/**
 	 * Constructor for HostRepository.
@@ -70,6 +73,8 @@ public class HostRepository extends ElasticRepository implements IHostRepository
 	@Override
 	public Map<String, String> getHostsAndRegion() {
 		Date from = new Date();
+		Instant now = Instant.now();
+		
 		if (!config.isConfigured()) {
 			return Collections.emptyMap(); 
 		}
@@ -130,6 +135,7 @@ public class HostRepository extends ElasticRepository implements IHostRepository
 	private String getRequest(Date now) {
 		Calendar cal = new GregorianCalendar();
 		cal.setTime(now);
+		cal.setTimeZone(UTC_TIMEZONE);
 		// Look back three minutes.
 		cal.add(Calendar.MINUTE, -3);
 		Date startTime = cal.getTime();
