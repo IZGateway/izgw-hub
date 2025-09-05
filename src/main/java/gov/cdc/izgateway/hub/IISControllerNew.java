@@ -153,8 +153,6 @@ public class IISControllerNew extends SoapControllerBase {
 	
 	@Override
 	protected ResponseEntity<?> submitSingleMessage(SubmitSingleMessageRequest submitSingleMessage, String destinationId) throws Fault {
-        // PAUL TO REMOVE
-        destinationId = "";
 
 		if (submitSingleMessage.getHubHeader() != null && !submitSingleMessage.getHubHeader().isEmpty()) {
             throw new UnsupportedOperationFault("IZGW-specific HubHeader is not allowed in CDC WSDL requests.", null);
@@ -185,21 +183,21 @@ public class IISControllerNew extends SoapControllerBase {
 	}
 	
 	@Override
-	protected IDestination getDestination(String destinationId) throws UnknownDestinationFault, UnsupportedOperationFault {
+	protected IDestination getDestination(String destinationId) throws UnsupportedOperationFault {
 		if ("".equals(destinationId)) {
             throw new UnsupportedOperationFault("Request has no destination value in the DestinationId element.", null);
 
 //            throw UnknownDestinationFault.invalidDestination(destinationId, "Request has no destination value in the DestinationId element");
 		} else if (null == destinationId) {
-			throw UnknownDestinationFault.missingDestination("Request is missing the DestinationId element");
+            throw new UnsupportedOperationFault("Request is missing the DestinationId element", null);
 		} else if (!destinationId.matches(IDestination.ID_PATTERN)) {
 			RequestContext.getDestinationInfo().setId(destinationId);
-			throw UnknownDestinationFault.invalidDestination(destinationId, "Destination " + destinationId + " is invalid.");
+            throw new UnsupportedOperationFault("Destination " + destinationId + " is invalid.", null);
 		}
 		IDestination dest = destinationService.findByDestId(destinationId);
 		if (dest == null) {
 			RequestContext.getDestinationInfo().setId(destinationId);
-			throw UnknownDestinationFault.unknownDestination(destinationId, destinationId, null);
+            throw new UnsupportedOperationFault("Unknown destination " + destinationId, null);
 		}
 		logDestination(dest);
 		return dest;
