@@ -11,7 +11,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
-import java.time.Instant;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
@@ -45,8 +44,8 @@ public class HostRepository extends ElasticRepository implements IHostRepository
 	private final ObjectMapper mapper = new ObjectMapper();
 	private final String serverName;
 	private static final String HOSTS_QUERY = "hostsquery.json";
-	private static final FastDateFormat FORMATTER = FastDateFormat.getInstance(Constants.TIMESTAMP_FORMAT);
 	private static final TimeZone UTC_TIMEZONE = TimeZone.getTimeZone("UTC");
+	private static final FastDateFormat FORMATTER = FastDateFormat.getInstance("yyyy-MM-dd'T'HH:mm:ss.SSSX", UTC_TIMEZONE);
 	
 	/**
 	 * Constructor for HostRepository.
@@ -72,7 +71,6 @@ public class HostRepository extends ElasticRepository implements IHostRepository
 	@Override
 	public Map<String, String> getHostsAndRegion() {
 		Date from = new Date();
-		Instant now = Instant.now();
 		
 		if (!config.isConfigured()) {
 			return Collections.emptyMap(); 

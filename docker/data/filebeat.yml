@@ -4,23 +4,6 @@ path.data: /usr/share/filebeat/data
 # Filebeat Inputs section
 # Add another item to the "filebeat.inputs" object.
 filebeat.inputs:
-  processors:
-  - add_host_metadata: ~
-  - add_cloud_metadata: ~ 
-  - copy_fields:
-      fields:
-        - from: host.hostname.keyword
-          to: host.keyword
-      fail_on_error: false
-      ignore_missing: true
-  - add_fields:
-      target: 'cloud'
-      fields:
-        service: "${SERVICE_NAME:unknown}"
-        region: "${AWS_REGION:unknown}"
-  - add_tags: 
-      tags: [ "${ELASTIC_ENV_TAG:dev}" ] 
-        
   - type: "filestream"
     id: izgw-filestream
     enabled: true
@@ -34,14 +17,47 @@ filebeat.inputs:
           message_key: message
           overwrite_keys: true
           expand_keys: true
-    
+
+    processors:
+      - add_host_metadata: ~
+      - add_cloud_metadata: ~ 
+      - copy_fields:
+          fields:
+            - from: host.hostname.keyword
+              to: host.keyword
+          fail_on_error: false
+          ignore_missing: true
+      - add_fields:
+          target: 'cloud'
+          fields:
+            service: "${SERVICE_NAME:unknown}"
+            region: "${AWS_REGION:unknown}"
     # change tag to dev/onboard/prod for selected environment
     tags: ["${ELASTIC_ENV_TAG:dev}"] # https://www.elastic.co/guide/en/beats/filebeat/7.14/configuration-general-options.html#_tags_21
+
   - type: "filestream"
     id: izgw-dnsmasq-filestream
     enabled: true
     paths:
       - /var/log/dnsmasq.log
+    # Add same processing for dnsmasq.log as for izgw.json log
+    processors:
+      - add_host_metadata: ~
+      - add_cloud_metadata: ~ 
+      - copy_fields:
+          fields:
+            - from: host.hostname.keyword
+              to: host.keyword
+          fail_on_error: false
+          ignore_missing: true
+      - add_fields:
+          target: 'cloud'
+          fields:
+            service: "${SERVICE_NAME:unknown}"
+            region: "${AWS_REGION:unknown}"
+
+    # change tag to dev/onboard/prod for selected environment
+    tags: [ "${ELASTIC_ENV_TAG:dev}" ] # https://www.elastic.co/guide/en/beats/filebeat/7.14/configuration-general-options.html#_tags_21
        
 # The Kibana section can be enabled to import dashboards and visualizations for specific Elastic Beats.
 # The ILM and Template settings are not recommended, as you should be controlling those from within Kibana and Elasticsearch itself.
