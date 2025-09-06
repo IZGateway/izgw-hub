@@ -435,6 +435,8 @@ public class DbController {
 					i.remove();
 				}
 			} catch (Exception ex) {
+				// Log and remove it
+				log.warn(Markers2.append(ex), "Could not resolve host {}: {}", e.getKey(), ex.getMessage());
 				i.remove();
 			}
 		} else if (Boolean.FALSE.equals(local)) {
