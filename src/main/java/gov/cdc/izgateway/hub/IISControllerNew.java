@@ -169,13 +169,14 @@ public class IISControllerNew extends SoapControllerBase {
             // throw new Fault("UnsupportedOperationFault", "IZGW-specific HubHeader is not allowed in CDC WSDL requests.");
 		}
 
-		IDestination dest = getDestination(destinationId);
+        IDestination dest = getDestination(destinationId);
 		logDestination(dest);
 
 		checkAccess(destinationId);
 		IEndpointStatus s = endpointStatusService.getEndpointStatus(dest);
 		checkMessage(submitSingleMessage);
 		SubmitSingleMessageResponse response = messageSender.sendSubmitSingleMessage(dest, submitSingleMessage);
+        response.updateAction(false); // PAUL TO FIX
         // TODO PAUL FIX THIS
         /*
 		response.setSchema(SoapMessage.HUB_NS);	// Shift from client to Hub Schema

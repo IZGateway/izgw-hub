@@ -1,17 +1,5 @@
 package gov.cdc.izgateway.hub;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.Arrays;
-import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
 import gov.cdc.izgateway.ads.ADSController;
 import gov.cdc.izgateway.configuration.SenderConfig;
 import gov.cdc.izgateway.hub.service.AccessControlService;
@@ -28,30 +16,37 @@ import gov.cdc.izgateway.service.impl.EndpointStatusService;
 import gov.cdc.izgateway.soap.SoapControllerBase;
 import gov.cdc.izgateway.soap.fault.Fault;
 import gov.cdc.izgateway.soap.fault.SecurityFault;
-import gov.cdc.izgateway.soap.fault.UnknownDestinationFault;
-import gov.cdc.izgateway.soap.message.ConnectivityTestRequest;
-import gov.cdc.izgateway.soap.message.ConnectivityTestResponse;
-import gov.cdc.izgateway.soap.message.HasCredentials;
-import gov.cdc.izgateway.soap.message.SoapMessage;
-import gov.cdc.izgateway.soap.message.SubmitSingleMessageRequest;
-import gov.cdc.izgateway.soap.message.SubmitSingleMessageResponse;
+import gov.cdc.izgateway.soap.fault.UnsupportedOperationFault;
+import gov.cdc.izgateway.soap.message.*;
 import gov.cdc.izgateway.soap.net.MessageSender;
 import jakarta.annotation.security.RolesAllowed;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.Arrays;
 
 @RestController
 @RolesAllowed({Roles.SOAP, Roles.ADMIN})
-@RequestMapping("/IISHubService")
+@RequestMapping("/IISCDCService2011")
 @Lazy(false)
-public class HubController extends SoapControllerBase {
+public class IISController2011 extends SoapControllerBase {
 
 	/**
 	 * The destination service used to obtain routing information.
 	 */
 	private final DestinationService destinationService;
-	private final EndpointStatusService endpointStatusService; 
+	private final EndpointStatusService endpointStatusService;
 	private final MessageSender messageSender;
 	private final ADSController adsController;
-	
+
 	@Value("${server.hostname:dev.izgateway.org}")
 	private String serverName;
 	@Value("${server.port:8080}")
@@ -59,9 +54,9 @@ public class HubController extends SoapControllerBase {
 	@Value("${server.protocol:https}")
 	private String serverProtocol;
 	private AccessControlService accessControlService;
-	
-	@Autowired 
-	public HubController(
+
+	@Autowired
+	public IISController2011(
 		IMessageHeaderService mshService,
 		DestinationService destinationService,
 		EndpointStatusService endpointStatusService,
@@ -72,7 +67,7 @@ public class HubController extends SoapControllerBase {
 		SenderConfig hubConfig
 	) {
 		// The base schema for HUB messages is still the iis-2014 schema, with the exception of HubHeader and certain faults.
-		super(mshService, SoapMessage.IIS2014_NS, "cdc-iis-hub.wsdl", Arrays.asList(SoapMessage.HUB_NS, SoapMessage.IIS2014_NS));
+		super(mshService, SoapMessage.IIS2011_NS, "cdc-iis-2011.wsdl", Arrays.asList(SoapMessage.IIS2011_NS));
 		this.destinationService = destinationService;
 		this.endpointStatusService = endpointStatusService;
 		this.messageSender = messageSender;
@@ -84,9 +79,9 @@ public class HubController extends SoapControllerBase {
 
     @Override
     protected boolean isHub() {
-        return getDestinationService() != null;
+        // IIS Controller is never to be considered Hub
+        return false;
     }
-
 	@Override
 	protected DestinationService getDestinationService() {
 		return destinationService;
@@ -162,21 +157,30 @@ public class HubController extends SoapControllerBase {
 	
 	@Override
 	protected ResponseEntity<?> submitSingleMessage(SubmitSingleMessageRequest submitSingleMessage, String destinationId) throws Fault {
-		IDestination dest = getDestination(destinationId);
+
+		if (submitSingleMessage.getHubHeader() != null && !submitSingleMessage.getHubHeader().isEmpty()) {
+            throw new UnsupportedOperationFault("IZGW-specific HubHeader is not allowed in CDC WSDL requests.", null);
+            // throw new Fault("UnsupportedOperationFault", "IZGW-specific HubHeader is not allowed in CDC WSDL requests.");
+		}
+
+        IDestination dest = getDestination(destinationId);
 		logDestination(dest);
 
 		checkAccess(destinationId);
 		IEndpointStatus s = endpointStatusService.getEndpointStatus(dest);
 		checkMessage(submitSingleMessage);
 		SubmitSingleMessageResponse response = messageSender.sendSubmitSingleMessage(dest, submitSingleMessage);
-        response.updateAction(true); // PAUL TO FIX
-        response.setSchema(SoapMessage.HUB_NS);	// Shift from client to Hub Schema
+        response.updateAction(false); // PAUL TO FIX
+        // TODO PAUL FIX THIS
+        /*
+		response.setSchema(SoapMessage.HUB_NS);	// Shift from client to Hub Schema
 		response.getHubHeader().setDestinationId(dest.getDestId());
 		String uri = dest.getDestinationUri();
 		if (uri.startsWith("/")) {
 			uri = String.format("%s://%s:%d%s", serverProtocol, serverName, serverPort, uri);
 		}
 		response.getHubHeader().setDestinationUri(uri);
+		*/
 		ResponseEntity<?> result = checkResponseEntitySize(new ResponseEntity<>(response, HttpStatus.OK));
 		// A good result updates the status.
 		messageSender.getStatusChecker().updateStatus(s, dest, null);
@@ -184,19 +188,21 @@ public class HubController extends SoapControllerBase {
 	}
 	
 	@Override
-	protected IDestination getDestination(String destinationId) throws UnknownDestinationFault {
+	protected IDestination getDestination(String destinationId) throws UnsupportedOperationFault {
 		if ("".equals(destinationId)) {
-			throw UnknownDestinationFault.invalidDestination(destinationId, "Request has no destination value in the DestinationId element");
+            throw new UnsupportedOperationFault("Request has no destination value in the DestinationId element.", null);
+
+//            throw UnknownDestinationFault.invalidDestination(destinationId, "Request has no destination value in the DestinationId element");
 		} else if (null == destinationId) {
-			throw UnknownDestinationFault.missingDestination("Request is missing the DestinationId element");
+            throw new UnsupportedOperationFault("Request is missing the DestinationId element", null);
 		} else if (!destinationId.matches(IDestination.ID_PATTERN)) {
 			RequestContext.getDestinationInfo().setId(destinationId);
-			throw UnknownDestinationFault.invalidDestination(destinationId, "Destination " + destinationId + " is invalid.");
+            throw new UnsupportedOperationFault("Destination " + destinationId + " is invalid.", null);
 		}
 		IDestination dest = destinationService.findByDestId(destinationId);
 		if (dest == null) {
 			RequestContext.getDestinationInfo().setId(destinationId);
-			throw UnknownDestinationFault.unknownDestination(destinationId, destinationId, null);
+            throw new UnsupportedOperationFault("Unknown destination " + destinationId, null);
 		}
 		logDestination(dest);
 		return dest;
@@ -236,5 +242,33 @@ public class HubController extends SoapControllerBase {
 	protected void checkCredentials(HasCredentials s) throws SecurityFault {
 		// Hub Controller performs no credential checking. Credentials are not supplied in SOAP message, instead they 
 		// are supplied in client certificate in TLS Connection/
+	}
+
+	/**
+	 * Handle SOAP requests with destinationId as a path parameter
+	 * This allows requests to be made to /IISCDCService/{destinationId}
+	 */
+	@PostMapping(value = "/{destinationId}", produces = {
+		"application/soap+xml",
+		"application/soap",
+		MediaType.APPLICATION_XML_VALUE,
+		MediaType.TEXT_XML_VALUE,
+		MediaType.TEXT_PLAIN_VALUE,
+		MediaType.TEXT_HTML_VALUE
+	})
+	public ResponseEntity<?> submitSoapRequestWithDestination(
+		@RequestBody SoapMessage soapMessage,
+		@PathVariable String destinationId
+	) throws Fault {
+//		// Override the destination from the path parameter
+//		if (soapMessage.getHubHeader() != null) {
+//			soapMessage.getHubHeader().setDestinationId(destinationId);
+//		}
+		// Also set in WSA headers if present
+		if (soapMessage.getWsaHeaders() != null) {
+			soapMessage.getWsaHeaders().setTo(destinationId);
+		}
+
+		return submitSoapRequest(soapMessage, null);
 	}
 }
