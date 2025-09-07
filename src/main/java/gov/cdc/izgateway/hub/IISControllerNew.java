@@ -82,7 +82,12 @@ public class IISControllerNew extends SoapControllerBase {
 		setMaxMessageSize(hubConfig.getMaxMessageSize());
 		registry.register(this);
 	}
-	
+
+    @Override
+    protected boolean isHub() {
+        // IIS Controller is never to be considered Hub
+        return false;
+    }
 	@Override
 	protected DestinationService getDestinationService() {
 		return destinationService;

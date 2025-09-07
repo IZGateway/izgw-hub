@@ -81,7 +81,12 @@ public class HubController extends SoapControllerBase {
 		setMaxMessageSize(hubConfig.getMaxMessageSize());
 		registry.register(this);
 	}
-	
+
+    @Override
+    protected boolean isHub() {
+        return getDestinationService() != null;
+    }
+
 	@Override
 	protected DestinationService getDestinationService() {
 		return destinationService;
