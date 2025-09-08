@@ -157,6 +157,7 @@ public abstract class BaseGatewayController extends SoapControllerBase {
         IEndpointStatus s = endpointStatusService.getEndpointStatus(dest);
         checkMessage(submitSingleMessage);
         SubmitSingleMessageResponse response = messageSender.sendSubmitSingleMessage(dest, submitSingleMessage);
+        response.updateAction(isHub());
 
         // Allow subclasses to customize response processing
         customizeResponse(response, dest);

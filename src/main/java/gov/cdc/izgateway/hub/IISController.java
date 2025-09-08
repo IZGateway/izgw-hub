@@ -59,7 +59,6 @@ public class IISController extends BaseGatewayController {
 
 	@Override
 	protected void customizeResponse(SubmitSingleMessageResponse response, IDestination dest) {
-        response.updateAction(false);
 	}
 
 	/**
@@ -78,11 +77,6 @@ public class IISController extends BaseGatewayController {
 		@RequestBody SoapMessage soapMessage,
 		@PathVariable String destinationId
 	) throws Fault {
-//		// Override the destination from the path parameter
-//		if (soapMessage.getHubHeader() != null) {
-//			soapMessage.getHubHeader().setDestinationId(destinationId);
-//		}
-		// Also set in WSA headers if present
 		if (soapMessage.getWsaHeaders() != null) {
 			soapMessage.getWsaHeaders().setTo(destinationId);
 		}

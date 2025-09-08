@@ -49,7 +49,6 @@ public class HubController extends BaseGatewayController {
 
 	@Override
 	protected void customizeResponse(SubmitSingleMessageResponse response, IDestination dest) {
-        response.updateAction(true);
         response.setSchema(SoapMessage.HUB_NS);	// Shift from client to Hub Schema
 		response.getHubHeader().setDestinationId(dest.getDestId());
 		String uri = dest.getDestinationUri();
