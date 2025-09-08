@@ -53,7 +53,6 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
-import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -371,10 +370,10 @@ public class Application implements WebMvcConfigurer {
 	
 	@Override
     public void configureMessageConverters(List<HttpMessageConverter<?>> messageConverters) {
-    	SoapMessageConverter smc = new SoapMessageConverter(SoapMessageConverter.INBOUND);
-    	smc.setHub(true); // TODO PAUL FIX THIS
+    	SoapMessageConverter smc = new SoapMessageConverter(SoapMessageConverter.INBOUND); 
+    	smc.setHub(true);
         messageConverters.add(smc);
-        // Sets up SoapMessageWriter to handle \r as &#xD; if true, otherwise
+        // Sets up SoapMessageWriter to handle \r as &#xD; if true, otherwise 
         // \r in hl7Message will be replaced with \n due to XML Parsing rules.
         SoapMessageWriter.setFixNewLines(fixNewlines);
     }
