@@ -14,9 +14,12 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import java.util.concurrent.TimeUnit;
+
 import org.springframework.context.annotation.Lazy;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -61,6 +64,16 @@ public class AppController {
 	@GetMapping("/icanhazip")
 	public HostInfo getIpAddress(HttpServletRequest req) {
 		return new HostInfo(req.getRemoteAddr(), req.getRemoteHost());
+	}
+	
+	@GetMapping("/timeout")
+	@PostMapping("/timeout")
+	public void timeout() {
+		try {
+			Thread.sleep(TimeUnit.MINUTES.toMillis(6));
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		}
 	}
 	
 	/**

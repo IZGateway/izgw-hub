@@ -148,16 +148,6 @@ public abstract class BaseGatewayController extends SoapControllerBase {
 
     @Override
     protected ResponseEntity<?> submitSingleMessage(SubmitSingleMessageRequest submitSingleMessage, String destinationId) throws Fault {
-    	// The special "timeout" destination is used for testing timeouts.  TODO: Remove this before production deployment.
-		if ("timeout".equalsIgnoreCase(destinationId)) {
-			// Simulate a timeout by not responding for a while.
-			try {
-				Thread.sleep(TimeUnit.MINUTES.toMillis(6));
-			} catch (InterruptedException e) {
-				// OK, we were interrupted
-				Thread.currentThread().interrupt();
-			}
-		}
 		
         // Validate HubHeader if needed (subclasses can override this)
         validateHubHeader(submitSingleMessage);
