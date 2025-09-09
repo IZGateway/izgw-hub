@@ -32,7 +32,12 @@ public class MockControllerBase extends SoapControllerBase implements Initializi
 		super.setMaxMessageSize(iisMaxMesageSize);
 	}
 
-	@Override
+    @Override
+    protected boolean isHubWsdl() {
+        return getDestinationService() != null;
+    }
+
+    @Override
 	protected void checkCredentials(HasCredentials s) throws SecurityFault {
 		MockCredentialValidator.checkCredentials(mshService, s);
 	}
