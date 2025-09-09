@@ -39,8 +39,7 @@ public class CDCWSDLController extends BaseGatewayController {
 		AccessControlService accessControlService,
 		SenderConfig hubConfig
 	) {
-		// The base schema for HUB messages is still the iis-2014 schema, with the exception of HubHeader and certain faults.
-		super(mshService, SoapMessage.IIS2014_NS, "cdc-iis.wsdl", Arrays.asList(SoapMessage.IIS2014_NS),
+		super(mshService, SoapMessage.IIS2011_NS, "cdc-iis-2011.wsdl", Arrays.asList(SoapMessage.IIS2014_NS),
 			destinationService, endpointStatusService, messageSender, adsController, registry, accessControlService, hubConfig);
 	}
 

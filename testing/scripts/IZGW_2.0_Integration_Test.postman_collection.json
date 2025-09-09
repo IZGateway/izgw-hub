@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "ec78d7ea-12f1-4f07-aabf-42652726acf9",
+		"_postman_id": "109b96a9-075b-4bec-90f8-88a3b6aef141",
 		"name": "IZGW 2.0 Integtration Test",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "28864196"
@@ -611,7 +611,7 @@
 											"        console.log({\"header\": header});\r",
 											"        throw err;\r",
 											"    }\r",
-											"    var hl7Message = response['Envelope']['Body']['SubmitSingleMessageResponse']['Hl7Message'];\r",
+											"    var hl7Message = response['Envelope']['Body']['submitSingleMessageResponse']['hl7Message'];\r",
 											"    var request = xml2Json(pm.request.body);\r",
 											"    var expected = pm.collectionVariables.get(\"GoodResponse\");\r",
 											"    try {\r",
@@ -682,7 +682,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n    <wsa:To>dev</wsa:To>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>{{GoodMessage}}</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn1=\"urn:cdc:iisb:2011\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <wsa:Action>urn:cdc:iisb:2011:submitSingleMessage</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n    <wsa:To>dev</wsa:To>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:submitSingleMessage>\r\n      <urn1:hl7Message>{{GoodMessage}}</urn1:hl7Message>\r\n    </urn1:submitSingleMessage>\r\n  </soap:Body>\r\n</soap:Envelope>\r\n"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{host}}:{{port}}/izgw",
@@ -4517,7 +4517,7 @@
 											"        console.log({\"header\": header});\r",
 											"        throw err;\r",
 											"    }\r",
-											"    var hl7Message = response['Envelope']['Body']['SubmitSingleMessageResponse']['Hl7Message'];\r",
+											"    var hl7Message = response['Envelope']['Body']['submitSingleMessageResponse']['hl7Message'];\r",
 											"    var request = xml2Json(pm.request.body);\r",
 											"    var expected = pm.collectionVariables.get(\"GoodResponse\");\r",
 											"    try {\r",
@@ -4532,7 +4532,7 @@
 											"    var jsonObject = xml2Json(responseBody);\r",
 											"    var actionText= jsonObject['soap:Envelope']['soap:Header']['wsa:Action'];\r",
 											"    console.log({\"actionText\": actionText});\r",
-											"    pm.expect(actionText).to.eq(\"urn:cdc:iisb:2014:IISPortType:SubmitSingleMessageResponse\");\r",
+											"    pm.expect(actionText).to.eq(\"urn:cdc:iisb:2011:submitSingleMessageResponse\");\r",
 											"});\r",
 											"\r",
 											"\r",
@@ -4594,7 +4594,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n    <wsa:To>dev</wsa:To>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>{{GoodMessage}}</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn1=\"urn:cdc:iisb:2011\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <wsa:Action>urn:cdc:iisb:2011:submitSingleMessage</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n    <wsa:To>dev</wsa:To>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:submitSingleMessage>\r\n      <urn1:hl7Message>{{GoodMessage}}</urn1:hl7Message>\r\n    </urn1:submitSingleMessage>\r\n  </soap:Body>\r\n</soap:Envelope>"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{host}}:{{port}}/izgw",
@@ -4630,7 +4630,7 @@
 											"        console.log({\"header\": header});\r",
 											"        throw err;\r",
 											"    }\r",
-											"    var hl7Message = response['Envelope']['Body']['SubmitSingleMessageResponse']['Hl7Message'];\r",
+											"    var hl7Message = response['Envelope']['Body']['submitSingleMessageResponse']['hl7Message'];\r",
 											"    var request = xml2Json(pm.request.body);\r",
 											"    var expected = pm.collectionVariables.get(\"GoodResponse\");\r",
 											"    try {\r",
@@ -4701,7 +4701,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n    <wsa:To>dev</wsa:To>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>{{GoodMessage}}</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn1=\"urn:cdc:iisb:2011\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <wsa:Action>urn:cdc:iisb:2011:submitSingleMessage</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:submitSingleMessage>\r\n      <urn1:hl7Message>{{GoodMessage}}</urn1:hl7Message>\r\n    </urn1:submitSingleMessage>\r\n  </soap:Body>\r\n</soap:Envelope>"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{host}}:{{port}}/izgw/dev",
@@ -4730,7 +4730,7 @@
 											"});\r",
 											"\r",
 											"pm.test(\"Response has UnsupportedOperationFault\", function () {\r",
-											"    pm.expect(responseBody).to.contain('urn:cdc:iisb:2014:IISPortType:ConnectivityTest:Fault:UnsupportedOperationFault');\r",
+											"    pm.expect(responseBody).to.contain('urn:cdc:iisb:2011:Fault:unsupportedOperationFault');\r",
 											"});\r",
 											"\r",
 											"pm.test(\"Response has correct soap reason about fault\", function () {\r",
@@ -4776,7 +4776,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>{{GoodMessage}}</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2011\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:2011:submitSingleMessage</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:submitSingleMessage>\r\n      <urn1:hl7Message>{{GoodMessage}}</urn1:hl7Message>\r\n    </urn1:submitSingleMessage>\r\n  </soap:Body>\r\n</soap:Envelope>"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{host}}:{{port}}/izgw",
@@ -7679,7 +7679,7 @@
 													"\r",
 													"pm.test(\"Response has HubClientFault\", function () {\r",
 													"    pm.expect(pm.response.text()).to.contain('HubClientFault>');\r",
-													"    pm.expect(pm.response.text()).to.contain('urn:cdc:iisb:2014:IISPortType:SubmitSingleMessage:Fault:HubClientFault');\r",
+													"    pm.expect(pm.response.text()).to.contain('urn:cdc:iisb:2011:Fault:hubClientFault');\r",
 													"});\r",
 													"\r",
 													"pm.test(\"Response has correct soap reason about fault\", function () {\r",
@@ -7736,7 +7736,7 @@
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n    <wsa:To>dev2011</wsa:To>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|||TEST|TC_23A|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS|SIISCLIENT28374</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+											"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn1=\"urn:cdc:iisb:2011\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <wsa:Action>urn:cdc:iisb:2011:submitSingleMessage</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n    <wsa:To>dev2011</wsa:To>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:submitSingleMessage>\r\n      <urn1:hl7Message>MSH|^~\\&amp;|||TEST|TC_23A|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS|SIISCLIENT28374</urn1:hl7Message>\r\n    </urn1:submitSingleMessage>\r\n  </soap:Body>\r\n</soap:Envelope>"
 										},
 										"url": {
 											"raw": "https://{{host}}:{{port}}/izgw",
@@ -7850,7 +7850,7 @@
 													"\r",
 													"pm.test(\"Response has HubClientFault\", function () {\r",
 													"    pm.expect(responseBody).to.contain('HubClientFault>');\r",
-													"    pm.expect(responseBody).to.contain('urn:cdc:iisb:2014:IISPortType:SubmitSingleMessage:Fault:HubClientFault');\r",
+													"    pm.expect(responseBody).to.contain('urn:cdc:iisb:2011:Fault:hubClientFault');\r",
 													"});\r",
 													"\r",
 													"pm.test(\"Response has correct soap reason about fault\", function () {\r",
@@ -7906,7 +7906,7 @@
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n    <wsa:To>dev2011</wsa:To>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|||TEST|TC_23C|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS|SIISCLIENT28374</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+											"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn1=\"urn:cdc:iisb:2011\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <wsa:Action>urn:cdc:iisb:2011:submitSingleMessage</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n    <wsa:To>dev2011</wsa:To>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:submitSingleMessage>\r\n      <urn1:hl7Message>MSH|^~\\&amp;|||TEST|TC_23C|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS|SIISCLIENT28374</urn1:hl7Message>\r\n    </urn1:submitSingleMessage>\r\n  </soap:Body>\r\n</soap:Envelope>"
 										},
 										"url": {
 											"raw": "https://{{host}}:{{port}}/izgw",
