@@ -24,10 +24,10 @@ import jakarta.annotation.security.RolesAllowed;
 @RolesAllowed({Roles.SOAP, Roles.ADMIN})
 @RequestMapping("/IISHubService")
 @Lazy(false)
-public class HubController extends BaseGatewayController {
+public class HubWSDLController extends BaseGatewayController {
 
 	@Autowired
-	public HubController(
+	public HubWSDLController(
 		IMessageHeaderService mshService,
 		DestinationService destinationService,
 		EndpointStatusService endpointStatusService,
@@ -43,7 +43,7 @@ public class HubController extends BaseGatewayController {
 	}
 
     @Override
-    protected boolean isHub() {
+    protected boolean isHubWsdl() {
         return getDestinationService() != null;
     }
 

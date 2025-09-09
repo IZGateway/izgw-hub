@@ -24,12 +24,12 @@ import java.util.Arrays;
 
 @RestController
 @RolesAllowed({Roles.SOAP, Roles.ADMIN})
-@RequestMapping("/IISCDCService")
+@RequestMapping("/izgw")
 @Lazy(false)
-public class IISController extends BaseGatewayController {
+public class CDCWSDLController extends BaseGatewayController {
 
 	@Autowired
-	public IISController(
+	public CDCWSDLController(
 		IMessageHeaderService mshService,
 		DestinationService destinationService,
 		EndpointStatusService endpointStatusService,
@@ -45,7 +45,7 @@ public class IISController extends BaseGatewayController {
 	}
 
     @Override
-    protected boolean isHub() {
+    protected boolean isHubWsdl() {
         // IIS Controller is never to be considered Hub
         return false;
     }
@@ -64,7 +64,7 @@ public class IISController extends BaseGatewayController {
 
 	/**
 	 * Handle SOAP requests with destinationId as a path parameter
-	 * This allows requests to be made to /IISCDCService/{destinationId}
+	 * This allows requests to be made to /izgw/{destinationId}
 	 */
 	@PostMapping(value = "/{destinationId}", produces = {
 		"application/soap+xml",

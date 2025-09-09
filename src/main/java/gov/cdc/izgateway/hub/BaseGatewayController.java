@@ -29,7 +29,7 @@ import java.net.UnknownHostException;
 import java.util.List;
 
 /**
- * Base controller class that contains common functionality shared between HubController and IISController.
+ * Base controller class that contains common functionality shared between HubWSDLController and CDCWSDLController.
  */
 public abstract class BaseGatewayController extends SoapControllerBase {
 
@@ -157,7 +157,7 @@ public abstract class BaseGatewayController extends SoapControllerBase {
         IEndpointStatus s = endpointStatusService.getEndpointStatus(dest);
         checkMessage(submitSingleMessage);
         SubmitSingleMessageResponse response = messageSender.sendSubmitSingleMessage(dest, submitSingleMessage);
-        response.updateAction(isHub());
+        response.updateAction(isHubWsdl());
 
         // Allow subclasses to customize response processing
         customizeResponse(response, dest);

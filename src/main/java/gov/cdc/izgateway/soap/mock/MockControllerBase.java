@@ -33,7 +33,7 @@ public class MockControllerBase extends SoapControllerBase implements Initializi
 	}
 
     @Override
-    protected boolean isHub() {
+    protected boolean isHubWsdl() {
         return getDestinationService() != null;
     }
 

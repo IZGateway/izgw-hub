@@ -685,14 +685,14 @@
 									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n    <wsa:To>dev</wsa:To>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>{{GoodMessage}}</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
 								},
 								"url": {
-									"raw": "{{protocol}}://{{host}}:{{port}}/IISCDCService",
+									"raw": "{{protocol}}://{{host}}:{{port}}/izgw",
 									"protocol": "{{protocol}}",
 									"host": [
 										"{{host}}"
 									],
 									"port": "{{port}}",
 									"path": [
-										"IISCDCService"
+										"izgw"
 									]
 								}
 							},
@@ -4597,14 +4597,14 @@
 									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n    <wsa:To>dev</wsa:To>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>{{GoodMessage}}</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
 								},
 								"url": {
-									"raw": "{{protocol}}://{{host}}:{{port}}/IISCDCService",
+									"raw": "{{protocol}}://{{host}}:{{port}}/izgw",
 									"protocol": "{{protocol}}",
 									"host": [
 										"{{host}}"
 									],
 									"port": "{{port}}",
 									"path": [
-										"IISCDCService"
+										"izgw"
 									]
 								}
 							},
@@ -4704,14 +4704,14 @@
 									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n    <wsa:To>dev</wsa:To>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>{{GoodMessage}}</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
 								},
 								"url": {
-									"raw": "{{protocol}}://{{host}}:{{port}}/IISCDCService/dev",
+									"raw": "{{protocol}}://{{host}}:{{port}}/izgw/dev",
 									"protocol": "{{protocol}}",
 									"host": [
 										"{{host}}"
 									],
 									"port": "{{port}}",
 									"path": [
-										"IISCDCService",
+										"izgw",
 										"dev"
 									]
 								}
@@ -4779,14 +4779,14 @@
 									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>{{GoodMessage}}</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
 								},
 								"url": {
-									"raw": "{{protocol}}://{{host}}:{{port}}/IISCDCService",
+									"raw": "{{protocol}}://{{host}}:{{port}}/izgw",
 									"protocol": "{{protocol}}",
 									"host": [
 										"{{host}}"
 									],
 									"port": "{{port}}",
 									"path": [
-										"IISCDCService"
+										"izgw"
 									]
 								}
 							},
@@ -7739,14 +7739,14 @@
 											"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n    <wsa:To>dev2011</wsa:To>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|||TEST|TC_23A|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS|SIISCLIENT28374</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
 										},
 										"url": {
-											"raw": "https://{{host}}:{{port}}/IISCDCService",
+											"raw": "https://{{host}}:{{port}}/izgw",
 											"protocol": "https",
 											"host": [
 												"{{host}}"
 											],
 											"port": "{{port}}",
 											"path": [
-												"IISCDCService"
+												"izgw"
 											]
 										}
 									},
@@ -7909,14 +7909,14 @@
 											"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n    <wsa:To>dev2011</wsa:To>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|||TEST|TC_23C|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS|SIISCLIENT28374</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
 										},
 										"url": {
-											"raw": "https://{{host}}:{{port}}/IISCDCService",
+											"raw": "https://{{host}}:{{port}}/izgw",
 											"protocol": "https",
 											"host": [
 												"{{host}}"
 											],
 											"port": "{{port}}",
 											"path": [
-												"IISCDCService"
+												"izgw"
 											]
 										}
 									},
@@ -14602,7 +14602,7 @@
 					"            pm.test(\"Check Service Type\", function() {",
 					"                console.log(entry.transactionData.serviceType);",
 					"                pm.expect(entry.transactionData.serviceType).to.match(/Mock|Gateway/);",
-					"                if (entry?.requestUri == \"/IISHubService\" || entry?.requestUri.startsWith(\"/IISCDCService\") || entry?.requestUri.includes(\"/rest/\")) {",
+					"                if (entry?.requestUri == \"/IISHubService\" || entry?.requestUri.startsWith(\"/izgw\") || entry?.requestUri.includes(\"/rest/\")) {",
 					"                    pm.expect(entry?.transactionData?.serviceType).to.eql(\"Gateway\");",
 					"                } else {",
 					"                    pm.expect(entry?.transactionData?.serviceType).to.eql(\"Mock\");",
