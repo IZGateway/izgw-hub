@@ -59,6 +59,7 @@ public class IISController extends BaseGatewayController {
 
 	@Override
 	protected void customizeResponse(SubmitSingleMessageResponse response, IDestination dest) {
+        // No customization needed as this is not a Hub response (no hub headers to be set)
 	}
 
 	/**
