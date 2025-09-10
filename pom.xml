@@ -11,9 +11,9 @@
 	</parent>
 	<groupId>gov.cdc.izgw</groupId>
 	<artifactId>izgw-hub</artifactId>
-	<version>2.6.0-IZGW-RELEASE</version>
+	<version>2.7.0-IZGW-RELEASE</version>
 	<packaging>jar</packaging>
-	<name>IZ Gateway Hub 2.6.0</name>
+	<name>IZ Gateway Hub 2.7.0</name>
 	<description>IZ Gateway Hub</description>
 	<properties>
 		<maven.build.timestamp.format>yyyyMMddHHmm</maven.build.timestamp.format>
@@ -28,13 +28,15 @@
 		<project.java.package>${project.groupId}</project.java.package>
 		<spring-security.version>6.4.6</spring-security.version>
 		<mysql.version>9.3.0</mysql.version>
-        <commons-lang3.version>3.18.0</commons-lang3.version>
+    <commons-lang3.version>3.18.0</commons-lang3.version>
+    <tomcat.version>10.1.44</tomcat.version>
+    <spring-framework.version>6.2.10</spring-framework.version>
 	</properties>
 	<dependencies>
 		<dependency>
 			<groupId>gov.cdc.izgw</groupId>
 			<artifactId>izgw-core</artifactId>
-			<version>2.2.2-izgw-core-SNAPSHOT</version>
+			<version>2.3.0-izgw-core-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>ca.uhn.hapi</groupId>
@@ -62,8 +64,11 @@
 		<dependency>
 			<groupId>software.amazon.awssdk</groupId>
 			<artifactId>dynamodb-enhanced</artifactId>
-			<version>2.31.52</version>
 		</dependency>
+		<dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>sqs</artifactId>
+        </dependency>
 		<dependency>
 			<groupId>io.netty</groupId>
 			<artifactId>netty-handler</artifactId>
@@ -81,8 +86,8 @@
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-databind</artifactId>
 		</dependency>
-		<!-- Uncomment the following to get a startup report at [host]/startup-report -->
-		<!-- dependency> <groupId>com.maciejwalkowiak.spring</groupId> <artifactId>spring-boot-startup-report</artifactId> 
+        <!-- Uncomment the following to get a startup report at [host]/startup-report -->
+        <!-- dependency> <groupId>com.maciejwalkowiak.spring</groupId> <artifactId>spring-boot-startup-report</artifactId> 
 			<version>0.2.0</version> <optional>true</optional> </dependency -->
 		<dependency>
 			<groupId>com.mysql</groupId>
@@ -155,13 +160,13 @@
 			<groupId>org.apache.httpcomponents</groupId>
 			<artifactId>httpcore</artifactId>
 		</dependency>
-		<!-- if you change any of the three BC components below, be sure to update 
+        <!-- if you change any of the three BC components below, be sure to update 
 			Dockerfile to use same versions -->
 		<dependency>
 			<groupId>org.bouncycastle</groupId>
-			<!-- add -debug to get debug jars -->
+            <!-- add -debug to get debug jars -->
 			<artifactId>bc-fips</artifactId>
-			<version>2.1.0</version>
+			<version>2.1.1</version>
 		</dependency>
 		<dependency>
 			<groupId>org.bouncycastle</groupId>
@@ -258,9 +263,23 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>2.32.31</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
                 <groupId>com.nimbusds</groupId>
                 <artifactId>nimbus-jose-jwt</artifactId>
                 <version>10.4.1</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-bom</artifactId>
+                <version>4.2.5.Final</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -397,7 +416,7 @@
 				<artifactId>dependency-check-maven</artifactId>
 				<!-- 9.0 line uses NVD API and requires a key, which has flakey response 
 					right now -->
-				<version>8.4.3</version>
+				<version>12.1.1</version>
 				<configuration>
 					<!--nvdApiKey>${env.NVDAPIKEY}</nvdApiKey -->
 					<formats>

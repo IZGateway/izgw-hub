@@ -1,10 +1,9 @@
 {
 	"info": {
-		"_postman_id": "c575443f-b5cb-4014-b418-672c36170b2f",
+		"_postman_id": "109b96a9-075b-4bec-90f8-88a3b6aef141",
 		"name": "IZGW 2.0 Integtration Test",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "940288",
-		"_collection_link": "https://cloudy-sunset-429868.postman.co/workspace/IZ-Gateway~a583eb4f-68db-4044-b8cf-d251024eca35/collection/940288-c575443f-b5cb-4014-b418-672c36170b2f?action=share&source=collection_link&creator=940288"
+		"_exporter_id": "28864196"
 	},
 	"item": [
 		{
@@ -525,6 +524,7 @@
 											"    utils.getLogs(null, pm).then((logData) => {\r",
 											"        logs = logData.json();\r",
 											"        txData = utils.getTxData(logs);\r",
+											"\r",
 											"        pm.test(\"Log does not contain HL7 Error\", function() {\r",
 											"            pm.expect(txData[0].transactionData.hasHL7Error).to.be.eql(false);\r",
 											"            pm.expect(txData[0].transactionData.hl7Error).to.be.eql(\"\");\r",
@@ -586,6 +586,113 @@
 									"port": "{{port}}",
 									"path": [
 										"IISHubService"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "TC_04/05a/06/07a/16/19 Send correctly formatted SOAP Request to the CDC WSDL endpoint",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Response is As Expected\", function () {\r",
+											"    var response = utils.removeNS(xml2Json(responseBody));\r",
+											"    var header = response?.Envelope?.Header?.HubResponseHeader;\r",
+											"    try {\r",
+											"        pm.expect(header).to.be.eql(undefined);\r",
+											"    } catch (err) {\r",
+											"        console.log({\"header\": header});\r",
+											"        throw err;\r",
+											"    }\r",
+											"    var hl7Message = response['Envelope']['Body']['submitSingleMessageResponse']['hl7Message'];\r",
+											"    var request = xml2Json(pm.request.body);\r",
+											"    var expected = pm.collectionVariables.get(\"GoodResponse\");\r",
+											"    try {\r",
+											"        pm.expect(hl7Message.replaceAll('\\r','\\n')).to.be.eql(expected.replaceAll('\\r','\\n'));  // TODO: Raise the issue of CR's in content.\r",
+											"    } catch (err) {\r",
+											"        console.log(hl7Message, expected);\r",
+											"        throw err;\r",
+											"    }\r",
+											"});\r",
+											"\r",
+											"\r",
+											"\r",
+											"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) utils.testSLA(pm, LONG_SLA);\r",
+											"\r",
+											"const interval = setTimeout(() => {}, 3000);\r",
+											"async function moreTests() {\r",
+											"    utils.getLogs(null, pm).then((logData) => {\r",
+											"        logs = logData.json();\r",
+											"        txData = utils.getTxData(logs);\r",
+											"\r",
+											"        pm.test(\"Log does not contain HL7 Error\", function() {\r",
+											"            pm.expect(txData[0].transactionData.hasHL7Error).to.be.eql(false);\r",
+											"            pm.expect(txData[0].transactionData.hl7Error).to.be.eql(\"\");\r",
+											"        });\r",
+											"        pm.test(\"Log does not contain PHI\", function() {\r",
+											"            pm.expect(txData[0].transactionData.requestHL7Message).to.not.contain(\"\\nPID\");\r",
+											"            pm.expect(txData[0].transactionData.requestHL7Message).to.not.contain(\"\\nQPD\");\r",
+											"        });\r",
+											"        utils.testLogs(logs, pm, 250);\r",
+											"    });\r",
+											"}\r",
+											"\r",
+											"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();\r",
+											"utils.checkNamespaces(pm);\r",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"utils.setup(pm, \"dev\");"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {
+									"host": true
+								}
+							},
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Host",
+										"value": "{{hostHeader}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/xml"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn1=\"urn:cdc:iisb:2011\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <wsa:Action>urn:cdc:iisb:2011:submitSingleMessage</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n    <wsa:To>dev</wsa:To>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:submitSingleMessage>\r\n      <urn1:hl7Message>{{GoodMessage}}</urn1:hl7Message>\r\n    </urn1:submitSingleMessage>\r\n  </soap:Body>\r\n</soap:Envelope>\r\n"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{host}}:{{port}}/izgw",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{host}}"
+									],
+									"port": "{{port}}",
+									"path": [
+										"izgw"
 									]
 								}
 							},
@@ -4391,6 +4498,301 @@
 							"response": []
 						},
 						{
+							"name": "TC_07d Send correctly formatted SOAP Request to the CDC WSDL endpoint",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Response is As Expected\", function () {\r",
+											"    var response = utils.removeNS(xml2Json(responseBody));\r",
+											"    var header = response?.Envelope?.Header?.HubResponseHeader;\r",
+											"    try {\r",
+											"        pm.expect(header).to.be.eql(undefined);\r",
+											"    } catch (err) {\r",
+											"        console.log({\"header\": header});\r",
+											"        throw err;\r",
+											"    }\r",
+											"    var hl7Message = response['Envelope']['Body']['submitSingleMessageResponse']['hl7Message'];\r",
+											"    var request = xml2Json(pm.request.body);\r",
+											"    var expected = pm.collectionVariables.get(\"GoodResponse\");\r",
+											"    try {\r",
+											"        pm.expect(hl7Message.replaceAll('\\r','\\n')).to.be.eql(expected.replaceAll('\\r','\\n'));  // TODO: Raise the issue of CR's in content.\r",
+											"    } catch (err) {\r",
+											"        console.log(hl7Message, expected);\r",
+											"        throw err;\r",
+											"    }\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Response has correct WSA action\", function () {\r",
+											"    var jsonObject = xml2Json(responseBody);\r",
+											"    var actionText= jsonObject['soap:Envelope']['soap:Header']['wsa:Action'];\r",
+											"    console.log({\"actionText\": actionText});\r",
+											"    pm.expect(actionText).to.eq(\"urn:cdc:iisb:2011:submitSingleMessageResponse\");\r",
+											"});\r",
+											"\r",
+											"\r",
+											"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) utils.testSLA(pm, LONG_SLA);\r",
+											"\r",
+											"const interval = setTimeout(() => {}, 3000);\r",
+											"async function moreTests() {\r",
+											"    utils.getLogs(null, pm).then((logData) => {\r",
+											"        logs = logData.json();\r",
+											"        txData = utils.getTxData(logs);\r",
+											"\r",
+											"        pm.test(\"Log does not contain HL7 Error\", function() {\r",
+											"            pm.expect(txData[0].transactionData.hasHL7Error).to.be.eql(false);\r",
+											"            pm.expect(txData[0].transactionData.hl7Error).to.be.eql(\"\");\r",
+											"        });\r",
+											"        pm.test(\"Log does not contain PHI\", function() {\r",
+											"            pm.expect(txData[0].transactionData.requestHL7Message).to.not.contain(\"\\nPID\");\r",
+											"            pm.expect(txData[0].transactionData.requestHL7Message).to.not.contain(\"\\nQPD\");\r",
+											"        });\r",
+											"        utils.testLogs(logs, pm, 250);\r",
+											"    });\r",
+											"}\r",
+											"\r",
+											"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();\r",
+											"utils.checkNamespaces(pm);\r",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"utils.setup(pm, \"dev\");"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {
+									"host": true
+								}
+							},
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Host",
+										"value": "{{hostHeader}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/xml"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn1=\"urn:cdc:iisb:2011\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <wsa:Action>urn:cdc:iisb:2011:submitSingleMessage</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n    <wsa:To>dev</wsa:To>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:submitSingleMessage>\r\n      <urn1:hl7Message>{{GoodMessage}}</urn1:hl7Message>\r\n    </urn1:submitSingleMessage>\r\n  </soap:Body>\r\n</soap:Envelope>"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{host}}:{{port}}/izgw",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{host}}"
+									],
+									"port": "{{port}}",
+									"path": [
+										"izgw"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "TC_07e Send correctly formatted SOAP Request to the CDC WSDL endpoint using dest as param",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Response is As Expected\", function () {\r",
+											"    var response = utils.removeNS(xml2Json(responseBody));\r",
+											"    var header = response?.Envelope?.Header?.HubResponseHeader;\r",
+											"    try {\r",
+											"        pm.expect(header).to.be.eql(undefined);\r",
+											"    } catch (err) {\r",
+											"        console.log({\"header\": header});\r",
+											"        throw err;\r",
+											"    }\r",
+											"    var hl7Message = response['Envelope']['Body']['submitSingleMessageResponse']['hl7Message'];\r",
+											"    var request = xml2Json(pm.request.body);\r",
+											"    var expected = pm.collectionVariables.get(\"GoodResponse\");\r",
+											"    try {\r",
+											"        pm.expect(hl7Message.replaceAll('\\r','\\n')).to.be.eql(expected.replaceAll('\\r','\\n'));  // TODO: Raise the issue of CR's in content.\r",
+											"    } catch (err) {\r",
+											"        console.log(hl7Message, expected);\r",
+											"        throw err;\r",
+											"    }\r",
+											"});\r",
+											"\r",
+											"\r",
+											"\r",
+											"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) utils.testSLA(pm, LONG_SLA);\r",
+											"\r",
+											"const interval = setTimeout(() => {}, 3000);\r",
+											"async function moreTests() {\r",
+											"    utils.getLogs(null, pm).then((logData) => {\r",
+											"        logs = logData.json();\r",
+											"        txData = utils.getTxData(logs);\r",
+											"\r",
+											"        pm.test(\"Log does not contain HL7 Error\", function() {\r",
+											"            pm.expect(txData[0].transactionData.hasHL7Error).to.be.eql(false);\r",
+											"            pm.expect(txData[0].transactionData.hl7Error).to.be.eql(\"\");\r",
+											"        });\r",
+											"        pm.test(\"Log does not contain PHI\", function() {\r",
+											"            pm.expect(txData[0].transactionData.requestHL7Message).to.not.contain(\"\\nPID\");\r",
+											"            pm.expect(txData[0].transactionData.requestHL7Message).to.not.contain(\"\\nQPD\");\r",
+											"        });\r",
+											"        utils.testLogs(logs, pm, 250);\r",
+											"    });\r",
+											"}\r",
+											"\r",
+											"if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();\r",
+											"utils.checkNamespaces(pm);\r",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"utils.setup(pm, \"dev\");"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {
+									"host": true
+								}
+							},
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Host",
+										"value": "{{hostHeader}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/xml"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn1=\"urn:cdc:iisb:2011\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <wsa:Action>urn:cdc:iisb:2011:submitSingleMessage</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:submitSingleMessage>\r\n      <urn1:hl7Message>{{GoodMessage}}</urn1:hl7Message>\r\n    </urn1:submitSingleMessage>\r\n  </soap:Body>\r\n</soap:Envelope>"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{host}}:{{port}}/izgw/dev",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{host}}"
+									],
+									"port": "{{port}}",
+									"path": [
+										"izgw",
+										"dev"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "TC_07f Send Hub SOAP Request to the CDC WSDL endpoint resulting in an error",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 500\", function () {\r",
+											"    pm.response.to.have.status(500);\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Response has UnsupportedOperationFault\", function () {\r",
+											"    pm.expect(responseBody).to.contain('urn:cdc:iisb:2011:Fault:unsupportedOperationFault');\r",
+											"});\r",
+											"\r",
+											"pm.test(\"Response has correct soap reason about fault\", function () {\r",
+											"    var jsonObject = xml2Json(responseBody);\r",
+											"    var reasonText= jsonObject['soap:Envelope']['soap:Body']['soap:Fault']['soap:Reason']['soap:Text']['_'];\r",
+											"    pm.expect(reasonText).to.include(\"HubHeader is not allowed in CDC WSDL requests\");\r",
+											"});\r",
+											"\r",
+											"utils.checkNamespaces(pm);\r",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"utils.setup(pm, \"dev\");"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disabledSystemHeaders": {
+									"host": true
+								}
+							},
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Host",
+										"value": "{{hostHeader}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/xml"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2011\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:2011:submitSingleMessage</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:submitSingleMessage>\r\n      <urn1:hl7Message>{{GoodMessage}}</urn1:hl7Message>\r\n    </urn1:submitSingleMessage>\r\n  </soap:Body>\r\n</soap:Envelope>"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{host}}:{{port}}/izgw",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{host}}"
+									],
+									"port": "{{port}}",
+									"path": [
+										"izgw"
+									]
+								}
+							},
+							"response": []
+						},
+						{
 							"name": "TC_08a Send SOAP Request with no DestinationId value",
 							"event": [
 								{
@@ -7265,6 +7667,92 @@
 									"response": []
 								},
 								{
+									"name": "TC_23a 2011 Security Fault Testing CDC WSDL",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 500\", function () {\r",
+													"    pm.response.to.have.status(500);\r",
+													"});\r",
+													"\r",
+													"pm.test(\"Response has HubClientFault\", function () {\r",
+													"    pm.expect(pm.response.text()).to.contain('HubClientFault>');\r",
+													"    pm.expect(pm.response.text()).to.contain('urn:cdc:iisb:2011:Fault:hubClientFault');\r",
+													"});\r",
+													"\r",
+													"pm.test(\"Response has correct soap reason about fault\", function () {\r",
+													"    var jsonObject = xml2Json(pm.response.text());\r",
+													"    var reasonText= jsonObject['soap:Envelope']['soap:Body']['soap:Fault']['soap:Reason']['soap:Text']['_'];\r",
+													"    pm.expect(reasonText).to.include(\"Invalid Username, Password or FacilityID\");\r",
+													"});\r",
+													"\r",
+													"utils.checkNamespaces(pm);\r",
+													"\r",
+													"var response = utils.removeNS(xml2Json(pm.response.text()));\r",
+													"pm.test(\"Response has Summary = DestinationThrewSecurityFault\", function() {\r",
+													"   var summary = response['Envelope']['Body']['Fault']['Detail']['Summary'];\r",
+													"   pm.expect(summary).to.be.eql('DestinationThrewSecurityFault');\r",
+													"});\r",
+													"pm.test(\"Response has Retry = CORRECT_MESSAGE\", function() {\r",
+													"   var retry = response['Envelope']['Body']['Fault']['Detail']['Retry'];\r",
+													"   pm.expect(retry).to.be.eql('CORRECT_MESSAGE');\r",
+													"});\r",
+													"\r",
+													""
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"utils.setup(pm, \"dev2011\");"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"protocolProfileBehavior": {
+										"disabledSystemHeaders": {
+											"host": true
+										}
+									},
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Host",
+												"value": "{{hostHeader}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/xml"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn1=\"urn:cdc:iisb:2011\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <wsa:Action>urn:cdc:iisb:2011:submitSingleMessage</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n    <wsa:To>dev2011</wsa:To>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:submitSingleMessage>\r\n      <urn1:hl7Message>MSH|^~\\&amp;|||TEST|TC_23A|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS|SIISCLIENT28374</urn1:hl7Message>\r\n    </urn1:submitSingleMessage>\r\n  </soap:Body>\r\n</soap:Envelope>"
+										},
+										"url": {
+											"raw": "https://{{host}}:{{port}}/izgw",
+											"protocol": "https",
+											"host": [
+												"{{host}}"
+											],
+											"port": "{{port}}",
+											"path": [
+												"izgw"
+											]
+										}
+									},
+									"response": []
+								},
+								{
 									"name": "TC_23c 2011 Message Too Large Fault Testing",
 									"event": [
 										{
@@ -7344,6 +7832,91 @@
 											"port": "{{port}}",
 											"path": [
 												"IISHubService"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "TC_23c 2011 Message Too Large Fault Testing CDC WSDL",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code is 500\", function () {\r",
+													"    pm.response.to.have.status(500);\r",
+													"});\r",
+													"\r",
+													"pm.test(\"Response has HubClientFault\", function () {\r",
+													"    pm.expect(responseBody).to.contain('HubClientFault>');\r",
+													"    pm.expect(responseBody).to.contain('urn:cdc:iisb:2011:Fault:hubClientFault');\r",
+													"});\r",
+													"\r",
+													"pm.test(\"Response has correct soap reason about fault\", function () {\r",
+													"    var jsonObject = xml2Json(responseBody);\r",
+													"    var reasonText= jsonObject['soap:Envelope']['soap:Body']['soap:Fault']['soap:Reason']['soap:Text']['_'];\r",
+													"    pm.expect(reasonText).to.include(\"Request Message Too Large\");\r",
+													"});\r",
+													"\r",
+													"var response = utils.removeNS(xml2Json(responseBody));\r",
+													"pm.test(\"Response has Summary = DestinationThrewMessageTooLargeFault\", function() {\r",
+													"   var summary = response['Envelope']['Body']['Fault']['Detail']['Summary'];\r",
+													"   pm.expect(summary).to.be.eql('DestinationThrewMessageTooLargeFault');\r",
+													"});\r",
+													"pm.test(\"Response has Retry = CORRECT_MESSAGE\", function() {\r",
+													"   var retry = response['Envelope']['Body']['Fault']['Detail']['Retry'];\r",
+													"   pm.expect(retry).to.be.eql('CORRECT_MESSAGE');\r",
+													"});\r",
+													"\r",
+													"utils.checkNamespaces(pm);\r",
+													""
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"utils.setup(pm, \"dev2011\");"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"protocolProfileBehavior": {
+										"disabledSystemHeaders": {
+											"host": true
+										}
+									},
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Host",
+												"value": "{{hostHeader}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/xml"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn1=\"urn:cdc:iisb:2011\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <wsa:Action>urn:cdc:iisb:2011:submitSingleMessage</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n    <wsa:To>dev2011</wsa:To>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:submitSingleMessage>\r\n      <urn1:hl7Message>MSH|^~\\&amp;|||TEST|TC_23C|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS|SIISCLIENT28374</urn1:hl7Message>\r\n    </urn1:submitSingleMessage>\r\n  </soap:Body>\r\n</soap:Envelope>"
+										},
+										"url": {
+											"raw": "https://{{host}}:{{port}}/izgw",
+											"protocol": "https",
+											"host": [
+												"{{host}}"
+											],
+											"port": "{{port}}",
+											"path": [
+												"izgw"
 											]
 										}
 									},
@@ -14029,7 +14602,7 @@
 					"            pm.test(\"Check Service Type\", function() {",
 					"                console.log(entry.transactionData.serviceType);",
 					"                pm.expect(entry.transactionData.serviceType).to.match(/Mock|Gateway/);",
-					"                if (entry?.requestUri == \"/IISHubService\" || entry?.requestUri.includes(\"/rest/\")) {",
+					"                if (entry?.requestUri == \"/IISHubService\" || entry?.requestUri.startsWith(\"/izgw\") || entry?.requestUri.includes(\"/rest/\")) {",
 					"                    pm.expect(entry?.transactionData?.serviceType).to.eql(\"Gateway\");",
 					"                } else {",
 					"                    pm.expect(entry?.transactionData?.serviceType).to.eql(\"Mock\");",

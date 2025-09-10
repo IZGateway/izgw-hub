@@ -38,20 +38,23 @@
             <cleanHistoryOnStart>true</cleanHistoryOnStart>
         </rollingPolicy>
     </appender>
-    <appender name="console"
-        class="ch.qos.logback.core.ConsoleAppender">
-        <encoder
-            class="net.logstash.logback.encoder.LogstashEncoder">
-            <if
-                condition='"true".equals(p("logging.console.pretty"))'>
-                <then>
-                    <jsonGeneratorDecorator
-                        class="net.logstash.logback.decorate.PrettyPrintingJsonGeneratorDecorator" />
-                </then>
-            </if>
-            <includeContext>false</includeContext>
-        </encoder>
-    </appender>
+    <if condition='"true".equals(p("logging.console.pretty"))'>
+        <then>
+            <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+                <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                    <jsonGeneratorDecorator class="net.logstash.logback.decorate.PrettyPrintingJsonGeneratorDecorator" />
+                    <includeContext>false</includeContext>
+                 </encoder>
+             </appender>
+        </then>
+        <else>
+            <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+                <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                    <includeContext>false</includeContext>
+                 </encoder>
+             </appender>
+         </else>
+    </if>
     <appender name="memory" class="gov.cdc.izgateway.logging.MemoryAppender" />
 
     <!-- Logs to enable for BCFIPS debugging -->

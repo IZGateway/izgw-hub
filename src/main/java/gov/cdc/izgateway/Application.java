@@ -3,6 +3,8 @@ package gov.cdc.izgateway;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
@@ -78,6 +80,7 @@ import gov.cdc.izgateway.soap.net.SoapMessageWriter;
 import gov.cdc.izgateway.status.StatusCheckScheduler;
 import gov.cdc.izgateway.utils.SystemUtils;
 import gov.cdc.izgateway.utils.UtilizationService;
+import gov.cdc.izgateway.ads.ADSUtils;
 import gov.cdc.izgateway.common.HealthService;
 import gov.cdc.izgateway.configuration.AppProperties;
 import gov.cdc.izgateway.hub.service.MessageHeaderService;
@@ -156,10 +159,6 @@ public class Application implements WebMvcConfigurer {
         
         updateJul();
         
-        loadStaticResource(BUILD, BUILD_FILE);
-        loadStaticResource(LOGO, LOGO_FILE);
-        HealthService.setBuildName(getBuild());
-        HealthService.setServerName(serverName);
         String build = new String(staticPages.get(BUILD), StandardCharsets.UTF_8);
         log.info("Application loaded\n{}", build);
         // FUTURE: Get from a configuration property
@@ -202,6 +201,9 @@ public class Application implements WebMvcConfigurer {
 	}
 	
 	private static void initialize() {
+        loadStaticResource(BUILD, BUILD_FILE);
+        loadStaticResource(LOGO, LOGO_FILE);
+        
 		Thread.currentThread().setName("IZ Gateway");
 		// Initialize the Utilization Service
 		UtilizationService.getUtilization();
@@ -234,6 +236,26 @@ public class Application implements WebMvcConfigurer {
         MDC.put(EventId.EVENTID_KEY, EventId.DEFAULT_TX_ID);
         MDC.put("sessionId", "0");
 	}
+
+	private static void initializeHealth() {
+    HealthService.setBuildName(getBuild());
+    HealthService.setServerName(serverName);
+		setIpAddresses();
+	}
+
+	private static void setIpAddresses() throws ServiceConfigurationError {
+		try {
+			InetAddress[] addresses = InetAddress.getAllByName(serverName);
+			String[] dnsAddresses = Arrays.stream(addresses)
+					.map(InetAddress::getHostAddress)
+					.toArray(String[]::new);
+			HealthService.setIngressDnsAddress(dnsAddresses);
+		} catch (UnknownHostException e) {
+			log.error("Cannot resolve server name {}: {}", serverName, e.getMessage());
+			throw new ServiceConfigurationError("Cannot resolve server name " + serverName, e);
+		}
+		HealthService.setEgressDnsAddress(ADSUtils.getMyIpAddress());
+	}
 	
     public static void shutdown() {
     	HealthService.setHealthy(false, "Service Stopped");
@@ -248,9 +270,10 @@ public class Application implements WebMvcConfigurer {
     
 	private static void checkApplication(ConfigurableApplicationContext ctx) {
         IDestinationService destinationService = ctx.getBean(IDestinationService.class);
-        serverName = destinationService.getServerName();
         AppProperties props = ctx.getBean(AppProperties.class); 
         serverMode = props.getServerMode();
+        serverName = props.getServerName();
+		initializeHealth();
         IMessageHeaderService messageHeaderService = ctx.getBean(MessageHeaderService.class);
         DataSourceProperties ds = ctx.getBean(DataSourceProperties.class);
         if (Arrays.asList("jpa", "migrate").contains(props.getDatabaseType())) {
