@@ -100,7 +100,9 @@ public abstract class BaseGatewayController extends SoapControllerBase {
             result = super.connectivityTest(connectivityTest, destinationId);
         } else {
             ConnectivityTestResponse response = messageSender.sendConnectivityTest(dest, connectivityTest);
-            response.setSchema(SoapMessage.HUB_NS);  // Shift from client to Hub Schema
+            if (connectivityTest.is2014Message()) {
+                response.setSchema(SoapMessage.HUB_NS);  // Shift from client to Hub Schema
+            }
             result = checkResponseEntitySize(new ResponseEntity<>(response, HttpStatus.OK));
         }
 
