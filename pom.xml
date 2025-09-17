@@ -6,7 +6,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.5.4</version>
+		<version>3.5.5</version>
 		<relativePath />
 	</parent>
 	<groupId>gov.cdc.izgw</groupId>
@@ -26,11 +26,11 @@
 		<image.tag>${project.artifactId}-${project.version}-${buildno}</image.tag>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.java.package>${project.groupId}</project.java.package>
-		<spring-security.version>6.4.6</spring-security.version>
+		<spring-security.version>6.5.4</spring-security.version>
 		<mysql.version>9.3.0</mysql.version>
     <commons-lang3.version>3.18.0</commons-lang3.version>
     <tomcat.version>10.1.44</tomcat.version>
-    <spring-framework.version>6.2.10</spring-framework.version>
+    <spring-framework.version>6.2.11</spring-framework.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -72,7 +72,6 @@
 		<dependency>
 			<groupId>io.netty</groupId>
 			<artifactId>netty-handler</artifactId>
-			<version>4.1.119.Final</version><!--$NO-MVN-MAN-VER$ -->
 		</dependency>
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
@@ -277,7 +276,7 @@
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-bom</artifactId>
-                <version>4.2.5.Final</version>
+                <version>4.2.6.Final</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
