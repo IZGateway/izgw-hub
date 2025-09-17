@@ -26,7 +26,7 @@
 		<image.tag>${project.artifactId}-${project.version}-${buildno}</image.tag>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.java.package>${project.groupId}</project.java.package>
-		<spring-security.version>6.4.10</spring-security.version>
+		<spring-security.version>6.5.4</spring-security.version>
 		<mysql.version>9.3.0</mysql.version>
     <commons-lang3.version>3.18.0</commons-lang3.version>
     <tomcat.version>10.1.44</tomcat.version>
