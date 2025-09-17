@@ -96,7 +96,7 @@
 							},
 							"response": []
 						},
-						{
+    					{
 							"name": "TC_01a Connectivity Test is Successful to IZGW",
 							"event": [
 								{
@@ -240,7 +240,144 @@
 							},
 							"response": []
 						},
-						{
+                      {
+                        "name": "TC_01a Connectivity Test is Successful to CDC WSDL",
+                        "event": [
+                          {
+                            "listen": "test",
+                            "script": {
+                              "exec": [
+                                "var echoBack;\r",
+                                "\r",
+                                "pm.test(\"Status code is 200\", function () {\r",
+                                "    pm.expect(pm.response).to.have.status(200);\r",
+                                "});\r",
+                                "\r",
+                                "pm.test(\"Response is same as sent\", function () {\r",
+                                "    var response = utils.removeNS(xml2Json(responseBody));\r",
+                                "    var request = utils.removeNS(xml2Json(pm.request.body));\r",
+                                "    echoBack = request['Envelope']['Body']['connectivityTest']['echoBack'];\r",
+                                "    pm.expect(response['Envelope']['Body']['connectivityTestResponse']['return']).to.eql(echoBack);\r",
+                                "});\r",
+                                "\r",
+                                "if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) utils.testSLA(pm, BASE_SLA);\r",
+                                "\r",
+                                "const interval = setTimeout(() => {}, 3000);\r",
+                                "async function moreTests() {\r",
+                                "    utils.getLogs(null, pm).then((logData) => {\r",
+                                "        logs = logData.json();\r",
+                                "\r",
+                                "        pm.test(\"Logs are an array of objects\", function () {\r",
+                                "            pm.expect(logs).to.be.an('array');\r",
+                                "            pm.expect(logs[0]).to.be.an(\"object\");\r",
+                                "        });\r",
+                                "\r",
+                                "        pm.test(\"There are no ERROR, WARN, stack_trace or SOAPFaults in logs\", function () {\r",
+                                "            for (log of logs) {\r",
+                                "                if (!log.level.match(/INFO|DEBUG|TRACE/)) {\r",
+                                "                    console.log({ \"Failing Log Entry: \": log });\r",
+                                "                }\r",
+                                "                pm.expect(log.level).to.match(/INFO|DEBUG|TRACE/);\r",
+                                "                pm.expect(typeof log.stack_trace ).eql(\"undefined\");\r",
+                                "                if ('ws_response_message' in log) {\r",
+                                "                    pm.expect(log.ws_response_message.soapFault, 'response SOAP fault must be null').to.be.eql(null);\r",
+                                "                }\r",
+                                "                if ('ws_request_message' in log) {\r",
+                                "                    pm.expect(log.ws_request_message.soapFault, 'request SOAP fault must be null').to.be.eql(null);\r",
+                                "                }\r",
+                                "            }\r",
+                                "        });\r",
+                                "        wsData = utils.getWsRequest(logs);\r",
+                                "        pm.test(\"First log EndPoint Type is INBOUND to SERVER\", function () {\r",
+                                "            pm.expect(wsData[0].ws_request_message.direction).to.eql(\"INBOUND\");\r",
+                                "            pm.expect(wsData[0].ws_request_message.endpointType).to.eql(\"SERVER\");\r",
+                                "        });\r",
+                                "\r",
+                                "        pm.test(\"First log MessageID Matches inbound MessageID\", function () {\r",
+                                "            pm.expect(wsData[0].ws_request_message.soapHeaders.MessageID).to.eql(pm.environment.get(\"testMessageId\"));\r",
+                                "        });\r",
+                                "\r",
+                                "        wsData = utils.getWsResponse(logs);\r",
+                                "        pm.test(\"Second log Response is OUTBOUND SERVER\", function () {\r",
+                                "            pm.expect(wsData[0].ws_response_message.direction).to.eql(\"OUTBOUND\");\r",
+                                "            pm.expect(wsData[0].ws_response_message.endpointType).to.eql(\"SERVER\");\r",
+                                "        });\r",
+                                "        txData = utils.getTxData(logs);\r",
+                                "        pm.test(\"TxData log to have transactionData.requestHL7Message == request.echoBack\", function() {\r",
+                                "            pm.expect(txData[0]).to.have.nested.property('transactionData.requestHL7Message');\r",
+                                "            pm.expect(txData[0].transactionData.requestHL7Message).to.be.eql(echoBack)\r",
+                                "        });\r",
+                                "\r",
+                                "        pm.test(\"TxData log to have transactionData.responseHL7Message == request.echoBack\", function() {\r",
+                                "            pm.expect(txData[0]).to.have.nested.property('transactionData.responseHL7Message');\r",
+                                "            pm.expect(txData[0].transactionData.responseHL7Message).to.be.eql(echoBack)\r",
+                                "        });\r",
+                                "\r",
+                                "        utils.testLogs(logs, pm, TX_SLA);\r",
+                                "    });\r",
+                                "}\r",
+                                "\r",
+                                "if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();\r",
+                                "try {\r",
+                                "    utils.checkNamespaces(pm);\r",
+                                "} catch (err) {\r",
+                                "    console.log(err.stack);\r",
+                                "    throw err;\r",
+                                "}\r",
+                                "\r",
+                                ""
+                              ],
+                              "type": "text/javascript",
+                              "packages": {}
+                            }
+                          },
+                          {
+                            "listen": "prerequest",
+                            "script": {
+                              "exec": [
+                                "utils.setup(pm);"
+                              ],
+                              "type": "text/javascript",
+                              "packages": {}
+                            }
+                          }
+                        ],
+                        "protocolProfileBehavior": {
+                          "disabledSystemHeaders": {
+                            "host": true
+                          }
+                        },
+                        "request": {
+                          "method": "POST",
+                          "header": [
+                            {
+                              "key": "Host",
+                              "value": "{{hostHeader}}"
+                            },
+                            {
+                              "key": "Content-Type",
+                              "value": "application/xml"
+                            }
+                          ],
+                          "body": {
+                            "mode": "raw",
+                            "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:iis=\"urn:cdc:iisb:2011\">\r\n    <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n        <wsa:Action>urn:cdc:iisb:2011:connectivityTest</wsa:Action>\r\n        <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n        <wsa:To>dev</wsa:To>\r\n    </soap:Header>\r\n    <soap:Body>\r\n        <iis:connectivityTest>\r\n            <iis:echoBack>Wishing {{host}}:{{port}} an Audacious Hello at {{$isoTimestamp}}!</iis:echoBack>\r\n        </iis:connectivityTest>\r\n    </soap:Body>\r\n</soap:Envelope>\r\n"
+                          },
+                          "url": {
+                            "raw": "{{protocol}}://{{host}}:{{port}}/izgw",
+                            "protocol": "{{protocol}}",
+                            "host": [
+                              "{{host}}"
+                            ],
+                            "port": "{{port}}",
+                            "path": [
+                              "izgw"
+                            ]
+                          }
+                        },
+                        "response": []
+                      },
+                      {
 							"name": "TC_03a Retrieval of WSDL",
 							"event": [
 								{
@@ -611,7 +748,7 @@
 											"        console.log({\"header\": header});\r",
 											"        throw err;\r",
 											"    }\r",
-											"    var hl7Message = response['Envelope']['Body']['submitSingleMessageResponse']['hl7Message'];\r",
+											"    var hl7Message = response['Envelope']['Body']['submitSingleMessageResponse']['return'];\r",
 											"    var request = xml2Json(pm.request.body);\r",
 											"    var expected = pm.collectionVariables.get(\"GoodResponse\");\r",
 											"    try {\r",
@@ -4517,7 +4654,7 @@
 											"        console.log({\"header\": header});\r",
 											"        throw err;\r",
 											"    }\r",
-											"    var hl7Message = response['Envelope']['Body']['submitSingleMessageResponse']['hl7Message'];\r",
+											"    var hl7Message = response['Envelope']['Body']['submitSingleMessageResponse']['return'];\r",
 											"    var request = xml2Json(pm.request.body);\r",
 											"    var expected = pm.collectionVariables.get(\"GoodResponse\");\r",
 											"    try {\r",
@@ -4630,7 +4767,7 @@
 											"        console.log({\"header\": header});\r",
 											"        throw err;\r",
 											"    }\r",
-											"    var hl7Message = response['Envelope']['Body']['submitSingleMessageResponse']['hl7Message'];\r",
+											"    var hl7Message = response['Envelope']['Body']['submitSingleMessageResponse']['return'];\r",
 											"    var request = xml2Json(pm.request.body);\r",
 											"    var expected = pm.collectionVariables.get(\"GoodResponse\");\r",
 											"    try {\r",
