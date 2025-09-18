@@ -22,6 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       image_tag: ${{ steps.output_image_tag.outputs.image_tag }}
+      version_only_tag: ${{ steps.output_version_only_tag.outputs.version_only_tag }}
 
     steps:
 
@@ -103,6 +104,8 @@ jobs:
 
     - name: Sets env vars for push or pull request to release branch (default behavior)
       run: |
+        VERSION_ONLY_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed "s/-.*$//g"`
+        echo VERSION_ONLY_TAG=$VERSION_ONLY_TAG >> $GITHUB_ENV
         echo IMAGE_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed "s/-SNAPSHOT$/-SNAPSHOT-${{github.run_number}}/"` >> $GITHUB_ENV
         echo IMAGE_BRANCH_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout` >> $GITHUB_ENV
         # default to force a revision check unless releasing
@@ -288,6 +291,10 @@ jobs:
       id: output_image_tag
       run: echo "image_tag=${{env.IMAGE_TAG}}" >> "$GITHUB_OUTPUT"
 
+    - name: Output the version only image tag
+      id: output_version_only_tag
+      run: echo "version_only_tag=${{env.VERSION_ONLY_TAG}}" >> "$GITHUB_OUTPUT"
+
   verify:
     needs: build
     runs-on: ubuntu-latest
@@ -461,7 +468,8 @@ jobs:
           ECR_REGISTRY: ${{ secrets.APHL_ECR_REGISTRY }}
           ECR_REPOSITORY: ${{ secrets.APHL_ECR_REPOSITORY }}
           IMAGE_TAG: ${{needs.build.outputs.image_tag}}
+          VERSION_ONLY_TAG: ${{needs.build.outputs.version_only_tag}}
         run: |
-          echo "About to push image to APHL ECR: izgw-hub-${{env.VERSION}}_${{github.run_number}}"
-          docker image tag iz-gateway:${IMAGE_TAG} $ECR_REGISTRY/$ECR_REPOSITORY:izgw-hub-${{env.VERSION}}-${{github.run_number}}
+          echo "About to push image to APHL ECR: izgw-hub-${{env.VERSION_ONLY_TAG}}"
+          docker image tag iz-gateway:${IMAGE_TAG} $ECR_REGISTRY/$ECR_REPOSITORY:izgw-hub-${{env.VERSION_ONLY_TAG}}
           docker image push --all-tags $ECR_REGISTRY/$ECR_REPOSITORY
