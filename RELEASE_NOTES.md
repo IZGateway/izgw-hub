@@ -1,3 +1,6 @@
+# IZ Gateway Release 2.7.2
+* IGDD-2224 Bug fix for timing issue in CDC WSDL SubmitSingleMessage call
+
 # IZ Gateway Release 2.7.1
 * IGDD-2224 Fix for CDC WSDL ConnectivityTest and SubmitSingleMessage returning incorrect SOAP Message Content
 
