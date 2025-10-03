@@ -127,8 +127,9 @@ public abstract class RestfulFileSender implements FileSender {
      * @throws IOException  If any errors occur setting up the connection
      * @throws MetadataFault If there are issues in the metadata configuration.
      * @throws DestinationConnectionFault
+     * @throws SecurityFault 
      */
-    protected abstract HttpURLConnection getConnection(String string, IDestination route, Metadata meta, DataHandler object) throws IOException, MetadataFault, DestinationConnectionFault, URISyntaxException;
+    protected abstract HttpURLConnection getConnection(String string, IDestination route, Metadata meta, DataHandler object) throws IOException, MetadataFault, DestinationConnectionFault, URISyntaxException, SecurityFault;
 
     /**
      * Copy data stored in DataHandler to the URLConnection.
@@ -232,7 +233,7 @@ public abstract class RestfulFileSender implements FileSender {
     }
 
     @Override
-    public String getSubmissionStatus(IDestination route, Metadata meta) throws DestinationConnectionFault, MetadataFault, HubClientFault {
+    public String getSubmissionStatus(IDestination route, Metadata meta) throws DestinationConnectionFault, MetadataFault, HubClientFault, SecurityFault {
         HttpURLConnection con;
 		try {
 			con = getConnection("STATUS", route, meta, null);
@@ -284,7 +285,7 @@ public abstract class RestfulFileSender implements FileSender {
             if (elapsedTimeIIS < 0) {
                 elapsedTimeIIS += System.currentTimeMillis();
             }
-            checkException(route, elapsedTimeIIS, ObjectUtils.defaultIfNull(ExceptionUtils.getRootCause(e), e), error);
+            checkException(route, elapsedTimeIIS, ObjectUtils.getIfNull(ExceptionUtils.getRootCause(e), e), error);
             return null;
         }
     }

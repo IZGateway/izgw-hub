@@ -24,5 +24,5 @@ public interface FileSender {
     String getStatus(IDestination r) throws HubClientFault, MetadataFault, DestinationConnectionFault, SecurityFault;
     Pair<InputStream, Map<String, List<String>>> getFile(IDestination r, Metadata meta) throws MetadataFault, HubClientFault, DestinationConnectionFault, SecurityFault;
     String deleteFile(IDestination route, Metadata meta) throws MetadataFault, HubClientFault, DestinationConnectionFault, SecurityFault;
-	String getSubmissionStatus(IDestination r, Metadata m) throws DestinationConnectionFault, MetadataFault, HubClientFault;
+	String getSubmissionStatus(IDestination r, Metadata m) throws DestinationConnectionFault, MetadataFault, HubClientFault, SecurityFault;
 }
