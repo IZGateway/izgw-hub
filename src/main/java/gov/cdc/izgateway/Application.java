@@ -302,7 +302,7 @@ public class Application implements WebMvcConfigurer {
                 	sc.start();
                 }
                 HealthService.setHealthy(true, "Normal application startup");
-                log.info("Connected to {}", ds.getUrl());
+                log.info("Connected to {}", database);
             }
         } catch (RuntimeException hex) { // NOSONAR This is handling the exception correctly
         	HealthService.setHealthy(hex);
