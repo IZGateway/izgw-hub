@@ -27,6 +27,9 @@ RUN (crontab -l 2>/dev/null; echo "*/15 * * * * /etc/periodic/daily/logrotate") 
 
 WORKDIR /
 
+# Install tini
+RUN apk add --no-cache tini
+
 # Install filebeat
 RUN rm -f /filebeat/filebeat.yml && cp /usr/share/izgateway/filebeat.yml /filebeat/ 
 RUN rm -f /metricbeat/metricbeat.yml && cp /usr/share/izgateway/metricbeat.yml /metricbeat/
@@ -77,4 +80,4 @@ WORKDIR /usr/share/izgateway/
 
 ENV IZGW_VERSION=$IZGW_VERSION  
 # run app on startup
-ENTRYPOINT ["sh","-c","crond && exec bash run.sh app.jar"]
+ENTRYPOINT ["/sbin/tini", "--", "sh", "-c", "crond && exec bash run.sh app.jar"]

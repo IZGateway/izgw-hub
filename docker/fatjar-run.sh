@@ -10,22 +10,59 @@ then
 fi
 export SERVICE_NAME
 
-# If an API Key has been given, then send data to elastic search.
-if [[ $ELASTIC_API_KEY ]]
-then
-    filebeat -e &
-    echo Started Filebeat
+# Start filebeat and metricbeat if API key is provided
+FILEBEAT_STARTED=false
+METRICBEAT_STARTED=false
+
+if [[ $ELASTIC_API_KEY ]]; then
+    if command -v filebeat >/dev/null 2>&1; then
+        filebeat -e &
+        FILEBEAT_STARTED=true
+        echo "Started Filebeat"
+    else
+        echo "WARNING: filebeat not found - skipping filebeat monitoring"
+    fi
+    
+    if command -v metricbeat >/dev/null 2>&1; then
+        metricbeat -e &
+        METRICBEAT_STARTED=true
+        echo "Started MetricBeat"
+    else
+        echo "WARNING: metricbeat not found - skipping metricbeat monitoring"
+    fi
 else
-    echo Filebeat logging not enabled
+    echo "Elastic logging not enabled"
 fi
 
-if [[ $ELASTIC_API_KEY ]]
-then
-    metricbeat -e &
-    echo Started MetricBeat
-else
-    echo MetricBeat logging not enabled
-fi
+# Monitor beats and exit container if they stop unexpectedly
+monitor_beats() {
+    local java_pid=$1  # Pass Java PID as parameter
+    while true; do
+        sleep 30
+        if [[ $ELASTIC_API_KEY ]]; then
+            # Only monitor filebeat if it was successfully started
+            if [[ $FILEBEAT_STARTED == "true" ]] && ! pgrep -f "filebeat" > /dev/null; then
+                echo "ALERT: Filebeat process has stopped unexpectedly. Stopping izgw-hub service."
+                if [[ -n "$java_pid" ]]; then
+                    kill "$java_pid" 2>/dev/null
+                else
+                    echo "ERROR: Java PID not available, cannot terminate gracefully"
+                fi
+                exit 1
+            fi
+            # Only monitor metricbeat if it was successfully started
+            if [[ $METRICBEAT_STARTED == "true" ]] && ! pgrep -f "metricbeat" > /dev/null; then
+                echo "ALERT: Metricbeat process has stopped unexpectedly. Stopping izgw-hub service."
+                if [[ -n "$java_pid" ]]; then
+                    kill "$java_pid" 2>/dev/null
+                else
+                    echo "ERROR: Java PID not available, cannot terminate gracefully"
+                fi
+                exit 1
+            fi
+        fi
+    done
+}
 
 
 jarfilename=$1
@@ -64,5 +101,18 @@ exec java $JAVA_OPTS $JAVA_TOOL_OPTS \
    -Xms4g \
    -Xmx8g \
    -Djava.library.path=lib \
-   -jar $jarfilename
+   -jar $jarfilename &
+
+JAVA_PID=$!
+export JAVA_PID
+echo "Started Java application with PID: $JAVA_PID"
+
+# Start monitoring in background if logging is enabled (after Java starts)
+if [[ $ELASTIC_API_KEY ]]; then
+    monitor_beats "$JAVA_PID" &
+    echo "Started beat monitoring with Java PID: $JAVA_PID"
+fi
+
+# Wait for the Java process to finish
+wait $JAVA_PID
 
