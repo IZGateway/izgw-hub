@@ -2,7 +2,7 @@
 * IGDD-2250 Updated logging to identify cause of DEX failures with 404 Error
 
 # IZ Gateway Release 2.7.2
-* Updates to Base Image for Beats CVEs
+* IGDD-2224 Bug fix related to timing issue for the CDC WSDL endpoint
 
 # IZ Gateway Release 2.7.1
 * IGDD-2224 Fix for CDC WSDL ConnectivityTest and SubmitSingleMessage returning incorrect SOAP Message Content
