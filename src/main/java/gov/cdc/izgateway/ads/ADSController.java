@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import gov.cdc.izgateway.common.HasDestinationUri;
 import gov.cdc.izgateway.common.ResourceNotFoundException;
 import gov.cdc.izgateway.configuration.AppProperties;
 import gov.cdc.izgateway.hub.service.StatusCheckerService.ADSChecker;
@@ -469,7 +470,8 @@ public class ADSController implements ADSChecker {
 		try {
 			submitFile(meta, data);
 		} catch (Fault f) {
-			log.info(Markers2.append(f), "Fault occurred", f);
+			log.info(Markers2.append(f).and(Markers2.append("destination", dest.safeCopy())), 
+				"{} occurred to {} sending from {}", f.getClass().getSimpleName(), dest != null ? dest.getDestId() + ":" + dest.getDestinationUri() : "(null)", ADSUtils.getMyIpAddress(), f);
 			throw f;
 		}
 		String deliveryPath = StringUtils.substringAfterLast(meta.getPath(), "/");
@@ -612,8 +614,20 @@ public class ADSController implements ADSChecker {
 				tData.setResponse(m2);
 			}
 			m2.put("error", err);
+			if (ex instanceof Fault fault) {
+				m2.put("faultName", fault.getFaultName());
+				m2.put("summary", fault.getSummary());
+				m2.put("detail", fault.getDetail());
+				m2.put("code", fault.getCode());
+				m2.put("retry", fault.getRetry());
+			}
+			if (ex instanceof HasDestinationUri hduri) {
+				m2.put("destId", hduri.getDestinationId());
+				m2.put("uri", hduri.getDestinationUri());
+			}
+			m2.put("egress", ADSUtils.getMyIpAddress());
 			if (ex instanceof HubClientFault hcf && hcf.getOriginalBody() != null) {
-				m2.put("detail", hcf.getOriginalBody());
+				m2.put("originalBody", hcf.getOriginalBody());
 			} else if (response != null && response != m2) {
 				m2.put("originalResponse", response);
 			}

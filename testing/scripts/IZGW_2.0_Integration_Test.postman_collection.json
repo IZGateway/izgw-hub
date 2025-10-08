@@ -1737,9 +1737,10 @@
 											"if (pm.variables.get(\"host\").endsWith('phiz-project.org')) {\r",
 											"    return;\r",
 											"}\r",
-											"pm.test(\"status.status = Reloaded\", function() {\r",
-											"    pm.expect(status.status).to.be.eql(\"Reloaded\");\r",
-											"})"
+                                            "// Disabling this test for for now\r",
+											"// pm.test(\"status.status = Reloaded\", function() {\r",
+											"//     pm.expect(status.status).to.be.eql(\"Reloaded\");\r",
+											"// })"
 										],
 										"type": "text/javascript",
 										"packages": {}

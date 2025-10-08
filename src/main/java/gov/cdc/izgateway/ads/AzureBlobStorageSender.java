@@ -35,6 +35,7 @@ import gov.cdc.izgateway.security.ClientTlsSupport;
 import gov.cdc.izgateway.soap.fault.DestinationConnectionFault;
 import gov.cdc.izgateway.soap.fault.MessageTooLargeFault;
 import gov.cdc.izgateway.soap.fault.MessageTooLargeFault.Direction;
+import gov.cdc.izgateway.soap.fault.SecurityFault;
 
 /**
  * This class implements the FileSender interface to Azure and the Azurite Azure emulator.
@@ -71,7 +72,9 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
 		super(config, tlsSupport);
 	}
     @Override
-    protected HttpURLConnection getConnection(String type, IDestination route, Metadata meta, DataHandler data) throws IOException, MetadataFault, DestinationConnectionFault, URISyntaxException {
+    protected HttpURLConnection getConnection(String type, IDestination route, Metadata meta, DataHandler data) 
+    		throws IOException, MetadataFault, DestinationConnectionFault, URISyntaxException, SecurityFault 
+    {
         HttpURLConnection con = null;
         URL base;
         String token = null;
@@ -81,7 +84,7 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
         } else {
             base = new URL(route.getDestUri());
         }
-    	token = ADSUtils.getAzureToken(route.getPassword());
+		token = ADSUtils.getAzureToken(route.getPassword());
     	base = new URL(base + "?" + token);
     	
         switch (type) {

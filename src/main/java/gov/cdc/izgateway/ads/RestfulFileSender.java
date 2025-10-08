@@ -20,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -127,8 +128,9 @@ public abstract class RestfulFileSender implements FileSender {
      * @throws IOException  If any errors occur setting up the connection
      * @throws MetadataFault If there are issues in the metadata configuration.
      * @throws DestinationConnectionFault
+     * @throws SecurityFault 
      */
-    protected abstract HttpURLConnection getConnection(String string, IDestination route, Metadata meta, DataHandler object) throws IOException, MetadataFault, DestinationConnectionFault, URISyntaxException;
+    protected abstract HttpURLConnection getConnection(String string, IDestination route, Metadata meta, DataHandler object) throws IOException, MetadataFault, DestinationConnectionFault, URISyntaxException, SecurityFault;
 
     /**
      * Copy data stored in DataHandler to the URLConnection.
@@ -146,9 +148,11 @@ public abstract class RestfulFileSender implements FileSender {
         // Create the HTTP URL to send
         long elapsedTimeIIS = 0;
         HttpURLConnection con = null;
+        String path = null;
         try  {
             meta.setUploadedDate(new Date());
             con = getConnection("POST", route, meta, data);
+            path = StringUtils.substringBefore(con.getURL().getPath(), "?");
             checkForSpace(con, route, meta.getFileSize());
 
             elapsedTimeIIS = -System.currentTimeMillis();
@@ -184,9 +188,10 @@ public abstract class RestfulFileSender implements FileSender {
             throw new MetadataFault(meta, e, FILENAME_INVALID);
         } catch (HttpException ex) {
             InputStream errorStream = ex.getErrorStream();
-			throw HubClientFault.invalidMessage(ex, route, ex.getStatusCode(), errorStream);
+			throw HubClientFault.invalidMessage(ex, route, ex.getStatusCode(), path, errorStream);
         } catch (IOException | HTTPException e) {
-            checkException(route, elapsedTimeIIS, ObjectUtils.defaultIfNull(ExceptionUtils.getRootCause(e), e), con.getErrorStream());
+            checkException(route, path, elapsedTimeIIS, ObjectUtils.getIfNull(ExceptionUtils.getRootCause(e), e), con.getErrorStream());
+            // CheckException always throws, this is never reached.
             return null;
         }  finally {
         	if (elapsedTimeIIS < 0) {
@@ -232,7 +237,7 @@ public abstract class RestfulFileSender implements FileSender {
     }
 
     @Override
-    public String getSubmissionStatus(IDestination route, Metadata meta) throws DestinationConnectionFault, MetadataFault, HubClientFault {
+    public String getSubmissionStatus(IDestination route, Metadata meta) throws DestinationConnectionFault, MetadataFault, HubClientFault, SecurityFault {
         HttpURLConnection con;
 		try {
 			con = getConnection("STATUS", route, meta, null);
@@ -254,8 +259,10 @@ public abstract class RestfulFileSender implements FileSender {
         // Create the HTTP URL to send
         long elapsedTimeIIS = 0;
         InputStream error = null;
+        String path = null;
         try {
             HttpURLConnection con = getConnection("GET", route, meta, null);
+            path = StringUtils.substringBefore(con.getURL().getPath(), "?");
             elapsedTimeIIS = -System.currentTimeMillis();
             
             TransactionData tData = RequestContext.getTransactionData();
@@ -284,7 +291,8 @@ public abstract class RestfulFileSender implements FileSender {
             if (elapsedTimeIIS < 0) {
                 elapsedTimeIIS += System.currentTimeMillis();
             }
-            checkException(route, elapsedTimeIIS, ObjectUtils.defaultIfNull(ExceptionUtils.getRootCause(e), e), error);
+            checkException(route, path, elapsedTimeIIS, ObjectUtils.getIfNull(ExceptionUtils.getRootCause(e), e), error);
+            // Never gets here.  checkException() always throws.
             return null;
         }
     }
@@ -295,9 +303,10 @@ public abstract class RestfulFileSender implements FileSender {
         // Create the HTTP URL to send
         long elapsedTimeIIS = 0;
         InputStream error = null;
+        String path = null;
         try {
             HttpURLConnection con = getConnection("DELETE", route, meta, null);
-            
+            path = StringUtils.substringBefore(con.getURL().getPath(), "?");
             elapsedTimeIIS = -System.currentTimeMillis();
             
             TransactionData tData = RequestContext.getTransactionData();
@@ -326,7 +335,7 @@ public abstract class RestfulFileSender implements FileSender {
             if (elapsedTimeIIS < 0) {
                 elapsedTimeIIS += System.currentTimeMillis();
             }
-            checkException(route, elapsedTimeIIS, ObjectUtils.defaultIfNull(ExceptionUtils.getRootCause(e),e), error);
+            checkException(route, path, elapsedTimeIIS, ObjectUtils.getIfNull(ExceptionUtils.getRootCause(e),e), error);
             return "FAIL"; // Never gets here.  ValidationHelper.checkException always throws.
         }
     }
@@ -426,6 +435,9 @@ public abstract class RestfulFileSender implements FileSender {
     public final String getStatus(IDestination route) throws HubClientFault, MetadataFault, DestinationConnectionFault, SecurityFault {
         HttpURLConnection con = null;
         long elapsedTimeIIS = 0;
+		@SuppressWarnings("unused")
+		String result = null; 
+        InputStream is = null;
         try {
 
             elapsedTimeIIS = -System.currentTimeMillis();
@@ -442,9 +454,6 @@ public abstract class RestfulFileSender implements FileSender {
             if (responseCode > 0) {
                 RequestContext.getDestinationInfo().setFromConnection(con);
             }
-            @SuppressWarnings("unused")
-			String result = null; 
-            InputStream is = null;
             if (responseCode != HttpStatus.OK.value() && 
             	responseCode != HttpStatus.NO_CONTENT.value()) {
             	throw new HTTPException(responseCode);
@@ -455,14 +464,11 @@ public abstract class RestfulFileSender implements FileSender {
         	result = is != null ? IOUtils.toString(is, StandardCharsets.UTF_8) : null;  // NOSONAR: result is for debugging purposes
             return route.getDestUri();
         } catch (IOException | HTTPException | URISyntaxException e) {
-            if (con == null) {
-                //check if the Connect Exception is ActiveReject or Timeout
-                checkException(route, elapsedTimeIIS, ObjectUtils.defaultIfNull(ExceptionUtils.getRootCause(e), e), null);
-                throw HubClientFault.invalidMessage(e, route, 0, null);
-            }
-            
-            InputStream is = con.getErrorStream();
-            throw HubClientFault.invalidMessage(e, route, 0, is);
+            String path = (con != null && con.getURL() != null) ? StringUtils.substringBefore(con.getURL().getPath(), "?") : null;
+            // check if the Connect Exception is ActiveReject or Timeout
+            checkException(route, path, elapsedTimeIIS, ObjectUtils.getIfNull(ExceptionUtils.getRootCause(e), e), con != null ? con.getErrorStream() : null);
+            // Never gets here.  checkException() always throws.
+            return null; 
         }
     }
     
@@ -510,10 +516,12 @@ public abstract class RestfulFileSender implements FileSender {
 	public SSLSocketFactory getSslSocketFactory() {
 		return tlsSupport.getSSLContext().getSocketFactory();
 	}
+	
 	/**
 	 * Reusable portion of ValidateResponse refactored out for
 	 * reuse by ADS Service.
 	 * @param routing The destination to counnect to
+	 * @param path The path being accessed
 	 * @param elapsedTimeIIS Time spent thus far
 	 * @param rootCause The exception
 	 * @param error The error message
@@ -521,7 +529,7 @@ public abstract class RestfulFileSender implements FileSender {
 	 * @throws DestinationConnectionFault If there was a fault on the client side
 	 * @throws SecurityFault 	If there was a security fault
 	 */
-	public static void checkException(IDestination routing, long elapsedTimeIIS, Throwable rootCause, InputStream error) throws HubClientFault, DestinationConnectionFault, SecurityFault {
+	public static void checkException(IDestination routing, String path, long elapsedTimeIIS, Throwable rootCause, InputStream error) throws HubClientFault, DestinationConnectionFault, SecurityFault {
 	    StackTraceElement[] stackTrace = rootCause.getStackTrace();
 	
 	    if (rootCause instanceof DestinationConnectionFault dcf) {
@@ -564,10 +572,10 @@ public abstract class RestfulFileSender implements FileSender {
 	    	statusCode = httpEx.getStatusCode();
 	    } else if (rootCause instanceof IOException ioEx) {
 	    	String message = ioEx.getMessage();
-	    	if (StringUtils.containsIgnoreCase(message, "writ")) {
+	    	if (Strings.CI.contains(message, "writ")) {
 	    		throw DestinationConnectionFault.writeError(routing, ioEx);
 	    	} 
-	    	if (StringUtils.containsIgnoreCase(message, "read")) {
+	    	if (Strings.CI.contains(message, "read")) {
 	    		throw DestinationConnectionFault.readError(routing, ioEx);
 	    	} 
 	    	throw DestinationConnectionFault.ioError(routing, ioEx);
@@ -578,6 +586,6 @@ public abstract class RestfulFileSender implements FileSender {
 	        // This is an unexpected exception in the response.
 	        log.error(Markers2.append(rootCause), "Unexpected Exception: {}", rootCause.getMessage(), rootCause);
 	    }
-	    throw HubClientFault.invalidMessage(rootCause, routing, statusCode, error);
+	    throw HubClientFault.invalidMessage(rootCause, routing, statusCode, path, error);
 	}
 }
