@@ -12,7 +12,7 @@
 	<groupId>gov.cdc.izgw</groupId>
 	<artifactId>izgw-hub</artifactId>
 	<packaging>jar</packaging>
-	<version>2.7.3-IZGW-SNAPSHOT</version>
+	<version>2.7.3-IZGW-RELEASE</version>
 	<name>IZ Gateway Hub 2.7.3</name>
 	<description>IZ Gateway Hub</description>
 	<properties>
