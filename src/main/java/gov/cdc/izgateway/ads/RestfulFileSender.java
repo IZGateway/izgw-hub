@@ -241,7 +241,7 @@ public abstract class RestfulFileSender implements FileSender {
 
     @Override
     public String getSubmissionStatus(IDestination route, Metadata meta) throws DestinationConnectionFault, MetadataFault, HubClientFault, SecurityFault {
-        HttpURLConnection con;
+        HttpURLConnection con = null;
 		try {
 			con = getConnection("STATUS", route, meta, null);
 			if (con == null) {
@@ -249,7 +249,8 @@ public abstract class RestfulFileSender implements FileSender {
 			}
 	        return getSubmissionStatus(con);
 		} catch (HttpResponseException ex) {
-			throw HubClientFault.httpError(route, ex.getStatusCode(), ex.getMessage());
+			String path = StringUtils.substringBefore(con.getURL().toString(), "?");
+			throw HubClientFault.httpError(route, ex.getStatusCode(), ex.getMessage(), path);
         } catch (URISyntaxException | IOException e) {
 			throw HubClientFault.invalidMessage(e, route, 0, null);
         } 
