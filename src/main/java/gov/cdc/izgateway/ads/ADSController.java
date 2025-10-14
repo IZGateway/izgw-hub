@@ -564,11 +564,6 @@ public class ADSController implements ADSChecker {
 			throw new MetadataFault(meta, String.format("The %s report type is not valid, it must be one of %s",
 					reportType, config.getAccessControls().getEventTypes()));
 		}
-
-		if (!config.getAccessControls().isRouteAllowed(destinationId, reportType)) {
-			throw new MetadataFault(meta,
-					String.format("The %s report type cannot be sent to %s", reportType, destinationId));
-		}
 	}
 
 	/**
