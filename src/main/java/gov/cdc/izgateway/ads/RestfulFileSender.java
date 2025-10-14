@@ -96,6 +96,8 @@ public abstract class RestfulFileSender implements FileSender {
         @Value("${ads.max-message-size-GB:15}")
         private int maxUploadSizeInGB;
         
+        @Value("${ads.ssl.debug:true}")
+        private boolean sslDebug;
         private final IDestinationService destinationService;
         
         /**
@@ -114,6 +116,7 @@ public abstract class RestfulFileSender implements FileSender {
     
     protected RestfulFileSender(SenderConfig config, ClientTlsSupport tlsSupport) {
     	this.config = config;
+    	this.fiddle = tlsSupport.getConfig().isSslDebug() || config.isSslDebug();
     	this.tlsSupport = tlsSupport;
     }
     /**
@@ -188,9 +191,9 @@ public abstract class RestfulFileSender implements FileSender {
             throw new MetadataFault(meta, e, FILENAME_INVALID);
         } catch (HttpException ex) {
             InputStream errorStream = ex.getErrorStream();
-			throw HubClientFault.invalidMessage(ex, route, ex.getStatusCode(), path, errorStream);
+			throw HubClientFault.invalidMessage(ex, route, ex.getStatusCode(), con.getURL().toString(), errorStream);
         } catch (IOException | HTTPException e) {
-            checkException(route, path, elapsedTimeIIS, ObjectUtils.getIfNull(ExceptionUtils.getRootCause(e), e), con.getErrorStream());
+            checkException(route, con.getURL().toString(), elapsedTimeIIS, ObjectUtils.getIfNull(ExceptionUtils.getRootCause(e), e), con.getErrorStream());
             // CheckException always throws, this is never reached.
             return null;
         }  finally {
