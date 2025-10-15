@@ -32,6 +32,8 @@ import org.springframework.stereotype.Component;
 
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.security.ClientTlsSupport;
+import gov.cdc.izgateway.security.crypto.CryptoException;
+import gov.cdc.izgateway.security.crypto.CryptoSupport;
 import gov.cdc.izgateway.soap.fault.DestinationConnectionFault;
 import gov.cdc.izgateway.soap.fault.MessageTooLargeFault;
 import gov.cdc.izgateway.soap.fault.MessageTooLargeFault.Direction;
@@ -84,7 +86,11 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
         } else {
             base = new URL(route.getDestUri());
         }
-		token = ADSUtils.getAzureToken(route.getPassword());
+		try {
+			token = ADSUtils.getAzureToken(CryptoSupport.decrypt(route.getPassword()));
+		} catch (CryptoException e) {
+			throw SecurityFault.decryptionFailure(route, e);
+		}
     	base = new URL(base + "?" + token);
     	
         switch (type) {
