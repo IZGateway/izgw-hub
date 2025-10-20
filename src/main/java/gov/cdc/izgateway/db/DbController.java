@@ -525,14 +525,14 @@ public class DbController {
 		}
 		Date now = new Date();
 		// If start not present, treat it as now
-		Date startDate = ObjectUtils.defaultIfNull(getDateParameter(start, "Start"), now);
+		Date startDate = ObjectUtils.getIfNull(getDateParameter(start, "Start"), now);
 		start = String.format("%tc", startDate);
 		Date endDate;
 		if ("none".equalsIgnoreCase(end)) {
 			endDate = null;
 		} else {
 			// If end not present, use default maintenance duration
-			endDate = ObjectUtils.defaultIfNull(getDateParameter(end, "End"), new Date(startDate.getTime() + DEFAULT_MAINT_PERIOD));
+			endDate = ObjectUtils.getIfNull(getDateParameter(end, "End"), new Date(startDate.getTime() + DEFAULT_MAINT_PERIOD));
 			end = String.format("%tc", endDate);
 		}
 
@@ -599,6 +599,8 @@ public class DbController {
 		dest.setMaintStart(null);
 		dest.setMaintEnd(null);
 		configuration.getDestinationService().saveAndFlush(dest);
+		// Refresh other services.
+		getRefreshed("true", false);
 		return getConfigById(id);
 	}
 

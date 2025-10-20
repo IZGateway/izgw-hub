@@ -35,7 +35,7 @@ public class DestinationService implements InitializingBean, IDestinationService
     private final IDestinationRepository destinationRepository;
     private Map<String, IDestination> cache = Collections.emptyMap();
     private List<IDestination> list = Collections.emptyList();
-    @Value("${data.cache.timeToLive:300}")
+    @Value("${data.cache.timeToLive:120}")
     private int refreshPeriod;
 
     /** The server name as far as the public is concerned */
