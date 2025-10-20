@@ -405,7 +405,7 @@ jobs:
 
     - name: Tag verified image
       env:
-        ECR_REGISTRY: 357442695278.dkr.ecr.us-east-1.amazonaws.com
+        ECR_REGISTRY: 357442695278.dkr.ecr.${{vars.AWS_REGION}}.amazonaws.com
         ECR_REPOSITORY: izgateway-dev-phiz-web-ws
       run: |
         docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
@@ -448,7 +448,7 @@ jobs:
 
       - name: Tag verified image
         env:
-          ECR_REGISTRY: 357442695278.dkr.ecr.us-east-1.amazonaws.com
+          ECR_REGISTRY: 357442695278.dkr.ecr.${{vars.AWS_REGION}}.amazonaws.com
           ECR_REPOSITORY: izgateway-dev-phiz-web-ws
           IMAGE_TAG: ${{needs.build.outputs.image_tag}}
         run: |

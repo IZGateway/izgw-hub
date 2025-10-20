@@ -26,7 +26,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: ${{vars.AWS_REGION}}
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -98,7 +98,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: ${{vars.AWS_REGION}}
                
       - name: Login to Amazon ECR
         id: login-ecr
@@ -106,8 +106,8 @@ jobs:
     
       - name: Create ECS task and run Performance Test
         env:
-          ECS_CLUSTER: arn:aws:ecs:us-east-1:357442695278:cluster/izgateway-dev-izgateway-services
-          ECS_TASK_DEFINITION: arn:aws:ecs:us-east-1:357442695278:task-definition/izgateway-performance-test:5
+          ECS_CLUSTER: arn:aws:ecs:${{vars.AWS_REGION}}:357442695278:cluster/izgateway-dev-izgateway-services
+          ECS_TASK_DEFINITION: arn:aws:ecs:${{vars.AWS_REGION}}:357442695278:task-definition/izgateway-performance-test:5
         run: |
           aws ecs run-task --enable-execute-command --cluster $ECS_CLUSTER --task-definition $ECS_TASK_DEFINITION --launch-type="FARGATE" --count=1 --network-configuration '{ "awsvpcConfiguration": { "assignPublicIp":"ENABLED", "securityGroups": ["sg-0673ad74bd304fe8f"], "subnets": ["subnet-0b578d6894e6b268e","subnet-06ea4bec23da90945"]}}'
 
@@ -128,7 +128,7 @@ jobs:
     - name: send email on completion success or failure of the job (note, we cannot detect failure of Jmeter run)
       uses: dawidd6/action-send-mail@v3
       with:
-        server_address: email-smtp.us-east-1.amazonaws.com
+        server_address: email-smtp.${{vars.AWS_REGION}}.amazonaws.com
         server_port: 465
         secure: true
         username: ${{secrets.MAIL_USERNAME}}
