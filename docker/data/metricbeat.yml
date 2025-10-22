@@ -17,6 +17,7 @@ metricbeat.modules:
     period: 60s
     metricsets:
       - task_stats
+    enabled: ${AWSFARGATE_ENABLED:true}  # Enabled by default, set to false to disable  
 
     processors:
     - add_host_metadata: ~

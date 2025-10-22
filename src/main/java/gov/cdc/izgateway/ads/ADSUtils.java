@@ -2,6 +2,7 @@ package gov.cdc.izgateway.ads;
 
 import org.apache.commons.lang3.StringUtils;
 
+import gov.cdc.izgateway.soap.fault.SecurityFault;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.BufferedReader;
@@ -140,12 +141,10 @@ public class ADSUtils {
      * 
      * @param password
      * @return	The appropriate token to use for an Azure blob store.
+     * @throws SecurityFault 
      */
-	public static String getAzureToken(String password) {
+	public static String getAzureToken(String password) throws SecurityFault {
 		String[] tokens = password.split(",");
-		if (tokens.length == 1) {
-			return password;
-		}
 		for (String token: tokens) {
 			String ipAddress = StringUtils.substringBetween(token, "sip=", "&");
 			if (StringUtils.isEmpty(ipAddress)) {
@@ -159,7 +158,7 @@ public class ADSUtils {
 				return token;
 			}
 		}
-		return "";
+		throw SecurityFault.generalSecurity("No token found for IP Address " + MY_IP_ADDRESS, null, null);
 	}
 	
 	/**

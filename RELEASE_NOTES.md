@@ -1,5 +1,15 @@
+# IZ Gateway Release 2.8.0
+* IGDD-2052 jwtSharedSecret should be treated as Base64 Encoded data 
+* IGDD-2216 In Hub and Transformation Service, die if Elastic or Metric Beats doesn't start correctly or exits unexpectedly 
+* IGDD-2226 Fix tags on APHL pushed container images 
+* IGDD-2267 Sending to DEX is still failing 
+* IGDD-2072 Remove Route access control from ADS
+
+# IZ Gateway Release 2.7.3
+* IGDD-2250 Updated logging to identify cause of DEX failures with 404 Error
+
 # IZ Gateway Release 2.7.2
-* IGDD-2224 Bug fix for timing issue in CDC WSDL SubmitSingleMessage call
+* IGDD-2224 Bug fix related to timing issue for the CDC WSDL endpoint
 
 # IZ Gateway Release 2.7.1
 * IGDD-2224 Fix for CDC WSDL ConnectivityTest and SubmitSingleMessage returning incorrect SOAP Message Content
