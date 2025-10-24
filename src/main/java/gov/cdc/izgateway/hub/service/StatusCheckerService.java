@@ -251,7 +251,7 @@ public class StatusCheckerService implements IStatusCheckerService {
     
 	private void lookForReset(IDestination dest, int count) {
         scheduler.schedule(
-            () -> checkStatus(dest, count), StatusCheckerService.CHECK_INTERVALS[count], TimeUnit.MINUTES
+            () -> checkStatus(dest, count), StatusCheckerService.CHECK_INTERVALS[count], TimeUnit.SECONDS
         );
 	}
 
