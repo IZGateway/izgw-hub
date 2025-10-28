@@ -94,6 +94,21 @@ jobs:
                 <username>${{ env.GITHUB_ACTOR }}</username>
                 <password>${{ secrets.IZGW_ALL_REPO_ACCESS_TOKEN }}</password>
               </server>
+              <server>
+                <id>github-bom</id>
+                <username>${{ env.GITHUB_ACTOR }}</username>
+                <password>${{ secrets.IZGW_ALL_REPO_ACCESS_TOKEN }}</password>
+              </server>
+              <server>
+                <id>github-core</id>
+                <username>${{ env.GITHUB_ACTOR }}</username>
+                <password>${{ secrets.IZGW_ALL_REPO_ACCESS_TOKEN }}</password>
+              </server>
+              <server>
+                <id>github-v2tofhir</id>
+                <username>${{ env.GITHUB_ACTOR }}</username>
+                <password>${{ secrets.IZGW_ALL_REPO_ACCESS_TOKEN }}</password>
+              </server>
             </servers>
             <mirrors />
             <proxies />

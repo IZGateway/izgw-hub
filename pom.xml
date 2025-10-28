@@ -31,6 +31,41 @@
     <tomcat.version>10.1.44</tomcat.version>
     <spring-framework.version>6.2.11</spring-framework.version>
 	</properties>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-parent</artifactId>
+                <version>3.5.5</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+    <repositories>
+        <repository>
+            <id>github-bom</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/IZGateway/izgw-bom</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>github-core</id>
+            <name>izgw-core</name>
+            <url>https://maven.pkg.github.com/izgateway/izgw-core</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>    
 	<dependencies>
 		<dependency>
 			<groupId>gov.cdc.izgw</groupId>
@@ -246,17 +281,6 @@
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-starter-parent</artifactId>
-                <version>3.5.5</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
 	<build>
 		<finalName>${image.tag}</finalName>
 		<pluginManagement>
@@ -464,14 +488,4 @@
 			</plugin>
 		</plugins>
 	</reporting>
-	<repositories>
-		<repository>
-			<snapshots>
-				<enabled>true</enabled>
-			</snapshots>
-			<id>github</id>
-			<name>izgw-core</name>
-			<url>https://maven.pkg.github.com/izgateway/izgw-core</url>
-		</repository>
-	</repositories>
 </project>
