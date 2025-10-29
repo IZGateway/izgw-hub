@@ -25,11 +25,6 @@
 		<image.tag>${project.artifactId}-${project.version}-${buildno}</image.tag>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.java.package>${project.groupId}</project.java.package>
-		<spring-security.version>6.5.4</spring-security.version>
-		<mysql.version>9.3.0</mysql.version>
-    <commons-lang3.version>3.18.0</commons-lang3.version>
-    <tomcat.version>10.1.44</tomcat.version>
-    <spring-framework.version>6.2.11</spring-framework.version>
 	</properties>
     <dependencyManagement>
         <dependencies>
@@ -89,11 +84,11 @@
         </repository>
     </repositories>    
 	<dependencies>
-		<dependency>
-			<groupId>gov.cdc.izgw</groupId>
-			<artifactId>izgw-core</artifactId>
-			<version>2.3.0-izgw-core-SNAPSHOT</version>
-		</dependency>
+        <dependency>
+            <groupId>gov.cdc.izgw</groupId>
+            <artifactId>izgw-core</artifactId>
+            <version>2.3.0-izgw-core-SNAPSHOT</version>
+        </dependency>
 		<dependency>
 			<groupId>ca.uhn.hapi</groupId>
 			<artifactId>hapi-base</artifactId>
@@ -133,6 +128,14 @@
 		</dependency>
 		<dependency>
 			<groupId>io.netty</groupId>
+			<artifactId>netty-codec-http</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-codec-http2</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
 			<artifactId>netty-common</artifactId>
 		</dependency>
 		<dependency>
@@ -146,6 +149,14 @@
 		<dependency>
 			<groupId>io.netty</groupId>
 			<artifactId>netty-transport</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-transport-classes-epoll</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-transport-native-unix-common</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
@@ -346,6 +357,43 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+            <groupId>commons-fileupload</groupId>
+            <artifactId>commons-fileupload</artifactId>
+            <version>1.6.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-jose</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-resource-server</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.seancfoley</groupId>
+            <artifactId>ipaddress</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>secretsmanager</artifactId>
+        </dependency>
 	</dependencies>
 	<build>
 		<finalName>${image.tag}</finalName>
