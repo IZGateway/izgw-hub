@@ -6,4 +6,24 @@
 		<sha1>d4c20ad2818e954344c0293bd6460ee2b030180d</sha1>
 		<cve>CVE-2018-1258</cve>
 	</suppress>
+	<suppress>
+        <notes>IZ Gateway Uses Spring Framework 6.2.x, so this CVE is not applicable</notes>
+	    <sha1>a1bc1afabfab5cbee9179c134f41d10b4351a001</sha1>
+	    <cve>CVE-2018-1258</cve>
+	</suppress>
+	<suppress>
+        <notes>IZ Gateway Uses Spring Framework 6.2.x, so this CVE is not applicable</notes>
+	    <sha1>b120779667b42a1a412aa0e4426dfab5287f2d5a</sha1>
+	    <cve>CVE-2018-1258</cve>
+	</suppress>
+	<suppress>
+        <notes>IZ Gateway Uses Spring Framework 6.2.x, so this CVE is not applicable</notes>
+        <sha1>8d94263c074debf8ad4f0ebaa807dd3ba3c9c0a7</sha1>
+        <cve>CVE-2018-1258</cve>
+    </suppress>
+    <suppress>
+        <notes>IZ Gateway Uses Spring Framework 6.2.x, so this CVE is not applicable</notes>
+        <sha1>29e50540ef987241f13ece8aa4297c524cdca5ed</sha1>
+        <cve>CVE-2018-1258</cve>
+    </suppress>
 </suppressions>
