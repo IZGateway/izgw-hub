@@ -184,6 +184,7 @@ jobs:
       env:
         COMMON_PASS: ${{ secrets.COMMON_PASS }}
         ELASTIC_API_KEY: ${{ secrets.ELASTIC_API_KEY }}
+        AWS_REGION: ${{ vars.AWS_REGION }}
 
       run: |
         env && mvn -B clean package install -Dbuildno=${{github.run_number}} \
