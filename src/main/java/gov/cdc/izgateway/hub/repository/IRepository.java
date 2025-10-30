@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.ServiceConfigurationError;
 
 /** 
- * Marker interface for repositories (Dynamo or JPA)
+ * Marker interface for repositories (e.g., DynamoDb, JPA or other database technology)
  * @author Audacious Inquiry
  * @param <T> The type of item the repository stores
  *

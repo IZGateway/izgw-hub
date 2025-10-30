@@ -2,12 +2,13 @@ package gov.cdc.izgateway.hub.repository;
 
 /**
  * Repository Factory is used to support replacable repositories.
- * IZ Gateway supports repositories in MySQL/RDS and in DynamoDB.
+ * IZ Gateway supports repositories in DynamoDB and has used databases 
+ * previously in RDS/MySQL
  * 
  * Rather than pass in specific repositories to services, this class
  * is used so that the service can request the appropriate repository
- * and auto-generated classes such as those created from spring's JpaRepository
- * can be accessed based on configuration parameters.
+ * and auto-generated classes such as those created from spring's 
+ * JpaRepository can be accessed based on configuration parameters.
  * 
  * @author Audacious Inquiry
  */
