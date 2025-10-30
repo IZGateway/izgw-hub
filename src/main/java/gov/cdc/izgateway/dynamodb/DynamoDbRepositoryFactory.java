@@ -2,9 +2,6 @@ package gov.cdc.izgateway.dynamodb;
 import gov.cdc.izgateway.configuration.DynamoDbConfig;
 import lombok.extern.slf4j.Slf4j;
 
-import java.time.Duration;
-import java.util.Date;
-import java.util.List;
 import java.util.ServiceConfigurationError;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,7 +9,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
-import gov.cdc.izgateway.db.repository.MySqlRepositoryFactory;
 import gov.cdc.izgateway.dynamodb.model.Event;
 import gov.cdc.izgateway.dynamodb.repository.AccessControlRepository;
 import gov.cdc.izgateway.dynamodb.repository.CertificateStatusRepository;
@@ -25,7 +21,6 @@ import gov.cdc.izgateway.hub.repository.ICertificateStatusRepository;
 import gov.cdc.izgateway.hub.repository.IDestinationRepository;
 import gov.cdc.izgateway.hub.repository.IJurisdictionRepository;
 import gov.cdc.izgateway.hub.repository.IMessageHeaderRepository;
-import gov.cdc.izgateway.hub.repository.IRepository;
 import gov.cdc.izgateway.hub.repository.RepositoryFactory;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.regions.providers.DefaultAwsRegionProviderChain;
@@ -38,7 +33,6 @@ import software.amazon.awssdk.services.dynamodb.model.ListTablesResponse;
  * These are the clients that are used to access any DynamoDB repositories
  * @author Audacious Inquiry
  */
-@ConditionalOnExpression("'${spring.database:}'.equalsIgnoreCase('dynamodb') or '${spring.database:}'.equalsIgnoreCase('migrate')")
 @Configuration
 @Primary
 @Slf4j
@@ -50,7 +44,6 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
 	// Used to check for existence of the database
 	private final DynamoDbClient ddbClient;
 	private EventRepository eventRepository;
-	private MySqlRepositoryFactory migrationFactory;
 	private AccessControlRepository acr;
 	private CertificateStatusRepository csr;
 	private DestinationRepository dr;
@@ -61,54 +54,25 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
 	 * Create the factory for DynamoDb Repositories
 	 * @param client The Enhanced Client to use to access the repository
 	 * @param ddbClient The DynamoDB Client to use
-	 * @param migrationFactory The factory to use to access other (MySql) databases to support migration.
+	 * @param ddbConfig The DynamoDB configuration
 	 */
 	public DynamoDbRepositoryFactory(
 		@Autowired DynamoDbEnhancedClient client, 
 		@Autowired DynamoDbClient ddbClient,
-		@Autowired DynamoDbConfig ddbConfig,
-		@Autowired(required=false) MySqlRepositoryFactory migrationFactory
+		@Autowired DynamoDbConfig ddbConfig
 	) {
 		this.client = client;
 		this.ddbClient = ddbClient;
-		this.migrationFactory = migrationFactory;
 		this.tableName = ddbConfig.getDynamodbTable();
 		this.eventRepository = new EventRepository(client, this.tableName);
 		
 		if (!ensureDbExists()) {
-			Event e = markDbCreated(); 
-			if (e != null) {
-				migrateAllTables();
-				e.setCompleted(new Date());
-				eventRepository.update(e);
-			} else {
-				waitForMigrationToFinish();
-			}
+			log.error("Database {} does not exist in {}", this.tableName,
+					DefaultAwsRegionProviderChain.builder().build().getRegion());
+			throw new ServiceConfigurationError("Database does not exist " + this.tableName, null);
 		} else {
 			log.info("Connected to existing {} in {}", this.tableName,
 					DefaultAwsRegionProviderChain.builder().build().getRegion());
-		}
-	}
-
-	private void waitForMigrationToFinish() throws ServiceConfigurationError {
-		List<Event> found = null;
-		long sleep = 0;
-		int retries = 10;
-		do {
-			try {
-				if (sleep != 0) {
-					Thread.sleep(sleep);
-				}
-			} catch (InterruptedException ex) {
-				Thread.currentThread().interrupt();
-			}
-			sleep = 30000;
-			found = eventRepository.findByNameAndTarget(Event.CREATED, DATABASE_EVENT); 
-		}	while ((found.isEmpty() || found.get(0).getCompleted() == null) && --retries > 0);
-		if (retries <= 0) {
-			log.error("Failed waiting for DB migration on {} in {}", this.tableName,
-					DefaultAwsRegionProviderChain.builder().build().getRegion());
-			throw new ServiceConfigurationError("Database not migrated: " + this.tableName, null);
 		}
 	}
 
@@ -130,28 +94,7 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
 		return !eventRepository.findByNameAndTarget(Event.CREATED, DATABASE_EVENT).isEmpty();
 	}
 	
-	private Event markDbCreated() {
-		Event event = new Event(Event.CREATED);
-		event.setTarget(DATABASE_EVENT);
-		return eventRepository.create(event);
-	}
-
-	private void migrateAllTables() {
-		if (migrationFactory != null) {
-			acr = new AccessControlRepository(client, this.tableName);
-			migrateTo(migrationFactory.accessControlRepository(), acr);
-			// Migrating the CertificateStatus repository is not required. Any unchecked certificate will be rechecked.
-			jr = new JurisdictionRepository(client, this.tableName);
-			migrateTo(migrationFactory.jurisdictionRepository(), jr);
-			dr = new DestinationRepository(client, this.tableName);
-			migrateTo(migrationFactory.destinationRepository(), dr);
-			mhr = new MessageHeaderRepository(client, this.tableName);
-			migrateTo(migrationFactory.messageHeaderRepository(), mhr);
-			log.info("Database Migration completed for {}", this.tableName);
-		}
-	}
-	
-    /**
+	/**
      * Get the DynamoDbRepository for Access Controls
      * @return	The AccessControlRepository
      */
@@ -216,50 +159,4 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
     public EventRepository eventRepository() {
     	return eventRepository;
     }
-    
-	private <T, R extends IRepository<T>> R migrateTo(R source, R dest) {
-		if (source == null) {
-			return dest;
-		}
-		Event event = startMigrationEvent(dest);
-		if (event == null) {
-			return dest;
-		}
-		// We don't really need to check for concurrency here
-		// because two migrating servers should do the same exact thing.
-		for (T e: source.findAll()) {
-			dest.store(e);
-		}
-		event.setCompleted(new Date());
-		eventRepository.update(event);
-		log.info("Migration complete for {}", dest.getClass().getSimpleName());
-		return dest;
-	}
-
-	private Event startMigrationEvent(IRepository<?> dest) {
-		String eventTarget = dest.getClass().getSimpleName();
-		Duration waitFor = Duration.ofMinutes(5);
-		Duration waitPeriod = Duration.ofSeconds(10);
-		while (eventRepository.hasEventStarted(Event.MIGRATION, eventTarget)) {
-			if (eventRepository.hasEventFinished(Event.MIGRATION, eventTarget)) {
-				return null;
-			}
-			if (waitFor.toSeconds() <= 0) {
-				// If we are done waiting, retry the migration by this server
-				log.warn("Migration incomplete by: {}", eventRepository.findByNameAndTarget(Event.MIGRATION, eventTarget));
-				break;
-			}
-			try {
-				Thread.sleep(waitPeriod.toMillis());
-			} catch (InterruptedException e1) {
-				Thread.currentThread().interrupt();
-			}
-			waitFor = waitFor.minus(waitPeriod);
-		}
-		// If we get to this stage, we've either waited long enough for a started event to complete
-		// or it hasn't started yet.  So, we'll say that migration is needed.  It is still POSSIBLE
-		// that two servers could try to migrate the data after this call.
-		Event event = new Event(Event.MIGRATION, eventTarget);
-		return eventRepository.create(event);
-	}
 }

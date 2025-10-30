@@ -45,8 +45,6 @@ import org.springframework.web.bind.annotation.RestController;
 import gov.cdc.izgateway.common.BadRequestException;
 import gov.cdc.izgateway.common.ResourceNotFoundException;
 import gov.cdc.izgateway.db.RefreshQueueService.RefreshRequest;
-import gov.cdc.izgateway.db.model.Destination;
-import gov.cdc.izgateway.db.model.MessageHeader;
 import gov.cdc.izgateway.logging.event.EventId;
 import gov.cdc.izgateway.logging.markers.Markers2;
 import gov.cdc.izgateway.model.IDestination;
@@ -169,7 +167,7 @@ public class DbController {
 			description = "Returns the Message Header Values for HL7 Message for all endpoints")
 	@ApiResponse(responseCode = "200", description = "The Message Header information values", 
 	    content = @Content(mediaType = "application/json", 
-	     schema = @Schema(implementation = MessageHeader.Map.class))
+	     schema = @Schema(implementation = IMessageHeader.Map.class))
 	)
 	@GetMapping("/headers")
 	public IMessageHeader.Map getMessageHeaders(@RequestParam(defaultValue = "") String include) {
@@ -193,7 +191,7 @@ public class DbController {
 			description = "Returns the Message Header Values for HL7 Message for the given MSH3 or MSH4 value")
 	@ApiResponse(responseCode = "200", description = "The Message Header information values", 
 	    content = @Content(mediaType = "application/json", 
-	     schema = @Schema(implementation = MessageHeader.class))
+	     schema = @Schema(implementation = IMessageHeader.class))
 	)
 	@ApiResponse(responseCode = "404", description = "No MSH3 or MSH4 entry exists for the specified value", 
 		content = @Content)
@@ -212,12 +210,12 @@ public class DbController {
 			description = "Returns the Message Header Values for HL7 Message for the given MSH3 or MSH4 value")
 	@ApiResponse(responseCode = "200", description = "The Message Header information values", 
 	    content = @Content(mediaType = "application/json", 
-	     schema = @Schema(implementation = MessageHeader.class))
+	     schema = @Schema(implementation = IMessageHeader.class))
 	)
 	@ApiResponse(responseCode = "400", description = "The identifier cannot be changed.", 
 		content = @Content)
 	@PostMapping("/headers/{id}")
-	public IMessageHeader setMessageHeadersById(@PathVariable String id, @RequestBody MessageHeader newValues) {
+	public IMessageHeader setMessageHeadersById(@PathVariable String id, @RequestBody IMessageHeader newValues) {
 		IMessageHeader old;
 		old = getMessageHeadersById(id);
 		if (!id.equals(newValues.getMsh())) {
@@ -237,7 +235,7 @@ public class DbController {
 			description = "Deletes the Message Header and username password values for HL7 Message for the given MSH3 or MSH4 value")
 	@ApiResponse(responseCode = "200", description = "The deleted message Header information values", 
 	    content = @Content(mediaType = "application/json", 
-	     schema = @Schema(implementation = MessageHeader.class))
+	     schema = @Schema(implementation = IMessageHeader.class))
 	)
 	@ApiResponse(responseCode = "404", description = "The header record cannot be found.", content = @Content)
 	@DeleteMapping("/headers/{id}")
@@ -252,12 +250,12 @@ public class DbController {
 			description = "Returns the Message Header Values for HL7 Message for the given MSH3 or MSH4 value")
 	@ApiResponse(responseCode = "201", description = "The created Message Header information values", 
 	    content = @Content(mediaType = "application/json", 
-	     schema = @Schema(implementation = MessageHeader.class))
+	     schema = @Schema(implementation = IMessageHeader.class))
 	)
 	@ApiResponse(responseCode = "400", description = "The identifier cannot be changed.", content = @Content)
 	@PutMapping("/headers")
 	@ResponseStatus(HttpStatus.CREATED)
-	public IMessageHeader createMessageHeadersById(@RequestBody MessageHeader newValues) {
+	public IMessageHeader createMessageHeadersById(@RequestBody IMessageHeader newValues) {
 		try {
 			IMessageHeader old = getMessageHeadersById(newValues.getMsh());
 			throw new BadRequestException(String.format("A Message Header already exists for %s", newValues.getMsh()));
@@ -277,15 +275,15 @@ public class DbController {
 			description = "Returns configuration for all endpoints")
 	@ApiResponse(responseCode = "200", description = "The Message Header information values", 
 	    content = @Content(mediaType = "application/json", 
-	     schema = @Schema(implementation = Destination.Map.class))
+	     schema = @Schema(implementation = IDestination.Map.class))
 	)
 	@ApiResponse(responseCode = "400", description = "The identifier cannot be changed.", 
 		content = @Content)
 	@GetMapping("/config")
-	public Destination.Map getConfig() {
+	public IDestination.Map getConfig() {
 		refresh();
 		List<IDestination> l = configuration.getDestinationService().getAllDestinations();
-		Destination.Map l2 = new Destination.Map();
+		IDestination.Map l2 = new IDestination.Map();
 		l.forEach(d -> l2.put(d.getDestId(), d.safeCopy()));
 		return l2;
 	}
@@ -294,7 +292,7 @@ public class DbController {
 			description = "Returns configuration for the specified endpoint")
 	@ApiResponse(responseCode = "200", description = "The endpoint configuration", 
 	    content = @Content(mediaType = "application/json", 
-	     schema = @Schema(implementation = Destination.class))
+	     schema = @Schema(implementation = IDestination.class))
 	)
 	@ApiResponse(responseCode = "404", description = "The endpoint does not exist.", 
 		content = @Content)
@@ -461,13 +459,13 @@ public class DbController {
 	@ApiResponse(responseCode = "200", description = "A map indicating the maintenance status for each destination.", 
 	    content = @Content(
 	    		mediaType = "application/json", 
-	    		schema = @Schema(implementation = Destination.Map.class)
+	    		schema = @Schema(implementation = IDestination.Map.class)
 	    )
 	)
 	@GetMapping("/maint")
 	public IDestination.Map getMaintenance() {
-		Destination.Map result = new Destination.Map();
-		Destination.Map m = getConfig();
+		IDestination.Map result = new IDestination.Map();
+		IDestination.Map m = getConfig();
 
 		for (IDestination d : m.values()) {
 			if (!StringUtils.isEmpty(d.getMaintReason())) {
@@ -483,7 +481,7 @@ public class DbController {
 	@ApiResponse(responseCode = "200", description = "The maintenance status for of the destination.", 
 	    content = @Content(
 	    		mediaType = "application/json", 
-	    		schema = @Schema(implementation = Destination.class)
+	    		schema = @Schema(implementation = IDestination.class)
 	    )
 	)
 	@ApiResponse(responseCode = "404", description = "The destination does not exist", content = @Content)
@@ -500,7 +498,7 @@ public class DbController {
 	@ApiResponse(responseCode = "200", description = "The maintenance status for of the destination.", 
 	    content = @Content(
 	    		mediaType = "application/json", 
-	    		schema = @Schema(implementation = Destination.class)
+	    		schema = @Schema(implementation = IDestination.class)
 	    )
 	)
 	@ApiResponse(responseCode = "404", description = "The destination does not exist", content = @Content)
@@ -580,7 +578,7 @@ public class DbController {
 	@ApiResponse(responseCode = "200", description = "The maintenance status for of the destination.", 
 	    content = @Content(
 	    		mediaType = "application/json", 
-	    		schema = @Schema(implementation = Destination.class)
+	    		schema = @Schema(implementation = IDestination.class)
 	    )
 	)
 	@ApiResponse(responseCode = "404", description = "The destination does not exist", content = @Content)

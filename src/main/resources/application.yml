@@ -12,30 +12,6 @@ spring:
         fix-newlines: ${FIX_NEWLINES:true}
         enable-status-check: ${STATUS_CHECK:true}
     
-    datasource:
-        url: jdbc:mysql://${MYSQL_HOST:localhost}:${PHIZ_DATA_DB_PORT:3306}/${MYSQL_DB_NAME:phiz}
-        username: ${MYSQL_HUB_NAME}
-        password: ${MYSQL_HUB_PASS}
-        driver-class-name: com.mysql.cj.jdbc.Driver
-        configuration:
-            minimum-pool-size: 4
-            maximum-pool-size: 10
-    jpa:
-        open-in-view: false
-        database-platform: org.hibernate.dialect.MySQL8Dialect
-        hibernate:
-            naming:
-                physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
-            temp:
-                use_jdbc_metadata_defaults: false
-            hbm2ddl:
-                auto: none
-
-        properties:
-            hibernate:
-                jdbc:
-                    time_zone: UTC
-
     servlet:
       multipart:
         enabled: true
