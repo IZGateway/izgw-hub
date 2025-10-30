@@ -1,3 +1,8 @@
+# IZ Gateway Release 2.9.0
+* IGDD-2295 Remove JDBC/RDS Support for IZ Gateway Hub
+
+# IZ Gateway Release 2.8.0
+
 # IZ Gateway Release 2.7.3
 * IGDD-2250 Updated logging to identify cause of DEX failures with 404 Error
 
