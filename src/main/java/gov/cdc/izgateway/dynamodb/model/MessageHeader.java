@@ -89,7 +89,7 @@ public class MessageHeader implements DynamoDbEntity, Serializable, IMessageHead
 		this.setUsername(that.getUsername());
 	}
 
-  @Override
+    @Override
 	public String getPrimaryId() {
 		return getMsh();
 	}
