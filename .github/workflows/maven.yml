@@ -191,6 +191,7 @@ jobs:
       env:
         COMMON_PASS: ${{ secrets.COMMON_PASS }}
         ELASTIC_API_KEY: ${{ secrets.ELASTIC_API_KEY }}
+        AMAZON_DYNAMODB_TABLE: izgateway-devalb 
       run: |
         env && mvn -B clean package install -Dbuildno=${{github.run_number}} \
             -DdoRevisionCheck=${{env.DO_REVISION_CHECK}} \
