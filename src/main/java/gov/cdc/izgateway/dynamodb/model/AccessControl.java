@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.io.Serializable;
 
+import gov.cdc.izgateway.model.DynamoDbAudit;
 import gov.cdc.izgateway.model.DynamoDbEntity;
 import gov.cdc.izgateway.model.IAccessControl;
 import gov.cdc.izgateway.model.MappableEntity;
@@ -27,7 +28,7 @@ import gov.cdc.izgateway.utils.SystemUtils;
 @AllArgsConstructor
 @NoArgsConstructor
 @DynamoDbBean
-public class AccessControl implements DynamoDbEntity, Serializable, IAccessControl {
+public class AccessControl extends DynamoDbAudit implements DynamoDbEntity, Serializable, IAccessControl {
 	/**
 	 * Provides easy access to the Map class for Swagger documentation
 	 */

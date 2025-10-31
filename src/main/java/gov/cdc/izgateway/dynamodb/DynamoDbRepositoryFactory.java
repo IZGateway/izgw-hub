@@ -5,17 +5,21 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.ServiceConfigurationError;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
 import gov.cdc.izgateway.dynamodb.model.Event;
 import gov.cdc.izgateway.dynamodb.repository.AccessControlRepository;
+import gov.cdc.izgateway.dynamodb.repository.AccessGroupRepository;
+import gov.cdc.izgateway.dynamodb.repository.AllowedUserRepository;
 import gov.cdc.izgateway.dynamodb.repository.CertificateStatusRepository;
 import gov.cdc.izgateway.dynamodb.repository.DestinationRepository;
 import gov.cdc.izgateway.dynamodb.repository.EventRepository;
 import gov.cdc.izgateway.dynamodb.repository.JurisdictionRepository;
 import gov.cdc.izgateway.dynamodb.repository.MessageHeaderRepository;
+import gov.cdc.izgateway.dynamodb.repository.DenyListRecordRepository;
+import gov.cdc.izgateway.dynamodb.repository.FileTypeRepository;
+import gov.cdc.izgateway.dynamodb.repository.OrganizationRecordRepository;
 import gov.cdc.izgateway.hub.repository.IAccessControlRepository;
 import gov.cdc.izgateway.hub.repository.ICertificateStatusRepository;
 import gov.cdc.izgateway.hub.repository.IDestinationRepository;
@@ -49,6 +53,11 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
 	private DestinationRepository dr;
 	private JurisdictionRepository jr;
 	private MessageHeaderRepository mhr;
+	private AccessGroupRepository agr;
+	private AllowedUserRepository aur;
+	private DenyListRecordRepository dlr;
+	private FileTypeRepository ftr;
+	private OrganizationRecordRepository orr;
 
 	/**
 	 * Create the factory for DynamoDb Repositories
@@ -159,4 +168,59 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
     public EventRepository eventRepository() {
     	return eventRepository;
     }
+
+	/**
+	 * Get the DynamoDbRepository for Access Groups
+	 * @return The AccessGroupRepository
+	 */
+	public AccessGroupRepository accessGroupRepository() {
+		if (agr == null) {
+			agr = new AccessGroupRepository(client, this.tableName);
+		}
+		return agr;
+	}
+
+	/**
+	 * Get the DynamoDbRepository for Allowed Users
+	 * @return The AllowedUserRepository
+	 */
+	public AllowedUserRepository allowedUserRepository() {
+		if (aur == null) {
+			aur = new AllowedUserRepository(client, this.tableName);
+		}
+		return aur;
+	}
+
+	/**
+	 * Get the DynamoDbRepository for Deny List Records
+	 * @return The DenyListRecordRepository
+	 */
+	public DenyListRecordRepository denyListRecordRepository() {
+		if (dlr == null) {
+			dlr = new DenyListRecordRepository(client, this.tableName);
+		}
+		return dlr;
+	}
+
+	/**
+	 * Get the DynamoDbRepository for File Types
+	 * @return The FileTypeRepository
+	 */
+	public FileTypeRepository fileTypeRepository() {
+		if (ftr == null) {
+			ftr = new FileTypeRepository(client, this.tableName);
+		}
+		return ftr;
+	}
+
+	/**
+	 * Get the DynamoDbRepository for Organization Records
+	 * @return The OrganizationRecordRepository
+	 */
+	public OrganizationRecordRepository organizationRecordRepository() {
+		if (orr == null) {
+			orr = new OrganizationRecordRepository(client, this.tableName);
+		}
+		return orr;
+	}
 }

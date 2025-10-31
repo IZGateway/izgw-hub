@@ -10,6 +10,7 @@ import java.sql.Timestamp;
 import java.util.Date;
 
 import gov.cdc.izgateway.model.DateConverter;
+import gov.cdc.izgateway.model.DynamoDbAudit;
 import gov.cdc.izgateway.model.DynamoDbEntity;
 import gov.cdc.izgateway.model.ICertificateStatus;
 import gov.cdc.izgateway.utils.X500Utils;
@@ -22,9 +23,9 @@ import gov.cdc.izgateway.utils.X500Utils;
  */
 @SuppressWarnings("serial")
 @Data
-@EqualsAndHashCode(callSuper=false)
+@EqualsAndHashCode(callSuper=true)
 @DynamoDbBean
-public class CertificateStatus implements DynamoDbEntity, Serializable, ICertificateStatus {
+public class CertificateStatus extends DynamoDbAudit implements DynamoDbEntity, Serializable, ICertificateStatus {
 	/** certificateId is the SHA-1 Message Digest of the Certificate
 	 *  It is guaranteed to be unique across all certificates within the
 	 *  limits of the hash function (2^160 possible unique values, resulting 

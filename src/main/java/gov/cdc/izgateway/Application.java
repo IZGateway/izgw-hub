@@ -256,6 +256,9 @@ public class Application implements WebMvcConfigurer {
 		HealthService.setEgressDnsAddress(ADSUtils.getMyIpAddress());
 	}
 	
+    /**
+     * Perform any necessary activity when the application is shutting down.
+     */
     public static void shutdown() {
     	HealthService.setHealthy(false, "Service Stopped");
     }
