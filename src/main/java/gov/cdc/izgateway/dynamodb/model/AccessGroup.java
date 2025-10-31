@@ -5,10 +5,13 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbConvertedBy;
+
 import java.io.Serializable;
 import java.util.Date;
 import java.util.List;
 import gov.cdc.izgateway.model.IAccessGroup;
+import gov.cdc.izgateway.model.DateConverter;
 import gov.cdc.izgateway.model.DynamoDbAudit;
 import gov.cdc.izgateway.model.DynamoDbEntity;
 
@@ -28,7 +31,7 @@ public class AccessGroup extends DynamoDbAudit implements DynamoDbEntity, Serial
     private List<String> roles;
     private List<String> users;
     private List<String> groups;
-    private Date lastChanged;
+    
 	@Override
 	public String getPrimaryId() {
 		return String.format("%d#%s", this.environment, this.groupName);
@@ -47,7 +50,6 @@ public class AccessGroup extends DynamoDbAudit implements DynamoDbEntity, Serial
             this.roles = other.getRoles() != null ? List.copyOf(other.getRoles()) : null;
             this.users = other.getUsers() != null ? List.copyOf(other.getUsers()) : null;
             this.groups = other.getGroups() != null ? List.copyOf(other.getGroups()) : null;
-            this.lastChanged = other.getLastChanged();
         }
     }
 }
