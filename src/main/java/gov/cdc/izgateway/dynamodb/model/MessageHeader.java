@@ -5,6 +5,7 @@ import lombok.EqualsAndHashCode;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 import java.io.Serializable;
 
+import gov.cdc.izgateway.model.DynamoDbAudit;
 import gov.cdc.izgateway.model.DynamoDbEntity;
 import gov.cdc.izgateway.model.IMessageHeader;
 import gov.cdc.izgateway.model.MappableEntity;
@@ -24,10 +25,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
  */
 @SuppressWarnings("serial")
 @Data
-@EqualsAndHashCode(callSuper=false)
+@EqualsAndHashCode(callSuper=true)
 @Schema(description="Mappings from Message Header values to sources")
 @DynamoDbBean
-public class MessageHeader implements DynamoDbEntity, Serializable, IMessageHeader {
+public class MessageHeader extends DynamoDbAudit implements DynamoDbEntity, Serializable, IMessageHeader {
 	/**
 	 * An alias for the message header map supporting Swagger 
 	 * documentation of this resource.
@@ -89,7 +90,7 @@ public class MessageHeader implements DynamoDbEntity, Serializable, IMessageHead
 		this.setUsername(that.getUsername());
 	}
 
-  @Override
+    @Override
 	public String getPrimaryId() {
 		return getMsh();
 	}

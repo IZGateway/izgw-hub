@@ -30,6 +30,7 @@ public class EndpointStatusRepository extends DynamoDbRepository<EndpointStatus>
 	/**
 	 * Construct a new EndpointStatusRepository from the DynamoDb enhanced client.
 	 * @param client The client
+	 * @param tableName The table name
 	 */
 	public EndpointStatusRepository(@Autowired DynamoDbEnhancedClient client, String tableName) {
 		super(EndpointStatus.class, client, tableName);
@@ -84,6 +85,9 @@ public class EndpointStatusRepository extends DynamoDbRepository<EndpointStatus>
 
 	@Override
 	public void resetCircuitBreakers() {
-		// TODO Auto-generated method stub
+		List<EndpointStatus> statuses = this.findAll();
+		for (EndpointStatus status : statuses) {
+			this.saveAndFlush(status);
+		}
 	}
 }

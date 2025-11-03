@@ -17,6 +17,7 @@ public class AccessControlRepository extends DynamoDbRepository<AccessControl> i
 	/**
 	 * Construct a new AccessControlRepository from the DynamoDb enhanced client.
 	 * @param client The client
+	 * @param tableName The table name
 	 */
 	public AccessControlRepository(@Autowired DynamoDbEnhancedClient client, String tableName) {
 		super(AccessControl.class, client, tableName);

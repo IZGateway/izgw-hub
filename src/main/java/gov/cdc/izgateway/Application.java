@@ -41,7 +41,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.boot.web.embedded.tomcat.TomcatConnectorCustomizer;
 import org.springframework.boot.web.embedded.tomcat.TomcatContextCustomizer;
 import org.springframework.boot.web.embedded.tomcat.TomcatProtocolHandlerCustomizer;
@@ -113,12 +112,12 @@ public class Application implements WebMvcConfigurer {
 	private static String serverMode = AppProperties.PROD_MODE_VALUE; 
 	private static String serverName;
 
-	@Value("${spring.application.fix-newlines}")
+	@Value("${spring.application.fix-newlines:true}")
 	private boolean fixNewlines;
 	@Value("${spring.application.enable-status-check:false}")
 	private boolean statusCheck;
 	
-	@Value("${spring.database:jpa}")
+	@Value("${spring.database:dynamodb}")
 	private String databaseType;
 	
     // Heartbeat needs it's own thread in order to not be blocked by other background tasks.
@@ -257,6 +256,9 @@ public class Application implements WebMvcConfigurer {
 		HealthService.setEgressDnsAddress(ADSUtils.getMyIpAddress());
 	}
 	
+    /**
+     * Perform any necessary activity when the application is shutting down.
+     */
     public static void shutdown() {
     	HealthService.setHealthy(false, "Service Stopped");
     }
@@ -275,10 +277,6 @@ public class Application implements WebMvcConfigurer {
         serverName = props.getServerName();
 		initializeHealth();
         IMessageHeaderService messageHeaderService = ctx.getBean(MessageHeaderService.class);
-        DataSourceProperties ds = ctx.getBean(DataSourceProperties.class);
-        if (Arrays.asList("jpa", "migrate").contains(props.getDatabaseType())) {
-        	HealthService.setDatabase(ds.getUrl());
-        }
         StatusCheckScheduler sc = ctx.getBean(StatusCheckScheduler.class);
         Application app = ctx.getBean(Application.class);
     	new Thread(() -> 

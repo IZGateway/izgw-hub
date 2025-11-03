@@ -1,5 +1,4 @@
 #IZ Gateway Configuration
-
 IZ Gateway is configured through bean properties stored in [application.yml](src/main/resources/application.yml). Configurable properties are enabled by references to environment
 variables within the application.yml file.
 
@@ -22,26 +21,6 @@ Task configuration properties can be passed in environment variables.
 * __ELASTIC_ENV_TAG__ prod 
 
   Tag for environment, should contain onboard, prod, or stage
-  
-* __MYSQL_DB_NAME__ phiz
-
-  Name of database schema
-  
-* __MYSQL_HOST__ localhost
-
-  DNS name of MySQL or RDS Database host
-  
-* __MYSQL_HUB_NAME__ phizuser 
-
-  Username for access to MySQL Database
-  
-* __MYSQL_HUB_PASS__
-
-  Password for access to MySQL Database
-  
-* __PHIZ_DATA_DB_PORT__ 3306
-  
-  Port for database connection
   
 * __PHIZ_SERVER_HOSTNAME__ dev.phiz-project.org 
   Hostname of server

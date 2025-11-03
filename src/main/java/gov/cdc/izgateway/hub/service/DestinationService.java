@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Destination Service provides access to the Destination Repository.
  * 
- * This is a rather thin wrapper around the JPA repository.
+ * This is a rather thin wrapper around the repository.
  * 
  * @author Audacious Inquiry
  *
