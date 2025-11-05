@@ -26,7 +26,7 @@ import gov.cdc.izgateway.model.DynamoDbEntity;
 @DynamoDbBean
 public class AllowedUser extends DynamoDbAudit implements DynamoDbEntity, Serializable, IAllowedUser {
     private String destinationId;
-    private Integer environment;
+    private int environment;
     private String principal;
     private boolean enabled;
     private Date validatedOn;

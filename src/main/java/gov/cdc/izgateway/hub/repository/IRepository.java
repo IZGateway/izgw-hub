@@ -1,5 +1,6 @@
 package gov.cdc.izgateway.hub.repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.ServiceConfigurationError;
 
@@ -26,7 +27,7 @@ public interface IRepository<T> {
 	 * Copy a list of data from one place to another.
 	 * @param list	The list to copy
 	 */
-	default void migrate(List<? extends T> list) {
+	default void migrate(Collection<? extends T> list) {
 		try {
 			for (T e: list) {
 				store(e);
@@ -35,5 +36,5 @@ public interface IRepository<T> {
 			throw new ServiceConfigurationError("Failed to migrate " + this.getClass().getSimpleName(), e);
 		}
 	}
-
+	public T createEntity();
 }

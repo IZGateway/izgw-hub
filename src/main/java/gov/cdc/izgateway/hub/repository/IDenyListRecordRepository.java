@@ -6,7 +6,7 @@ import java.util.List;
 /**
  * Repository interface for managing {@link IDenyListRecord} entities.
  */
-public interface IDenyListRecordRepository {
+public interface IDenyListRecordRepository extends IRepository<IDenyListRecord> {
     /**
      * Stores the given deny list record.
      * @param record the deny list record to store

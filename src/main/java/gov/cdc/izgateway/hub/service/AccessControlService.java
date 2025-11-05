@@ -1,27 +1,61 @@
 package gov.cdc.izgateway.hub.service;
 
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestMethod;
 
+import com.opencsv.CSVReader;
+import com.opencsv.CSVReaderBuilder;
+import com.opencsv.enums.CSVReaderNullFieldIndicator;
+import com.opencsv.exceptions.CsvValidationException;
+
+import gov.cdc.izgateway.dynamodb.model.AccessGroup;
+import gov.cdc.izgateway.dynamodb.model.AllowedUser;
+import gov.cdc.izgateway.dynamodb.model.DenyListRecord;
+import gov.cdc.izgateway.dynamodb.model.Event;
+import gov.cdc.izgateway.dynamodb.model.FileType;
+import gov.cdc.izgateway.dynamodb.model.OrganizationRecord;
+import gov.cdc.izgateway.dynamodb.repository.AccessGroupRepository;
+import gov.cdc.izgateway.dynamodb.repository.AllowedUserRepository;
+import gov.cdc.izgateway.dynamodb.repository.DenyListRecordRepository;
+import gov.cdc.izgateway.dynamodb.repository.EventRepository;
+import gov.cdc.izgateway.dynamodb.repository.FileTypeRepository;
+import gov.cdc.izgateway.dynamodb.repository.OrganizationRecordRepository;
 import gov.cdc.izgateway.hub.repository.IAccessControlRepository;
+import gov.cdc.izgateway.hub.repository.IAccessGroupRepository;
+import gov.cdc.izgateway.hub.repository.IAllowedUserRepository;
+import gov.cdc.izgateway.hub.repository.IDenyListRecordRepository;
+import gov.cdc.izgateway.hub.repository.IFileTypeRepository;
+import gov.cdc.izgateway.hub.repository.IOrganizationRecordRepository;
+import gov.cdc.izgateway.hub.repository.IRepository;
 import gov.cdc.izgateway.hub.repository.RepositoryFactory;
+import gov.cdc.izgateway.logging.markers.Markers2;
 import gov.cdc.izgateway.model.IAccessControl;
+import gov.cdc.izgateway.model.IAccessGroup;
+import gov.cdc.izgateway.model.IFileType;
+import gov.cdc.izgateway.repository.DynamoDbRepository;
 import gov.cdc.izgateway.security.Roles;
 import gov.cdc.izgateway.service.IAccessControlRegistry;
 import gov.cdc.izgateway.service.IAccessControlService;
+import gov.cdc.izgateway.utils.SystemUtils;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.FileReader;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.ServiceConfigurationError;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -44,11 +78,17 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 
 	private final IAccessControlRepository accessControlRepository;
 	private final IAccessControlRegistry registry;
-
+    private final IAccessGroupRepository accessGroupRepository;
+    private final IAllowedUserRepository allowedUserRepository;
+    private final IDenyListRecordRepository denyListRecordRepository;
+    private final IFileTypeRepository fileTypeRepository;
+    private final IOrganizationRecordRepository organizationRecordRepository;
+	private final EventRepository eventRepository;
+	private final List<IRepository<?>> repositoriesToMigrate;
 	private Map<String, Map<String, Boolean>> allowedUsersByGroup = Collections.emptyMap();
 	private Map<String, TreeSet<String>> usersInRoles = Collections.emptyMap();
 	private Map<String, Map<String, Boolean>> allowedRoutesByEvent = Collections.emptyMap();
-
+	private boolean migrated = false;
 	/**
 	 * A cache of positive access control decisions. It needs to be concurrent
 	 * because it can be modified by multiple threads.
@@ -61,7 +101,9 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 	private String serverName;
 	@Value("${security.enable-blacklist:true}")
 	private boolean blacklistEnabled;
-
+	@Value("${hub.migration-data:access-controls.csv}")
+	private String migrationData;
+	
     /**
      * Create a new AccessControlService
      * @param factory The repository factory to use
@@ -71,6 +113,14 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
     public AccessControlService(RepositoryFactory factory, IAccessControlRegistry registry) {
         this.accessControlRepository = factory.accessControlRepository();
         this.registry = registry;
+        this.accessGroupRepository = factory.accessGroupRepository();
+        this.allowedUserRepository = factory.allowedUserRepository();
+        this.denyListRecordRepository = factory.denyListRecordRepository();
+        this.fileTypeRepository = factory.fileTypeRepository();
+        this.organizationRecordRepository = factory.organizationRecordRepository();
+        this.eventRepository = factory.eventRepository();
+        factory.certificateStatusRepository();
+        this.repositoriesToMigrate = Arrays.asList(accessGroupRepository, allowedUserRepository, denyListRecordRepository, fileTypeRepository, organizationRecordRepository);
     }
     
 	@Override
@@ -78,13 +128,105 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 		return serverName;
 	}
 
+	
 	/**
      * Configure service to update itself periodically after initialization.
      */
-    public void afterPropertiesSet() { 
+    public void afterPropertiesSet() {
+    	Boolean[] furtherMigrationNeeded = { false };
+    	try {
+    		DynamoDbRepository.setServerName(serverName);
+	    	repositoriesToMigrate.stream().filter(r -> r.findAll().isEmpty()).forEach(r -> {
+				log.info("Migrating data to {}", r.getClass().getSimpleName());
+				furtherMigrationNeeded[0] |= migrateToNewAccessControlModel(r);
+			});
+    		migrateFromCSV();
+	    	migrated = true;
+    	} catch (ServiceConfigurationError e) {
+    		log.error(Markers2.append(e), "Error during Access Control migration: {}", e.getMessage());
+    		migrated = false;  // Use old model access control data if migration failed.
+    	}
         log.debug("Refresh Scheduled for AccessControl");
         Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(this::refresh, 0, refreshPeriod, TimeUnit.SECONDS);
     }
+
+    /**
+     * Migrate existing access control records to the new model.
+     * 
+     * @param r The repository to migrate to
+     * @throws ServiceConfigurationError if there is an error during migration
+     */
+	private boolean migrateToNewAccessControlModel(IRepository<?> r) {
+		// To force a re-migration, delete "Migration" events for the specified repository type in DynamoDb 
+		Event migrationEvent = eventRepository.create(new Event(Event.MIGRATION, r.getClass().getSimpleName())); 
+		if (migrationEvent == null) {
+			log.info("Migration already performed for {}", r.getClass().getSimpleName());
+			return false;
+		}
+		
+		List<Event> l = eventRepository.findByNameAndTarget("Created", "Database");
+		Event creationEvent = l.isEmpty() ? migrationEvent : l.get(0);
+		String reportedBy = serverName + "@" + creationEvent.getReportedBy();
+		List<String> adsUsers = List.of("ads", "adspilot");
+		boolean success = false;
+		try {
+			List<? extends IAccessControl> recordsToMigrate = accessControlRepository.findAll();
+			if (r instanceof AccessGroupRepository agr) {
+				agr.migrateAccessControls(recordsToMigrate.stream()
+					.filter(ac -> "group".equals(ac.getCategory()))		// It's a group
+					.filter(ac -> !"blacklist".equals(ac.getName()) &&  // but not the blacklist
+								  !adsUsers.contains(ac.getName()))		// Or an ADS User group
+					.toList(),
+					reportedBy, 
+					migrationEvent.getStarted(),
+					getEnvironmentsToPopulate()
+				);
+				return success = true;
+			} 
+			if (r instanceof AllowedUserRepository aur) {
+				// Only ADS Users use access controls today
+				aur.migrateAccessControls(recordsToMigrate.stream()
+						.filter(ac -> "group".equals(ac.getCategory()))		// It's a group
+						.filter(ac -> adsUsers.contains(ac.getName()))		// It's an ADS User group
+						.toList(), 
+						reportedBy, 
+						migrationEvent.getStarted()
+				);
+				return success = true;
+			} 
+			if (r instanceof DenyListRecordRepository dlr) {
+				dlr.migrateAccessControls(recordsToMigrate.stream()
+					.filter(ac -> "group".equals(ac.getCategory()))		// It's a group
+					.filter(ac -> "blacklist".equals(ac.getName()))		// it's the denylist
+					.toList(), 
+					reportedBy, 
+					migrationEvent.getStarted()
+				);
+				return success = true;
+			} 
+			if (r instanceof FileTypeRepository ftr) {
+				List<? extends IFileType> fileTypes = recordsToMigrate.stream()
+					.filter(ac -> "eventToRoute".equals(ac.getCategory()))		// It's a group
+					.map(ac -> new FileType(ac, migrationEvent.getReportedBy(), migrationEvent.getCompleted())).toList();
+				fileTypes.forEach(ft -> { ft.setCreatedBy(migrationEvent.getReportedBy()); ft.setCreatedOn(migrationEvent.getStarted()); });
+				ftr.migrate(fileTypes);
+				return success = true;
+			} 
+			if (r instanceof OrganizationRecordRepository) {
+				// No migration needed for Organization Records
+				return success = true;
+			} 
+			log.error("Unrecognized repository type for migration: {}", r.getClass().getSimpleName());
+			throw new ServiceConfigurationError("Unrecognized repository type for migration: " + r.getClass().getSimpleName());
+		} finally {
+			migrationEvent.setCompleted(new Date());
+			if (success) {
+				eventRepository.update(migrationEvent);
+			} else {
+				eventRepository.delete(migrationEvent);
+			}
+		}
+	}
 
 	@Override
 	public void refresh() {
@@ -146,7 +288,7 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 			for (Entry<String, Boolean> userList: entry.getValue().entrySet()) {
 				String user = userList.getKey();
 				if (userList.getValue() == Boolean.TRUE) {
-					if (!isGroup(user)) {
+					if (!IAccessControl.isGroup(user)) {
 						users.add(user);
 					} else if (!"*".equals(user)) {
 						groups.add(user);
@@ -186,7 +328,7 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 			return false;
 		}
 		for (Entry<String, Boolean> entry : membership.entrySet()) {
-			if (isGroup(entry.getKey())) {
+			if (IAccessControl.isGroup(entry.getKey())) {
 				if (userInGroup(user, entry.getKey())) {
 					return entry.getValue();
 				}
@@ -197,18 +339,6 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 		return false;
 	}
 
-
-	/**
-	 * Groups are simple names following the pattern [0-9]*[a-zA-Z]+[a-zA-Z0-9]*.
-	 * In other words, they must contain only letters or digits, and must contain
-	 * at least one letter, and cannot be named "localhost".
-	 * 
-	 * @param	member	The pattern to check for a group name
-	 * @return	True if this is a group name, false for a user name pattern or a serial number
-	 */
-	private static final boolean isGroup(String member) {
-		return !StringUtils.contains(member, '.') && !StringUtils.isNumeric(member) && !"localhost".equals(member);
-	}
 
     @Override
 	public Map<String, Map<String, Boolean>> getAllowedUsersByGroup() {
@@ -425,5 +555,250 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 		} finally {
 			refresh();
 		}
+	}
+
+	private static int[] getEnvironmentsToPopulate() throws ServiceConfigurationError {
+		switch (SystemUtils.getDestType()) {
+		case SystemUtils.DESTTYPE_PROD, SystemUtils.DESTTYPE_ONBOARD:
+			return new int[] { SystemUtils.DESTTYPE_PROD, SystemUtils.DESTTYPE_ONBOARD };
+		case SystemUtils.DESTTYPE_STAGE:
+			return new int[] { SystemUtils.DESTTYPE_STAGE };
+		case SystemUtils.DESTTYPE_DEV, SystemUtils.DESTTYPE_TEST:
+			return new int[] { SystemUtils.DESTTYPE_DEV, SystemUtils.DESTTYPE_TEST };
+		default:
+			throw new ServiceConfigurationError("Unknown environment type: " + SystemUtils.getDestType());
+		}
+	}
+
+	/**
+	 * Migrate access controls from access-controls.csv to allowed users.
+	 * @throws ServiceConfigurationError if there is an error reading the CSV file
+	 */
+	@SuppressWarnings("unused")
+	private boolean migrateFromCSV() throws ServiceConfigurationError {
+		Event migrationEvent = eventRepository.create(new Event(Event.MIGRATION, "ImportAllowedUsers")); 
+		if (migrationEvent == null) {
+			log.info("Migration already performed for ImportAllowedUsers");
+			return false;
+		}
+		boolean success = false;
+		try (
+			FileReader isr = new FileReader(migrationData, StandardCharsets.UTF_8);
+			CSVReader csvr = new CSVReaderBuilder(isr).withSkipLines(1).withFieldAsNull(CSVReaderNullFieldIndicator.BOTH).build();
+		) {
+			String[] row = null;
+			int[] environments = getEnvironmentsToPopulate();
+			
+			createAllowedUsers(csvr, row, environments);
+			addDevOpsPrincipals(csvr);
+			return success = true;
+		} catch (IOException e) {
+			log.error(Markers2.append(e), "Error reading access-controls.csv");
+			throw new ServiceConfigurationError("Error reading access-controls.csv", e);
+		} finally {
+			if (success) {
+				log.info("Migration to Allowed Users from CSV completed successfully");
+				migrationEvent.setCompleted(new Date());
+				eventRepository.update(migrationEvent);
+			} else {
+				log.info("Migration to Allowed Users from CSV failed");
+				eventRepository.delete(migrationEvent);
+			}
+		}
+	}
+
+	private void createAllowedUsers(CSVReader csvr, String[] row, int[] environments) throws IOException {
+		Map<String, OrganizationRecord> orgMap = new LinkedHashMap<>();
+		Map<String, AllowedUser> allowedUserMap = new LinkedHashMap<>();
+		while (true) {
+			// Type,Source,Can Access,Id,Organization Name,Onboarding Cert Common Name,Prod Cert Common Name,Other Cert 1,Other Cert 2
+			try {
+				row = csvr.readNext();
+			} catch (CsvValidationException e) {
+				log.error(Markers2.append(e), "CSV is invalid for access-controls.csv at line: {}", e.getLineNumber());
+				continue;
+			}
+			if (row == null || row[0] == null) {
+				break;
+			}
+			// Type,Source,Can Access,Id,Organization Name,Onboarding Cert Common Name,Prod Cert Common Name,Other Cert 1,Other Cert 2
+			String type = row[0];
+			String orgName = row.length < 1 ? null : row[1];
+			@SuppressWarnings("unused")
+			String jurisdictionName = row.length < 2 ? null : row[2];
+			String destinationId = row.length < 3 ? null : row[3];
+			@SuppressWarnings("unused")
+			String organizationCertName = row.length < 4 ? null : row[4];
+			
+			String[] finalRow = row;
+			@SuppressWarnings("unused")
+			OrganizationRecord orgRecord = orgMap.computeIfAbsent(orgName, 
+					k -> createOrgRecord(type, orgName, Arrays.asList(finalRow).subList(5, finalRow.length)));
+			
+			for (int env : environments) {
+				List<Integer> certsToProcess = null;
+				switch (env) {
+				case SystemUtils.DESTTYPE_PROD, SystemUtils.DESTTYPE_DEV:
+					certsToProcess = List.of(6);
+					break;
+				case SystemUtils.DESTTYPE_ONBOARD, SystemUtils.DESTTYPE_STAGE, SystemUtils.DESTTYPE_TEST:
+					certsToProcess = List.of(5, 7, 8);
+				}
+				for (int certToProcess : certsToProcess) {
+					String certCommonName = row.length <= certToProcess ? null : row[certToProcess];
+					if (certCommonName == null || certCommonName.isBlank()) {
+						continue;
+					}
+					String key = String.format("%s#%s#%s", env, destinationId, certCommonName);
+					allowedUserMap.computeIfAbsent(key, k -> createAllowedUserRecord(env, destinationId, certCommonName));				
+				}
+			}
+		}
+		organizationRecordRepository.migrate(orgMap.values());
+		allowedUserRepository.migrate(allowedUserMap.values());
+	}
+
+	private void addDevOpsPrincipals(CSVReader csvr) throws IOException  {
+		String[] row = null;
+		Set<String> monitoringCert = new LinkedHashSet<>();
+		Set<String> devOpsStaff = new LinkedHashSet<>();
+		Set<String> preprodCerts = new LinkedHashSet<>();
+		Set<String> onboardingCerts = new LinkedHashSet<>();
+		Set<String> prodCerts = new LinkedHashSet<>();
+		Set<String> developmentCerts = new LinkedHashSet<>();
+		try {
+			// Skip header line
+			row = csvr.readNext();
+		} catch (CsvValidationException e) {
+			log.error(Markers2.append(e), "CSV malformed for access-controls.csv at line: {}", e.getLineNumber());
+		}
+		while (true) {
+			// Type,Principal,Organization
+			try {
+				row = csvr.readNext();
+			} catch (CsvValidationException e) {
+				log.error(Markers2.append(e), "CSV is invalid for access-controls.csv at line: {}", e.getLineNumber());
+				continue;
+			}
+			if (row == null) {
+				break;
+			}
+			String type = row[0];
+			String principal = row.length < 1 ? null : row[1];
+			String organization = row.length < 2 ? null : row[2];
+			OrganizationRecord orgRecord = this.organizationRecordRepository.find(organization);
+			if (orgRecord == null) {
+				orgRecord = createOrgRecord(type, organization, List.of(principal));
+			} else if (!orgRecord.getPrincipalNames().contains(principal)) {
+				orgRecord.addPrincipalName(principal);
+			}
+			organizationRecordRepository.store(orgRecord);
+			switch (type.toLowerCase()) {
+			case "monitoring":	monitoringCert.add(principal); break;
+			case "staff":		devOpsStaff.add(principal); break;
+			case "preprod":		preprodCerts.add(principal); break;
+			case "onboarding":	onboardingCerts.add(principal); break;
+			case "prod":		prodCerts.add(principal); break;
+			case "development":	developmentCerts.add(principal); break;
+			default:
+				log.error("Unrecognized type {} in access-controls.csv", type);
+			}
+		}
+		
+		if (SystemUtils.getDestType() == SystemUtils.DESTTYPE_STAGE) {
+			addSystemCerts(monitoringCert, SystemUtils.DESTTYPE_STAGE, Roles.SOAP);
+			addSystemCerts(devOpsStaff, SystemUtils.DESTTYPE_STAGE, Roles.ADMIN);
+			addSystemCerts(preprodCerts, SystemUtils.DESTTYPE_STAGE, Roles.INTERNAL);
+			addToDenyList(onboardingCerts, SystemUtils.DESTTYPE_STAGE);
+			addToDenyList(prodCerts, SystemUtils.DESTTYPE_STAGE);
+			addToDenyList(developmentCerts, SystemUtils.DESTTYPE_STAGE);
+		}
+		
+		if (SystemUtils.getDestType() == SystemUtils.DESTTYPE_ONBOARD || SystemUtils.getDestType() == SystemUtils.DESTTYPE_PROD) {
+			addSystemCerts(monitoringCert, SystemUtils.DESTTYPE_PROD, Roles.SOAP);
+			addSystemCerts(devOpsStaff, SystemUtils.DESTTYPE_PROD, Roles.ADMIN);
+			addSystemCerts(onboardingCerts, SystemUtils.DESTTYPE_PROD, Roles.INTERNAL);
+			addToDenyList(preprodCerts, SystemUtils.DESTTYPE_PROD);
+			addToDenyList(prodCerts, SystemUtils.DESTTYPE_PROD);
+			addToDenyList(developmentCerts, SystemUtils.DESTTYPE_PROD);
+			
+			addSystemCerts(monitoringCert, SystemUtils.DESTTYPE_ONBOARD, Roles.SOAP);
+			addSystemCerts(devOpsStaff, SystemUtils.DESTTYPE_ONBOARD, Roles.ADMIN);
+			addSystemCerts(prodCerts, SystemUtils.DESTTYPE_ONBOARD, Roles.INTERNAL);
+			addToDenyList(preprodCerts, SystemUtils.DESTTYPE_ONBOARD);
+			addToDenyList(onboardingCerts, SystemUtils.DESTTYPE_ONBOARD);
+			addToDenyList(developmentCerts, SystemUtils.DESTTYPE_ONBOARD);
+		}
+		
+		if (SystemUtils.getDestType() == SystemUtils.DESTTYPE_DEV || SystemUtils.getDestType() == SystemUtils.DESTTYPE_TEST) {
+			addSystemCerts(monitoringCert, SystemUtils.DESTTYPE_DEV, Roles.SOAP);
+			addSystemCerts(devOpsStaff, SystemUtils.DESTTYPE_DEV, Roles.ADMIN);
+			addSystemCerts(developmentCerts, SystemUtils.DESTTYPE_DEV, Roles.INTERNAL);
+			addToDenyList(preprodCerts, SystemUtils.DESTTYPE_DEV);
+			addToDenyList(onboardingCerts, SystemUtils.DESTTYPE_DEV);
+			addToDenyList(prodCerts, SystemUtils.DESTTYPE_DEV);
+			
+			addSystemCerts(monitoringCert, SystemUtils.DESTTYPE_TEST, Roles.SOAP);
+			addSystemCerts(monitoringCert, SystemUtils.DESTTYPE_TEST, Roles.SOAP);
+			addSystemCerts(devOpsStaff, SystemUtils.DESTTYPE_TEST, Roles.ADMIN);
+			addSystemCerts(developmentCerts, SystemUtils.DESTTYPE_TEST, Roles.INTERNAL);
+			addToDenyList(preprodCerts, SystemUtils.DESTTYPE_TEST);
+			addToDenyList(onboardingCerts, SystemUtils.DESTTYPE_TEST);
+			addToDenyList(prodCerts, SystemUtils.DESTTYPE_TEST);
+		}
+	}
+
+	/**
+	 * Give the specified principals access to IZ Gateway REST and SOAP APIs  
+	 * @param principalsToAllow	The principals to allow
+	 * @param destType	The destination type they are being allowed to
+	 * @param role The role to assign
+	 */
+	private void addSystemCerts(Collection<String> principalsToAllow, int destType, String role) {
+		IAccessGroup g = accessGroupRepository.findByTypeAndName(destType, role);
+		if (g == null) {
+			g = new AccessGroup();
+			g.setEnvironment(destType);
+			g.setGroupName(role);
+			g.getRoles().add(role);
+			g.getUsers().addAll(principalsToAllow);
+			accessGroupRepository.store(g);
+		}
+	}
+
+	/**
+	 * Given the specified principals, add them to the deny list.
+	 * @param principalsToDeny	The principals to deny
+	 * @param destType	The destination type they are being denied from
+	 */
+	private void addToDenyList(Set<String> principalsToDeny, int destType) {
+		for (String principal : principalsToDeny) {
+			DenyListRecord dlr = new DenyListRecord();
+			dlr.setEnvironment(destType);
+			dlr.setPrincipal(principal);
+			denyListRecordRepository.store(dlr);
+		}
+	}
+
+	private OrganizationRecord createOrgRecord(String type, String orgName, Collection<String> finalRow) {
+		OrganizationRecord org = new OrganizationRecord();
+		org.setType(type);
+		org.setOrganizationName(orgName);
+		for (String certCn : finalRow) {
+			if (certCn != null && !certCn.isBlank()) {
+				org.addPrincipalName(certCn);
+			}
+		}
+		return org;
+	}
+	
+	private AllowedUser createAllowedUserRecord(int env, String destinationId, String principal) {
+		AllowedUser u = new AllowedUser();
+		u.setEnvironment(env);
+		u.setDestinationId(destinationId);
+		u.setPrincipal(principal);
+		u.setEnabled(true);
+		u.setValidatedOn(u.getUpdatedOn());
+		return u;
 	}
 }

@@ -1,5 +1,7 @@
 package gov.cdc.izgateway.hub.repository;
 
+import gov.cdc.izgateway.dynamodb.repository.EventRepository;
+
 /**
  * Repository Factory is used to support replacable repositories.
  * IZ Gateway supports repositories in DynamoDB and has used databases 
@@ -76,4 +78,11 @@ public interface RepositoryFactory {
      * @return The OrganizationRecordRepository
      */
     IOrganizationRecordRepository organizationRecordRepository();
+    
+    /**
+     * Get the Repository for Event Logs.
+     * @return The EventRepository
+     */
+    EventRepository eventRepository();
+    
 }

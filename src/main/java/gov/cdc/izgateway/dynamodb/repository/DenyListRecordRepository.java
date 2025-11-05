@@ -1,10 +1,15 @@
 package gov.cdc.izgateway.dynamodb.repository;
 
+import java.util.Date;
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
-import gov.cdc.izgateway.dynamodb.DynamoDbRepository;
+
 import gov.cdc.izgateway.dynamodb.model.DenyListRecord;
 import gov.cdc.izgateway.hub.repository.IDenyListRecordRepository;
+import gov.cdc.izgateway.model.IAccessControl;
 import gov.cdc.izgateway.model.IDenyListRecord;
+import gov.cdc.izgateway.repository.DynamoDbRepository;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 
 /**
@@ -47,4 +52,21 @@ public class DenyListRecordRepository extends DynamoDbRepository<DenyListRecord>
             delete(r.getPrimaryId());
         }
     }
+
+	/**
+	 * Migrate access controls to deny list records.
+	 * @param list	The list of access controls
+	 * @param who	The originator of the original access control record
+	 * @param when	When that happened
+	 */
+	public void migrateAccessControls(List<? extends IAccessControl> list, String who, Date when) {
+		for (IAccessControl ac : list) {
+			if (!ac.getCategory().equals("group") || !ac.getName().equals("blacklist")) {
+				continue;
+			}
+			DenyListRecord dlr = new DenyListRecord(ac, who, when);
+			super.saveAndFlush(dlr);
+		}
+		
+	}
 }

@@ -6,7 +6,7 @@ import java.util.List;
 /**
  * Repository interface for managing {@link IFileType} entities.
  */
-public interface IFileTypeRepository {
+public interface IFileTypeRepository extends IRepository<IFileType> {
     /**
      * Stores the given file type.
      * @param fileType the file type to store

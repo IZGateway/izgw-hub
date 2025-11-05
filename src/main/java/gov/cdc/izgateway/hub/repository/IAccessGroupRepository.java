@@ -6,7 +6,7 @@ import java.util.List;
 /**
  * Repository interface for managing {@link IAccessGroup} entities.
  */
-public interface IAccessGroupRepository {
+public interface IAccessGroupRepository extends IRepository<IAccessGroup> {
     /**
      * Stores the given access group.
      * @param group the access group to store
@@ -25,4 +25,12 @@ public interface IAccessGroupRepository {
      * @return a list of all access groups
      */
     List<? extends IAccessGroup> findAll();
+
+    /**
+     * Get the given access group by name.
+     * @param destinationType The destination type of the access group
+     * @param name the name of the access group
+     * @return	 the access group with the given name, or null if not found.
+     */
+    IAccessGroup findByTypeAndName(int destinationType, String name);
 }

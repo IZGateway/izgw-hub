@@ -1,10 +1,11 @@
 package gov.cdc.izgateway.dynamodb.repository;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import gov.cdc.izgateway.dynamodb.DynamoDbRepository;
+
 import gov.cdc.izgateway.dynamodb.model.FileType;
 import gov.cdc.izgateway.hub.repository.IFileTypeRepository;
 import gov.cdc.izgateway.model.IFileType;
+import gov.cdc.izgateway.repository.DynamoDbRepository;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 
 /**

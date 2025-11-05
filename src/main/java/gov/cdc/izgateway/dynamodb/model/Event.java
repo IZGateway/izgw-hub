@@ -18,7 +18,6 @@ import gov.cdc.izgateway.model.DateConverter;
 import gov.cdc.izgateway.model.DynamoDbAudit;
 import gov.cdc.izgateway.model.DynamoDbEntity;
 import gov.cdc.izgateway.model.MappableEntity;
-import gov.cdc.izgateway.utils.SystemUtils;
 
 
 /**
@@ -55,13 +54,13 @@ public class Event extends DynamoDbAudit implements DynamoDbEntity, Serializable
     private String target;
     
     @Schema(description = "Start timestamp")
-    private Date started = new Date();
+    private Date started = getCreatedOn();
     
     @Schema(description = "Completed timestamp")
     private Date completed;
     
     @Schema(description = "System reporting the event")
-    private String reportedBy = SystemUtils.getHostname();
+    private String reportedBy = getCreatedBy();
     
     @Schema(description = "The Unique Id of the event")
     private String eventId = UUID.randomUUID().toString();

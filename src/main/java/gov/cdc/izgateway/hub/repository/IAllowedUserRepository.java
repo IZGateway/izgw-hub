@@ -6,7 +6,7 @@ import java.util.List;
 /**
  * Repository interface for managing {@link IAllowedUser} entities.
  */
-public interface IAllowedUserRepository {
+public interface IAllowedUserRepository extends IRepository<IAllowedUser> {
     /**
      * Stores the given allowed user.
      * @param user the allowed user to store
