@@ -589,7 +589,7 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 			String[] row = null;
 			int[] environments = getEnvironmentsToPopulate();
 			
-			createAllowedUsers(csvr, row, environments);
+			createAllowedUsers(csvr, environments);
 			addDevOpsPrincipals(csvr);
 			return success = true;
 		} catch (IOException e) {
@@ -607,9 +607,10 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 		}
 	}
 
-	private void createAllowedUsers(CSVReader csvr, String[] row, int[] environments) throws IOException {
+	private void createAllowedUsers(CSVReader csvr, int[] environments) throws IOException {
 		Map<String, OrganizationRecord> orgMap = new LinkedHashMap<>();
 		Map<String, AllowedUser> allowedUserMap = new LinkedHashMap<>();
+		String[] row;
 		while (true) {
 			// Type,Source,Can Access,Id,Organization Name,Onboarding Cert Common Name,Prod Cert Common Name,Other Cert 1,Other Cert 2
 			try {
