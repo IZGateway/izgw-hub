@@ -60,6 +60,7 @@ public class OrganizationRecord extends DynamoDbAudit implements DynamoDbEntity,
         super(other);
         if (other != null) {
             this.organizationName = other.getOrganizationName();
+            this.type = other.getType();
             if (other.getPrincipalNames() != null) {
                 this.principalNames.addAll(other.getPrincipalNames());
             }

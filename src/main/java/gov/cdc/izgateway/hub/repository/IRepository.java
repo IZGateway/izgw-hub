@@ -36,5 +36,9 @@ public interface IRepository<T> {
 			throw new ServiceConfigurationError("Failed to migrate " + this.getClass().getSimpleName(), e);
 		}
 	}
+	/**
+	 * Create a new Entity supported by this repository.
+	 * @return a new entity supported by this repository.
+	 */
 	public T createEntity();
 }

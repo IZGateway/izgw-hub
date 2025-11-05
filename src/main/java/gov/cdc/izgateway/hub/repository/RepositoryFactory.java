@@ -84,5 +84,4 @@ public interface RepositoryFactory {
      * @return The EventRepository
      */
     EventRepository eventRepository();
-    
 }

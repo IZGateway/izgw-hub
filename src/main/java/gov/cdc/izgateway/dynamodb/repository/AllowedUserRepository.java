@@ -45,20 +45,6 @@ public class AllowedUserRepository extends DynamoDbRepository<AllowedUser> imple
         return super.saveAndFlush(new AllowedUser(user));
     }
 
-    /**
-     * Deletes the given allowed user from DynamoDB.
-     * @param user the allowed user to delete
-     */
-    @Override
-    public void delete(IAllowedUser user) {
-        if (user instanceof AllowedUser u) {
-            delete(u.getPrimaryId());
-        } else {
-            AllowedUser u = new AllowedUser(user);
-            delete(u.getPrimaryId());
-        }
-    }
-
 	/**
 	 * Migrate access controls to allowed users.
 	 * @param list	The list of access controls
@@ -117,5 +103,15 @@ public class AllowedUserRepository extends DynamoDbRepository<AllowedUser> imple
 				}
 			}
 		}
+	}
+
+	@Override
+	public void delete(IAllowedUser user) {
+		if (user instanceof AllowedUser u) {
+			super.delete(u);
+		} else {
+			delete(new AllowedUser(user));
+		}
+		
 	}
 }

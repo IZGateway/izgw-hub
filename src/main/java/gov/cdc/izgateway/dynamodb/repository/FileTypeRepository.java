@@ -35,17 +35,12 @@ public class FileTypeRepository extends DynamoDbRepository<FileType> implements 
         return super.saveAndFlush(new FileType(fileType));
     }
 
-    /**
-     * Deletes the given file type from DynamoDB.
-     * @param fileType the file type to delete
-     */
-    @Override
-    public void delete(IFileType fileType) {
-        if (fileType instanceof FileType f) {
-            delete(f.getPrimaryId());
-        } else {
-            FileType f = new FileType(fileType);
-            delete(f.getPrimaryId());
-        }
-    }
+	@Override
+	public void delete(IFileType fileType) {
+		if (fileType instanceof FileType f) {
+			delete(f);
+		} else {
+			delete(new FileType(fileType));
+		}
+	}
 }

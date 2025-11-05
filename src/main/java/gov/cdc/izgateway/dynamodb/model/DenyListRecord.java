@@ -44,6 +44,12 @@ public class DenyListRecord extends DynamoDbAudit implements DynamoDbEntity, Ser
         }
     }
 
+	/**
+	 * Constructor for Migration from Access Control
+	 * @param ac	Old Access Control Record
+	 * @param reportedBy	Who created it
+	 * @param reportedOn	When it was created
+	 */
 	public DenyListRecord(IAccessControl ac, String reportedBy, java.util.Date reportedOn) {
 		setPrincipal(ac.getMember());
 		setEnvironment(SystemUtils.getDestType());

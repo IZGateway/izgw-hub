@@ -39,20 +39,6 @@ public class DenyListRecordRepository extends DynamoDbRepository<DenyListRecord>
         return super.saveAndFlush(new DenyListRecord(record));
     }
 
-    /**
-     * Deletes the given deny list record from DynamoDB.
-     * @param record the deny list record to delete
-     */
-    @Override
-    public void delete(IDenyListRecord record) {
-        if (record instanceof DenyListRecord r) {
-            delete(r.getPrimaryId());
-        } else {
-            DenyListRecord r = new DenyListRecord(record);
-            delete(r.getPrimaryId());
-        }
-    }
-
 	/**
 	 * Migrate access controls to deny list records.
 	 * @param list	The list of access controls
@@ -66,6 +52,16 @@ public class DenyListRecordRepository extends DynamoDbRepository<DenyListRecord>
 			}
 			DenyListRecord dlr = new DenyListRecord(ac, who, when);
 			super.saveAndFlush(dlr);
+		}
+		
+	}
+
+	@Override
+	public void delete(IDenyListRecord record) {
+		if (record instanceof DenyListRecord r) {
+			delete(r);
+		} else {
+			delete(new DenyListRecord(record));
 		}
 		
 	}
