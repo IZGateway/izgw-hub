@@ -44,6 +44,7 @@ class ApplicationTests {
 	
 	static {
 		Application.setAbortOnNoIIS(false);
+		Application.skipMigrations(true);
 	}
 	
 	@Autowired ApplicationTests() {

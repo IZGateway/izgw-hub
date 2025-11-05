@@ -11,6 +11,7 @@ import com.opencsv.CSVReaderBuilder;
 import com.opencsv.enums.CSVReaderNullFieldIndicator;
 import com.opencsv.exceptions.CsvValidationException;
 
+import gov.cdc.izgateway.Application;
 import gov.cdc.izgateway.dynamodb.model.AccessGroup;
 import gov.cdc.izgateway.dynamodb.model.AllowedUser;
 import gov.cdc.izgateway.dynamodb.model.DenyListRecord;
@@ -136,12 +137,14 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
     	Boolean[] furtherMigrationNeeded = { false };
     	try {
     		DynamoDbRepository.setServerName(serverName);
-	    	repositoriesToMigrate.stream().filter(r -> r.findAll().isEmpty()).forEach(r -> {
-				log.info("Migrating data to {}", r.getClass().getSimpleName());
-				furtherMigrationNeeded[0] |= migrateToNewAccessControlModel(r);
-			});
-    		migrateFromCSV();
-	    	migrated = true;
+    		if (!Application.isSkipMigrations()) { // Prevent unit tests from causing migrations
+				    	repositoriesToMigrate.stream().filter(r -> r.findAll().isEmpty()).forEach(r -> {
+					log.info("Migrating data to {}", r.getClass().getSimpleName());
+					furtherMigrationNeeded[0] |= migrateToNewAccessControlModel(r);
+				});
+	    		migrateFromCSV();
+		    	migrated = true;
+			}
     	} catch (ServiceConfigurationError e) {
     		log.error(Markers2.append(e), "Error during Access Control migration: {}", e.getMessage());
     		migrated = false;  // Use old model access control data if migration failed.

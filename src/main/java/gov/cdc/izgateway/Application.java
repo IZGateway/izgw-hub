@@ -139,6 +139,7 @@ public class Application implements WebMvcConfigurer {
 	}
 	
 	private static AbstractHttp11JsseProtocol<?> protocol;
+	private static boolean skipMigrations;
 	
 	/**
 	 * Reload the SSL configuration for the HTTPS connector.
@@ -509,5 +510,12 @@ public class Application implements WebMvcConfigurer {
         connector.setProperty("minSpareThreads", "3");  // This is for local administration, we don't need many.
         factory.addAdditionalTomcatConnectors(connector);
         return factory;
+	}
+
+	public static void skipMigrations(boolean b) {
+		skipMigrations = b;
+	}
+	public static boolean isSkipMigrations() {
+		return skipMigrations;
 	}
 }
