@@ -580,11 +580,12 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 	@SuppressWarnings("unused")
 	private boolean migrateFromCSV() throws ServiceConfigurationError {
 		Event migrationEvent = eventRepository.create(new Event(Event.MIGRATION, "ImportAllowedUsers")); 
+		boolean success = false;
 		if (migrationEvent == null) {
 			log.info("Migration already performed for ImportAllowedUsers");
+			success = true;
 			return false;
 		}
-		boolean success = false;
 		try (
 			FileReader isr = new FileReader(migrationData, StandardCharsets.UTF_8);
 			CSVReader csvr = new CSVReaderBuilder(isr).withSkipLines(1).withFieldAsNull(CSVReaderNullFieldIndicator.BOTH).build();
@@ -595,7 +596,7 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 			createAllowedUsers(csvr, environments);
 			addDevOpsPrincipals(csvr);
 			return success = true;
-		} catch (IOException e) {
+		} catch (Exception e) {
 			log.error(Markers2.append(e), "Error reading access-controls.csv");
 			throw new ServiceConfigurationError("Error reading access-controls.csv", e);
 		} finally {
