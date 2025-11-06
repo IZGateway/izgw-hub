@@ -685,12 +685,12 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 				log.error(Markers2.append(e), "CSV is invalid for access-controls.csv at line: {}", e.getLineNumber());
 				continue;
 			}
-			if (row == null) {
+			if (row == null || row.length < 2) {
 				break;
 			}
 			String type = row[0];
-			String principal = row.length < 1 ? null : row[1];
-			String organization = row.length < 2 ? null : row[2];
+			String principal = row.length < 2 ? null : row[1];
+			String organization = row.length < 3 ? null : row[2];
 			OrganizationRecord orgRecord = this.organizationRecordRepository.find(organization);
 			if (orgRecord == null) {
 				orgRecord = createOrgRecord(type, organization, List.of(principal));
