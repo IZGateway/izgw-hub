@@ -45,7 +45,7 @@ import lombok.extern.slf4j.Slf4j;
 	useMainMethod = SpringBootTest.UseMainMethod.ALWAYS
 )
 @ComponentScan("gov.cdc.izgateway")
-//@Disabled("Disabled because this is more of a one-time test to verify migration correctness.")
+@Disabled("Disabled because this is more of a one-time test to verify migration correctness.")
 class AccessControlTests {
 	static JsonFactory jf = new JsonFactory(); 
 	@Autowired(required = true)
