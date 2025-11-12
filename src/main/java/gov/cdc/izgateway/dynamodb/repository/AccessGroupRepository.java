@@ -10,16 +10,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import gov.cdc.izgateway.dynamodb.model.AccessGroup;
 import gov.cdc.izgateway.hub.repository.IAccessGroupRepository;
 import gov.cdc.izgateway.model.IAccessControl;
-import gov.cdc.izgateway.model.IAccessGroup;
 import gov.cdc.izgateway.repository.DynamoDbRepository;
 import gov.cdc.izgateway.security.Roles;
+import gov.cdc.izgateway.service.IAccessControlService;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 
 /**
  * Repository for managing {@link AccessGroup} entities in DynamoDB.
  * Implements business logic for storing, deleting, and retrieving access groups.
  */
-public class AccessGroupRepository extends DynamoDbRepository<AccessGroup> implements IAccessGroupRepository {
+public class AccessGroupRepository extends DynamoDbRepository<AccessGroup> implements IAccessGroupRepository<AccessGroup> {
     /**
      * Constructs a new AccessGroupRepository with the given DynamoDB client and table name.
      * @param client the DynamoDB enhanced client
@@ -35,15 +35,8 @@ public class AccessGroupRepository extends DynamoDbRepository<AccessGroup> imple
      * @return the stored access group
      */
     @Override
-    public IAccessGroup store(IAccessGroup group) {
-    	AccessGroup g2;
-        if (group instanceof AccessGroup g) {
-			g2 = g;
-        } else {
-            g2 = new AccessGroup(group);
-		}
-        g2 = saveAndFlush(g2);
-        return g2;
+    public AccessGroup store(AccessGroup group) {
+        return saveAndFlush(group);
     }
 
     /**
@@ -51,13 +44,8 @@ public class AccessGroupRepository extends DynamoDbRepository<AccessGroup> imple
      * @param group the access group to delete
      */
     @Override
-    public void delete(IAccessGroup group) {
-        if (group instanceof AccessGroup g) {
-            delete(g.getPrimaryId());
-        } else {
-            AccessGroup g = new AccessGroup(group);
-            delete(g.getPrimaryId());
-        }
+    public void delete(AccessGroup group) {
+        delete(group.getPrimaryId());
     }
 
 	/**
@@ -70,7 +58,7 @@ public class AccessGroupRepository extends DynamoDbRepository<AccessGroup> imple
 	public void migrateAccessControls(List<? extends IAccessControl> list, String who, Date when, int[] environments) {
 		Map<String, AccessGroup> groupMap = new LinkedHashMap<>();
 		for (IAccessControl ac : list) {
-			if ("group".equals(ac.getCategory())) {
+			if (IAccessControlService.GROUP_CATEGORY.equals(ac.getCategory())) {
 				String groupName = ac.getName();
 				for (int env: environments) {
 					AccessGroup group = groupMap.computeIfAbsent(groupName, 
@@ -124,12 +112,14 @@ public class AccessGroupRepository extends DynamoDbRepository<AccessGroup> imple
 			g.setDescription("REST API user");
 			g.getRoles().add(Roles.USERS);
 			break;
+		default:
+			break;
 		}
 		return g;
 	}
 	
 	@Override
-	public IAccessGroup findByTypeAndName(int type, String name) {
+	public AccessGroup findByTypeAndName(int type, String name) {
 		return super.find(String.format("%d#%s", type, name));
 	}
 }

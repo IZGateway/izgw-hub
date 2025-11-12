@@ -48,6 +48,7 @@ public class CertificateStatus extends DynamoDbAudit implements DynamoDbEntity, 
     private Date nextCheckTimeStamp;
     private String lastCheckStatus;
 
+    @Override
     public String toString() {
     	return String.format("%s(%s) last checked at %tD %tT.%TL: %s", 
     			commonName, certificateId, lastCheckedTimeStamp, lastCheckedTimeStamp, lastCheckedTimeStamp, lastCheckStatus);

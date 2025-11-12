@@ -71,7 +71,7 @@ public class AppController {
 	/**
 	 * Get the IP address and hostname of the caller.
 	 * @param req
-	 * @return
+	 * @return the IP address and hostname of the caller as seen by the application
 	 */
 	@Operation(summary = "Get the IP address and hostname of the caller",
 			description = "Returns the IP address and hostname of the caller as seen by the application")

@@ -7,12 +7,13 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.function.Function;
 
+import gov.cdc.izgateway.dynamodb.model.AccessGroup;
+import gov.cdc.izgateway.dynamodb.model.AllowedUser;
+import gov.cdc.izgateway.dynamodb.model.DenyListRecord;
+import gov.cdc.izgateway.dynamodb.model.FileType;
 import gov.cdc.izgateway.logging.RequestContext;
-import gov.cdc.izgateway.model.DbAudit;
 import gov.cdc.izgateway.model.IAccessGroup;
-import gov.cdc.izgateway.model.IAllowedUser;
 import gov.cdc.izgateway.model.IDenyListRecord;
-import gov.cdc.izgateway.model.IFileType;
 import gov.cdc.izgateway.repository.IRepository;
 import gov.cdc.izgateway.utils.SystemUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -31,31 +32,29 @@ class NewModelHelper implements AccessControlModelHelper {
 		this.accessControlService = accessControlService;
 	}
 
-	private Map<String, IAccessGroup> accessGroupCache = Collections.emptyMap();
-	private Map<String, IDenyListRecord> denyListRecordCache = Collections.emptyMap();
-	private Map<String, IFileType> fileTypeCache = Collections.emptyMap();
-	private Map<String, Set<IAllowedUser>> allowedUserCache = Collections.emptyMap();
+	private Map<String, AccessGroup> accessGroupCache = Collections.emptyMap();
+	private Map<String, DenyListRecord> denyListRecordCache = Collections.emptyMap();
+	private Map<String, FileType> fileTypeCache = Collections.emptyMap();
+	private Map<String, Set<AllowedUser>> allowedUserCache = Collections.emptyMap();
 	
 	@Override
 	public void refresh() {
-    	accessGroupCache = this.accessControlService.newModelHelper.refreshCache(this.accessControlService.accessGroupRepository, ag -> ag.getGroupName());
-    	denyListRecordCache = this.accessControlService.newModelHelper.refreshCache(this.accessControlService.denyListRecordRepository, dr -> dr.getPrincipal());
-    	fileTypeCache = this.accessControlService.newModelHelper.refreshCache(this.accessControlService.fileTypeRepository, ft -> ft.getFileTypeName());
-    	Map<String, Set<IAllowedUser>> newAllowedUserCache = new TreeMap<>();
-    	for (IAllowedUser user : this.accessControlService.newModelHelper.refreshCache(this.accessControlService.allowedUserRepository, au -> au.getPrincipal()).values()) {
-    		Set<IAllowedUser> userSet = newAllowedUserCache.computeIfAbsent(
+    	accessGroupCache = refreshCache(accessControlService.accessGroupRepository, ag -> ag.getGroupName());
+    	denyListRecordCache = refreshCache(accessControlService.denyListRecordRepository, dr -> dr.getPrincipal());
+    	fileTypeCache = refreshCache(accessControlService.fileTypeRepository, FileType::getFileTypeName);
+    	Map<String, Set<AllowedUser>> newAllowedUserCache = new TreeMap<>();
+    	for (AllowedUser user : refreshCache(accessControlService.allowedUserRepository, au -> au.getPrincipal()).values()) {
+    		newAllowedUserCache.computeIfAbsent(
     			user.getDestinationId(), 
     			k -> new TreeSet<>()
-    		);
-    		userSet.add(user);
+    		).add(user);
     	}
     	allowedUserCache = newAllowedUserCache;
 	}
 	
-	<T extends DbAudit> Map<String, T> refreshCache(IRepository<T> repo, Function<T, String> nameFunction) {
+	<T> Map<String, T> refreshCache(IRepository<T> repo, Function<T, String> nameFunction) {
 		TreeMap<String, T> cache = new TreeMap<>();
-		repo.findAllForEnvironment().stream()
-			.forEach(record -> cache.put(nameFunction.apply(record), record));
+		repo.findAllForEnvironment().stream().forEach(r -> cache.put(nameFunction.apply(r), r));
 		return cache;
 	}
 
@@ -133,7 +132,7 @@ class NewModelHelper implements AccessControlModelHelper {
 	}
 	
 	@Override
-	public Map<String, ?> getGroups() {
+	public Map<String, Object> getGroups() {
 		return Collections.unmodifiableMap(accessGroupCache);
 	}
 
@@ -142,7 +141,7 @@ class NewModelHelper implements AccessControlModelHelper {
 		if (allowedUserCache.isEmpty()) {
 			refresh();
 		}
-		Set<IAllowedUser> users = allowedUserCache.get(destId); 
+		Set<AllowedUser> users = allowedUserCache.get(destId); 
 		if (users == null) {
 			return true;  // There is no restriction on this destination.
 		}
@@ -156,21 +155,21 @@ class NewModelHelper implements AccessControlModelHelper {
 		if (denyListRecordCache.isEmpty()) {
 			refresh();
 		}
-		IDenyListRecord record = denyListRecordCache.get(user);
-		if (record != null) {
-			record.setUpdated();
-			this.accessControlService.denyListRecordRepository.delete(record);
+		DenyListRecord dlr = denyListRecordCache.get(user);
+		if (dlr != null) {
+			dlr.setUpdated();
+			this.accessControlService.denyListRecordRepository.delete(dlr);
 		}
-		return record;
+		return dlr;
 	}
 
 	@Override
-	public Object block(String user) {
-		IDenyListRecord record = this.accessControlService.denyListRecordRepository.createEntity();
-		record.setPrincipal(user);
-		record.setEnvironment(SystemUtils.getDestType());
-		record.setCreatedBy(RequestContext.getPrincipal().getName());
-		return this.accessControlService.denyListRecordRepository.store(record);
+	public IDenyListRecord block(String user) {
+		DenyListRecord dlr = accessControlService.denyListRecordRepository.createEntity();
+		dlr.setPrincipal(user);
+		dlr.setEnvironment(SystemUtils.getDestType());
+		dlr.setCreatedBy(RequestContext.getPrincipal().getName());
+		return this.accessControlService.denyListRecordRepository.store(dlr);
 	}
 
 	@Override

@@ -9,7 +9,7 @@ interface AccessControlModelHelper {
 	
 	Map<String, TreeSet<String>> getUserRoles();
 	
-	Map<String, ?> getGroups();
+	Map<String, Object> getGroups();
 	
 	boolean isUserInRole(String user, String role);
 	

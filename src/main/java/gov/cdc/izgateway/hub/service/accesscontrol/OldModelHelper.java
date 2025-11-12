@@ -17,6 +17,7 @@ import gov.cdc.izgateway.model.IAccessControl;
 import gov.cdc.izgateway.model.IAccessGroup;
 import gov.cdc.izgateway.security.Roles;
 import gov.cdc.izgateway.service.IAccessControlRegistry;
+import gov.cdc.izgateway.service.IAccessControlService;
 import gov.cdc.izgateway.utils.SystemUtils;
 import lombok.extern.slf4j.Slf4j;
 
@@ -33,7 +34,7 @@ class OldModelHelper implements AccessControlModelHelper {
 	OldModelHelper(AccessControlService accessControlService) {
 		this.accessControlService = accessControlService;
 		serverAccess = new AccessControl(
-			AccessControlService.GROUP_CATEGORY,
+			IAccessControlService.GROUP_CATEGORY,
 			Roles.INTERNAL,
 			this.accessControlService.getServerName(), 
 			SystemUtils.getDestType()
@@ -74,11 +75,8 @@ class OldModelHelper implements AccessControlModelHelper {
 		for (Entry<String, Set<IAccessControl>> entry : allowedUsersByGroup.entrySet()) {
 			users.add(entry.getKey());
 			for (IAccessControl ac: entry.getValue()) {
-				if (!ac.isAllowed()) {
-					continue;
-				}
 				String member = ac.getMember();
-				if (member == null) {
+				if (!ac.isAllowed() || member == null) {
 					continue;
 				}
 				if (!IAccessControl.isGroup(member)) {
@@ -110,7 +108,7 @@ class OldModelHelper implements AccessControlModelHelper {
 		List<IAccessControl> controls = new ArrayList<>(accessControlService.accessControlRepository.findAllForEnvironment());
         for (IAccessControl control: controls) {
         	switch (control.getCategory()) {
-        	case AccessControlService.GROUP_CATEGORY:
+        	case IAccessControlService.GROUP_CATEGORY:
         		newAllowedUsersByGroup
 					.computeIfAbsent(
 						control.getName(),
@@ -118,7 +116,7 @@ class OldModelHelper implements AccessControlModelHelper {
 	        		)
 	        		.add(control);
         		break;
-        	case AccessControlService.ROUTE_CATEGORY:
+        	case IAccessControlService.ROUTE_CATEGORY:
         		newAllowedRoutesByEvent.computeIfAbsent(
         			control.getName(),
 		        	k -> new LinkedHashMap<>()
@@ -132,16 +130,16 @@ class OldModelHelper implements AccessControlModelHelper {
 	}
 
 	@Override
-	public Map<String, IAccessGroup> getGroups() {
+	public Map<String, Object> getGroups() {
 		if (allowedUsersByGroup.isEmpty()) {
 			refresh();
 		}
-		Map<String, IAccessGroup> results = new TreeMap<>();
+		Map<String, Object> results = new TreeMap<>();
 		for (Entry<String, Set<IAccessControl>> entry : allowedUsersByGroup.entrySet()) {
 			String groupName = entry.getKey();
 			Set<IAccessControl> groups = entry.getValue();
 			for (IAccessControl acGroup : groups) {
-				IAccessGroup group = results.computeIfAbsent(
+				IAccessGroup group = (IAccessGroup)results.computeIfAbsent(
 					groupName, k -> createAccessGroupFromControl(acGroup)
 				);
 				// If the group is for a named role, add the role to the group.
@@ -196,7 +194,7 @@ class OldModelHelper implements AccessControlModelHelper {
 	
 	@Override
 	public boolean isUserInGroup(String user, String group) {
-		IAccessGroup g = getGroups().get(group); 
+		IAccessGroup g = (IAccessGroup)getGroups().get(group); 
 		if (g == null) {
 			log.warn("Group {} does not exist", group);
 			return false;

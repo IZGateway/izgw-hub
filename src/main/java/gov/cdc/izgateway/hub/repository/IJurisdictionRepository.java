@@ -6,6 +6,7 @@ import gov.cdc.izgateway.repository.IRepository;
 /**
  * The interface needed by JurisdictionService to access Jurisdiction information. 
  * @author Audacious Inquiry
+ * @param <T> The type of Jurisdiction this repository manages
  */
-public interface IJurisdictionRepository extends IRepository<IJurisdiction> {
+public interface IJurisdictionRepository<T extends IJurisdiction> extends IRepository<T> {
 }

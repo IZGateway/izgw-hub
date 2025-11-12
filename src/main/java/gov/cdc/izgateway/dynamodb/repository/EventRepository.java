@@ -46,7 +46,8 @@ public class EventRepository extends DynamoDbRepository<Event> {
 					Thread.currentThread().interrupt();
 					break;
 				}
-				if ((waited += 100) >= EVENT_WAIT_TIMEOUT_MS) {
+				waited += 100;
+				if (waited >= EVENT_WAIT_TIMEOUT_MS) {
 					String msg = String.format("Event %s for target %s is still in progress after waiting %d ms",
 							event.getName(), event.getTarget(), EVENT_WAIT_TIMEOUT_MS);
 					log.error(msg);
@@ -64,6 +65,15 @@ public class EventRepository extends DynamoDbRepository<Event> {
 	 * @return The updated event
 	 */
 	public Event update(Event event) {
+		return this.saveAndFlush(event);
+	}
+	
+	/**
+	 * Store the event
+	 * @param event	The event
+	 * @return The updated event
+	 */
+	public Event store(Event event) {
 		return this.saveAndFlush(event);
 	}
 	

@@ -7,21 +7,22 @@ import gov.cdc.izgateway.repository.IRepository;
 
 /**
  * The necessary interface for implementing a DestinationRepository
+ * @param <T> The type of Destination this repository manages
  * @author Audacious Inquiry
  * @since(version="2.2.0")
  */
-public interface IDestinationRepository extends IRepository<IDestination> {
+public interface IDestinationRepository<T extends IDestination> extends IRepository<T> {
 
 	/**
 	 * Get all destinations for the specified environment.
 	 * @param destType The type of destination to find
 	 * @return	All destinations enabled for the specified environment.
 	 */
-	List<? extends IDestination> findAllByDestTypeId(int destType);
+	List<T> findAllByDestTypeId(int destType);
 
 	/**
 	 * @return a new Destination for a repository
 	 */
-	IDestination newDestination();
+	T newDestination();
 
 }

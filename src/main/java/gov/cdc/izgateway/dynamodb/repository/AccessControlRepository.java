@@ -4,8 +4,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import gov.cdc.izgateway.dynamodb.model.AccessControl;
 import gov.cdc.izgateway.hub.repository.IAccessControlRepository;
-import gov.cdc.izgateway.model.IAccessControl;
 import gov.cdc.izgateway.repository.DynamoDbRepository;
+import gov.cdc.izgateway.service.IAccessControlService;
 import gov.cdc.izgateway.utils.SystemUtils;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 
@@ -14,7 +14,7 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
  * 
  * @author Audacious Inquiry
  */
-public class AccessControlRepository extends DynamoDbRepository<AccessControl> implements IAccessControlRepository {
+public class AccessControlRepository extends DynamoDbRepository<AccessControl> implements IAccessControlRepository<AccessControl> {
 	/**
 	 * Construct a new AccessControlRepository from the DynamoDb enhanced client.
 	 * @param client The client
@@ -25,33 +25,19 @@ public class AccessControlRepository extends DynamoDbRepository<AccessControl> i
 	}
 	
 	@Override
-	public IAccessControl store(IAccessControl h) {
-		if (h instanceof AccessControl h2) {
-			return super.saveAndFlush(h2);
-		}
-		return super.saveAndFlush(new AccessControl(h));
+	public AccessControl store(AccessControl h) {
+		return super.saveAndFlush(h);
 	}
 
 	@Override
-	public void delete(IAccessControl control) 
-	{
-		if (control instanceof AccessControl c) {
-			delete(c.getPrimaryId());
-		} else {
-			AccessControl c = new AccessControl(control);
-			delete(c.getPrimaryId());
-		}
-	}
-
-	@Override
-	public IAccessControl addUserToGroup(String user, String group) {
-		AccessControl c = new AccessControl("group", group, user, SystemUtils.getDestType());
+	public AccessControl addUserToGroup(String user, String group) {
+		AccessControl c = new AccessControl(IAccessControlService.GROUP_CATEGORY, group, user, SystemUtils.getDestType());
 		return super.saveAndFlush(c);
 	}
 
 	@Override
-	public IAccessControl removeUserFromGroup(String user, String group) {
-		AccessControl c = new AccessControl("group", group, user, SystemUtils.getDestType());
+	public AccessControl removeUserFromGroup(String user, String group) {
+		AccessControl c = new AccessControl(IAccessControlService.GROUP_CATEGORY, group, user, SystemUtils.getDestType());
 		super.delete(c.getPrimaryId());
 		return c;
 	}

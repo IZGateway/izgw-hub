@@ -199,18 +199,18 @@ public class Application implements WebMvcConfigurer {
 	 * @author Audacious Inquiry
 	 */
 	public static class JulInit {
-		private static final String LOGGING_PROPERTIES = 
-				"handlers = org.slf4j.bridge.SLF4JBridgeHandler\n"
-				+ ".level = INFO\n"
-				// Must enable FINE level logging in SLF4J to capture NioEndpoint handshake exceptions
-				+ "org.apache.tomcat.util.net.NioEndpoint.level = FINE\n"
-				+ "org.apache.tomcat.util.net.NioEndpoint.certificate.level = FINE\n"
-				+ "org.apache.tomcat.util.net.NioEndpoint.handshake.level = FINE\n";
+		// Must enable FINE level logging in SLF4J to capture NioEndpoint handshake exceptions
+		private static final String LOGGING_PROPERTIES = """
+			handlers = org.slf4j.bridge.SLF4JBridgeHandler
+			.level = INFO
+			org.apache.tomcat.util.net.NioEndpoint.level = FINE
+			org.apache.tomcat.util.net.NioEndpoint.certificate.level = FINE
+			org.apache.tomcat.util.net.NioEndpoint.handshake.level = FINE""";
 		
 		/**
 		 * Initialize JUL to route through SLF4J.
 		 */
-		public JulInit() {
+		public JulInit() { // NOSONAR Constructor used by JUL
 			try {
 				ByteArrayInputStream bis = new ByteArrayInputStream(LOGGING_PROPERTIES.getBytes(StandardCharsets.UTF_8));
 				LogManager.getLogManager().readConfiguration(bis);
@@ -512,9 +512,17 @@ public class Application implements WebMvcConfigurer {
         return factory;
 	}
 
+	/**
+	 * Disable or enable migrations for testing purposes.
+	 * @param b	true to skip migrations, false to run them.
+	 */
 	public static void skipMigrations(boolean b) {
 		skipMigrations = b;
 	}
+	/**
+	 * Determine if migrations should be skipped.
+	 * @return	true to skip migrations, false to run them.
+	 */
 	public static boolean isSkipMigrations() {
 		return skipMigrations;
 	}

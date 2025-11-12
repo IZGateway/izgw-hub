@@ -6,6 +6,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestMethod;
 
+import gov.cdc.izgateway.dynamodb.model.AccessControl;
+import gov.cdc.izgateway.dynamodb.model.AccessGroup;
+import gov.cdc.izgateway.dynamodb.model.AllowedUser;
+import gov.cdc.izgateway.dynamodb.model.DenyListRecord;
+import gov.cdc.izgateway.dynamodb.model.FileType;
 import gov.cdc.izgateway.hub.repository.IAccessControlRepository;
 import gov.cdc.izgateway.hub.repository.IAccessGroupRepository;
 import gov.cdc.izgateway.hub.repository.IAllowedUserRepository;
@@ -41,11 +46,11 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 	private static final int MAX_CACHE_SIZE = 1000;
 	private static final int REDUCE_QTY = 200;
 
-	final IAccessControlRepository accessControlRepository;
-    final IAccessGroupRepository accessGroupRepository;
-    final IAllowedUserRepository allowedUserRepository;
-    final IDenyListRecordRepository denyListRecordRepository;
-    final IFileTypeRepository fileTypeRepository;
+	final IAccessControlRepository<AccessControl> accessControlRepository;
+    final IAccessGroupRepository<AccessGroup> accessGroupRepository;
+    final IAllowedUserRepository<AllowedUser> allowedUserRepository;
+    final IDenyListRecordRepository<DenyListRecord> denyListRecordRepository;
+    final IFileTypeRepository<FileType> fileTypeRepository;
     
 	private final IAccessControlRegistry registry;
     private final AccessControlMigrator migrator;
@@ -116,7 +121,7 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 	}
 
     @Override
-	public Map<String, ?> getGroups() {
+	public Map<String, Object> getGroups() {
     	return currentModelHelper.getGroups();
     }
     

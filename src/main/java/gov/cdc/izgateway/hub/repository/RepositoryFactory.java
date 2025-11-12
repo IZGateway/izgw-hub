@@ -1,5 +1,15 @@
 package gov.cdc.izgateway.hub.repository;
 
+import gov.cdc.izgateway.dynamodb.model.AccessControl;
+import gov.cdc.izgateway.dynamodb.model.AccessGroup;
+import gov.cdc.izgateway.dynamodb.model.AllowedUser;
+import gov.cdc.izgateway.dynamodb.model.CertificateStatus;
+import gov.cdc.izgateway.dynamodb.model.DenyListRecord;
+import gov.cdc.izgateway.dynamodb.model.Destination;
+import gov.cdc.izgateway.dynamodb.model.FileType;
+import gov.cdc.izgateway.dynamodb.model.Jurisdiction;
+import gov.cdc.izgateway.dynamodb.model.MessageHeader;
+import gov.cdc.izgateway.dynamodb.model.OrganizationRecord;
 import gov.cdc.izgateway.dynamodb.repository.EventRepository;
 
 /**
@@ -23,61 +33,61 @@ public interface RepositoryFactory {
      * Get the Repository for Access Controls.
      * @return The AccessControlRepository
      */
-    IAccessControlRepository accessControlRepository();
+    IAccessControlRepository<AccessControl> accessControlRepository();
 
     /**
      * Get the Repository for Certificate Status.
      * @return The CertificateStatusRepository
      */
-    ICertificateStatusRepository certificateStatusRepository();
+    ICertificateStatusRepository<CertificateStatus> certificateStatusRepository();
 
     /**
      * Get the Repository for Destinations.
      * @return The DestinationRepository
      */
-    IDestinationRepository destinationRepository();
+    IDestinationRepository<Destination> destinationRepository();
 
     /**
      * Get the Repository for Jurisdictions.
      * @return The JurisdictionRepository
      */
-    IJurisdictionRepository jurisdictionRepository();
+    IJurisdictionRepository<Jurisdiction> jurisdictionRepository();
 
     /**
      * Get the Repository for Message Headers.
      * @return The MessageHeaderRepository
      */
-    IMessageHeaderRepository messageHeaderRepository();
+    IMessageHeaderRepository<MessageHeader> messageHeaderRepository();
 
     /**
      * Get the Repository for Access Groups.
      * @return The AccessGroupRepository
      */
-    IAccessGroupRepository accessGroupRepository();
+    IAccessGroupRepository<AccessGroup> accessGroupRepository();
 
     /**
      * Get the Repository for Allowed Users.
      * @return The AllowedUserRepository
      */
-    IAllowedUserRepository allowedUserRepository();
+    IAllowedUserRepository<AllowedUser> allowedUserRepository();
 
     /**
      * Get the Repository for Deny List Records.
      * @return The DenyListRecordRepository
      */
-    IDenyListRecordRepository denyListRecordRepository();
+    IDenyListRecordRepository<DenyListRecord> denyListRecordRepository();
 
     /**
      * Get the Repository for File Types.
      * @return The FileTypeRepository
      */
-    IFileTypeRepository fileTypeRepository();
+    IFileTypeRepository<FileType> fileTypeRepository();
 
     /**
      * Get the Repository for Organization Records.
      * @return The OrganizationRecordRepository
      */
-    IOrganizationRecordRepository organizationRecordRepository();
+    IOrganizationRecordRepository<OrganizationRecord> organizationRecordRepository();
     
     /**
      * Get the Repository for Event Logs.

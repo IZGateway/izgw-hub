@@ -7,26 +7,27 @@ import java.util.List;
 
 /**
  * Repository interface for managing {@link IAccessGroup} entities.
+ * @param <T> the type of access group
  */
-public interface IAccessGroupRepository extends IRepository<IAccessGroup> {
+public interface IAccessGroupRepository<T extends IAccessGroup> extends IRepository<T> {
     /**
      * Stores the given access group.
      * @param group the access group to store
      * @return the stored access group
      */
-    IAccessGroup store(IAccessGroup group);
+    T store(T group);
 
     /**
      * Deletes the given access group.
      * @param group the access group to delete
      */
-    void delete(IAccessGroup group);
+    void delete(T group);
 
     /**
      * Retrieves all access groups.
      * @return a list of all access groups
      */
-    List<? extends IAccessGroup> findAll();
+    List<T> findAll();
 
     /**
      * Get the given access group by name.
@@ -34,5 +35,5 @@ public interface IAccessGroupRepository extends IRepository<IAccessGroup> {
      * @param name the name of the access group
      * @return	 the access group with the given name, or null if not found.
      */
-    IAccessGroup findByTypeAndName(int destinationType, String name);
+    T findByTypeAndName(int destinationType, String name);
 }

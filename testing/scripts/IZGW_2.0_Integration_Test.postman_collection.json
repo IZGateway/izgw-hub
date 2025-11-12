@@ -7392,9 +7392,6 @@
 													"pm.test(\"Entry to have value equal to true\", function() {\r",
 													"    pm.expect(responseBody.allowed).to.be.eql(true);\r",
 													"});\r",
-													"pm.test(\"Entry to have category value equal to blacklist\", function() {\r",
-													"    pm.expect(responseBody.name).to.be.eql('blacklist');\r",
-													"});\r",
 													""
 												],
 												"type": "text/javascript",

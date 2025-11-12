@@ -27,7 +27,8 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
  * 
  * @author Audacious Inquiry
  */
-public class EndpointStatusRepository extends DynamoDbRepository<EndpointStatus> implements gov.cdc.izgateway.repository.EndpointStatusRepository<EndpointStatus> {
+public class EndpointStatusRepository extends DynamoDbRepository<EndpointStatus> // NOSONAR 
+	implements gov.cdc.izgateway.repository.EndpointStatusRepository<EndpointStatus> {
 	/**
 	 * Construct a new EndpointStatusRepository from the DynamoDb enhanced client.
 	 * @param client The client
@@ -38,14 +39,11 @@ public class EndpointStatusRepository extends DynamoDbRepository<EndpointStatus>
 	}
 	
 	@Override
-	public EndpointStatus saveAndFlush(IEndpointStatus dest) {
+	public EndpointStatus saveAndFlush(EndpointStatus dest) {
 		if (dest == null) {
 			throw new NullPointerException("Entity cannot be null");
 		}
-		if (dest instanceof EndpointStatus d) {
-			return super.saveAndFlush(d);
-		} 
-		return super.saveAndFlush(new EndpointStatus(dest));
+		return super.saveAndFlush(dest);
 	}
 
 	@Override
@@ -64,7 +62,7 @@ public class EndpointStatusRepository extends DynamoDbRepository<EndpointStatus>
 	public List<EndpointStatus> find(int maxQuarterHours, String[] include) {
 		// TODO Whatever is needed for actual implementation
 		long time = System.currentTimeMillis() - (TimeUnit.MINUTES.toMillis(15) * maxQuarterHours);
-		return null;
+		return List.of(); // Placeholder
 	}
 	
 
@@ -90,5 +88,16 @@ public class EndpointStatusRepository extends DynamoDbRepository<EndpointStatus>
 		for (EndpointStatus status : statuses) {
 			this.saveAndFlush(status);
 		}
+	}
+
+	@Override
+	public EndpointStatus store(EndpointStatus h) {
+		return saveAndFlush(h);
+	}
+
+	@Override
+	public EndpointStatus saveAndFlush(IEndpointStatus status) {
+		// Whatever is needed for actual implementation
+		return null;
 	}
 }

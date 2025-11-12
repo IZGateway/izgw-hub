@@ -9,6 +9,7 @@ import com.opencsv.enums.CSVReaderNullFieldIndicator;
 import com.opencsv.exceptions.CsvValidationException;
 
 import gov.cdc.izgateway.Application;
+import gov.cdc.izgateway.dynamodb.model.AccessControl;
 import gov.cdc.izgateway.dynamodb.model.AccessGroup;
 import gov.cdc.izgateway.dynamodb.model.AllowedUser;
 import gov.cdc.izgateway.dynamodb.model.DenyListRecord;
@@ -30,11 +31,10 @@ import gov.cdc.izgateway.hub.repository.IOrganizationRecordRepository;
 import gov.cdc.izgateway.hub.repository.RepositoryFactory;
 import gov.cdc.izgateway.logging.markers.Markers2;
 import gov.cdc.izgateway.model.IAccessControl;
-import gov.cdc.izgateway.model.IAccessGroup;
-import gov.cdc.izgateway.model.IFileType;
 import gov.cdc.izgateway.repository.DynamoDbRepository;
 import gov.cdc.izgateway.repository.IRepository;
 import gov.cdc.izgateway.security.Roles;
+import gov.cdc.izgateway.service.IAccessControlService;
 import gov.cdc.izgateway.utils.SystemUtils;
 import lombok.extern.slf4j.Slf4j;
 
@@ -61,12 +61,12 @@ import java.util.Set;
 @Service
 public class AccessControlMigrator {
 
-	private final IAccessControlRepository accessControlRepository;
-    private final IAccessGroupRepository accessGroupRepository;
-    private final IAllowedUserRepository allowedUserRepository;
-    private final IDenyListRecordRepository denyListRecordRepository;
-    private final IFileTypeRepository fileTypeRepository;
-    private final IOrganizationRecordRepository organizationRecordRepository;
+	private final IAccessControlRepository<AccessControl> accessControlRepository;
+    private final IAccessGroupRepository<AccessGroup> accessGroupRepository;
+    private final IAllowedUserRepository<AllowedUser> allowedUserRepository;
+    private final IDenyListRecordRepository<DenyListRecord> denyListRecordRepository;
+    private final IFileTypeRepository<FileType> fileTypeRepository;
+    private final IOrganizationRecordRepository<OrganizationRecord> organizationRecordRepository;
 	private final EventRepository eventRepository;
 	private final List<IRepository<?>> repositoriesToMigrate;
 
@@ -141,7 +141,7 @@ public class AccessControlMigrator {
 			List<? extends IAccessControl> recordsToMigrate = accessControlRepository.findAll();
 			if (r instanceof AccessGroupRepository agr) {
 				agr.migrateAccessControls(recordsToMigrate.stream()
-					.filter(ac -> "group".equals(ac.getCategory()))		// It's a group
+					.filter(ac -> IAccessControlService.GROUP_CATEGORY.equals(ac.getCategory()))		// It's a group
 					.filter(ac -> !"blacklist".equals(ac.getName()) &&  // but not the blacklist
 								  !adsUsers.contains(ac.getName()))		// Or an ADS User group
 					.toList(),
@@ -149,40 +149,45 @@ public class AccessControlMigrator {
 					migrationEvent.getStarted(),
 					getEnvironmentsToPopulate()
 				);
-				return success = true;
+				success = true;
+				return true;
 			} 
 			if (r instanceof AllowedUserRepository aur) {
 				// Only ADS Users use access controls today
 				aur.migrateAccessControls(recordsToMigrate.stream()
-						.filter(ac -> "group".equals(ac.getCategory()))		// It's a group
+						.filter(ac -> IAccessControlService.GROUP_CATEGORY.equals(ac.getCategory()))		// It's a group
 						.filter(ac -> adsUsers.contains(ac.getName()))		// It's an ADS User group
 						.toList(), 
 						reportedBy, 
 						migrationEvent.getStarted()
 				);
-				return success = true;
+				success = true;
+				return true;
 			} 
 			if (r instanceof DenyListRecordRepository dlr) {
 				dlr.migrateAccessControls(recordsToMigrate.stream()
-					.filter(ac -> "group".equals(ac.getCategory()))		// It's a group
+					.filter(ac -> IAccessControlService.GROUP_CATEGORY.equals(ac.getCategory()))		// It's a group
 					.filter(ac -> "blacklist".equals(ac.getName()))		// it's the denylist
 					.toList(), 
 					reportedBy, 
 					migrationEvent.getStarted()
 				);
-				return success = true;
+				success = true;
+				return true;
 			} 
 			if (r instanceof FileTypeRepository ftr) {
-				List<? extends IFileType> fileTypes = recordsToMigrate.stream()
-					.filter(ac -> "eventToRoute".equals(ac.getCategory()))		// It's a group
+				List<FileType> fileTypes = recordsToMigrate.stream()
+					.filter(ac -> IAccessControlService.ROUTE_CATEGORY.equals(ac.getCategory()))		// It's a group
 					.map(ac -> new FileType(ac, migrationEvent.getReportedBy(), migrationEvent.getCompleted())).toList();
 				fileTypes.forEach(ft -> { ft.setCreatedBy(migrationEvent.getReportedBy()); ft.setCreatedOn(migrationEvent.getStarted()); });
 				ftr.migrate(fileTypes);
-				return success = true;
+				success = true;
+				return true;
 			} 
 			if (r instanceof OrganizationRecordRepository) {
 				// No migration needed for Organization Records
-				return success = true;
+				success = true;
+				return true;
 			} 
 			log.error("Unrecognized repository type for migration: {}", r.getClass().getSimpleName());
 			throw new ServiceConfigurationError("Unrecognized repository type for migration: " + r.getClass().getSimpleName());
@@ -229,7 +234,8 @@ public class AccessControlMigrator {
 			
 			createAllowedUsers(csvr, environments);
 			addDevOpsPrincipals(csvr);
-			return success = true;
+			success = true;
+			return true;
 		} catch (Exception e) {
 			log.error(Markers2.append(e), "Error reading access-controls.csv");
 			throw new ServiceConfigurationError("Error reading access-controls.csv", e);
@@ -249,62 +255,117 @@ public class AccessControlMigrator {
 		Map<String, OrganizationRecord> orgMap = new LinkedHashMap<>();
 		Map<String, AllowedUser> allowedUserMap = new LinkedHashMap<>();
 		String[] row;
-		while (true) {
-			// Type,Source,Can Access,Id,Organization Name,Onboarding Cert Common Name,Prod Cert Common Name,Other Cert 1,Other Cert 2
-			try {
-				row = csvr.readNext();
-			} catch (CsvValidationException e) {
-				log.error(Markers2.append(e), "CSV is invalid for access-controls.csv at line: {}", e.getLineNumber());
-				continue;
-			}
-			if (row == null || row[0] == null) {
-				break;
-			}
-			// Type,Source,Can Access,Id,Organization Name,Onboarding Cert Common Name,Prod Cert Common Name,Other Cert 1,Other Cert 2
-			String type = row[0];
-			String orgName = row.length < 1 ? null : row[1];
-			String destinationId = row.length < 3 ? null : row[3];
-			String[] finalRow = row;
-			orgMap.computeIfAbsent(orgName, 
-					k -> createOrgRecord(type, orgName, Arrays.asList(finalRow).subList(5, finalRow.length)));
-			
-			for (int env : environments) {
-				List<Integer> certsToProcess = null;
-				switch (env) {
-				case SystemUtils.DESTTYPE_PROD, SystemUtils.DESTTYPE_DEV:
-					certsToProcess = List.of(6);
-					break;
-				case SystemUtils.DESTTYPE_ONBOARD, SystemUtils.DESTTYPE_STAGE, SystemUtils.DESTTYPE_TEST:
-					certsToProcess = List.of(5, 7, 8);
+		try {
+			while (true) {
+				// Type,Source,Can Access,Id,Organization Name,Onboarding Cert Common Name,Prod Cert Common Name,Other Cert 1,Other Cert 2
+				try {
+					row = csvr.readNext();
+				} catch (CsvValidationException e) {
+					log.error(Markers2.append(e), "CSV is invalid for access-controls.csv at line: {}", e.getLineNumber());
+					continue;
 				}
-				for (int certToProcess : certsToProcess) {
-					String certCommonName = row.length <= certToProcess ? null : row[certToProcess];
-					if (certCommonName == null || certCommonName.isBlank()) {
-						continue;
-					}
-					String key = String.format("%s#%s#%s", env, destinationId, certCommonName);
-					allowedUserMap.computeIfAbsent(key, k -> createAllowedUserRecord(env, destinationId, certCommonName));				
+				if (row == null || row[0] == null) {
+					return;
 				}
+				createOrganizationAndUser(environments, orgMap, allowedUserMap, row);
 			}
+		} finally {
+			organizationRecordRepository.migrate(orgMap.values());
+			allowedUserRepository.migrate(allowedUserMap.values());
 		}
-		organizationRecordRepository.migrate(orgMap.values());
-		allowedUserRepository.migrate(allowedUserMap.values());
 	}
 
-	private void addDevOpsPrincipals(CSVReader csvr) throws IOException  {
-		String[] row = null;
+	private void createOrganizationAndUser(int[] environments, Map<String, OrganizationRecord> orgMap,
+			Map<String, AllowedUser> allowedUserMap, String[] row) {
+		// Type,Source,Can Access,Id,Organization Name,Onboarding Cert Common Name,Prod Cert Common Name,Other Cert 1,Other Cert 2
+		String type = row[0];
+		String orgName = row.length < 1 ? null : row[1];
+		String destinationId = row.length < 3 ? null : row[3];
+		String[] finalRow = row;
+		orgMap.computeIfAbsent(orgName, 
+				k -> createOrgRecord(type, orgName, Arrays.asList(finalRow).subList(5, finalRow.length)));
+		
+		for (int env : environments) {
+			List<Integer> certsToProcess = null;
+			if (List.of(SystemUtils.DESTTYPE_PROD, SystemUtils.DESTTYPE_DEV).contains(env)) {
+				certsToProcess = List.of(6);
+			} else {
+				certsToProcess = List.of(5, 7, 8);
+			}
+			for (int certToProcess : certsToProcess) {
+				String certCommonName = row.length <= certToProcess ? null : row[certToProcess];
+				if (certCommonName == null || certCommonName.isBlank()) {
+					continue;
+				}
+				String key = String.format("%s#%s#%s", env, destinationId, certCommonName);
+				allowedUserMap.computeIfAbsent(key, k -> createAllowedUserRecord(env, destinationId, certCommonName));				
+			}
+		}
+	}
+
+	private static class CertLists {
 		Set<String> monitoringCert = new LinkedHashSet<>();
 		Set<String> devOpsStaff = new LinkedHashSet<>();
 		Set<String> preprodCerts = new LinkedHashSet<>();
 		Set<String> onboardingCerts = new LinkedHashSet<>();
 		Set<String> prodCerts = new LinkedHashSet<>();
 		Set<String> developmentCerts = new LinkedHashSet<>();
+	}
+	private void addDevOpsPrincipals(CSVReader csvr) throws IOException  {
+		CertLists certLists = collectOperationsUserData(csvr);
+		
+		if (SystemUtils.getDestType() == SystemUtils.DESTTYPE_STAGE) {
+			addSystemCerts(certLists.monitoringCert, SystemUtils.DESTTYPE_STAGE, Roles.SOAP);
+			addSystemCerts(certLists.devOpsStaff, SystemUtils.DESTTYPE_STAGE, Roles.ADMIN);
+			addSystemCerts(certLists.preprodCerts, SystemUtils.DESTTYPE_STAGE, Roles.INTERNAL);
+			addToDenyList(certLists.onboardingCerts, SystemUtils.DESTTYPE_STAGE);
+			addToDenyList(certLists.prodCerts, SystemUtils.DESTTYPE_STAGE);
+			addToDenyList(certLists.developmentCerts, SystemUtils.DESTTYPE_STAGE);
+		}
+		
+		if (SystemUtils.getDestType() == SystemUtils.DESTTYPE_ONBOARD || SystemUtils.getDestType() == SystemUtils.DESTTYPE_PROD) {
+			addSystemCerts(certLists.monitoringCert, SystemUtils.DESTTYPE_PROD, Roles.SOAP);
+			addSystemCerts(certLists.devOpsStaff, SystemUtils.DESTTYPE_PROD, Roles.ADMIN);
+			addSystemCerts(certLists.onboardingCerts, SystemUtils.DESTTYPE_PROD, Roles.INTERNAL);
+			addToDenyList(certLists.preprodCerts, SystemUtils.DESTTYPE_PROD);
+			addToDenyList(certLists.prodCerts, SystemUtils.DESTTYPE_PROD);
+			addToDenyList(certLists.developmentCerts, SystemUtils.DESTTYPE_PROD);
+			
+			addSystemCerts(certLists.monitoringCert, SystemUtils.DESTTYPE_ONBOARD, Roles.SOAP);
+			addSystemCerts(certLists.devOpsStaff, SystemUtils.DESTTYPE_ONBOARD, Roles.ADMIN);
+			addSystemCerts(certLists.prodCerts, SystemUtils.DESTTYPE_ONBOARD, Roles.INTERNAL);
+			addToDenyList(certLists.preprodCerts, SystemUtils.DESTTYPE_ONBOARD);
+			addToDenyList(certLists.onboardingCerts, SystemUtils.DESTTYPE_ONBOARD);
+			addToDenyList(certLists.developmentCerts, SystemUtils.DESTTYPE_ONBOARD);
+		}
+		
+		if (SystemUtils.getDestType() == SystemUtils.DESTTYPE_DEV || SystemUtils.getDestType() == SystemUtils.DESTTYPE_TEST) {
+			addSystemCerts(certLists.monitoringCert, SystemUtils.DESTTYPE_DEV, Roles.SOAP);
+			addSystemCerts(certLists.devOpsStaff, SystemUtils.DESTTYPE_DEV, Roles.ADMIN);
+			addSystemCerts(certLists.developmentCerts, SystemUtils.DESTTYPE_DEV, Roles.INTERNAL);
+			addToDenyList(certLists.preprodCerts, SystemUtils.DESTTYPE_DEV);
+			addToDenyList(certLists.onboardingCerts, SystemUtils.DESTTYPE_DEV);
+			addToDenyList(certLists.prodCerts, SystemUtils.DESTTYPE_DEV);
+			
+			addSystemCerts(certLists.monitoringCert, SystemUtils.DESTTYPE_TEST, Roles.SOAP);
+			addSystemCerts(certLists.monitoringCert, SystemUtils.DESTTYPE_TEST, Roles.SOAP);
+			addSystemCerts(certLists.devOpsStaff, SystemUtils.DESTTYPE_TEST, Roles.ADMIN);
+			addSystemCerts(certLists.developmentCerts, SystemUtils.DESTTYPE_TEST, Roles.INTERNAL);
+			addToDenyList(certLists.preprodCerts, SystemUtils.DESTTYPE_TEST);
+			addToDenyList(certLists.onboardingCerts, SystemUtils.DESTTYPE_TEST);
+			addToDenyList(certLists.prodCerts, SystemUtils.DESTTYPE_TEST);
+		}
+	}
+
+	private CertLists collectOperationsUserData(CSVReader csvr) throws IOException {
+		CertLists certLists = new CertLists();
 		try {
 			// Skip header line
-			row = csvr.readNext();
+			csvr.readNext();
 		} catch (CsvValidationException e) {
 			log.error(Markers2.append(e), "CSV malformed for access-controls.csv at line: {}", e.getLineNumber());
 		}
+		String[] row;
 		while (true) {
 			// Type,Principal,Organization
 			try {
@@ -314,71 +375,33 @@ public class AccessControlMigrator {
 				continue;
 			}
 			if (row == null || row.length < 2) {
-				break;
+				return certLists;
 			}
 			String type = row[0];
 			String principal = row.length < 2 ? null : row[1];
 			String organization = row.length < 3 ? null : row[2];
-			OrganizationRecord orgRecord = this.organizationRecordRepository.find(organization);
-			if (orgRecord == null) {
-				orgRecord = createOrgRecord(type, organization, List.of(principal));
-			} else if (!orgRecord.getPrincipalNames().contains(principal)) {
-				orgRecord.addPrincipalName(principal);
-			}
-			organizationRecordRepository.store(orgRecord);
+			createOrganization(type, principal, organization);
 			switch (type.toLowerCase()) {
-			case "monitoring":	monitoringCert.add(principal); break;
-			case "staff":		devOpsStaff.add(principal); break;
-			case "preprod":		preprodCerts.add(principal); break;
-			case "onboarding":	onboardingCerts.add(principal); break;
-			case "prod":		prodCerts.add(principal); break;
-			case "development":	developmentCerts.add(principal); break;
+			case "monitoring":	certLists.monitoringCert.add(principal); break;
+			case "staff":		certLists.devOpsStaff.add(principal); break;
+			case "preprod":		certLists.preprodCerts.add(principal); break;
+			case "onboarding":	certLists.onboardingCerts.add(principal); break;
+			case "prod":		certLists.prodCerts.add(principal); break;
+			case "development":	certLists.developmentCerts.add(principal); break;
 			default:
 				log.error("Unrecognized type {} in access-controls.csv", type);
 			}
 		}
-		
-		if (SystemUtils.getDestType() == SystemUtils.DESTTYPE_STAGE) {
-			addSystemCerts(monitoringCert, SystemUtils.DESTTYPE_STAGE, Roles.SOAP);
-			addSystemCerts(devOpsStaff, SystemUtils.DESTTYPE_STAGE, Roles.ADMIN);
-			addSystemCerts(preprodCerts, SystemUtils.DESTTYPE_STAGE, Roles.INTERNAL);
-			addToDenyList(onboardingCerts, SystemUtils.DESTTYPE_STAGE);
-			addToDenyList(prodCerts, SystemUtils.DESTTYPE_STAGE);
-			addToDenyList(developmentCerts, SystemUtils.DESTTYPE_STAGE);
+	}
+
+	private void createOrganization(String type, String principal, String organization) {
+		OrganizationRecord orgRecord = this.organizationRecordRepository.find(organization);
+		if (orgRecord == null) {
+			orgRecord = createOrgRecord(type, organization, List.of(principal));
+		} else if (!orgRecord.getPrincipalNames().contains(principal)) {
+			orgRecord.addPrincipalName(principal);
 		}
-		
-		if (SystemUtils.getDestType() == SystemUtils.DESTTYPE_ONBOARD || SystemUtils.getDestType() == SystemUtils.DESTTYPE_PROD) {
-			addSystemCerts(monitoringCert, SystemUtils.DESTTYPE_PROD, Roles.SOAP);
-			addSystemCerts(devOpsStaff, SystemUtils.DESTTYPE_PROD, Roles.ADMIN);
-			addSystemCerts(onboardingCerts, SystemUtils.DESTTYPE_PROD, Roles.INTERNAL);
-			addToDenyList(preprodCerts, SystemUtils.DESTTYPE_PROD);
-			addToDenyList(prodCerts, SystemUtils.DESTTYPE_PROD);
-			addToDenyList(developmentCerts, SystemUtils.DESTTYPE_PROD);
-			
-			addSystemCerts(monitoringCert, SystemUtils.DESTTYPE_ONBOARD, Roles.SOAP);
-			addSystemCerts(devOpsStaff, SystemUtils.DESTTYPE_ONBOARD, Roles.ADMIN);
-			addSystemCerts(prodCerts, SystemUtils.DESTTYPE_ONBOARD, Roles.INTERNAL);
-			addToDenyList(preprodCerts, SystemUtils.DESTTYPE_ONBOARD);
-			addToDenyList(onboardingCerts, SystemUtils.DESTTYPE_ONBOARD);
-			addToDenyList(developmentCerts, SystemUtils.DESTTYPE_ONBOARD);
-		}
-		
-		if (SystemUtils.getDestType() == SystemUtils.DESTTYPE_DEV || SystemUtils.getDestType() == SystemUtils.DESTTYPE_TEST) {
-			addSystemCerts(monitoringCert, SystemUtils.DESTTYPE_DEV, Roles.SOAP);
-			addSystemCerts(devOpsStaff, SystemUtils.DESTTYPE_DEV, Roles.ADMIN);
-			addSystemCerts(developmentCerts, SystemUtils.DESTTYPE_DEV, Roles.INTERNAL);
-			addToDenyList(preprodCerts, SystemUtils.DESTTYPE_DEV);
-			addToDenyList(onboardingCerts, SystemUtils.DESTTYPE_DEV);
-			addToDenyList(prodCerts, SystemUtils.DESTTYPE_DEV);
-			
-			addSystemCerts(monitoringCert, SystemUtils.DESTTYPE_TEST, Roles.SOAP);
-			addSystemCerts(monitoringCert, SystemUtils.DESTTYPE_TEST, Roles.SOAP);
-			addSystemCerts(devOpsStaff, SystemUtils.DESTTYPE_TEST, Roles.ADMIN);
-			addSystemCerts(developmentCerts, SystemUtils.DESTTYPE_TEST, Roles.INTERNAL);
-			addToDenyList(preprodCerts, SystemUtils.DESTTYPE_TEST);
-			addToDenyList(onboardingCerts, SystemUtils.DESTTYPE_TEST);
-			addToDenyList(prodCerts, SystemUtils.DESTTYPE_TEST);
-		}
+		organizationRecordRepository.store(orgRecord);
 	}
 
 	/**
@@ -388,7 +411,7 @@ public class AccessControlMigrator {
 	 * @param role The role to assign
 	 */
 	private void addSystemCerts(Collection<String> principalsToAllow, int destType, String role) {
-		IAccessGroup g = accessGroupRepository.findByTypeAndName(destType, role);
+		AccessGroup g = accessGroupRepository.findByTypeAndName(destType, role);
 		if (g == null) {
 			g = new AccessGroup();
 			g.setEnvironment(destType);

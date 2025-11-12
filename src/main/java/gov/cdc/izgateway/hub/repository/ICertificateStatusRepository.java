@@ -8,17 +8,18 @@ import gov.cdc.izgateway.repository.IRepository;
 /**
  * A repository tracking certificate status information.
  * @author Audacious Inquiry
+ * @param <T> The type of Certificate Status this repository manages1
  *
  */
-public interface ICertificateStatusRepository extends IRepository<ICertificateStatus> {
+public interface ICertificateStatusRepository<T extends ICertificateStatus> extends IRepository<T> {
 
 	@Override
-	List<? extends ICertificateStatus> findAll();
+	List<T> findAll();
 	/**
 	 * Find a given certificate by its ID.
 	 * @param certificateId	The certificate ID
 	 * @return	The certificate status or null if not found
 	 */
-	ICertificateStatus findByCertificateId(String certificateId);
+	T findByCertificateId(String certificateId);
 
 }
