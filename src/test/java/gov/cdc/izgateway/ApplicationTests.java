@@ -67,7 +67,7 @@ class ApplicationTests {
 	private static Boolean migrated = null;
 	static {
 		Application.setAbortOnNoIIS(false);
-		Application.skipMigrations(true);
+		Application.skipMigrations(false);
 	}
 	
 
