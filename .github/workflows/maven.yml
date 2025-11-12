@@ -255,7 +255,7 @@ jobs:
       run: |
       
         # For IGDD-2129 Only, when merging to develop this step should use a post-migration backup 
-        aws dynamodb restore-table-from-backup --table-name izgateway-devalb \
+        aws dynamodb restore-table-from-backup --target-table-name izgateway-devalb \
           --backup-arn arn:aws:dynamodb:us-east-1:357442695278:table/izgateway-devalb/backup/01762439641552-8078a00e
          
         if [ -z "$AWS_REGIONS" ]; then
