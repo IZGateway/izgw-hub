@@ -1,6 +1,8 @@
 package gov.cdc.izgateway.hub.repository;
 
 import gov.cdc.izgateway.model.IFileType;
+import gov.cdc.izgateway.repository.IRepository;
+
 import java.util.List;
 
 /**

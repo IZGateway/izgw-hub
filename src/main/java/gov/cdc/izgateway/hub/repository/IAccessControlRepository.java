@@ -1,6 +1,7 @@
 package gov.cdc.izgateway.hub.repository;
 
 import gov.cdc.izgateway.model.IAccessControl;
+import gov.cdc.izgateway.repository.IRepository;
 
 /**
  * The IAccessControlRepository interface supports access to access control

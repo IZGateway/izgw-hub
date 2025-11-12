@@ -3,6 +3,7 @@ package gov.cdc.izgateway.hub.repository;
 import java.util.List;
 
 import gov.cdc.izgateway.model.ICertificateStatus;
+import gov.cdc.izgateway.repository.IRepository;
 
 /**
  * A repository tracking certificate status information.

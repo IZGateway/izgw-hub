@@ -23,7 +23,7 @@ import gov.cdc.izgateway.model.IAccessControl;
 @DynamoDbBean
 public class DenyListRecord extends DynamoDbAudit implements DynamoDbEntity, Serializable, IDenyListRecord {
     private String principal;
-    private Integer environment;
+    private int environment;
     private String reason;
 	@Override
 	public String getPrimaryId() {

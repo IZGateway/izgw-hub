@@ -1,5 +1,7 @@
 package gov.cdc.izgateway.dynamodb.repository;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -52,57 +54,47 @@ public class AllowedUserRepository extends DynamoDbRepository<AllowedUser> imple
 	 * @param when When that happened
 	 */
 	public void migrateAccessControls(List<? extends IAccessControl> list, String who, Date when) {
-		Map<String, AllowedUser> userMap = new LinkedHashMap<>();
 		// Enable access to DEX endpoint for all users in groups starting with "ads"
-		migrateForAutomatedDataSubmission(list, who, when, userMap);
-		migrate(userMap.values());
+		List<AllowedUser> userMap = migrateForAutomatedDataSubmission(list, who, when);
+		migrate(userMap);
 	}
 
-	private void migrateForAutomatedDataSubmission(List<? extends IAccessControl> list, String who, Date when,
-			Map<String, AllowedUser> userMap) {
+	private List<AllowedUser> migrateForAutomatedDataSubmission(List<? extends IAccessControl> list, String who, Date when) {
+		List<AllowedUser> userMap = new ArrayList<>();
+		List<Integer> destTypes = Collections.emptyList();
+		switch (SystemUtils.getDestType()) {
+		case SystemUtils.DESTTYPE_PROD:
+		case SystemUtils.DESTTYPE_ONBOARD:
+			destTypes = List.of(SystemUtils.DESTTYPE_PROD, SystemUtils.DESTTYPE_ONBOARD);
+			break;
+		case SystemUtils.DESTTYPE_STAGE:
+			destTypes = List.of(SystemUtils.DESTTYPE_STAGE);
+			break;
+		case SystemUtils.DESTTYPE_DEV:
+		case SystemUtils.DESTTYPE_TEST:
+			destTypes = List.of(SystemUtils.DESTTYPE_PROD, SystemUtils.DESTTYPE_ONBOARD);
+			break;
+		}
 		for (IAccessControl ac : list) {
 			if ("group".equals(ac.getCategory()) && Strings.CI.startsWith(ac.getName(), "ads") && !IAccessControl.isGroup(ac.getMember())) {
 				String userName = ac.getMember();
-				int[] destTypes = { SystemUtils.DESTTYPE_PROD, SystemUtils.DESTTYPE_ONBOARD, SystemUtils.DESTTYPE_STAGE, SystemUtils.DESTTYPE_DEV, SystemUtils.DESTTYPE_TEST };
 				String[] dexEndpoints = { "dex", "dex-dev" };
 				for (String dexEndpoint : dexEndpoints) {
 					for (int destType : destTypes) {
-						switch (SystemUtils.getDestType()) {
-							case SystemUtils.DESTTYPE_PROD:
-							case SystemUtils.DESTTYPE_ONBOARD:
-								if (destType == SystemUtils.DESTTYPE_DEV || destType == SystemUtils.DESTTYPE_TEST) {
-									continue;
-								}
-								break;
-							case SystemUtils.DESTTYPE_STAGE:
-								if (destType != SystemUtils.DESTTYPE_STAGE) {
-									continue;
-								}
-								break;
-							case SystemUtils.DESTTYPE_DEV:
-							case SystemUtils.DESTTYPE_TEST:
-								if (destType == SystemUtils.DESTTYPE_PROD || destType == SystemUtils.DESTTYPE_ONBOARD) {
-									continue;
-								}
-								break;
-							default:
-								continue;
-						}
-						if (SystemUtils.getDestType() == destType) {
-							AllowedUser u = new AllowedUser();
-							u.setEnvironment(destType);
-							u.setPrincipal(userName);
-							u.setEnabled(true);
-							u.setValidatedOn(when);
-							u.setDestinationId(dexEndpoint);
-							u.setCreatedBy(who);
-							u.setCreatedOn(when);
-							userMap.put(userName, u);
-						}
+						AllowedUser u = new AllowedUser();
+						u.setEnvironment(destType);
+						u.setPrincipal(userName);
+						u.setEnabled(true);
+						u.setValidatedOn(when);
+						u.setDestinationId(dexEndpoint);
+						u.setCreatedBy(who);
+						u.setCreatedOn(when);
+						userMap.add(u);
 					}
 				}
 			}
 		}
+		return userMap;
 	}
 
 	@Override

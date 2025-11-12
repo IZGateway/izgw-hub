@@ -1,6 +1,7 @@
 package gov.cdc.izgateway.hub.repository;
 
 import gov.cdc.izgateway.model.IMessageHeader;
+import gov.cdc.izgateway.repository.IRepository;
 
 /**
  * The IMessageHeaderRepository interface supports access to message header records

@@ -3,6 +3,7 @@ package gov.cdc.izgateway.hub.repository;
 import java.util.List;
 
 import gov.cdc.izgateway.model.IDestination;
+import gov.cdc.izgateway.repository.IRepository;
 
 /**
  * The necessary interface for implementing a DestinationRepository

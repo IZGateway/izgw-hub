@@ -253,6 +253,11 @@ jobs:
         AWS_REGIONS: ${{ vars.AWS_REGIONS }}
         ECS_DESIRED_COUNT: ${{ vars.ECS_DESIRED_COUNT }}
       run: |
+      
+        # For IGDD-2129 Only, when merging to develop this step should use a post-migration backup 
+        aws dynamodb restore-table-from-backup --table-name izgateway-devalb \
+          --backup-arn arn:aws:dynamodb:us-east-1:357442695278:table/izgateway-devalb/backup/01762439641552-8078a00e
+         
         if [ -z "$AWS_REGIONS" ]; then
           echo "AWS_REGIONS not set, defaulting to us-east-1"
           AWS_REGIONS="us-east-1"
@@ -266,13 +271,6 @@ jobs:
         for region in $AWS_REGIONS; do
           echo "Update ECS services in $region (starting $ECS_DESIRED_COUNT containers)"
           aws ecs update-service --region $region --cluster izgateway-dev-izgateway-services --service izgateway-devalb-service --force-new-deployment --enable-execute-command --desired-count $ECS_DESIRED_COUNT | jq ".service.deployments[].id" &
-        done
-        
-        wait
-        
-        for region in $AWS_REGIONS; do
-          echo "Wait for ECS service stability in $region"
-          aws ecs wait services-stable --region $region --cluster izgateway-dev-izgateway-services --service izgateway-devalb-service &
         done
         
         wait
@@ -350,8 +348,24 @@ jobs:
     # Having the wait for reload at this point allows some of the wasted waiting time to occur during build cleanup phase
     # and setup phase of this job.
     - name: Wait for reload of task to complete
-      run: aws ecs wait services-stable --cluster izgateway-dev-izgateway-services --service izgateway-devalb-service
+      run: |
+          if [ -z "$AWS_REGIONS" ]; then
+            echo "AWS_REGIONS not set, defaulting to us-east-1"
+            AWS_REGIONS="us-east-1"
+          fi
+    
+          if [ -z "$ECS_DESIRED_COUNT" ]; then
+            echo "ECS_DESIRED_COUNT not set, defaulting to 1"
+            ECS_DESIRED_COUNT="1"
+          fi
 
+          for region in $AWS_REGIONS; do
+            echo "Wait for ECS service stability in $region"
+            aws ecs wait services-stable --region $region --cluster izgateway-dev-izgateway-services --service izgateway-devalb-service &
+          done
+
+          wait
+          
     # Verify Filebeats is operating properly
     # Get the first service instance and check CloudWatch logs for indication that it connected
     - name: Verify ElasticSearch Logging Client Is running

@@ -2,8 +2,8 @@ package gov.cdc.izgateway.hub;
 
 import gov.cdc.izgateway.ads.ADSController;
 import gov.cdc.izgateway.configuration.SenderConfig;
-import gov.cdc.izgateway.hub.service.AccessControlService;
 import gov.cdc.izgateway.hub.service.DestinationService;
+import gov.cdc.izgateway.hub.service.accesscontrol.AccessControlService;
 import gov.cdc.izgateway.logging.RequestContext;
 import gov.cdc.izgateway.logging.info.DestinationInfo;
 import gov.cdc.izgateway.logging.info.HostInfo;
@@ -134,17 +134,14 @@ public abstract class BaseGatewayController extends SoapControllerBase {
      *
      * @throws SecurityFault if the user is not permitted to access the destination.
      */
-    protected void checkAccess(String destGroup) throws SecurityFault {
-        destGroup = StringUtils.upperCase(destGroup);
-        if (!accessControlService.groupExists(destGroup)) {
-            return;
-        }
+    protected void checkAccess(String destId) throws SecurityFault {
         if (isAdministrator()) {
             return;
         }
 
-        if (!accessControlService.isMemberOf(RequestContext.getSourceInfo().getCommonName(), destGroup)) {
-            throw SecurityFault.generalSecurity("Source Not Allowed", destGroup, null);
+        String sender = RequestContext.getSourceInfo().getCommonName();
+        if (!accessControlService.canAccessDestination(sender, destId)) {
+            throw SecurityFault.generalSecurity("Source Not Allowed", String.format("%s is not permitted to send messages to %s", sender, destId), null);
         }
     }
 

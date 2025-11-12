@@ -2,6 +2,8 @@ package gov.cdc.izgateway.hub.repository;
 
 import gov.cdc.izgateway.dynamodb.model.OrganizationRecord;
 import gov.cdc.izgateway.model.IOrganizationRecord;
+import gov.cdc.izgateway.repository.IRepository;
+
 import java.util.List;
 
 /**
