@@ -241,6 +241,34 @@ jobs:
         docker image tag iz-gateway:${{env.IMAGE_TAG}} $ECR_REGISTRY/$ECR_REPOSITORY:latest
         docker image push --all-tags $ECR_REGISTRY/$ECR_REPOSITORY
 
+    # This is faster and easier than a db restore    
+    # This code should be removed after migration has been code reviewed and tested and before merging to develop branch
+    # In other words, do NOT merge this code to develop branch until testing is completed and migration is no longer needed
+    - name: Undo any previous migration in the database 
+      env:
+        TABLE_NAME: izgateway-devalb
+        PK: entityType
+        SK: sortKey
+      run: |
+        # Delete any existing new Access Control "tables"
+        aws dynamodb delete-item --table-name $TABLE_NAME --key '{"$PK": {"S": "AccessGroup"}}'
+        aws dynamodb delete-item --table-name $TABLE_NAME --key '{"$PK": {"S": "AllowedUser"}}'
+        aws dynamodb delete-item --table-name $TABLE_NAME --key '{"$PK": {"S": "DenyListRecord"}}'
+        aws dynamodb delete-item --table-name $TABLE_NAME --key '{"$PK": {"S": "FileType"}}'
+        aws dynamodb delete-item --table-name $TABLE_NAME --key '{"$PK": {"S": "OrganizationRecord"}}'
+
+        # Query for all Migration items for the new Model
+        aws dynamodb query \
+          --table-name $TABLE_NAME \
+          --key-condition-expression "$PK = :pkval AND begins_with($SK, :prefix)" \
+          --expression-attribute-values "{\"\":pkval\":{\"S\":\"Event\"}, \":prefix\":{\"S\":\"Migration\"}}" \
+          --output json | jq --raw-output '.. | select(type == "string" and contains("Migration") and contains("Repository"))' \
+          | grep -E  "Group|Allowed|Deny|File|Organi" > migration_items.txt
+          
+        while read -r KEY; do
+          aws dynamodb delete-item --table-name $TABLE_NAME --key "{\"$PK\": {\"S\": \"Event\"}, \"$SK\": {\"S\": \"$KEY\"}}"
+        done < migration_items.txt
+        
     # AWS_REGIONS can be set in GitHub Settings -> Secrets and variables -> Actions -> Variables -> Repository Variables
     # Format: space-separated regions (e.g., "us-east-1 us-west-2")
     # Default of us-east-1 will be used if this is not set
@@ -253,12 +281,7 @@ jobs:
         AWS_REGIONS: ${{ vars.AWS_REGIONS }}
         ECS_DESIRED_COUNT: ${{ vars.ECS_DESIRED_COUNT }}
       run: |
-      
-        # For IGDD-2129 Remove these lines before merging to develop
-        aws dynamodb delete-table --table-name izgateway-devalb
-        aws dynamodb restore-table-from-backup --target-table-name izgateway-devalb \
-          --backup-arn arn:aws:dynamodb:us-east-1:357442695278:table/izgateway-devalb/backup/01762439641552-8078a00e
-         
+        
         if [ -z "$AWS_REGIONS" ]; then
           echo "AWS_REGIONS not set, defaulting to us-east-1"
           AWS_REGIONS="us-east-1"
