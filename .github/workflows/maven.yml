@@ -250,24 +250,18 @@ jobs:
         PK: entityType
         SK: sortKey
       run: |
-        # Delete any existing new Access Control "tables"
-        aws dynamodb delete-item --table-name $TABLE_NAME --key '{"$PK": {"S": "AccessGroup"}}'
-        aws dynamodb delete-item --table-name $TABLE_NAME --key '{"$PK": {"S": "AllowedUser"}}'
-        aws dynamodb delete-item --table-name $TABLE_NAME --key '{"$PK": {"S": "DenyListRecord"}}'
-        aws dynamodb delete-item --table-name $TABLE_NAME --key '{"$PK": {"S": "FileType"}}'
-        aws dynamodb delete-item --table-name $TABLE_NAME --key '{"$PK": {"S": "OrganizationRecord"}}'
+        # Collect records to delete
+        aws dynamodb execute-statement 
+          --statement "SELECT entityType, sortKey FROM \"$TABLE_NAME\" \
+            WHERE (\"entityType\" = 'Event' AND \"target\" \
+            IN ('AccessGroupRepository', 'AllowedUserRepository', 'FileTypeRepository', 'DenyListRecordRepository','OrganizationRecordRepository')) \
+            OR \"entityType\" IN ('AccessGroup','AllowedUser','FileType','DenyListRecord','OrganizationRecord')" \
+            | jq -r ".Items[] | [.entityType.S, .sortKey.S] | @tsv" > items_to_delete.txt
 
         # Query for all Migration items for the new Model
-        aws dynamodb query \
-          --table-name $TABLE_NAME \
-          --key-condition-expression "$PK = :pkval AND begins_with($SK, :prefix)" \
-          --expression-attribute-values "{\"\":pkval\":{\"S\":\"Event\"}, \":prefix\":{\"S\":\"Migration\"}}" \
-          --output json | jq --raw-output '.. | select(type == "string" and contains("Migration") and contains("Repository"))' \
-          | grep -E  "Group|Allowed|Deny|File|Organi" > migration_items.txt
-          
-        while read -r KEY; do
-          aws dynamodb delete-item --table-name $TABLE_NAME --key "{\"$PK\": {\"S\": \"Event\"}, \"$SK\": {\"S\": \"$KEY\"}}"
-        done < migration_items.txt
+        while read -r ENTITY, KEY; do
+          aws dynamodb delete-item --table-name $TABLE_NAME --key "{\"$PK\": {\"S\": \"$ENTITY\"}, \"$SK\": {\"S\": \"$KEY\"}}"
+        done < items_to_delete.txt
         
     # AWS_REGIONS can be set in GitHub Settings -> Secrets and variables -> Actions -> Variables -> Repository Variables
     # Format: space-separated regions (e.g., "us-east-1 us-west-2")

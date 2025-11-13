@@ -117,7 +117,7 @@ public class AccessControlMigrator {
     		return false;  // Use old model access control data if migration failed.
     	}
     }
-
+    
     /**
      * Migrate existing access control records to the new model.
      * 
