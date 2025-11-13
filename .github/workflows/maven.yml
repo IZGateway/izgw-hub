@@ -251,7 +251,7 @@ jobs:
         SK: sortKey
       run: |
         # Collect records to delete
-        aws dynamodb execute-statement 
+        aws dynamodb execute-statement \
           --statement "SELECT entityType, sortKey FROM \"$TABLE_NAME\" \
             WHERE (\"entityType\" = 'Event' AND \"target\" \
             IN ('AccessGroupRepository', 'AllowedUserRepository', 'FileTypeRepository', 'DenyListRecordRepository','OrganizationRecordRepository')) \
