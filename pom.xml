@@ -539,6 +539,7 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<version>${spring-boot.version}</version>
 				<configuration>
 					<mainClass>gov.cdc.izgateway.Application</mainClass>
 					<jvmArguments>-Dspring.application.admin.enabled=true</jvmArguments>
