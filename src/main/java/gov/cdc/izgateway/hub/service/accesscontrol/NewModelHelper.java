@@ -100,7 +100,7 @@ class NewModelHelper implements AccessControlModelHelper {
 	@Override
 	public boolean isUserInRole(String user, String role) {
 		for (IAccessGroup group : accessGroupCache.values()) {
-			if (group.getRoles().contains(role) && isUserInGroup(user, group.getGroupName())) {
+			if (group.getRoles().contains(role) && isUserInGroup(user, group)) {
 				return true;
 			}
 		}
@@ -114,6 +114,10 @@ class NewModelHelper implements AccessControlModelHelper {
 			log.warn("Group {} does not exist", group);
 			return false;
 		}
+		return isUserInGroup(user, accessGroup);
+	}
+
+	private boolean isUserInGroup(String user, IAccessGroup accessGroup) {
 		Set<String> users = accessGroup.getUsers();
 		if (users.contains(user) || users.contains("*")) {
 			return true;

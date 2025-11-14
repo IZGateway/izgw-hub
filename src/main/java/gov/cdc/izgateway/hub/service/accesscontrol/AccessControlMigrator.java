@@ -433,9 +433,10 @@ public class AccessControlMigrator {
 			g.setEnvironment(destType);
 			g.setGroupName(role);
 			g.getRoles().add(role);
-			g.getUsers().addAll(principalsToAllow);
 			accessGroupRepository.store(g);
 		}
+		g.getUsers().addAll(principalsToAllow);
+		accessGroupRepository.store(g);
 	}
 
 	/**
