@@ -59,6 +59,7 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
     NewModelHelper newModelHelper;
     AccessControlModelHelper currentModelHelper = oldModelHelper;
 	
+    @Getter
 	private boolean migrated = false;
 	/**
 	 * A cache of positive access control decisions. It needs to be concurrent
@@ -69,8 +70,12 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 	private int refreshPeriod = 300;
 
 	@Getter
-	@Value("${server.hostname:dev.izgateway.org}") String serverName;
-	@Value("${security.enable-blacklist:true}") boolean blacklistEnabled;
+	@Value("${server.hostname:dev.izgateway.org}") 
+	String serverName;
+	
+	@Value("${security.enable-blacklist:true}") 
+	boolean blacklistEnabled;
+	
 	@Value("${hub.migration-data:access-controls.csv}")
 	private String migrationData;
 	
@@ -80,14 +85,14 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
      * @param registry	The registry for managing access control to methods
      */
     @Autowired
-    public AccessControlService(RepositoryFactory factory, IAccessControlRegistry registry) {
+    public AccessControlService(RepositoryFactory factory, IAccessControlRegistry registry, AccessControlMigrator migrator) {
         this.accessControlRepository = factory.accessControlRepository();
         this.registry = registry;
         this.accessGroupRepository = factory.accessGroupRepository();
         this.allowedUserRepository = factory.allowedUserRepository();
         this.denyListRecordRepository = factory.denyListRecordRepository();
         this.fileTypeRepository = factory.fileTypeRepository();
-        this.migrator = new AccessControlMigrator(factory);
+        this.migrator = migrator;
     }
     
 	/**

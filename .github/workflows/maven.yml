@@ -254,7 +254,7 @@ jobs:
         aws dynamodb execute-statement \
           --statement "SELECT entityType, sortKey FROM \"$TABLE_NAME\" \
             WHERE (\"entityType\" = 'Event' AND \"target\" \
-            IN ('AccessGroupRepository', 'AllowedUserRepository', 'FileTypeRepository', 'DenyListRecordRepository','OrganizationRecordRepository')) \
+            IN ('AccessGroupRepository', 'AllowedUserRepository', 'FileTypeRepository', 'DenyListRecordRepository','OrganizationRecordRepository', 'ImportAllowedUsers')) \
             OR \"entityType\" IN ('AccessGroup','AllowedUser','FileType','DenyListRecord','OrganizationRecord')" \
             | jq -r ".Items[] | [.entityType.S, .sortKey.S] | @tsv" > items_to_delete.txt
 

@@ -40,7 +40,6 @@ security:
     # For test and dev deployments, set SSL_SHARE environment variable to the location of the EFS File system in
     # the AWS environment. 
     ssl-path: ${SSL_SHARE:}conf/ssl
-    migration-path: ${SSL_SHARE:/usr/share/phiz-web-ws/}conf
 
 springdoc:
     swagger-ui:
@@ -131,7 +130,7 @@ ads:
     max-message-size-GB: 15
     
 hub:
-    migration-data: ${security.migration-path}/access-controls.csv
+    migration-data: ${SSL_SHARE:/usr/share/phiz-web-ws/conf/}access-controls.csv 
     max-message-size: ${PHIZ_WS_IIS_HUB_MAX_MESSAGE_SIZE:65536}
     max-retries: 3
     status-check:

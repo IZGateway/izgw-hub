@@ -72,8 +72,6 @@ public class AccessControlMigrator {
 
 	@Value("${server.hostname:dev.izgateway.org}")
 	private String serverName;
-	@Value("${security.enable-blacklist:true}")
-	private boolean blacklistEnabled;
 	@Value("${hub.migration-data:access-controls.csv}")
 	private String migrationData;
 	
