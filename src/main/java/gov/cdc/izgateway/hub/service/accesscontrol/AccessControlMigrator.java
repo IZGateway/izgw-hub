@@ -232,6 +232,7 @@ public class AccessControlMigrator {
 			
 			createAllowedUsers(csvr, environments);
 			addDevOpsPrincipals(csvr);
+			addUsersGroup(environments);
 			success = true;
 			return true;
 		} catch (Exception e) {
@@ -299,6 +300,23 @@ public class AccessControlMigrator {
 				allowedUserMap.computeIfAbsent(key, k -> createAllowedUserRecord(env, destinationId, certCommonName));				
 			}
 		}
+	}
+	
+
+	private void addUsersGroup(int[] environments) {
+		for (int env: environments) {
+			AccessGroup g = accessGroupRepository.findByTypeAndName(env, Roles.USERS);
+			if (g == null) {
+				g = new AccessGroup();
+				g.setEnvironment(env);
+				g.setGroupName(Roles.USERS);
+				g.getRoles().add(Roles.USERS);
+			}
+			// Add the wildcard user to the users group
+			g.getUsers().add("*");
+			accessGroupRepository.store(g);
+		}
+		
 	}
 
 	private static class CertLists {
