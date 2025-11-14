@@ -259,7 +259,7 @@ jobs:
             | jq -r ".Items[] | [.entityType.S, .sortKey.S] | @tsv" > items_to_delete.txt
 
         # Query for all Migration items for the new Model
-        while read -r ENTITY, KEY; do
+        while read -r ENTITY KEY; do
           aws dynamodb delete-item --table-name $TABLE_NAME --key "{\"$PK\": {\"S\": \"$ENTITY\"}, \"$SK\": {\"S\": \"$KEY\"}}"
         done < items_to_delete.txt
         
