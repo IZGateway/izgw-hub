@@ -65,7 +65,7 @@ public class AccessGroupRepository extends DynamoDbRepository<AccessGroup> imple
 						k -> createGroupFromAccessControl(who, when, groupName, env));
 					if (IAccessControl.isGroup(ac.getMember())) {
 						group.getGroups().add(ac.getMember());
-					} else if (!ac.getMember().contains("*")) { // Skip wildcard users
+					} else if (!ac.getMember().contains("*.")) { // Skip wildcard users
 						group.getUsers().add(ac.getMember());
 					}
 				}

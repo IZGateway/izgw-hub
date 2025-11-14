@@ -100,17 +100,8 @@ class NewModelHelper implements AccessControlModelHelper {
 	@Override
 	public boolean isUserInRole(String user, String role) {
 		for (IAccessGroup group : accessGroupCache.values()) {
-			if (group.getRoles().contains(role)) {
-				Set<String> users = group.getUsers(); 
-				if (users.contains(user) || users.contains("*")) {
-					return true;
-				}
-				for (String memberGroupName : group.getGroups()) {
-					IAccessGroup memberGroup = accessGroupCache.get(memberGroupName);
-					if (memberGroup != null && memberGroup.getUsers().contains(user)) {
-						return true;
-					}
-				}
+			if (group.getRoles().contains(role) && isUserInGroup(user, group.getGroupName())) {
+				return true;
 			}
 		}
 		return false;

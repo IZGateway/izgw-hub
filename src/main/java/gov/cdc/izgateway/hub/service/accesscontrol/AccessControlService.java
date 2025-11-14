@@ -83,6 +83,7 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
      * Create a new AccessControlService
      * @param factory The repository factory to use
      * @param registry	The registry for managing access control to methods
+     * @param migrator The access control migrator
      */
     @Autowired
     public AccessControlService(RepositoryFactory factory, IAccessControlRegistry registry, AccessControlMigrator migrator) {
