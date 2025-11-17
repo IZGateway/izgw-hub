@@ -44,7 +44,7 @@ jobs:
         rm ./docs/release/README.md
         rm ./docs/release/RELEASE_NOTES.md
         # Just take notes from first release in documentation
-        A=`tail +2 RELEASE_NOTES.md | grep -n "^# " | head -1 | cut -d: -f1`
+        A=`tail -n +2 RELEASE_NOTES.md | grep -n "^# " | head -1 | cut -d: -f1`
         head -n $A RELEASE_NOTES.md > ./docs/release/RELEASE_NOTES.md
         # Check for existing release tagged with same name.
         # Enforces rule that TAG must be unique and cannot be reused.
