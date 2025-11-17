@@ -342,7 +342,7 @@ jobs:
       shell: bash
       run: |
           newman -v
-          npm install -g newman@6.1.3
+          npm install -g newman
           newman -v
           npm install -g newman-reporter-junitfull
           npm install -g xunit-viewer
