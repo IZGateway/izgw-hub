@@ -1,8 +1,14 @@
+# IZ Gateway Release 2.9.0
+* IGDD-2291 Upgrade Logstash by integrating izgw-bom to fix CVE-2025-11226
+* IGDD-2279 CC Maintenance period does not appear to be preventing all messages from getting to an endpoint
+* IGDD-2283 RevocationChecker Database Access Failure causes TlsConnectionFault
+* IGDD-2309 Fix IZ Gateway Retry Logic for Read Timeouts
+
 # IZ Gateway Release 2.8.0
-* IGDD-2052 jwtSharedSecret should be treated as Base64 Encoded data 
-* IGDD-2216 In Hub and Transformation Service, die if Elastic or Metric Beats doesn't start correctly or exits unexpectedly 
-* IGDD-2226 Fix tags on APHL pushed container images 
-* IGDD-2267 Sending to DEX is still failing 
+* IGDD-2052 jwtSharedSecret should be treated as Base64 Encoded data
+* IGDD-2216 In Hub and Transformation Service, die if Elastic or Metric Beats doesn't start correctly or exits unexpectedly
+* IGDD-2226 Fix tags on APHL pushed container images
+* IGDD-2267 Sending to DEX is still failing
 * IGDD-2072 Remove Route access control from ADS
 
 # IZ Gateway Release 2.7.3

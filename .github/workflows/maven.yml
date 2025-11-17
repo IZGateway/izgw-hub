@@ -91,8 +91,23 @@ jobs:
             <servers>
               <server>
                 <id>github</id>
-                <username>${{ env.GITHUB_ACTOR }}</username>
-                <password>${{ secrets.IZGW_ALL_REPO_ACCESS_TOKEN }}</password>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.GITHUB_TOKEN }}</password>
+              </server>
+              <server>
+                <id>github-bom</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.GITHUB_TOKEN }}</password>
+              </server>
+              <server>
+                <id>github-core</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.GITHUB_TOKEN }}</password>
+              </server>
+              <server>
+                <id>github-hub</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.GITHUB_TOKEN }}</password>
               </server>
             </servers>
             <mirrors />
@@ -210,7 +225,7 @@ jobs:
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-east-1
+        aws-region: ${{vars.AWS_REGION}}
 
     - name: Login to Amazon ECR
       id: login-ecr
@@ -330,7 +345,7 @@ jobs:
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-east-1
+        aws-region: ${{vars.AWS_REGION}}
 
     # Having the wait for reload at this point allows some of the wasted waiting time to occur during build cleanup phase
     # and setup phase of this job.
@@ -405,7 +420,7 @@ jobs:
 
     - name: Tag verified image
       env:
-        ECR_REGISTRY: 357442695278.dkr.ecr.us-east-1.amazonaws.com
+        ECR_REGISTRY: 357442695278.dkr.ecr.${{vars.AWS_REGION}}.amazonaws.com
         ECR_REPOSITORY: izgateway-dev-phiz-web-ws
       run: |
         docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
@@ -440,7 +455,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: ${{vars.AWS_REGION}}
 
       - name: Login to Amazon ECR
         id: login-ecr2
@@ -448,7 +463,7 @@ jobs:
 
       - name: Tag verified image
         env:
-          ECR_REGISTRY: 357442695278.dkr.ecr.us-east-1.amazonaws.com
+          ECR_REGISTRY: 357442695278.dkr.ecr.${{vars.AWS_REGION}}.amazonaws.com
           ECR_REPOSITORY: izgateway-dev-phiz-web-ws
           IMAGE_TAG: ${{needs.build.outputs.image_tag}}
         run: |
@@ -460,7 +475,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.APHL_AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.APHL_AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: ${{vars.AWS_REGION}}
 
       - name: Login to APHL Amazon ECR
         id: login-aphl-ecr
