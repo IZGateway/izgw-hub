@@ -175,12 +175,12 @@ class NewModelHelper implements AccessControlModelHelper {
 		dlr.setReason(reason);
 		dlr.setCreatedBy(RequestContext.getPrincipal().getName());
 		dlr = accessControlService.denyListRecordRepository.store(dlr);
-		denyListRecordCache.put(user, (DenyListRecord) dlr);
+		denyListRecordCache.put(user, dlr);
 		return dlr;
 	}
 
 	@Override
 	public Set<String> getDenyList() {
-		return this.accessControlService.newModelHelper.denyListRecordCache.keySet();
+		return denyListRecordCache.keySet();
 	}
 }
