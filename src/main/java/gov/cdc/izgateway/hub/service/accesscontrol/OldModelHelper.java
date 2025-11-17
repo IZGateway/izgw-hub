@@ -230,7 +230,7 @@ class OldModelHelper implements AccessControlModelHelper {
 	}
 
 	@Override
-	public IAccessControl block(String user) {
+	public IAccessControl block(String user, String reason) {
 		return this.accessControlService.accessControlRepository.addUserToGroup(user, Roles.BLACKLIST);
 	}
 

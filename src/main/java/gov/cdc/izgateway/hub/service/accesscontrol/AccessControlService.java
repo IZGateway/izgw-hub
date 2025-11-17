@@ -225,9 +225,9 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 	}
 	
 	@Override
-	public Object addUserToDenyList(String user) {
+	public Object addUserToDenyList(String user, String reason) {
 		try {
-			return currentModelHelper.block(user);
+			return currentModelHelper.block(user, reason);
 		} finally {
 			refresh();
 		}

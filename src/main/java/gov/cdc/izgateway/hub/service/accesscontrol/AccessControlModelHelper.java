@@ -22,7 +22,7 @@ interface AccessControlModelHelper {
 
 	Object unblock(String user);
 
-	Object block(String user);
+	Object block(String user, String reason);
 
 	Set<String> getDenyList();
 

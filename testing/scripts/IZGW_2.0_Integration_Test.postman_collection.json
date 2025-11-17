@@ -7391,7 +7391,7 @@
 													"    pm.expect(typeof responseBody).to.eql(\"object\");\r",
 													"});\r",
 													"pm.test(\"Entry to have value equal to true\", function() {\r",
-													"    pm.expect(responseBody.allowed).to.be.eql(true);\r",
+													"    pm.expect(responseBody.principal).to.be.eql(\"mockuser.testing.izgateway.org\");\r",
 													"});\r",
 													""
 												],
@@ -7410,7 +7410,7 @@
 											}
 										],
 										"url": {
-											"raw": "https://{{host}}:{{port}}/rest/access/denylist?user=mockuser.testing.izgateway.org",
+											"raw": "https://{{host}}:{{port}}/rest/access/denylist?user=mockuser.testing.izgateway.org&reason=testing",
 											"protocol": "https",
 											"host": [
 												"{{host}}"
@@ -7425,6 +7425,10 @@
 												{
 													"key": "user",
 													"value": "mockuser.testing.izgateway.org"
+												},
+												{
+													"key": "reason",
+													"value": "testing"
 												}
 											]
 										}
@@ -7475,7 +7479,7 @@
 											}
 										],
 										"url": {
-											"raw": "https://{{host}}:{{port}}/rest/access/groups/denylist",
+											"raw": "https://{{host}}:{{port}}/rest/access/denylist",
 											"protocol": "https",
 											"host": [
 												"{{host}}"
@@ -7484,7 +7488,6 @@
 											"path": [
 												"rest",
 												"access",
-												"groups",
 												"denylist"
 											]
 										}
@@ -7492,7 +7495,7 @@
 									"response": []
 								},
 								{
-									"name": "TC_22i Enable Source Attack Pattern Originating User Copy",
+									"name": "TC_22i Enable Source Attack Pattern Originating User",
 									"event": [
 										{
 											"listen": "test",
@@ -7521,14 +7524,11 @@
 													"pm.test(\"Entry to parse as json object\", function() {\r",
 													"    pm.expect(typeof responseBody).to.eql(\"object\");\r",
 													"});\r",
-													"pm.test(\"Entry to have category equal to group\", function() {\r",
-													"    pm.expect(responseBody.category).to.be.eql('group');\r",
+													"pm.test(\"Entry to have principal value equal to mockuser.testing.izgateway.org\", function() {\r",
+													"    pm.expect(responseBody.principal).to.be.eql('mockuser.testing.izgateway.org');\r",
 													"});\r",
-													"pm.test(\"Entry to have name value equal to blacklist\", function() {\r",
-													"    pm.expect(responseBody.name).to.be.eql('blacklist');\r",
-													"});\r",
-													"pm.test(\"Entry to have member value equal to mockuser.testing.izgateway.org\", function() {\r",
-													"    pm.expect(responseBody.member).to.be.eql('mockuser.testing.izgateway.org');\r",
+													"pm.test(\"Entry to have reason value equal to testing\", function() {\r",
+													"    pm.expect(responseBody.reason).to.be.eql('testing');\r",
 													"});\r",
 													""
 												],
@@ -7547,7 +7547,7 @@
 											}
 										],
 										"url": {
-											"raw": "https://{{host}}:{{port}}/rest/access/denylist?user=mockuser.testing.izgateway.org",
+											"raw": "https://{{host}}:{{port}}/rest/access/denylist?user=mockuser.testing.izgateway.org&reason=testing",
 											"protocol": "https",
 											"host": [
 												"{{host}}"
@@ -7562,6 +7562,10 @@
 												{
 													"key": "user",
 													"value": "mockuser.testing.izgateway.org"
+												},
+												{
+													"key": "reason",
+													"value": "testing"
 												}
 											]
 										}
@@ -7569,7 +7573,7 @@
 									"response": []
 								},
 								{
-									"name": "TC_22j Verify Source Enabled Copy",
+									"name": "TC_22j Verify Source Enabled",
 									"event": [
 										{
 											"listen": "test",
@@ -7614,7 +7618,7 @@
 											}
 										],
 										"url": {
-											"raw": "https://{{host}}:{{port}}/rest/access/groups/denylist",
+											"raw": "https://{{host}}:{{port}}/rest/access/denylist",
 											"protocol": "https",
 											"host": [
 												"{{host}}"
@@ -7623,7 +7627,6 @@
 											"path": [
 												"rest",
 												"access",
-												"groups",
 												"denylist"
 											]
 										}

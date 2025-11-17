@@ -153,18 +153,30 @@ class NewModelHelper implements AccessControlModelHelper {
 		DenyListRecord dlr = denyListRecordCache.get(user);
 		if (dlr != null) {
 			dlr.setUpdated();
-			this.accessControlService.denyListRecordRepository.delete(dlr);
+			accessControlService.denyListRecordRepository.delete(dlr);
 		}
+		denyListRecordCache.remove(user);
 		return dlr;
 	}
 
 	@Override
-	public IDenyListRecord block(String user) {
-		DenyListRecord dlr = accessControlService.denyListRecordRepository.createEntity();
+	public IDenyListRecord block(String user, String reason) {
+		if (denyListRecordCache.isEmpty()) {
+			refresh();
+		}
+		DenyListRecord dlr = denyListRecordCache.get(user);
+		if (dlr != null) {
+			// Already blocked
+			return dlr;
+		}
+		dlr = accessControlService.denyListRecordRepository.createEntity();
 		dlr.setPrincipal(user);
 		dlr.setEnvironment(SystemUtils.getDestType());
+		dlr.setReason(reason);
 		dlr.setCreatedBy(RequestContext.getPrincipal().getName());
-		return this.accessControlService.denyListRecordRepository.store(dlr);
+		dlr = accessControlService.denyListRecordRepository.store(dlr);
+		denyListRecordCache.put(user, (DenyListRecord) dlr);
+		return dlr;
 	}
 
 	@Override
