@@ -27,6 +27,7 @@ import gov.cdc.izgateway.model.DynamoDbEntity;
 public class AllowedUser extends DynamoDbAudit implements DynamoDbEntity, Serializable, IAllowedUser {
     private String destinationId;
     private int environment;
+    private String organization;
     private String principal;
     private boolean enabled;
     private Date validatedOn;
@@ -40,6 +41,7 @@ public class AllowedUser extends DynamoDbAudit implements DynamoDbEntity, Serial
             this.destinationId = other.getDestinationId();
             this.environment = other.getEnvironment();
             this.principal = other.getPrincipal();
+            this.organization = other.getOrganization();
             this.enabled = other.isEnabled();
             this.validatedOn = other.getValidatedOn();
         }
