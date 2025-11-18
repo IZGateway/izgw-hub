@@ -326,6 +326,7 @@ public class AccessControlMigrator {
 		Set<String> onboardingCerts = new LinkedHashSet<>();
 		Set<String> prodCerts = new LinkedHashSet<>();
 		Set<String> developmentCerts = new LinkedHashSet<>();
+		Set<String> cicdCerts = Set.of("cicd.testing.izgateway.org");
 	}
 	private void addDevOpsPrincipals(CSVReader csvr) throws IOException  {
 		CertLists certLists = collectOperationsUserData(csvr);
@@ -337,6 +338,7 @@ public class AccessControlMigrator {
 			addToDenyList(certLists.onboardingCerts, SystemUtils.DESTTYPE_STAGE);
 			addToDenyList(certLists.prodCerts, SystemUtils.DESTTYPE_STAGE);
 			addToDenyList(certLists.developmentCerts, SystemUtils.DESTTYPE_STAGE);
+			addToDenyList(certLists.cicdCerts, SystemUtils.DESTTYPE_STAGE);
 		}
 		
 		if (SystemUtils.getDestType() == SystemUtils.DESTTYPE_ONBOARD || SystemUtils.getDestType() == SystemUtils.DESTTYPE_PROD) {
@@ -346,6 +348,7 @@ public class AccessControlMigrator {
 			addToDenyList(certLists.preprodCerts, SystemUtils.DESTTYPE_PROD);
 			addToDenyList(certLists.prodCerts, SystemUtils.DESTTYPE_PROD);
 			addToDenyList(certLists.developmentCerts, SystemUtils.DESTTYPE_PROD);
+			addToDenyList(certLists.cicdCerts, SystemUtils.DESTTYPE_PROD);
 			
 			addSystemCerts(certLists.monitoringCert, SystemUtils.DESTTYPE_ONBOARD, Roles.SOAP);
 			addSystemCerts(certLists.devOpsStaff, SystemUtils.DESTTYPE_ONBOARD, Roles.ADMIN);
@@ -353,19 +356,21 @@ public class AccessControlMigrator {
 			addToDenyList(certLists.preprodCerts, SystemUtils.DESTTYPE_ONBOARD);
 			addToDenyList(certLists.onboardingCerts, SystemUtils.DESTTYPE_ONBOARD);
 			addToDenyList(certLists.developmentCerts, SystemUtils.DESTTYPE_ONBOARD);
+			addToDenyList(certLists.cicdCerts, SystemUtils.DESTTYPE_ONBOARD);
 		}
 		
 		if (SystemUtils.getDestType() == SystemUtils.DESTTYPE_DEV || SystemUtils.getDestType() == SystemUtils.DESTTYPE_TEST) {
 			addSystemCerts(certLists.monitoringCert, SystemUtils.DESTTYPE_DEV, Roles.SOAP);
 			addSystemCerts(certLists.devOpsStaff, SystemUtils.DESTTYPE_DEV, Roles.ADMIN);
+			addSystemCerts(certLists.cicdCerts, SystemUtils.DESTTYPE_DEV, Roles.ADMIN);
 			addSystemCerts(certLists.developmentCerts, SystemUtils.DESTTYPE_DEV, Roles.INTERNAL);
 			addToDenyList(certLists.preprodCerts, SystemUtils.DESTTYPE_DEV);
 			addToDenyList(certLists.onboardingCerts, SystemUtils.DESTTYPE_DEV);
 			addToDenyList(certLists.prodCerts, SystemUtils.DESTTYPE_DEV);
 			
 			addSystemCerts(certLists.monitoringCert, SystemUtils.DESTTYPE_TEST, Roles.SOAP);
-			addSystemCerts(certLists.monitoringCert, SystemUtils.DESTTYPE_TEST, Roles.SOAP);
 			addSystemCerts(certLists.devOpsStaff, SystemUtils.DESTTYPE_TEST, Roles.ADMIN);
+			addSystemCerts(certLists.cicdCerts, SystemUtils.DESTTYPE_TEST, Roles.ADMIN);
 			addSystemCerts(certLists.developmentCerts, SystemUtils.DESTTYPE_TEST, Roles.INTERNAL);
 			addToDenyList(certLists.preprodCerts, SystemUtils.DESTTYPE_TEST);
 			addToDenyList(certLists.onboardingCerts, SystemUtils.DESTTYPE_TEST);
