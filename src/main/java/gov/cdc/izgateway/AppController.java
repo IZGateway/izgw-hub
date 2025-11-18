@@ -59,7 +59,7 @@ public class AppController {
 	 * @return The application logo.
 	 */
 	@Operation(summary = "Get the application logo (favicon)",
-			description = "Returns the icon useed as the application logo.")
+			description = "Returns the icon used as the application logo.")
 		@ApiResponse(responseCode = "200", description = "Success", 
 	    	content = @Content(mediaType = "image/ico")
 	)
@@ -70,7 +70,7 @@ public class AppController {
 	
 	/**
 	 * Get the IP address and hostname of the caller.
-	 * @param req
+	 * @param req the HTTP servlet request containing information about the caller
 	 * @return the IP address and hostname of the caller as seen by the application
 	 */
 	@Operation(summary = "Get the IP address and hostname of the caller",

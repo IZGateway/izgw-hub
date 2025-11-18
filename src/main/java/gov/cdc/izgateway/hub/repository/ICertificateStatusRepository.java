@@ -8,7 +8,7 @@ import gov.cdc.izgateway.repository.IRepository;
 /**
  * A repository tracking certificate status information.
  * @author Audacious Inquiry
- * @param <T> The type of Certificate Status this repository manages1
+ * @param <T> The type of Certificate Status this repository manages
  *
  */
 public interface ICertificateStatusRepository<T extends ICertificateStatus> extends IRepository<T> {
