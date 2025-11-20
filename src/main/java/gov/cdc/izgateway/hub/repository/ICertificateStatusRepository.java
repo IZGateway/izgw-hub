@@ -3,10 +3,23 @@ package gov.cdc.izgateway.hub.repository;
 import java.util.List;
 
 import gov.cdc.izgateway.model.ICertificateStatus;
+import gov.cdc.izgateway.repository.IRepository;
 
-public interface ICertificateStatusRepository extends IRepository<ICertificateStatus> {
+/**
+ * A repository tracking certificate status information.
+ * @author Audacious Inquiry
+ * @param <T> The type of Certificate Status this repository manages
+ *
+ */
+public interface ICertificateStatusRepository<T extends ICertificateStatus> extends IRepository<T> {
 
-	List<? extends ICertificateStatus> findAll();
-	ICertificateStatus findByCertificateId(String certificateId);
+	@Override
+	List<T> findAll();
+	/**
+	 * Find a given certificate by its ID.
+	 * @param certificateId	The certificate ID
+	 * @return	The certificate status or null if not found
+	 */
+	T findByCertificateId(String certificateId);
 
 }

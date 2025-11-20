@@ -20,7 +20,6 @@ import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -47,8 +46,16 @@ import java.util.List;
 @RequestMapping({"/rest"})
 @Lazy(false)
 public class LogController extends LogControllerBase {
+    /**
+     * Configuration for Log Controller
+     * @author Audacious Inquiry
+     */
     @Configuration(proxyBeanMethods = false)
     public static class LogControllerConfig {
+        /**
+         * The Object Mapper bean used to serialize log events
+         * @return The Object Mapper bean used to serialize log events
+         */
         @Bean
         public ObjectMapper getObjectMapper() {
             ObjectMapper mapper = new ObjectMapper();
@@ -63,6 +70,13 @@ public class LogController extends LogControllerBase {
     private final EndpointStatusService endpointStatusService;
     private final IAccessControlService accessControlService;
 
+    /**
+     * Constructor for the LogController
+     * @param registry	The Access Control Registry
+     * @param destinationService	The Destination Service
+     * @param endpointStatusService	The Endpoint Status Service
+     * @param accessControlService	The Access Control Service
+     */
     @Autowired
     public LogController(AccessControlRegistry registry, IDestinationService destinationService, EndpointStatusService endpointStatusService, IAccessControlService accessControlService) {
         registry.register(this);
@@ -105,9 +119,8 @@ public class LogController extends LogControllerBase {
                 status.setStatus(IEndpointStatus.CONNECTED);
                 clearMaintenance(clear);
             }
-            accessControlService.removeUserFromBlacklist(RequestContext.getSourceInfo().getCommonName());
+            accessControlService.removeUserFromDenyList(RequestContext.getSourceInfo().getCommonName());
         }
-
     }
 
     private void clearMaintenance(String destId) {
@@ -116,5 +129,4 @@ public class LogController extends LogControllerBase {
             destinationService.clearMaintenance(dest);
         }
     }
-
 }

@@ -5,10 +5,10 @@ import java.util.concurrent.TimeUnit;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
-import gov.cdc.izgateway.dynamodb.DynamoDbRepository;
 import gov.cdc.izgateway.dynamodb.model.EndpointStatus;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.model.IEndpointStatus;
+import gov.cdc.izgateway.repository.DynamoDbRepository;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 
 /**
@@ -23,10 +23,12 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
  * w/o bounds).
  * 3. Figure out how query works for this entity.
  *  
+ * NOTE: This class is presently incomplete and not used.
  * 
  * @author Audacious Inquiry
  */
-public class EndpointStatusRepository extends DynamoDbRepository<EndpointStatus> implements gov.cdc.izgateway.repository.EndpointStatusRepository<EndpointStatus> {
+public class EndpointStatusRepository extends DynamoDbRepository<EndpointStatus> // NOSONAR - Suppressing SonarQube warning about extending a generic repository; this is intentional to allow for type-safe DynamoDB operations.
+	implements gov.cdc.izgateway.repository.EndpointStatusRepository<EndpointStatus> {
 	/**
 	 * Construct a new EndpointStatusRepository from the DynamoDb enhanced client.
 	 * @param client The client
@@ -37,14 +39,11 @@ public class EndpointStatusRepository extends DynamoDbRepository<EndpointStatus>
 	}
 	
 	@Override
-	public EndpointStatus saveAndFlush(IEndpointStatus dest) {
+	public EndpointStatus saveAndFlush(EndpointStatus dest) {
 		if (dest == null) {
 			throw new NullPointerException("Entity cannot be null");
 		}
-		if (dest instanceof EndpointStatus d) {
-			return super.saveAndFlush(d);
-		} 
-		return super.saveAndFlush(new EndpointStatus(dest));
+		return super.saveAndFlush(dest);
 	}
 
 	@Override
@@ -63,7 +62,7 @@ public class EndpointStatusRepository extends DynamoDbRepository<EndpointStatus>
 	public List<EndpointStatus> find(int maxQuarterHours, String[] include) {
 		// TODO Whatever is needed for actual implementation
 		long time = System.currentTimeMillis() - (TimeUnit.MINUTES.toMillis(15) * maxQuarterHours);
-		return null;
+		return List.of(); // Placeholder
 	}
 	
 
@@ -89,5 +88,16 @@ public class EndpointStatusRepository extends DynamoDbRepository<EndpointStatus>
 		for (EndpointStatus status : statuses) {
 			this.saveAndFlush(status);
 		}
+	}
+
+	@Override
+	public EndpointStatus store(EndpointStatus h) {
+		return saveAndFlush(h);
+	}
+
+	@Override
+	public EndpointStatus saveAndFlush(IEndpointStatus status) {
+		// Whatever is needed for actual implementation
+		return null;
 	}
 }

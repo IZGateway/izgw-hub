@@ -34,7 +34,6 @@ import org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider;
 import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-import org.slf4j.bridge.SLF4JBridgeHandler;
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -69,6 +68,7 @@ import ch.qos.logback.classic.Logger;
 import gov.cdc.izgateway.logging.event.EventId;
 import gov.cdc.izgateway.logging.markers.Markers2;
 import gov.cdc.izgateway.model.IDestination;
+import gov.cdc.izgateway.repository.DynamoDbRepository;
 import gov.cdc.izgateway.security.SSLImplementation;
 import gov.cdc.izgateway.security.ocsp.RevocationChecker;
 import gov.cdc.izgateway.service.IDestinationService;
@@ -89,6 +89,10 @@ import io.swagger.v3.oas.annotations.info.License;
 import io.swagger.v3.oas.annotations.info.Info;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * The main application class for IZ Gateway.
+ * @author Audacious Inquiry
+ */
 @Slf4j
 @OpenAPIDefinition(
         info = @Info(
@@ -119,7 +123,6 @@ public class Application implements WebMvcConfigurer {
 	
 	@Value("${spring.database:dynamodb}")
 	private String databaseType;
-	
     // Heartbeat needs it's own thread in order to not be blocked by other background tasks.
     private static ScheduledExecutorService he = 
     		Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, "Heartbeat-Scheduler"));
@@ -127,17 +130,30 @@ public class Application implements WebMvcConfigurer {
 	private static boolean heartbeatEnabled = true;  // Set to false during debugging to disable heartbeat logging
 	private static SecureRandom secureRandom;
 
+	/**
+	 * Set whether to abort application startup if no IIS connections are available.
+	 * @param abort	true to abort startup if no IIS connections are available, false to continue startup.
+	 */
 	public static void setAbortOnNoIIS(boolean abort) {
 		abortOnNoIIS = abort;
 	}
 	
 	private static AbstractHttp11JsseProtocol<?> protocol;
+	private static boolean skipMigrations;
+	
+	/**
+	 * Reload the SSL configuration for the HTTPS connector.
+	 */
 	public static void reloadSsl() {
 		if (protocol != null) {
 			protocol.reloadSslHostConfigs();
 		}
 	}
 	
+	/**
+	 * The main entry point for the application.
+	 * @param args	The command line arguments parsed by Spring Boot.
+	 */
 	public static void main(String[] args) {
     	initialize();
 
@@ -178,16 +194,23 @@ public class Application implements WebMvcConfigurer {
 		}
 	}
 
+	/**
+	 * Class to initialize Java Util Logging (JUL) to route through SLF4J.
+	 * @author Audacious Inquiry
+	 */
 	public static class JulInit {
-		private static final String LOGGING_PROPERTIES = 
-				"handlers = org.slf4j.bridge.SLF4JBridgeHandler\n"
-				+ ".level = INFO\n"
-				// Must enable FINE level logging in SLF4J to capture NioEndpoint handshake exceptions
-				+ "org.apache.tomcat.util.net.NioEndpoint.level = FINE\n"
-				+ "org.apache.tomcat.util.net.NioEndpoint.certificate.level = FINE\n"
-				+ "org.apache.tomcat.util.net.NioEndpoint.handshake.level = FINE\n";
+		// Must enable FINE level logging in SLF4J to capture NioEndpoint handshake exceptions
+		private static final String LOGGING_PROPERTIES = """
+			handlers = org.slf4j.bridge.SLF4JBridgeHandler
+			.level = INFO
+			org.apache.tomcat.util.net.NioEndpoint.level = FINE
+			org.apache.tomcat.util.net.NioEndpoint.certificate.level = FINE
+			org.apache.tomcat.util.net.NioEndpoint.handshake.level = FINE""";
 		
-		public JulInit() {
+		/**
+		 * Initialize JUL to route through SLF4J.
+		 */
+		public JulInit() { // NOSONAR Constructor used by JUL
 			try {
 				ByteArrayInputStream bis = new ByteArrayInputStream(LOGGING_PROPERTIES.getBytes(StandardCharsets.UTF_8));
 				LogManager.getLogManager().readConfiguration(bis);
@@ -208,14 +231,6 @@ public class Application implements WebMvcConfigurer {
 		UtilizationService.getUtilization();
 		
 		System.setProperty("java.util.logging.config.class", JulInit.class.getName());
-		
-		// This should no longer be necessary, but it doesn't hurt to leave it here
-		// in case JUL logging doesn't install it for some reason.
-		if (!SLF4JBridgeHandler.isInstalled()) {
-			// Redirect all JUL log records to the SLF4J API
-	    	SLF4JBridgeHandler.removeHandlersForRootLogger();
-	    	SLF4JBridgeHandler.install();
-		}
 		
         // This is necessary initialization to use BCFKS module
         CryptoServicesRegistrar.setSecureRandom(getSecureRandom());
@@ -275,6 +290,8 @@ public class Application implements WebMvcConfigurer {
         AppProperties props = ctx.getBean(AppProperties.class); 
         serverMode = props.getServerMode();
         serverName = props.getServerName();
+        DynamoDbRepository.setServerName(serverName);
+        
 		initializeHealth();
         IMessageHeaderService messageHeaderService = ctx.getBean(MessageHeaderService.class);
         StatusCheckScheduler sc = ctx.getBean(StatusCheckScheduler.class);
@@ -310,12 +327,21 @@ public class Application implements WebMvcConfigurer {
 	}
 
 
+	/**
+	 * Get the build string from the build file.
+	 * @return	The build string.
+	 */
 	public static String getBuild() {
 		byte[] v = staticPages.get(BUILD);
 		String version = v == null ? "" : new String(v);
 		return StringUtils.substringBetween(version, "Build:", "\n").trim();
 	}
 	
+	/**
+	 * Get a static page by name.
+	 * @param page	The name of the page.
+	 * @return	The page contents.
+	 */
 	public static String getPage(String page) {
 		return new String(staticPages.get(page), StandardCharsets.UTF_8);
 	}
@@ -376,13 +402,31 @@ public class Application implements WebMvcConfigurer {
         SoapMessageWriter.setFixNewLines(fixNewlines);
     }
 
+	/**
+	 * Get the server mode, typically either "dev" or "prod".  In production mode, logging is masked and does not contain PHI
+	 * but sensitive information like passwords are still masked.  In development mode, logging is unmasked to facilitate debugging.
+	 * 
+	 * @return	The server mode.
+	 */
 	public static String getServerMode() {
 		return serverMode;
 	}
 	
+	/**
+	 * Determine if the server is running in production mode.
+	 * @return	true if in production mode, false if in development mode.
+	 */
 	public static boolean isProduction() {
+		// Anything not explicitly "dev" is considered production
 		return !"dev".equalsIgnoreCase(serverMode);
 	}
+	
+    /**
+     * Configure the security filter chain to use x509 client certificate authentication with the user details service.
+     * @param http	The HttpSecurity to configure.
+     * @return	The SecurityFilterChain to use.
+     * @throws Exception If configuration fails.
+     */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests(a -> a.requestMatchers("/**").permitAll())
@@ -394,6 +438,10 @@ public class Application implements WebMvcConfigurer {
         return http.build();
     }
     
+    /**
+     * User details service that accepts any valid client certificate subject.
+     * @return	The user details service.
+     */
     @Bean 
     public UserDetailsService userDetailsService() {
     	return new UserDetailsService() {
@@ -415,6 +463,10 @@ public class Application implements WebMvcConfigurer {
     	return Application::customizeConnector;
     }
     
+    /**
+     * Customize the Tomcat connector to use our SSLImplementation.
+     * @param connector The connector to customize.
+     */
     public static void customizeConnector(Connector connector) {
     	if ("https".equals(connector.getScheme())) {
 	    	ProtocolHandler p = connector.getProtocolHandler();
@@ -458,5 +510,20 @@ public class Application implements WebMvcConfigurer {
         connector.setProperty("minSpareThreads", "3");  // This is for local administration, we don't need many.
         factory.addAdditionalTomcatConnectors(connector);
         return factory;
+	}
+
+	/**
+	 * Disable or enable migrations for testing purposes.
+	 * @param b	true to skip migrations, false to run them.
+	 */
+	public static void skipMigrations(boolean b) {
+		skipMigrations = b;
+	}
+	/**
+	 * Determine if migrations should be skipped.
+	 * @return	true to skip migrations, false to run them.
+	 */
+	public static boolean isSkipMigrations() {
+		return skipMigrations;
 	}
 }

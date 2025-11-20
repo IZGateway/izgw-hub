@@ -7,8 +7,10 @@ import lombok.NoArgsConstructor;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 import java.io.Serializable;
 import gov.cdc.izgateway.model.IDenyListRecord;
+import gov.cdc.izgateway.utils.SystemUtils;
 import gov.cdc.izgateway.model.DynamoDbAudit;
 import gov.cdc.izgateway.model.DynamoDbEntity;
+import gov.cdc.izgateway.model.IAccessControl;
 
 /**
  * DynamoDB entity for DenyListRecord, representing a user denied access to IZ Gateway.
@@ -21,7 +23,7 @@ import gov.cdc.izgateway.model.DynamoDbEntity;
 @DynamoDbBean
 public class DenyListRecord extends DynamoDbAudit implements DynamoDbEntity, Serializable, IDenyListRecord {
     private String principal;
-    private Integer environment;
+    private int environment;
     private String reason;
 	@Override
 	public String getPrimaryId() {
@@ -41,4 +43,18 @@ public class DenyListRecord extends DynamoDbAudit implements DynamoDbEntity, Ser
             this.reason = other.getReason();
         }
     }
+
+	/**
+	 * Constructor for Migration from Access Control
+	 * @param ac	Old Access Control Record
+	 * @param reportedBy	Who created it
+	 * @param reportedOn	When it was created
+	 */
+	public DenyListRecord(IAccessControl ac, String reportedBy, java.util.Date reportedOn) {
+		setPrincipal(ac.getMember());
+		setEnvironment(SystemUtils.getDestType());
+		setReason("Migrated from Access Control list");
+		setCreatedBy(reportedBy);
+		setCreatedOn(reportedOn);
+	}
 }

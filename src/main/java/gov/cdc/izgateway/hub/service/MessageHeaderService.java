@@ -6,6 +6,7 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import gov.cdc.izgateway.dynamodb.model.MessageHeader;
 import gov.cdc.izgateway.hub.repository.IMessageHeaderRepository;
 import gov.cdc.izgateway.hub.repository.RepositoryFactory;
 import gov.cdc.izgateway.model.IMessageHeader;
@@ -25,7 +26,7 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class MessageHeaderService implements InitializingBean, IMessageHeaderService {
 
-    private final IMessageHeaderRepository messageHeaderRepository;
+    private final IMessageHeaderRepository<MessageHeader> messageHeaderRepository;
     private Map<String, IMessageHeader> cache = Collections.emptyMap();
 
     @Value("${data.cache.timeToLive:300}")
@@ -110,11 +111,17 @@ public class MessageHeaderService implements InitializingBean, IMessageHeaderSer
     }
 
 	@Override
-	public IMessageHeader saveAndFlush(IMessageHeader h) {
-		h = messageHeaderRepository.store(h);
+	public MessageHeader saveAndFlush(IMessageHeader h) {
+		MessageHeader h2;
+		if (h instanceof MessageHeader h3) {
+			h2 = h3;
+		} else {
+			h2 = new MessageHeader(h);
+		}
+		h2 = messageHeaderRepository.store(h2);
 		// Update cache
-		cache.put(h.getMsh(), h);
-		return h;
+		cache.put(h2.getMsh(), h2);
+		return h2;
 	}
 
 	@Override

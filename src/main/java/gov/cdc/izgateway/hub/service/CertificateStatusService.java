@@ -6,7 +6,6 @@ import org.springframework.stereotype.Service;
 import gov.cdc.izgateway.dynamodb.model.CertificateStatus;
 import gov.cdc.izgateway.hub.repository.ICertificateStatusRepository;
 import gov.cdc.izgateway.hub.repository.RepositoryFactory;
-import gov.cdc.izgateway.model.ICertificateStatus;
 import gov.cdc.izgateway.service.ICertificateStatusService;
 
 import java.security.cert.X509Certificate;
@@ -20,8 +19,8 @@ import java.util.List;
  *
  */
 @Service
-public class CertificateStatusService implements ICertificateStatusService {
-    private final ICertificateStatusRepository certificateStatusRepository;
+public class CertificateStatusService implements ICertificateStatusService<CertificateStatus> {
+    private final ICertificateStatusRepository<CertificateStatus> certificateStatusRepository;
     
     /**
      * Constructor
@@ -33,26 +32,27 @@ public class CertificateStatusService implements ICertificateStatusService {
     }
     
     @Override
-	public List<ICertificateStatus> getAllCertificates() {
+	public List<CertificateStatus> getAllCertificates() {
         return new ArrayList<>(certificateStatusRepository.findAll());
     }
 
     @Override
-	public ICertificateStatus save(ICertificateStatus certificateStatus){
+	public CertificateStatus save(CertificateStatus certificateStatus){
 		return certificateStatusRepository.store(certificateStatus);
     }
     
     @Override
-	public ICertificateStatus findByCertificateId(String certificateId) {
+	public CertificateStatus findByCertificateId(String certificateId) {
     	return certificateStatusRepository.findByCertificateId(certificateId);
     }
 
 	@Override
 	public void refresh() {
+		// There is no refresh needed for this implementation.
 	}
 
 	@Override
-	public ICertificateStatus create(X509Certificate cert) {
+	public CertificateStatus create(X509Certificate cert) {
 		return new CertificateStatus(cert);
 	}
 }

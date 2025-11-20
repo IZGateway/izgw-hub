@@ -1,10 +1,10 @@
 package gov.cdc.izgateway.dynamodb.repository;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import gov.cdc.izgateway.dynamodb.DynamoDbRepository;
+
 import gov.cdc.izgateway.dynamodb.model.CertificateStatus;
 import gov.cdc.izgateway.hub.repository.ICertificateStatusRepository;
-import gov.cdc.izgateway.model.ICertificateStatus;
+import gov.cdc.izgateway.repository.DynamoDbRepository;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 
 /**
@@ -12,7 +12,7 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
  * 
  * @author Audacious Inquiry
  */
-public class CertificateStatusRepository extends DynamoDbRepository<CertificateStatus> implements ICertificateStatusRepository {
+public class CertificateStatusRepository extends DynamoDbRepository<CertificateStatus> implements ICertificateStatusRepository<CertificateStatus> {
 	/**
 	 * Construct a new CertificateStatusRepository from the DynamoDb enhanced client.
 	 * @param client The client
@@ -23,18 +23,15 @@ public class CertificateStatusRepository extends DynamoDbRepository<CertificateS
 	}
 	
 	@Override
-	public ICertificateStatus store(ICertificateStatus cert) {
+	public CertificateStatus store(CertificateStatus cert) {
 		if (cert == null) {
 			throw new NullPointerException("Entity cannot be null");
 		}
-		if (cert instanceof CertificateStatus c) {
-			return saveAndFlush(c);
-		} 
-		return saveAndFlush(new CertificateStatus(cert));
+		return saveAndFlush(cert);
 	}
 
 	@Override
-	public ICertificateStatus findByCertificateId(String certificateId) {
+	public CertificateStatus findByCertificateId(String certificateId) {
 		return this.find(certificateId);
 	}
 }
