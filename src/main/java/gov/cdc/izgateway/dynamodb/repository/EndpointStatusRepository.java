@@ -27,7 +27,7 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
  * 
  * @author Audacious Inquiry
  */
-public class EndpointStatusRepository extends DynamoDbRepository<EndpointStatus> // NOSONAR 
+public class EndpointStatusRepository extends DynamoDbRepository<EndpointStatus> // NOSONAR - Suppressing SonarQube warning about extending a generic repository; this is intentional to allow for type-safe DynamoDB operations.
 	implements gov.cdc.izgateway.repository.EndpointStatusRepository<EndpointStatus> {
 	/**
 	 * Construct a new EndpointStatusRepository from the DynamoDb enhanced client.

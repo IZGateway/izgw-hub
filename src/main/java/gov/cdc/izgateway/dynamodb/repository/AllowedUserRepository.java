@@ -54,7 +54,7 @@ public class AllowedUserRepository extends DynamoDbRepository<AllowedUser> imple
 			destTypes = List.of(SystemUtils.DESTTYPE_STAGE);
 			break;
 		case SystemUtils.DESTTYPE_DEV, SystemUtils.DESTTYPE_TEST:
-			destTypes = List.of(SystemUtils.DESTTYPE_PROD, SystemUtils.DESTTYPE_ONBOARD);
+			destTypes = List.of(SystemUtils.DESTTYPE_DEV, SystemUtils.DESTTYPE_TEST);
 			break;
 		default:
 			log.warn("Unknown destination type: {}", SystemUtils.getDestType());

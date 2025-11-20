@@ -417,7 +417,7 @@ public class Application implements WebMvcConfigurer {
 	 * @return	true if in production mode, false if in development mode.
 	 */
 	public static boolean isProduction() {
-		// Enything not explicitly "dev" is considered production
+		// Anything not explicitly "dev" is considered production
 		return !"dev".equalsIgnoreCase(serverMode);
 	}
 	
