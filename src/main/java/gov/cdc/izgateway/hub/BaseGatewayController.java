@@ -7,6 +7,7 @@ import gov.cdc.izgateway.hub.service.accesscontrol.AccessControlService;
 import gov.cdc.izgateway.logging.RequestContext;
 import gov.cdc.izgateway.logging.info.DestinationInfo;
 import gov.cdc.izgateway.logging.info.HostInfo;
+import gov.cdc.izgateway.logging.markers.Markers2;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.model.IEndpointStatus;
 import gov.cdc.izgateway.security.AccessControlRegistry;
@@ -19,6 +20,8 @@ import gov.cdc.izgateway.soap.fault.SecurityFault;
 import gov.cdc.izgateway.soap.fault.UnknownDestinationFault;
 import gov.cdc.izgateway.soap.message.*;
 import gov.cdc.izgateway.soap.net.MessageSender;
+import lombok.extern.slf4j.Slf4j;
+
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -27,11 +30,11 @@ import org.springframework.http.ResponseEntity;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Base controller class that contains common functionality shared between HubWSDLController and CDCWSDLController.
  */
+@Slf4j
 public abstract class BaseGatewayController extends SoapControllerBase {
 
     /**
@@ -49,6 +52,8 @@ public abstract class BaseGatewayController extends SoapControllerBase {
     protected int serverPort;
     @Value("${server.protocol:https}")
     protected String serverProtocol;
+    @Value("${hub.access-control.action:deny}")
+    protected String accessControlAction;
 
     protected BaseGatewayController(
             IMessageHeaderService mshService,
@@ -141,7 +146,14 @@ public abstract class BaseGatewayController extends SoapControllerBase {
 
         String sender = RequestContext.getSourceInfo().getCommonName();
         if (!accessControlService.canAccessDestination(sender, destId)) {
-            throw SecurityFault.generalSecurity("Source Not Allowed", String.format("%s is not permitted to send messages to %s", sender, destId), null);
+            SecurityFault fault = SecurityFault.generalSecurity("Source Not Allowed", String.format("%s is not permitted to send messages to %s", sender, destId), null);
+        	if (accessControlAction.equalsIgnoreCase("warn")) {
+        		RequestContext.getTransactionData().setProcessError(fault);
+        		// Log a warning but allow the message to be sent
+				log.warn(Markers2.append(fault), "Access control violation warning: {}", fault.getMessage());
+				return;
+			}
+        	throw fault;
         }
     }
 
