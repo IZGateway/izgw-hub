@@ -6,6 +6,7 @@ import java.util.Date;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -91,7 +92,6 @@ public class MetadataImpl implements Metadata {
      * @param value The field value
      */
 	public void set(String name, String value) {
-		// TODO: Make this work from annotations
 		switch (name) {
 		case "meta_destination_id":
 			setDestinationId(value);
@@ -184,7 +184,7 @@ public class MetadataImpl implements Metadata {
 			} catch (NumberFormatException ex) {
 				// Ignore it.
 			}
-			if (StringUtils.containsIgnoreCase(getPeriod(), "Q")) {
+			if (Strings.CI.contains(getPeriod(), "Q")) {
 				month = QUARTERS.indexOf(StringUtils.right(period.toUpperCase(), 2)) * 3;
 			} else {
 				month = MONTHS.indexOf(StringUtils.right(period.toUpperCase(), 3));

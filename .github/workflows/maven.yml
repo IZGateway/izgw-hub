@@ -199,7 +199,7 @@ jobs:
             -Dimage.tag=$IMAGE_TAG
             
 # Use GitHub Action to speed up and improve dependency checking
-# NOTE: Disable automatic dependency checking in the build, this replaces it          
+# You can Disable automatic dependency checking in the build, this replaces it          
     - name: Dependency Check
       env:
         # Per https://github.com/marketplace/actions/dependency-check, fix JAVA_HOME location for action

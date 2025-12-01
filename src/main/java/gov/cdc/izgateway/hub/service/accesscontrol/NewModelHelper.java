@@ -43,7 +43,7 @@ class NewModelHelper implements AccessControlModelHelper {
     	denyListRecordCache = refreshCache(accessControlService.denyListRecordRepository, dr -> dr.getPrincipal());
     	fileTypeCache = refreshCache(accessControlService.fileTypeRepository, FileType::getFileTypeName);
     	Map<String, Set<AllowedUser>> newAllowedUserCache = new TreeMap<>();
-    	for (AllowedUser user : refreshCache(accessControlService.allowedUserRepository, au -> au.getPrincipal()).values()) {
+    	for (AllowedUser user : refreshCache(accessControlService.allowedUserRepository, au -> au.getDestinationId()).values()) {
     		newAllowedUserCache.computeIfAbsent(
     			user.getDestinationId(), 
     			k -> new TreeSet<>()
@@ -99,12 +99,9 @@ class NewModelHelper implements AccessControlModelHelper {
 	
 	@Override
 	public boolean isUserInRole(String user, String role) {
-		for (IAccessGroup group : accessGroupCache.values()) {
-			if (group.getRoles().contains(role) && isUserInGroup(user, group)) {
-				return true;
-			}
-		}
-		return false;
+		return accessGroupCache.values().stream()
+			.filter(g -> g.getRoles().contains(role))
+			.anyMatch(g -> isUserInGroup(user, g));
 	}
 	
 	@Override

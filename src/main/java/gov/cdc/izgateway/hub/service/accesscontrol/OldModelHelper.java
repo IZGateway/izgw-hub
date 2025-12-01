@@ -14,7 +14,6 @@ import java.util.Map.Entry;
 import gov.cdc.izgateway.dynamodb.model.AccessControl;
 import gov.cdc.izgateway.dynamodb.model.AccessGroup;
 import gov.cdc.izgateway.model.IAccessControl;
-import gov.cdc.izgateway.model.IAccessGroup;
 import gov.cdc.izgateway.security.Roles;
 import gov.cdc.izgateway.service.IAccessControlRegistry;
 import gov.cdc.izgateway.service.IAccessControlService;
@@ -42,9 +41,7 @@ class OldModelHelper implements AccessControlModelHelper {
 	}
 
 	private Map<String, Set<IAccessControl>> allowedUsersByGroup = Collections.emptyMap();
-	private Map<String, TreeSet<String>> usersInRoles = Collections.emptyMap();
 	private Map<String, Map<String, Boolean>> allowedRoutesByEvent = Collections.emptyMap();
-	
 	
 	@Override
 	public void refresh() {
@@ -55,20 +52,18 @@ class OldModelHelper implements AccessControlModelHelper {
         newAllowedUsersByGroup.computeIfAbsent(Roles.INTERNAL, k -> new LinkedHashSet<>()).add(serverAccess);
         allowedUsersByGroup = newAllowedUsersByGroup;
         allowedRoutesByEvent = newAllowedRoutesByEvent;
-        usersInRoles = getUserRoles();
+        getUserRoles();
 	}
 	
 	@Override
 	public Map<String, TreeSet<String>> getUserRoles() {
-		Map <String, TreeSet<String>> result = new TreeMap<>();
 		if (allowedUsersByGroup.isEmpty()) {
 			refresh();
 		}
 		Set<String> users = new TreeSet<>();
 		Set<String> groups = new TreeSet<>();
 		updateUsersAndGroups(users, groups);
-		updateRoles(users, groups, result);
-		return result;
+		return updateRoles(users, groups);
 	}
 	
 	private void updateUsersAndGroups(Set<String> users, Set<String> groups) { 
@@ -89,7 +84,9 @@ class OldModelHelper implements AccessControlModelHelper {
 		users.add("*");
 	}
 	
-	private void updateRoles(Set<String> users, Set<String> groups, Map<String, TreeSet<String>> result) {
+	private Map<String, TreeSet<String>> updateRoles(Set<String> users, Set<String> groups) {
+		Map <String, TreeSet<String>> result = new TreeMap<>();
+
 		// Do the crosswalk of users and roles, and return membership based on implementation of this class. 
 		for (String user: users) {
 			for (String group: groups) {
@@ -99,6 +96,8 @@ class OldModelHelper implements AccessControlModelHelper {
 				}
 			}
 		}
+		
+		return result;
 	}
 	
 	private void getControls(
@@ -135,27 +134,23 @@ class OldModelHelper implements AccessControlModelHelper {
 			refresh();
 		}
 		Map<String, Object> results = new TreeMap<>();
-		for (Entry<String, Set<IAccessControl>> entry : allowedUsersByGroup.entrySet()) {
-			String groupName = entry.getKey();
-			Set<IAccessControl> groups = entry.getValue();
-			for (IAccessControl acGroup : groups) {
-				IAccessGroup group = (IAccessGroup)results.computeIfAbsent(
-					groupName, k -> createAccessGroupFromControl(acGroup)
-				);
-				// If the group is for a named role, add the role to the group.
-				if (Roles.values().contains(groupName)) {
-					group.getRoles().add(groupName);
-				}
-				String userMember = acGroup.getMember();
-				if (IAccessControl.isGroup(userMember)) {
-					group.getGroups().add(userMember);
-				} else {
-					group.getUsers().add(userMember);
-				}
-				results.put(group.getGroupName(), group);
-			}
-		}
+		allowedUsersByGroup.values().forEach(s -> s.forEach(ac -> updateAccessGroup(ac, results)));
     	return results;
+	}
+
+	private Object updateAccessGroup(IAccessControl ac, Map<String, Object> results) {
+		String groupName = ac.getName();
+		AccessGroup group = (AccessGroup)results.computeIfAbsent(groupName, cn -> createAccessGroupFromControl(ac));
+		if (Roles.values().contains(group.getGroupName())) {
+			group.getRoles().add(group.getGroupName());
+		}
+		String member = ac.getMember();
+		if (IAccessControl.isGroup(member)) {
+			group.getGroups().add(member);
+		} else {
+			group.getUsers().add(member);
+		}
+		return group;
 	}
 
 	private AccessGroup createAccessGroupFromControl(IAccessControl acGroup) {
@@ -167,51 +162,24 @@ class OldModelHelper implements AccessControlModelHelper {
 
 	@Override
 	public boolean isUserInRole(String user, String role) {
-    	if (usersInRoles.isEmpty()) {
-    		refresh();
-    	}
-    	
-    	if (userHasRole(user, role) || userHasRole("*", role)) {
-    		return true;
-    	}
-    	
-    	if (user == null) {
-    		return false;
-    	}
-    	
-    	for (String aUser : usersInRoles.keySet()) {
-    		if (aUser.startsWith("*") && user.endsWith(aUser.substring(1)) && userHasRole(aUser, role)) {
-				return true;
-			}
-    	}
-    	return false;
+		if (!Roles.values().contains(role)) {
+			return false;
+		}
+		// Roles are groups in the old model
+		return isUserInGroup(user, role);
 	}
-	
-	private boolean userHasRole(String user, String role) {
-    	Set<String> roles = usersInRoles.get(user);
-    	return roles != null && roles.contains(role);
-    }
 	
 	@Override
 	public boolean isUserInGroup(String user, String group) {
-		IAccessGroup g = (IAccessGroup)getGroups().get(group); 
-		if (g == null) {
-			log.warn("Group {} does not exist", group);
+		
+		Set<IAccessControl> set = allowedUsersByGroup.get(group);
+		if (set == null) {
 			return false;
 		}
-
-		for (String u: g.getUsers()) {
-			if (AccessControlModelHelper.commonNameMatches(user, u)) {
-				return true;
-			}
-		}
-		
-		for (String groupName: g.getGroups()) {
-			if (isUserInGroup(user, groupName)) {
-				return true;
-			}
-		}
-		return false;
+		return set.stream().anyMatch(ac -> {
+			String member = ac.getMember();
+			return IAccessControl.isGroup(member) ? isUserInGroup(user, member) : AccessControlModelHelper.commonNameMatches(user, member);
+		});
 	}
 
 	@Override

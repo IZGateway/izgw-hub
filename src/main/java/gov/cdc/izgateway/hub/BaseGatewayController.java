@@ -1,5 +1,6 @@
 package gov.cdc.izgateway.hub;
 
+import gov.cdc.izgateway.Application;
 import gov.cdc.izgateway.ads.ADSController;
 import gov.cdc.izgateway.configuration.SenderConfig;
 import gov.cdc.izgateway.hub.service.DestinationService;
@@ -7,11 +8,9 @@ import gov.cdc.izgateway.hub.service.accesscontrol.AccessControlService;
 import gov.cdc.izgateway.logging.RequestContext;
 import gov.cdc.izgateway.logging.info.DestinationInfo;
 import gov.cdc.izgateway.logging.info.HostInfo;
-import gov.cdc.izgateway.logging.markers.Markers2;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.model.IEndpointStatus;
 import gov.cdc.izgateway.security.AccessControlRegistry;
-import gov.cdc.izgateway.security.Roles;
 import gov.cdc.izgateway.service.IMessageHeaderService;
 import gov.cdc.izgateway.service.impl.EndpointStatusService;
 import gov.cdc.izgateway.soap.SoapControllerBase;
@@ -52,8 +51,6 @@ public abstract class BaseGatewayController extends SoapControllerBase {
     protected int serverPort;
     @Value("${server.protocol:https}")
     protected String serverProtocol;
-    @Value("${hub.access-control.action:deny}")
-    protected String accessControlAction;
 
     protected BaseGatewayController(
             IMessageHeaderService mshService,
@@ -116,10 +113,6 @@ public abstract class BaseGatewayController extends SoapControllerBase {
         return result;
     }
 
-    protected boolean isAdministrator() {
-        return RequestContext.getRoles().contains(Roles.ADMIN) && !RequestContext.getRoles().contains(Roles.NOT_ADMIN_HEADER);
-    }
-
     /**
      * Checks to see if a user can send to the destination.
      * The method allows access controls to be set on a destination to allow or prohibit users
@@ -140,21 +133,10 @@ public abstract class BaseGatewayController extends SoapControllerBase {
      * @throws SecurityFault if the user is not permitted to access the destination.
      */
     protected void checkAccess(String destId) throws SecurityFault {
-        if (isAdministrator()) {
+        if (Application.isAdministrator()) {
             return;
         }
-
-        String sender = RequestContext.getSourceInfo().getCommonName();
-        if (!accessControlService.canAccessDestination(sender, destId)) {
-            SecurityFault fault = SecurityFault.generalSecurity("Source Not Allowed", String.format("%s is not permitted to send messages to %s", sender, destId), null);
-        	if (accessControlAction.equalsIgnoreCase("warn")) {
-        		RequestContext.getTransactionData().setProcessError(fault);
-        		// Log a warning but allow the message to be sent
-				log.warn(Markers2.append(fault), "Access control violation warning: {}", fault.getMessage());
-				return;
-			}
-        	throw fault;
-        }
+        accessControlService.checkAccessToDestination(destId);
     }
 
     @Override

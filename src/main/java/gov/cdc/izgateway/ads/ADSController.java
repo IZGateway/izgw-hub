@@ -65,11 +65,15 @@ import java.util.*;
 
 import javax.xml.ws.http.HTTPException;
 
-// TODO: Add schema documentation 
+/**
+ * Controller for Automated Data Submission to CDC
+ * @author Audacious Inquiry
+ *
+ */
 @Slf4j
 @RestController
 @CrossOrigin
-@RolesAllowed({Roles.ADS, Roles.ADMIN})
+@RolesAllowed({Roles.USERS, Roles.ADMIN})
 @RequestMapping({"/rest"})
 @Lazy(false)
 public class ADSController implements ADSChecker {
@@ -231,7 +235,8 @@ public class ADSController implements ADSChecker {
 			@RequestHeader(name = "X-Correlation-ID", required = false) String xCorrelationId,
 			@RequestParam String facilityId, @RequestParam String reportType, @RequestParam String period,
 			@RequestParam String filename) throws Fault {
-
+		config.getAccessControls().checkAccessToDestination(destinationId);
+		config.getAccessControls().canAccessDestination(RequestContext.getPrincipal().getName(), destinationId);
 		MetadataImpl meta = getMetadata(getMessageId(xMessageId, xCorrelationId, xRequestId), destinationId, facilityId,
 				reportType, period, filename, false);
 		Pair<InputStream, Map<String, List<String>>> result = getFile(meta);
@@ -251,7 +256,7 @@ public class ADSController implements ADSChecker {
 		return new ResponseEntity<>(new InputStreamResource(result.getLeft(), meta.getPath()), headers, HttpStatus.OK);
 	}
 
-	@DeleteMapping(value = "/ads/{destinationId}")
+    @DeleteMapping(value = "/ads/{destinationId}")
 	@Operation(hidden = true)
 	public ResponseEntity<String> deleteFile(@RequestHeader(name = "X-Message-ID", required = false) String xMessageId,
 			@RequestHeader(name = "X-Request-ID", required = false) String xRequestId,
@@ -425,6 +430,7 @@ public class ADSController implements ADSChecker {
 			@RequestParam(required = false) String filename,
 			@Schema(description = "Set to true to skip validation") @RequestParam(defaultValue = "false") boolean force)
 			throws Fault {
+		config.getAccessControls().checkAccessToDestination(destinationId);
 		String messageId = null;
 		MetadataImpl meta = null;
 		long now = System.currentTimeMillis();
@@ -499,31 +505,30 @@ public class ADSController implements ADSChecker {
 		int retries = 0;
 		long backoff = 250;
 		JsonNode deliveries = null;
-		while (true) {
+		boolean loop = true;
+		do {
 			MetadataImpl meta2 = new MetadataImpl(meta);
 			meta2.setPath(deliveryPath);
 			try {
 				result = getSender(dest).getSubmissionStatus(dest, meta2);
 				deliveries = new ObjectMapper().readTree(result).get("deliveries").get(0);
-				if (deliveries != null) {
-					break;
-				}
+				loop = deliveries == null;
 			} catch (Fault f) {
 				log.error(Markers2.append(f), "Error retrieving submission status for: {}", meta2);
-				break;
+				loop = false;
 			} catch (Exception e) {
 				log.warn(Markers2.append(e), "Failed to verify submission status for: {}\n {}", meta2, result);
-				if (++retries > 4) {
-					break;
+				loop = ++retries <= 4;
+				if (!loop) {
+					try {
+						Thread.sleep(backoff);
+					} catch (InterruptedException e1) {
+						Thread.currentThread().interrupt();
+					}
+					backoff += backoff;
 				}
-				try {
-					Thread.sleep(backoff);
-				} catch (InterruptedException e1) {
-					Thread.currentThread().interrupt();
-				}
-				backoff += backoff;
 			}
-		}
+		} while (loop);
 
 		if (deliveries == null) {
 			meta.setSubmissionStatus(UNKNOWN);
@@ -557,7 +562,6 @@ public class ADSController implements ADSChecker {
 	}
 
 	private void checkDestinationAndEvent(MetadataImpl meta) throws MetadataFault {
-		String destinationId = meta.getRouteId();
 		String reportType = meta.getExtEventType();
 
 		if (!config.getAccessControls().getEventTypes().stream().anyMatch(e -> e.equalsIgnoreCase(reportType))) {

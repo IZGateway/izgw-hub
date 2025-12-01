@@ -64,6 +64,10 @@ public class CDCWSDLController extends BaseGatewayController {
 	/**
 	 * Handle SOAP requests with destinationId as a path parameter
 	 * This allows requests to be made to /izgw/{destinationId}
+	 * @param soapMessage The SOAP message
+	 * @param destinationId The destination ID
+	 * @return The response entity
+	 * @throws Fault If an error occurs
 	 */
 	@PostMapping(value = "/{destinationId}", produces = {
 		"application/soap+xml",

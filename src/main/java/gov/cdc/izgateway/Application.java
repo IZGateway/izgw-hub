@@ -65,10 +65,12 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import gov.cdc.izgateway.logging.RequestContext;
 import gov.cdc.izgateway.logging.event.EventId;
 import gov.cdc.izgateway.logging.markers.Markers2;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.repository.DynamoDbRepository;
+import gov.cdc.izgateway.security.Roles;
 import gov.cdc.izgateway.security.SSLImplementation;
 import gov.cdc.izgateway.security.ocsp.RevocationChecker;
 import gov.cdc.izgateway.service.IDestinationService;
@@ -510,6 +512,10 @@ public class Application implements WebMvcConfigurer {
         connector.setProperty("minSpareThreads", "3");  // This is for local administration, we don't need many.
         factory.addAdditionalTomcatConnectors(connector);
         return factory;
+	}
+
+	public static boolean isAdministrator() {
+	    return RequestContext.getRoles().contains(Roles.ADMIN) && !RequestContext.getRoles().contains(Roles.NOT_ADMIN_HEADER);
 	}
 
 	/**

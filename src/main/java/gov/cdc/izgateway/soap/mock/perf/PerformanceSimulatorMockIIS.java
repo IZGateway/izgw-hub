@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.springframework.http.ResponseEntity;
 
@@ -140,7 +141,7 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 	}
 
 	private static class QueryException extends Exception {
-		private static String[] fieldNames = {
+		private static final String[] FIELD_NAMES = {
 			"", "Query Name", "Query Tag", "ID List", "Name", "Mother's Maiden Name", "Date of Birth", "Sex"
 		};
 		private static final long serialVersionUID = 1L;
@@ -152,10 +153,10 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 			return field;
 		}
 		public String getFieldName() {
-			if (field < 0 || field >= fieldNames.length) {
+			if (field < 0 || field >= FIELD_NAMES.length) {
 				return null;
 			}
-			return fieldNames[field];
+			return FIELD_NAMES[field];
 		}
 	}
 
@@ -253,7 +254,7 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 		return fields.length > fieldNo ? fields[fieldNo] : "";
 	}
 
-	private static int[] REQUIRED_FIELDS = {
+	private static final int[] REQUIRED_FIELDS = {
 			QUERY_NAME, QUERY_TAG, PATIENT_NAME, DATE_OF_BIRTH
 	};
 	private static String[] getQueryParts(String query) throws QueryException {
@@ -483,7 +484,7 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 		if (match.isEmpty()) {
 			return 0;
 		}
-		return StringUtils.compare(value, match);
+		return Strings.CS.compare(value, match);
 	}
 	
 	private static String normalizePhoneNumber(String value) {
@@ -530,7 +531,7 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 		}
 		String[] vParts = splitAlphaNumeric(v);
 		String[] mParts = splitAlphaNumeric(m);
-		int c = mParts[1].isEmpty() ? 0 : StringUtils.compare(vParts[1], mParts[1]);
+		int c = mParts[1].isEmpty() ? 0 : Strings.CS.compare(vParts[1], mParts[1]);
 		if (c != 0) {
 			return c;
 		}
@@ -551,8 +552,7 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 				alpha.append(c);
 			}
 		}
-		String[] result = { alpha.toString(), numeric.toString() };
-		return result;
+		return new String[] { alpha.toString(), numeric.toString() };
 	}
 
 	private static int compareAddrParts(String value, String match) {
@@ -576,11 +576,11 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 				int l = Math.min(v.length(), m.length());
 				v = v.substring(0, l);
 				m = m.substring(0, l);
-				c = StringUtils.compare(v, m);
+				c = Strings.CS.compare(v, m);
 				break;
 			case 3:
 				// Compare state
-				c = StringUtils.compareIgnoreCase(values[i], matches[i]);
+				c = Strings.CI.compare(values[i], matches[i]);
 				break;
 			case 2:
 				// Compare City
@@ -591,7 +591,7 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 				c = compareStreetAddress(values[0], matches[0], 5);
 				break;
 			default:
-				continue;
+				break;
 			}
 			if (c != 0) {
 				return c;

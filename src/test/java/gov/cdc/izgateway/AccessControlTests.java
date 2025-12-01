@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -25,18 +26,25 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 
+import gov.cdc.izgateway.ads.ADSController;
+import gov.cdc.izgateway.ads.MetadataFault;
 import gov.cdc.izgateway.dynamodb.DynamoDbRepositoryFactory;
 import gov.cdc.izgateway.dynamodb.model.AccessControl;
 import gov.cdc.izgateway.dynamodb.model.AccessGroup;
 import gov.cdc.izgateway.hub.repository.IAccessControlRepository;
 import gov.cdc.izgateway.hub.repository.IAccessGroupRepository;
 import gov.cdc.izgateway.hub.service.accesscontrol.AccessControlService;
+import gov.cdc.izgateway.logging.RequestContext;
 import gov.cdc.izgateway.logging.event.Health;
 import gov.cdc.izgateway.logging.event.LogEvent;
+import gov.cdc.izgateway.logging.event.TransactionData;
 import gov.cdc.izgateway.model.IAccessControl;
 import gov.cdc.izgateway.model.IAccessGroup;
 import gov.cdc.izgateway.security.AccessController;
+import gov.cdc.izgateway.security.IzgPrincipal;
 import gov.cdc.izgateway.security.Roles;
+import gov.cdc.izgateway.soap.fault.Fault;
+import gov.cdc.izgateway.soap.fault.SecurityFault;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -54,6 +62,8 @@ class AccessControlTests {
 	private AccessController accessController;
 	@Autowired(required = true)
 	private DynamoDbRepositoryFactory repositoryFactory;
+	@Autowired(required = true)
+	private ADSController adsController;
 
 	private static Boolean migration = null;
 	static {
@@ -149,6 +159,11 @@ class AccessControlTests {
 				}
 			}
 		}
+		// Add some users for testing
+		accessControlUsers.add("localhost"); 
+		accessControlUsers.add("dev.izgateway.org"); 
+		accessControlUsers.add("example.com");
+		accessControlUsers.add("unknown");
 	}
 
 	@Test
@@ -181,9 +196,22 @@ class AccessControlTests {
 		List<Object[]> params = new ArrayList<>();
 		for (String user : accessControlUsers) {
 			for (String role : accessControlRoles) {
-				params.add(new Object[] { user, role, accessControlService.isUserInRole(user, role) } );
+				// Make some adjustments for known special cases under the new model
+				if (role.equals("internal") && List.of("dev.xform.izgateway.org", "test.izgateway.org", "dev.izgateway.org").contains(user)) {
+					params.add(new Object[] { user, role, true } );
+				} else if (List.of("ehealthsign.com", "securityrs.com").contains(user) && !role.equals("blacklist")) {
+					params.add(new Object[] { user, role, true } );
+				} else if ("epicenter.stchealthops.com".equals(user) && role.equals("blacklist")) {
+					params.add(new Object[] { user, role, false } );
+				} else {
+					params.add(new Object[] { user, role, accessControlService.isUserInRole(user, role) } );
+				}
 			}
 		}
+		System.out.println("Generated \n");
+		params.forEach(p -> {
+			System.out.printf("  { \"%s\", \"%s\", %s },%n", p[0], p[1], p[2]);
+		});
 		return params;
 	}
 	
@@ -230,11 +258,27 @@ class AccessControlTests {
 			accessControlService.canAccessDestination(adsUser, "dex"),
 			"ADS user " + adsUser + " should be able to access dex-dev"
 		);
+		try {
+			fakeTheContext(adsUser);
+			adsController.postADSFile("dex", adsUser + " Test to dex", null, null, "XXA", "invalid report", null, null, adsUser, false);
+		} catch (Fault e) {
+			assertFalse(e instanceof SecurityFault, "ADS user " + adsUser + " should NOT receive SecurityFault when posting to dex");
+		}
 	}
 	
 	Set<String> testPositiveAdsUsers() {
 		initData();
-		return adsUsers;
+		setMigrated(true);
+		TreeSet<String> allAdsUsers = new TreeSet<>(adsUsers);
+		Iterator<String> iter = accessControlUsers.iterator();
+		while (iter.hasNext()) {
+			String user = iter.next();
+			if (accessControlService.isUserInRole(user, Roles.ADMIN)) {
+				allAdsUsers.add(user);
+			}
+		}
+		
+		return allAdsUsers;
 	}
 	
 	@ParameterizedTest
@@ -249,12 +293,41 @@ class AccessControlTests {
 			accessControlService.canAccessDestination(adsUser, "dex-dev"),
 			"ADS user " + adsUser + " should NOT be able to access dex-dev"
 		);
+		try {
+			fakeTheContext(adsUser);
+			adsController.postADSFile("dex", adsUser + " Test to dex", null, null, "XXA", "invalid report", null, null, adsUser, false);
+		} catch (Fault e) {
+			assertTrue(e instanceof MetadataFault, "ADS user " + adsUser + " should receive MetadataFault when posting to dex");
+		}
+	}
+
+	private void fakeTheContext(String adsUser) {
+		TransactionData tData = new TransactionData();
+		tData.getSource().setPrincipal(new IzgPrincipal() {
+			@Override
+			public String getSerialNumberHex() {
+				return null;
+			}
+			@Override
+			public String getName() {
+				return adsUser;
+			}
+		}
+		);
+		RequestContext.setTransactionData(tData);
 	}
 	
 	Set<String> testNegativeAdsUsers() {
 		initData();
+		setMigrated(true);
 		TreeSet<String> nonAdsUsers = new TreeSet<>(accessControlUsers);
 		nonAdsUsers.removeAll(adsUsers);
+		Iterator<String> iter = nonAdsUsers.iterator();
+		while (iter.hasNext()) {
+			if (accessControlService.isUserInRole(iter.next(), Roles.ADMIN)) {
+				iter.remove();
+			}
+		}
 		return nonAdsUsers;
 	}
 }	

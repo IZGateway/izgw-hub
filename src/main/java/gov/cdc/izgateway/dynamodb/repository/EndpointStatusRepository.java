@@ -61,6 +61,7 @@ public class EndpointStatusRepository extends DynamoDbRepository<EndpointStatus>
 	@Override
 	public List<EndpointStatus> find(int maxQuarterHours, String[] include) {
 		// TODO Whatever is needed for actual implementation
+		@SuppressWarnings("unused")
 		long time = System.currentTimeMillis() - (TimeUnit.MINUTES.toMillis(15) * maxQuarterHours);
 		return List.of(); // Placeholder
 	}

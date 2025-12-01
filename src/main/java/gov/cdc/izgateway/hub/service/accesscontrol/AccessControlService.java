@@ -17,9 +17,12 @@ import gov.cdc.izgateway.hub.repository.IAllowedUserRepository;
 import gov.cdc.izgateway.hub.repository.IDenyListRecordRepository;
 import gov.cdc.izgateway.hub.repository.IFileTypeRepository;
 import gov.cdc.izgateway.hub.repository.RepositoryFactory;
+import gov.cdc.izgateway.logging.RequestContext;
 import gov.cdc.izgateway.logging.markers.Markers2;
+import gov.cdc.izgateway.security.Roles;
 import gov.cdc.izgateway.service.IAccessControlRegistry;
 import gov.cdc.izgateway.service.IAccessControlService;
+import gov.cdc.izgateway.soap.fault.SecurityFault;
 import lombok.extern.slf4j.Slf4j;
 import lombok.Getter;
 
@@ -54,7 +57,10 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
     
 	private final IAccessControlRegistry registry;
     private final AccessControlMigrator migrator;
-	
+
+    @Value("${hub.access-control.action:deny}")
+    protected String accessControlAction;
+
     OldModelHelper oldModelHelper; 
     NewModelHelper newModelHelper;
     AccessControlModelHelper currentModelHelper = oldModelHelper;
@@ -212,6 +218,9 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 
 	@Override
 	public boolean canAccessDestination(String user, String destId) {
+		if (isUserInRole(user, Roles.ADMIN)) {
+			return true;
+		}
 		return currentModelHelper.canAccessDestination(user,  destId);
 	}
 
@@ -246,5 +255,24 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 		this.migrated = migrated;
 		this.currentModelHelper = migrated ? newModelHelper : oldModelHelper;
 		refresh();
+	}
+
+	/**
+	 * Check access to a destination and throw a fault or log a warning if access would not be granted.
+	 * @param destId	The destination
+	 * @throws SecurityFault	If access is denied
+	 */
+	public void checkAccessToDestination(String destId) throws SecurityFault {
+        String sender = RequestContext.getSourceInfo().getCommonName();
+        if (!canAccessDestination(sender, destId)) {
+            SecurityFault fault = SecurityFault.generalSecurity("Source Not Allowed", String.format("%s is not permitted to send messages to %s", sender, destId), null);
+        	if (accessControlAction.equalsIgnoreCase("warn")) {
+        		RequestContext.getTransactionData().setProcessError(fault);
+        		// Log a warning but allow the message to be sent
+				log.warn(Markers2.append(fault), "Access control violation warning: {}", fault.getMessage());
+				return;
+			}
+        	throw fault;
+        }
 	}
 }
