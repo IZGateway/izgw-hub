@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import gov.cdc.izgateway.dynamodb.model.CertificateStatus;
 import gov.cdc.izgateway.hub.repository.ICertificateStatusRepository;
 import gov.cdc.izgateway.hub.repository.RepositoryFactory;
+import gov.cdc.izgateway.model.ICertificateStatus;
 import gov.cdc.izgateway.service.ICertificateStatusService;
 
 import java.security.cert.X509Certificate;
@@ -19,7 +20,7 @@ import java.util.List;
  *
  */
 @Service
-public class CertificateStatusService implements ICertificateStatusService<CertificateStatus> {
+public class CertificateStatusService implements ICertificateStatusService<ICertificateStatus> {
     private final ICertificateStatusRepository<CertificateStatus> certificateStatusRepository;
     
     /**
@@ -32,13 +33,19 @@ public class CertificateStatusService implements ICertificateStatusService<Certi
     }
     
     @Override
-	public List<CertificateStatus> getAllCertificates() {
+	public List<ICertificateStatus> getAllCertificates() {
         return new ArrayList<>(certificateStatusRepository.findAll());
     }
 
     @Override
-	public CertificateStatus save(CertificateStatus certificateStatus){
-		return certificateStatusRepository.store(certificateStatus);
+	public CertificateStatus save(ICertificateStatus certificateStatus){
+    	CertificateStatus cs;
+    	if (certificateStatus instanceof CertificateStatus cs2) {
+			cs = cs2;
+		} else {
+			cs = new CertificateStatus(certificateStatus);
+		}
+		return certificateStatusRepository.store(cs);
     }
     
     @Override
