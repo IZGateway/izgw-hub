@@ -262,6 +262,7 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 	 * @param destId	The destination
 	 * @throws SecurityFault	If access is denied
 	 */
+	@Override
 	public void checkAccessToDestination(String destId) throws SecurityFault {
         String sender = RequestContext.getSourceInfo().getCommonName();
         if (!canAccessDestination(sender, destId)) {
