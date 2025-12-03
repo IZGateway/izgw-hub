@@ -19,6 +19,7 @@ public class EventRepository extends DynamoDbRepository<Event> {
 	/**
 	 * Construct a new JurisdictionRepository from the DynamoDb enhanced client.
 	 * @param client The client
+	 * @param tableName The table to use
 	 */
 	public EventRepository(@Autowired DynamoDbEnhancedClient client, String tableName) {
 		super(Event.class, client, tableName);

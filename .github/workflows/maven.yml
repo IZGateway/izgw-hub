@@ -180,11 +180,18 @@ jobs:
         cd ~/.m2
         ls -l
 
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{vars.AWS_REGION}}
+        
     - name: Maven Install
       env:
         COMMON_PASS: ${{ secrets.COMMON_PASS }}
         ELASTIC_API_KEY: ${{ secrets.ELASTIC_API_KEY }}
-
+        AMAZON_DYNAMODB_TABLE: izgateway-devalb 
       run: |
         env && mvn -B clean package install -Dbuildno=${{github.run_number}} \
             -DdoRevisionCheck=${{env.DO_REVISION_CHECK}} \
@@ -219,13 +226,6 @@ jobs:
       with:
         name: DependencyCheck
         path: ./reports
-
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{vars.AWS_REGION}}
 
     - name: Login to Amazon ECR
       id: login-ecr

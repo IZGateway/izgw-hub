@@ -38,7 +38,11 @@
             <cleanHistoryOnStart>true</cleanHistoryOnStart>
         </rollingPolicy>
     </appender>
-    <if condition='"true".equals(p("logging.console.pretty"))'>
+    <condition class="ch.qos.logback.core.boolex.PropertyEqualityCondition">
+        <key>logging.console.pretty</key>
+        <value>true</value>
+    </condition>
+    <if>
         <then>
             <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
                 <encoder class="net.logstash.logback.encoder.LogstashEncoder">
@@ -96,21 +100,33 @@
     <!-- Define properties based on System or Environment setting (e.g., 
         -Dvalue= in JVM startup args, or exactly as written below from environment) -->
     <root level="WARN"></root>
-    <if condition='"true".equals(p("logging.file.enabled"))'>
+    <condition class="ch.qos.logback.core.boolex.PropertyEqualityCondition">
+        <key>logging.file.enabled</key>
+        <value>true</value>
+    </condition>
+    <if>
         <then>
             <root>
                 <appender-ref ref="file" />
             </root>
         </then>
     </if>
-    <if condition='"true".equals(p("logging.console.enabled"))'>
+    <condition class="ch.qos.logback.core.boolex.PropertyEqualityCondition">
+        <key>logging.console.enabled</key>
+        <value>true</value>
+    </condition>
+    <if>
         <then>
             <root>
                 <appender-ref ref="console" />
             </root>
         </then>
     </if>
-    <if condition='"true".equals(p("logging.memory.enabled"))'>
+    <condition class="ch.qos.logback.core.boolex.PropertyEqualityCondition">
+        <key>logging.memory.enabled</key>
+        <value>true</value>
+    </condition>
+    <if>
         <then>
             <root>
                 <appender-ref ref="memory" />

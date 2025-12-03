@@ -16,6 +16,7 @@ public class JurisdictionRepository extends DynamoDbRepository<Jurisdiction> imp
 	/**
 	 * Construct a new JurisdictionRepository from the DynamoDb enhanced client.
 	 * @param client The client
+	 * @param tableName The table to use
 	 */
 	public JurisdictionRepository(@Autowired DynamoDbEnhancedClient client, String tableName) {
 		super(Jurisdiction.class, client, tableName);

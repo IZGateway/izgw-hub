@@ -37,6 +37,7 @@ public class DynamoDbRepository<T extends DynamoDbEntity> {
 	 * Create a new DynamoDbRepository for a given entity type.
 	 * @param entityClass	The class representing the entity to create the repository for.
 	 * @param client	The DynamoDbEnhancedClient to use to create the repository.
+	 * @param tableName The name of the DynamoDB table to use.
 	 */
 	public DynamoDbRepository(Class<T> entityClass, DynamoDbEnhancedClient client, String tableName) {
 		this.entityClass = entityClass;

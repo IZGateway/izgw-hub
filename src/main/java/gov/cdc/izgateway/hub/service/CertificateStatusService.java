@@ -3,7 +3,7 @@ package gov.cdc.izgateway.hub.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import gov.cdc.izgateway.db.model.CertificateStatus;
+import gov.cdc.izgateway.dynamodb.model.CertificateStatus;
 import gov.cdc.izgateway.hub.repository.ICertificateStatusRepository;
 import gov.cdc.izgateway.hub.repository.RepositoryFactory;
 import gov.cdc.izgateway.model.ICertificateStatus;
@@ -14,10 +14,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 
+/**
+ * Service for managing certificate statuses for Revocation checking.
+ * @author Audacious Inquiry
+ *
+ */
 @Service
 public class CertificateStatusService implements ICertificateStatusService {
     private final ICertificateStatusRepository certificateStatusRepository;
     
+    /**
+     * Constructor
+     * @param factory	The RepositoryFactory to use to create repositories.
+     */
     @Autowired
     public CertificateStatusService(RepositoryFactory factory) {
         this.certificateStatusRepository = factory.certificateStatusRepository();

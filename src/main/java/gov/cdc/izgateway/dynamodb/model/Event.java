@@ -15,6 +15,7 @@ import java.util.UUID;
 import org.apache.commons.lang3.StringUtils;
 
 import gov.cdc.izgateway.model.DateConverter;
+import gov.cdc.izgateway.model.DynamoDbAudit;
 import gov.cdc.izgateway.model.DynamoDbEntity;
 import gov.cdc.izgateway.model.MappableEntity;
 import gov.cdc.izgateway.utils.SystemUtils;
@@ -27,11 +28,11 @@ import gov.cdc.izgateway.utils.SystemUtils;
  */
 @SuppressWarnings("serial")
 @Data
-@EqualsAndHashCode(callSuper=false)
+@EqualsAndHashCode(callSuper=true)
 @AllArgsConstructor
 @NoArgsConstructor
 @DynamoDbBean
-public class Event implements DynamoDbEntity, Serializable {
+public class Event extends DynamoDbAudit implements DynamoDbEntity, Serializable {
 	// Well known events.
 	/** The Migration event */
 	public static final String MIGRATION = "Migration";

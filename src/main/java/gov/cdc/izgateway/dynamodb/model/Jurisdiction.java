@@ -1,5 +1,6 @@
 package gov.cdc.izgateway.dynamodb.model;
 
+import gov.cdc.izgateway.model.DynamoDbAudit;
 import gov.cdc.izgateway.model.DynamoDbEntity;
 import gov.cdc.izgateway.model.IJurisdiction;
 import gov.cdc.izgateway.model.MappableEntity;
@@ -17,9 +18,9 @@ import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
  */
 @SuppressWarnings("serial")
 @Data
-@EqualsAndHashCode(callSuper=false)
+@EqualsAndHashCode(callSuper=true)
 @DynamoDbBean
-public class Jurisdiction implements DynamoDbEntity, IJurisdiction {
+public class Jurisdiction extends DynamoDbAudit implements DynamoDbEntity, IJurisdiction {
 	/**
 	 * A map of jurisdictions.
 	 * 
@@ -51,7 +52,7 @@ public class Jurisdiction implements DynamoDbEntity, IJurisdiction {
 		this.prefix = that.getPrefix();
 	}
 
-  @Schema(description="The identifier of the jurisdiction.")
+    @Schema(description="The identifier of the jurisdiction.")
 	private int jurisdictionId;
     public int getJurisdictionId() {
     	return jurisdictionId;
