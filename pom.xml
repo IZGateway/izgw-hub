@@ -11,8 +11,8 @@
 	</parent>
 	<artifactId>izgw-hub</artifactId>
 	<packaging>jar</packaging>
-	<version>2.7.3-IZGW-SNAPSHOT</version>
-	<name>IZ Gateway Hub 2.7.3</name>
+	<version>2.9.1-IZGW-RELEASE</version>
+	<name>IZ Gateway Hub 2.9.1</name>
 	<description>IZ Gateway Hub</description>
 	<properties>
 		<maven.build.timestamp.format>yyyyMMddHHmm</maven.build.timestamp.format>
@@ -303,10 +303,12 @@
 		<dependency>
 			<groupId>org.apache.tomcat.embed</groupId>
 			<artifactId>tomcat-embed-el</artifactId>
+            <version>${tomcat.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.tomcat.embed</groupId>
 			<artifactId>tomcat-embed-websocket</artifactId>
+            <version>${tomcat.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

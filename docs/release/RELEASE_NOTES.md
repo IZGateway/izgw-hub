@@ -1,5 +1,8 @@
-# IZ Gateway Release 2.7.0
-* IGDD-2053 Password encryption capability
-* IGDD-2180 Fixes for Refresh when running in multiple regions, see (CONFIGURATION.md)[CONFIGURATION.md] for details on SQS configuration.
-* IGDD-2095 Upgrade OpenSSL to 3.5.0  
+# IZ Gateway Release 2.9.1
+Maintenance release to deploy updated Docker image with IZG Base Image updates
+* IGDD-2311 - CVE-2025-64118 - tar packaged with npm in base image
+* IGDD-2372 - Multiple CVEs - libpng
+* IGDD-2374 - Multiple CVE - golang.org/x/crypto
+* IGDD-2375 - CVE-2025-64756 - glob, glob
+* IGDD-2376 - CVE-2025-49014 - jq
 

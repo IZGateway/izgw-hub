@@ -31,6 +31,79 @@ jobs:
         # Force failure
         false
 
+    - name: Set up Toolchain
+      shell: bash
+      run: |
+        echo BASE_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout` >> $GITHUB_ENV
+        echo COMPUTERNAME=`hostname` >> $GITHUB_ENV
+        # Set up for unit testing against JPA repository
+        echo SPRING_DATABASE=jpa >> $GITHUB_ENV
+        mkdir -p ~/.m2 \
+        && cat << EOF > ~/.m2/toolchains.xml
+        <?xml version="1.0" encoding="UTF8"?>
+        <toolchains>
+          <toolchain>
+            <type>jdk</type>
+              <provides>
+                <version>11</version>
+                <vendor>sun</vendor>
+              </provides>
+              <configuration>
+                <jdkHome>$JAVA_HOME_11_X64</jdkHome>
+              </configuration>
+          </toolchain>
+          <toolchain>
+            <type>jdk</type>
+              <provides>
+                <version>17</version>
+                <vendor>sun</vendor>
+              </provides>
+              <configuration>
+                <jdkHome>$JAVA_HOME_17_X64</jdkHome>
+              </configuration>
+          </toolchain>
+        </toolchains>
+        EOF
+        
+        cat << EOF > ~/.m2/settings.xml
+        <?xml version="1.0" encoding="UTF8"?>
+        <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+          https://maven.apache.org/xsd/settings-1.0.0.xsd">
+          <localRepository>~/.m2/repository</localRepository>
+          <interactiveMode />
+          <usePluginRegistry />
+          <offline />
+          <servers>
+            <server>
+              <id>github</id>
+              <username>${{ github.actor }}</username>
+              <password>${{ secrets.GITHUB_TOKEN }}</password>
+            </server>
+            <server>
+              <id>github-bom</id>
+              <username>${{ github.actor }}</username>
+              <password>${{ secrets.GITHUB_TOKEN }}</password>
+            </server>
+            <server>
+              <id>github-core</id>
+              <username>${{ github.actor }}</username>
+              <password>${{ secrets.GITHUB_TOKEN }}</password>
+            </server>
+            <server>
+              <id>github-hub</id>
+              <username>${{ github.actor }}</username>
+              <password>${{ secrets.GITHUB_TOKEN }}</password>
+            </server>
+          </servers>
+          <mirrors />
+          <proxies />
+          <profiles />
+          <activeProfiles />
+        </settings>
+        EOF
+
     - name: Copy Documentation to Docs
       shell: bash
       run: |

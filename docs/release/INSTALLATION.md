@@ -27,11 +27,6 @@ See [CONFIGURATION.md](CONFIGURATION.md) for a full list of configuration parame
 
 ```
 
-MYSQL_DB_NAME = phiz // Name of database schema
-MYSQL_HOST= masked // DNS name of MySQL or RDS Database host
-MYSQL_HUB_NAME = phizuser // Username for access to MySQL Database
-MYSQL_HUB_PASS = masked // Password for access to MySQL Database
-
 PHIZ_SERVER_HOSTNAME = dev.phiz-project.org // Hostname of server
 PHIZ_SERVER_PORT = 443 // External port of server
 PHIZ_MODE = prod // set to dev for onboarding
@@ -43,8 +38,6 @@ PHIZ_CRYPTO_STORE_KEY_TOMCAT_SERVER_FILE:/usr/share/phiz-web-ws/conf/ssl/???.bcf
 PHIZ_CRYPTO_STORE_TRUST_TOMCAT_SERVER_FILE:/usr/share/phiz-web-ws/conf/ssl/???.bcfks
 PHIZ_CRYPTO_STORE_KEY_WS_CLIENT_FILE:/usr/share/phiz-web-ws/conf/ssl/???.bcfks
 PHIZ_CRYPTO_STORE_TRUST_WS_CLIENT_FILE:/usr/share/phiz-web-ws/conf/ssl/izgw_client_trust.bcfks
-
-
 
 ELASTIC_API_KEY = masked // Key for elastic search endpoint
 ELASTIC_ENV_TAG = prod // Tag for environment, should contain onboard, prod, or stage
