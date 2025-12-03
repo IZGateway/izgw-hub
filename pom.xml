@@ -6,13 +6,13 @@
 	<parent>
         <groupId>gov.cdc.izgw</groupId>
         <artifactId>izgw-bom</artifactId>
-        <version>1.0.2-SNAPSHOT</version>
+        <version>1.0.3-SNAPSHOT</version>
         <relativePath />
 	</parent>
 	<artifactId>izgw-hub</artifactId>
 	<packaging>jar</packaging>
-	<version>2.9.0-IZGW-RELEASE</version>
-	<name>IZ Gateway Hub 2.9.0</name>
+	<version>2.9.1-IZGW-RELEASE</version>
+	<name>IZ Gateway Hub 2.9.1</name>
 	<description>IZ Gateway Hub</description>
 	<properties>
 		<maven.build.timestamp.format>yyyyMMddHHmm</maven.build.timestamp.format>
@@ -311,10 +311,12 @@
 		<dependency>
 			<groupId>org.apache.tomcat.embed</groupId>
 			<artifactId>tomcat-embed-el</artifactId>
+            <version>${tomcat.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.tomcat.embed</groupId>
 			<artifactId>tomcat-embed-websocket</artifactId>
+            <version>${tomcat.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
