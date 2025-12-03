@@ -17,6 +17,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.annotation.security.RolesAllowed;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
@@ -80,7 +81,7 @@ public class StatusController {
             	// This enables quick checks for those endpoints with a status of other than connected.
                 if (!StringUtils.isEmpty(status)) {
                 	boolean test = !status.startsWith("!");
-                	if (StringUtils.equalsIgnoreCase(f.getStatus(), status) != test) {
+                	if (Strings.CI.equals(f.getStatus(), status) != test) {
                 		continue;
                 	}
                 }

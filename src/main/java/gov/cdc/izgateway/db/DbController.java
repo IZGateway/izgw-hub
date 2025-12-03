@@ -8,7 +8,6 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
@@ -49,6 +48,7 @@ import gov.cdc.izgateway.dynamodb.model.Destination;
 import gov.cdc.izgateway.dynamodb.model.MessageHeader;
 import gov.cdc.izgateway.logging.event.EventId;
 import gov.cdc.izgateway.logging.markers.Markers2;
+import gov.cdc.izgateway.model.ICertificateStatus;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.model.IEndpointStatus;
 import gov.cdc.izgateway.model.IMessageHeader;
@@ -84,9 +84,8 @@ import javax.net.ssl.HttpsURLConnection;
 @RequestMapping({ "/rest"})
 @Lazy(false)
 public class DbController {
-	private static final String WAITING_FOR_RESPONSE = "Waiting for Response";
 	private static final long DEFAULT_MAINT_PERIOD = TimeUnit.MINUTES.toMillis(30);
-	private static final String region = Objects.toString(System.getenv("AWS_REGION"), "unknown");
+	private static final String REGION = Objects.toString(System.getenv("AWS_REGION"), "unknown");
 
 	/**
 	 * Configuration for the DB Controller.
@@ -100,7 +99,7 @@ public class DbController {
 		private final IDestinationService destinationService;
 		private final IAccessControlService accessControlService;
 		private final IJurisdictionService jurisdictionService;
-		private final ICertificateStatusService certificateStatusService;
+		private final ICertificateStatusService<ICertificateStatus> certificateStatusService;
 		/**
 		 * Construct a new DB Controller Configuration
 		 * 
@@ -116,7 +115,7 @@ public class DbController {
 				final IDestinationService destinationService,
 				final IAccessControlService accessControlService,
 				final IJurisdictionService jurisdictionService,
-				final ICertificateStatusService certificateStatusService
+				final ICertificateStatusService<ICertificateStatus> certificateStatusService
 				) {
 			this.messageHeaderService = messageHeaderService;
 			this.destinationService = destinationService;
@@ -136,7 +135,7 @@ public class DbController {
 	private final IHostRepository hostService;
 	private final DbControllerConfiguration configuration;
 	/** Cached region for THIS host */
-	private final RefreshQueueService refreshQueueService = new RefreshQueueService(region, this);
+	private final RefreshQueueService refreshQueueService = new RefreshQueueService(REGION, this);
 
 	/**
 	 * Construct a new DBController class.
@@ -259,6 +258,7 @@ public class DbController {
 	@ResponseStatus(HttpStatus.CREATED)
 	public IMessageHeader createMessageHeadersById(@RequestBody MessageHeader newValues) {
 		try {
+			@SuppressWarnings("unused")
 			IMessageHeader old = getMessageHeadersById(newValues.getMsh());
 			throw new BadRequestException(String.format("A Message Header already exists for %s", newValues.getMsh()));
 		} catch (ResourceNotFoundException ignored) {
@@ -277,15 +277,15 @@ public class DbController {
 			description = "Returns configuration for all endpoints")
 	@ApiResponse(responseCode = "200", description = "The Message Header information values", 
 	    content = @Content(mediaType = "application/json", 
-	     schema = @Schema(implementation = Destination.Map.class))
+	     schema = @Schema(implementation = IDestination.Map.class))
 	)
 	@ApiResponse(responseCode = "400", description = "The identifier cannot be changed.", 
 		content = @Content)
 	@GetMapping("/config")
-	public Destination.Map getConfig() {
+	public IDestination.Map getConfig() {
 		refresh();
 		List<IDestination> l = configuration.getDestinationService().getAllDestinations();
-		Destination.Map l2 = new Destination.Map();
+		IDestination.Map l2 = new Destination.Map();
 		l.forEach(d -> l2.put(d.getDestId(), d.safeCopy()));
 		return l2;
 	}
@@ -332,7 +332,7 @@ public class DbController {
       refresh();
       String me = SystemUtils.getHostname();
       String eventId = MDC.get(EventId.EVENTID_KEY);
-      results.put(region + ":" + me, "OK (Local)");
+      results.put(REGION + ":" + me, "OK (Local)");
       if (reset) {
          resetEndpoint(me, eventId);
       }
@@ -341,10 +341,10 @@ public class DbController {
          for (Map.Entry<String, String> entry : hostsAndRegions.entrySet()) {
             String hostName = entry.getKey();
             String hostRegion = entry.getValue();
-            if (hostName.equalsIgnoreCase(me) && hostRegion.equals(region)) {
+            if (hostName.equalsIgnoreCase(me) && hostRegion.equals(REGION)) {
 			   continue;  // Yeah, we already did that one
 			}
-            RefreshRequest request = new RefreshRequest(reset, eventId, me, region);
+            RefreshRequest request = new RefreshRequest(reset, eventId, me, REGION);
             refreshQueueService.sendRefreshMessage(request, results, hostName, hostRegion);
          }
          refreshQueueService.awaitRefreshResponses(eventId, results);
@@ -412,7 +412,7 @@ public class DbController {
 			m.remove(SystemUtils.getHostname());
 		} else {
 			// Include this server (overwrites data from repository with locally known data) 
-			m.put(SystemUtils.getHostname(), region);
+			m.put(SystemUtils.getHostname(), REGION);
 		}
 		return m.entrySet().stream().map(e -> e.getKey() + ":" + e.getValue()).toList();
 	}
@@ -431,7 +431,7 @@ public class DbController {
 				// This will throw an exception if not locally reachable
 				InetAddress.getAllByName(e.getKey());
 				// If the region doesn't match ours, remove it
-				if (!region.equals(e.getValue())) {
+				if (!REGION.equals(e.getValue())) {
 					i.remove();
 				}
 			} catch (Exception ex) {
@@ -461,13 +461,13 @@ public class DbController {
 	@ApiResponse(responseCode = "200", description = "A map indicating the maintenance status for each destination.", 
 	    content = @Content(
 	    		mediaType = "application/json", 
-	    		schema = @Schema(implementation = Destination.Map.class)
+	    		schema = @Schema(implementation = IDestination.Map.class)
 	    )
 	)
 	@GetMapping("/maint")
 	public IDestination.Map getMaintenance() {
-		Destination.Map result = new Destination.Map();
-		Destination.Map m = getConfig();
+		IDestination.Map result = new Destination.Map();
+		IDestination.Map m = getConfig();
 
 		for (IDestination d : m.values()) {
 			if (!StringUtils.isEmpty(d.getMaintReason())) {

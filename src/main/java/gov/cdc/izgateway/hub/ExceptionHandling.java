@@ -13,7 +13,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.ServletRequestBindingException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
@@ -49,9 +48,9 @@ public class ExceptionHandling {
         errors.put("path", request.getRequestURI());
         if (ex instanceof MethodArgumentNotValidException manv) {
         	status = handleValidationException(errors, manv);
-        } else if (ex instanceof BadRequestException brex) {
+        } else if (ex instanceof BadRequestException) {
         	status = HttpStatus.BAD_REQUEST;
-        } else if (ex instanceof ResourceNotFoundException rnfex) {
+        } else if (ex instanceof ResourceNotFoundException) {
         	status = HttpStatus.NOT_FOUND;
         } else if (ex instanceof Fault fault) {
         	status = handleFault(errors, fault);
@@ -94,13 +93,14 @@ public class ExceptionHandling {
 
 	private HttpStatus handleErrorResponse(Map<String, Object> errors, ErrorResponse errorResponse) {
 		ProblemDetail detail = errorResponse.getBody();
-		if (detail == null) {
+		if (detail == null) { // NOSONAR null check is needed
 			return HttpStatus.valueOf(errorResponse.getStatusCode().value());
 		}
 		putIfNotEmpty(errors, "message", detail.getTitle());
 		putIfNotEmpty(errors, "detail", detail.getDetail());
-		if (detail.getProperties() != null) {
-			for (Entry<String, Object> e: detail.getProperties().entrySet()) {
+		Map<String, Object> props = detail.getProperties();
+		if (props != null) {
+			for (Entry<String, Object> e: props.entrySet()) {
 				if (errors.get(e.getKey()) == null) { // Do NOT overwrite any value already set
 					putIfNotEmpty(errors, e.getKey(), e.getValue().toString());
 				}

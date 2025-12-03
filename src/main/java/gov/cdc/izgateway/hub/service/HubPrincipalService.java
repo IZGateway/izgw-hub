@@ -9,12 +9,23 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+/**
+ * The Hub implementation of the PrincipalService. This implementation gets the principal from 
+ * the certificate in the request.
+ * 
+ * @author Audacious Inquiry
+ *
+ */
 @Service
 @Slf4j
 public class HubPrincipalService implements PrincipalService {
 
     private final CertificatePrincipalProvider certificatePrincipalProvider;
 
+    /**
+     * Constructor
+     * @param certificatePrincipalProvider	 The certificate principal provider
+     */
     @Autowired
     public HubPrincipalService(CertificatePrincipalProvider certificatePrincipalProvider) {
         this.certificatePrincipalProvider = certificatePrincipalProvider;

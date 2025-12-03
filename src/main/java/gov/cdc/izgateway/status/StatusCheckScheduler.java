@@ -10,7 +10,7 @@ import gov.cdc.izgateway.soap.fault.FaultSupport;
 import gov.cdc.izgateway.soap.fault.MessageSupport;
 import gov.cdc.izgateway.utils.SystemUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.time.FastDateFormat;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -232,7 +232,7 @@ public class StatusCheckScheduler {
         // We need not check endpoints which are local to this server.
         String uri = d.getDestUri();
         for (String prefix: NOT_WORTH_CHECKING_PREFIXES) {
-            if (StringUtils.startsWith(uri, prefix)) {
+            if (Strings.CS.startsWith(uri, prefix)) {
                 return false;
             }
         }

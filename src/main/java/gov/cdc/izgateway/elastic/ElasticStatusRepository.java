@@ -416,18 +416,16 @@ public class ElasticStatusRepository extends ElasticRepository implements Endpoi
 		for (int i = node.size() - 1; i >= 0; --i) {
 			JsonNode histBucket = node.get(i);
 			long histogramTime = histBucket.get("key").asLong();
-			if (histogramTime == 0) {
-				// Key does not exist.
-				continue;
-			}
-			JsonNode dests = getNode("destination.buckets", histBucket);
-			if (dests.getNodeType() != JsonNodeType.ARRAY) {
-				if (errors++ == 0) {	// Report the first error of this type
-					log.error("Expected array at destination.buckets");
+			if (histogramTime != 0) {
+				JsonNode dests = getNode("destination.buckets", histBucket);
+				if (dests.getNodeType() != JsonNodeType.ARRAY) {
+					if (errors++ == 0) {	// Report the first error of this type
+						log.error("Expected array at destination.buckets");
+					}
+					continue;
 				}
-				continue;
+				destinationErrors = parseDestination(map, destinationErrors, node, histogramTime, dests);
 			}
-			destinationErrors = parseDestination(map, destinationErrors, node, histogramTime, dests);
 		}
 	}
 
@@ -435,17 +433,16 @@ public class ElasticStatusRepository extends ElasticRepository implements Endpoi
 			JsonNode dests) {
 		for (JsonNode destBucket: dests) {
 			String destId = destBucket.get("key").asText();
-			if (StringUtils.isEmpty(destId)) {
-				continue;
-			}
-			JsonNode statii = getNode("hasProcessError.buckets", destBucket);
-			if (node.getNodeType() != JsonNodeType.ARRAY) {
-				if (errors++ == 0) {	// Report the first error of this type
-					log.error("Expected array at hasProcessError.buckets");
+			if (!StringUtils.isEmpty(destId)) {
+				JsonNode statii = getNode("hasProcessError.buckets", destBucket);
+				if (node.getNodeType() != JsonNodeType.ARRAY) {
+					if (errors++ == 0) {	// Report the first error of this type
+						log.error("Expected array at hasProcessError.buckets");
+					}
+					continue;
 				}
-				continue;
+				errors = parseStatus(map, errors, histogramTime, destId, statii);
 			}
-			errors = parseStatus(map, errors, histogramTime, destId, statii);
 		}
 		return errors;
 	}
@@ -553,7 +550,7 @@ public class ElasticStatusRepository extends ElasticRepository implements Endpoi
 		String find = key + "-bucket." + key + "-metric.top.1.metrics";
 		try {
 			JsonNode node = getNode(find, statusBucket);
-			return node.fields().next().getValue().asText();
+			return node.properties().iterator().next().getValue().asText();
 		} catch (NoSuchElementException | IllegalArgumentException e) {
 			log.warn("Could not find {}", find);
 			return null;

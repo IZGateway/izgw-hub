@@ -2,8 +2,8 @@ package gov.cdc.izgateway.hub;
 
 import gov.cdc.izgateway.ads.ADSController;
 import gov.cdc.izgateway.configuration.SenderConfig;
-import gov.cdc.izgateway.hub.service.AccessControlService;
 import gov.cdc.izgateway.hub.service.DestinationService;
+import gov.cdc.izgateway.hub.service.accesscontrol.AccessControlService;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.security.AccessControlRegistry;
 import gov.cdc.izgateway.security.Roles;
@@ -64,6 +64,10 @@ public class CDCWSDLController extends BaseGatewayController {
 	/**
 	 * Handle SOAP requests with destinationId as a path parameter
 	 * This allows requests to be made to /izgw/{destinationId}
+	 * @param soapMessage The SOAP message
+	 * @param destinationId The destination ID
+	 * @return The response entity
+	 * @throws Fault If an error occurs
 	 */
 	@PostMapping(value = "/{destinationId}", produces = {
 		"application/soap+xml",

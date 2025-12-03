@@ -1,5 +1,4 @@
 package gov.cdc.izgateway.elastic;
-import gov.cdc.izgateway.common.Constants;
 import gov.cdc.izgateway.configuration.AppProperties;
 import gov.cdc.izgateway.logging.markers.Markers2;
 import gov.cdc.izgateway.repository.IHostRepository;

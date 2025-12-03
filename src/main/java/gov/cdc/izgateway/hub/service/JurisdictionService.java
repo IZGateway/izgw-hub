@@ -7,6 +7,7 @@ import java.util.Map;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
+import gov.cdc.izgateway.dynamodb.model.Jurisdiction;
 import gov.cdc.izgateway.hub.repository.IJurisdictionRepository;
 import gov.cdc.izgateway.hub.repository.RepositoryFactory;
 import gov.cdc.izgateway.model.IJurisdiction;
@@ -19,7 +20,7 @@ public class JurisdictionService implements IJurisdictionService {
 	// Keep track of the singleton to simplify Destination entity class
 	private static IJurisdictionService instance;
 	private Map<Integer, IJurisdiction> cache = new LinkedHashMap<>();
-	private IJurisdictionRepository jurisdictionRepository;
+	private IJurisdictionRepository<Jurisdiction> jurisdictionRepository;
 	long lastUpdate = 0;
 	
 	public JurisdictionService(RepositoryFactory factory) {

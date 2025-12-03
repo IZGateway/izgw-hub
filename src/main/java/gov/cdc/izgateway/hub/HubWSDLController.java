@@ -8,8 +8,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import gov.cdc.izgateway.ads.ADSController;
 import gov.cdc.izgateway.configuration.SenderConfig;
-import gov.cdc.izgateway.hub.service.AccessControlService;
 import gov.cdc.izgateway.hub.service.DestinationService;
+import gov.cdc.izgateway.hub.service.accesscontrol.AccessControlService;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.security.AccessControlRegistry;
 import gov.cdc.izgateway.security.Roles;
