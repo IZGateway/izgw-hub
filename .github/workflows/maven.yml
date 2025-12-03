@@ -242,9 +242,9 @@ jobs:
         docker image push --all-tags $ECR_REGISTRY/$ECR_REPOSITORY
 
     # This is faster and easier than a db restore    
-    # This code should be removed after migration has been code reviewed and tested and before merging to develop branch
-    # In other words, do NOT merge this code to develop branch until testing is completed and migration is no longer needed
+    # Enable this step to undo previous migration if needed
     - name: Undo any previous migration in the database 
+      if: ${{ false }}
       env:
         TABLE_NAME: izgateway-devalb
         PK: entityType
