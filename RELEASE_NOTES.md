@@ -1,7 +1,23 @@
+# IZ Gateway Release 2.9.1
+Maintenance release to deploy updated Docker image with IZG Base Image updates
+* IGDD-2311 - CVE-2025-64118 - tar packaged with npm in base image
+* IGDD-2372 - Multiple CVEs - libpng
+* IGDD-2374 - Multiple CVE - golang.org/x/crypto
+* IGDD-2375 - CVE-2025-64756 - glob, glob
+* IGDD-2376 - CVE-2025-49014 - jq
+
 # IZ Gateway Release 2.9.0
-* IGDD-2295 Remove JDBC/RDS Support for IZ Gateway Hub
+* IGDD-2291 Upgrade Logstash by integrating izgw-bom to fix CVE-2025-11226
+* IGDD-2279 CC Maintenance period does not appear to be preventing all messages from getting to an endpoint
+* IGDD-2283 RevocationChecker Database Access Failure causes TlsConnectionFault
+* IGDD-2309 Fix IZ Gateway Retry Logic for Read Timeouts
 
 # IZ Gateway Release 2.8.0
+* IGDD-2052 jwtSharedSecret should be treated as Base64 Encoded data
+* IGDD-2216 In Hub and Transformation Service, die if Elastic or Metric Beats doesn't start correctly or exits unexpectedly
+* IGDD-2226 Fix tags on APHL pushed container images
+* IGDD-2267 Sending to DEX is still failing
+* IGDD-2072 Remove Route access control from ADS
 
 # IZ Gateway Release 2.7.3
 * IGDD-2250 Updated logging to identify cause of DEX failures with 404 Error
