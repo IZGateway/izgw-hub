@@ -52,7 +52,7 @@ jobs:
             --secret-access-key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
                     
           git-backup prune \
-            --repo https://${{IZGW_ALL_REPO_ACCESS_TOKEN_AUSTIN}}@github.com/IZGateway/${{ matrix.repo }} \
+            --repo https://${{secrets.IZGW_ALL_REPO_ACCESS_TOKEN_AUSTIN}}@github.com/IZGateway/${{ matrix.repo }} \
             --remote ${{ secrets.S3_REMOTE }}/${{ matrix.repo }} \
             --access-key-id ${{ secrets.AWS_ACCESS_KEY_ID }} \
             --secret-access-key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
