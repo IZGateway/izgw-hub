@@ -6,6 +6,9 @@ on:
 #    - cron: "0 0 * * *" # Runs at midnight every day of every month
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   back-up:
     runs-on: ubuntu-22.04
@@ -13,46 +16,42 @@ jobs:
     strategy:
       matrix:
         repo:
-          [
-            "https://github.com/IZGateway/izg-configuration-console",
-            "https://github.com/IZGateway/izg-transformation-ui",
-#            "https://github.com/IZGateway/izgw-hub",
-#            "https://github.com/IZGateway/izgw-core",
-#            "https://github.com/IZGateway/izgw-transform",
-#            "https://github.com/IZGateway/v2tofhir",
-#            "https://github.com/IZGateway/operations",
-#            "https://github.com/IZGateway/izgw-aws-lambda",
-#            "https://github.com/IZGateway/izgw-bom",
-#            "https://github.com/IZGateway/alpine-node-openssl-fips",
-            "https://github.com/IZGateway/iz-gateway-terraform",
-#            "https://github.com/IZGateway/izgw-performance-test",
-#            "https://github.com/IZGateway/ads-file-submission-app",
-#            "https://github.com/IZGateway/jmeter-setup-action"
-          ]
+          - izg-configuration-console
+          - izg-transformation-ui
+          - iz-gateway-terraform
+#          - izgw-hub
+#          - izgw-core
+#          - izgw-transform
+#          - v2tofhir
+#          - operations
+#          - izgw-aws-lambda
+#          - izgw-bom
+#          - alpine-node-openssl-fips
+#          - izgw-performance-test
+#          - ads-file-submission-app
+#          - jmeter-setup-action
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/checkout@v6
         with:
-          node-version: "lts/*"
+          repository: IZGateway/${{ matrix.repo }}
+          token: ${{secrets.IZGW_ALL_REPO_ACCESS_TOKEN_AUSTIN}}
+          fetch-depth: 0
 
-      - name: Install @larose/git-backup
-        run: npm install -g @larose/git-backup
-
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{vars.AWS_REGION}}
+                    
       - name: Back up ${{ matrix.repo }}
         run: |
-          git-backup snapshot \
-            --repo ${{ matrix.repo }} \
-            --remote ${{ secrets.S3_REMOTE }}/${{ matrix.repo }} \
-            --access-key-id ${{ secrets.AWS_ACCESS_KEY_ID }} \
-            --secret-access-key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-                    
-          git-backup prune \
-            --repo ${{ matrix.repo }} \
-            --remote ${{ secrets.S3_REMOTE }}/${{ matrix.repo }} \
-            --access-key-id ${{ secrets.AWS_ACCESS_KEY_ID }} \
-            --secret-access-key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-            --retention-policy "monthly=3,weekly=4,daily=7"
+            BACKUP_DIR="${{ github.workspace }}/backups"
+            mkdir -p "$BACKUP_DIR"
+            REPO_NAME="${{ matrix.repo }}"
+            TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+            BACKUP_FILE="${BACKUP_DIR}/${REPO_NAME}_backup_${TIMESTAMP}.tar.gz"
+            git archive --format=tar.gz HEAD > $BACKUP_FILE
+            aws s3 cp $BACKUP_FILE s3://izgateway-github-backup/$REPO_NAME/            
