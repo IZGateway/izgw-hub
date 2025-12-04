@@ -18,18 +18,18 @@ jobs:
         repo:
           - izg-configuration-console
           - izg-transformation-ui
-#            - izgw-hub
-#            - izgw-core
-#            - izgw-transform
-#            - v2tofhir
-#            - operations
-#            - izgw-aws-lambda
-#            - izgw-bom
-#            - alpine-node-openssl-fips
-          - iz-gateway-terraform
-#            - izgw-performance-test
-#            - ads-file-submission-app
-#            - jmeter-setup-action
+#          - izgw-hub
+#          - izgw-core
+#          - izgw-transform
+#          - v2tofhir
+#          - operations
+#          - izgw-aws-lambda
+#          - izgw-bom
+#          - alpine-node-openssl-fips
+#          - iz-gateway-terraform
+#          - izgw-performance-test
+#          - ads-file-submission-app
+#          - jmeter-setup-action
 
     steps:
       - name: Checkout repository
@@ -46,13 +46,13 @@ jobs:
       - name: Back up ${{ matrix.repo }}
         run: |
           git-backup snapshot \
-            --repo https://github.com/IZGateway/${{ matrix.repo }} \
+            --repo https://${{IZGW_ALL_REPO_ACCESS_TOKEN_AUSTIN}}@github.com/IZGateway/${{ matrix.repo }} \
             --remote ${{ secrets.S3_REMOTE }}/${{ matrix.repo }} \
             --access-key-id ${{ secrets.AWS_ACCESS_KEY_ID }} \
             --secret-access-key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
                     
           git-backup prune \
-            --repo https://github.com/IZGateway/${{ matrix.repo }} \
+            --repo https://${{IZGW_ALL_REPO_ACCESS_TOKEN_AUSTIN}}@github.com/IZGateway/${{ matrix.repo }} \
             --remote ${{ secrets.S3_REMOTE }}/${{ matrix.repo }} \
             --access-key-id ${{ secrets.AWS_ACCESS_KEY_ID }} \
             --secret-access-key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
