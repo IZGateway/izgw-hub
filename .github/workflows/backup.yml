@@ -6,6 +6,9 @@ on:
 #    - cron: "0 0 * * *" # Runs at midnight every day of every month
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   back-up:
     runs-on: ubuntu-22.04
