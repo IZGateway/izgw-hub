@@ -24,7 +24,7 @@ jobs:
           - izgw-bom
           - alpine-node-openssl-fips
           - ads-file-submission-app
-#          - iz-gateway-terraform
+          - iz-gateway-terraform
 #          - operations
 #          - izgw-aws-lambda
 #          - izgw-performance-test
