@@ -31,13 +31,15 @@ jobs:
 #          - jmeter-setup-action
 
     steps:
+      - name: Debug repo name
+        run: echo "Checking out IZGateway/${{ matrix.repo }}"
+
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
           repository: IZGateway/${{ matrix.repo }}
           token: ${{secrets.IZGW_ALL_REPO_ACCESS_TOKEN}}
           fetch-depth: 0
-          ref: develop
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -54,4 +56,4 @@ jobs:
             TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
             BACKUP_FILE="${BACKUP_DIR}/${REPO_NAME}_backup_${TIMESTAMP}.tar.gz"
             git archive --format=tar.gz HEAD > $BACKUP_FILE
-            aws s3 cp $BACKUP_FILE s3://izgateway-github-backup/$REPO_NAME/        
+            aws s3 cp $BACKUP_FILE s3://izgateway-github-backup/$REPO_NAME/
