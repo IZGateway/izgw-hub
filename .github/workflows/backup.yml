@@ -37,9 +37,10 @@ jobs:
       - name: Clone repository
         env:
           PAT: ${{ secrets.IZGW_ALL_REPO_ACCESS_TOKEN }}
+          REPO: ${{ matrix.repo }}
         run: |
-          git clone --bare  https://$PAT@github.com/IZGateway/${{ matrix.repo }}.git ${{ matrix.repo }}.git
-          cd iz-gateway-terraform.git
+          git clone --bare https://keithboone:$PAT@github.com/IZGateway/${{ matrix.repo }}.git $REPO.git
+          cd $REPO.git
           git fetch --all --tags
           
       - name: Configure AWS credentials
@@ -50,11 +51,12 @@ jobs:
           aws-region: ${{vars.AWS_REGION}}
                     
       - name: Back up ${{ matrix.repo }}
+        env:
+            BACKUP_DIR: ${{ github.workspace }}/backups
+            REPO: ${{ matrix.repo }}
         run: |
-            BACKUP_DIR="${{ github.workspace }}/backups"
             mkdir -p "$BACKUP_DIR"
-            REPO_NAME="${{ matrix.repo }}"
             TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-            BACKUP_FILE="${BACKUP_DIR}/${REPO_NAME}_backup_${TIMESTAMP}.tar.gz"
-            tar -czf $BACKUP_FILE ${REPO_NAME}.git
-            aws s3 cp $BACKUP_FILE s3://izgateway-github-backup/$REPO_NAME/
+            BACKUP_FILE="${BACKUP_DIR}/${REPO}_backup_${TIMESTAMP}.tar.gz"
+            tar -czf $BACKUP_FILE ${REPO}.git
+            aws s3 cp $BACKUP_FILE s3://izgateway-github-backup/$REPO/
