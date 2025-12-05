@@ -24,7 +24,7 @@ jobs:
           - izgw-bom
           - alpine-node-openssl-fips
           - ads-file-submission-app
-#          - iz-gateway-terraform
+          - iz-gateway-terraform
 #          - operations
 #          - izgw-aws-lambda
 #          - izgw-performance-test
@@ -37,6 +37,7 @@ jobs:
           repository: IZGateway/${{ matrix.repo }}
           token: ${{secrets.IZGW_ALL_REPO_ACCESS_TOKEN}}
           fetch-depth: 0
+          ref: develop
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
