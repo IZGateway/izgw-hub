@@ -25,10 +25,10 @@ jobs:
           - alpine-node-openssl-fips
           - ads-file-submission-app
           - iz-gateway-terraform
-#          - operations
-#          - izgw-aws-lambda
-#          - izgw-performance-test
-#          - jmeter-setup-action
+          - operations
+          - izgw-aws-lambda
+          - izgw-performance-test
+          - jmeter-setup-action
 
     steps:
       - name: Debug repo name
@@ -39,7 +39,7 @@ jobs:
           PAT: ${{ secrets.BACKUP_TOKEN }}
           REPO: ${{ matrix.repo }}
         run: |
-          git clone --bare https://keithboone:$PAT@github.com/IZGateway/${{ matrix.repo }}.git $REPO.git
+          git clone --bare https://$PAT@github.com/IZGateway/${{ matrix.repo }}.git $REPO.git
           cd $REPO.git
           git fetch --all --tags
           
