@@ -36,7 +36,7 @@ jobs:
 
       - name: Clone repository
         env:
-          PAT: ${{ secrets.IZGW_ALL_REPO_ACCESS_TOKEN }}
+          PAT: ${{ secrets.BACKUP_TOKEN }}
           REPO: ${{ matrix.repo }}
         run: |
           git clone --bare https://keithboone:$PAT@github.com/IZGateway/${{ matrix.repo }}.git $REPO.git
