@@ -34,12 +34,14 @@ jobs:
       - name: Debug repo name
         run: echo "Cloning IZGateway/${{ matrix.repo }} with all branches and tags"
 
-      - name: Mirror clone repository
+      - name: Clone repository
         env:
           PAT: ${{ secrets.IZGW_ALL_REPO_ACCESS_TOKEN }}
         run: |
-          git clone --mirror https://$PAT@github.com/IZGateway/${{ matrix.repo }}.git ${{ matrix.repo }}.git
-
+          git clone --bare  https://$PAT@github.com/IZGateway/${{ matrix.repo }}.git ${{ matrix.repo }}.git
+          cd iz-gateway-terraform.git
+          git fetch --all --tags
+          
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
