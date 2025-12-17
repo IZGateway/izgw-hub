@@ -66,6 +66,10 @@ setup.ilm.enabled: false
 setup.template.enabled: false
 setup.kibana.enabled: false
 
+# Adding data queue settings to handle temporary delays in shipping to Elasticsearch for upgrades or outages.
+queue.disk:
+  max_size: 10GB
+
 # Specifying cloud ID is the alternative to "output.elasticsearch.hosts" and is unique to Elastic Cloud.
 # cloud.id: "<environment cloud ID>"
 output.elasticsearch:
