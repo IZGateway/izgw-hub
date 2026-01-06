@@ -232,6 +232,35 @@ jobs:
         name: DependencyCheck
         path: ./target/site/dependency-check-report.html
 
+    - name: Publish Site (Develop)
+      # Publish to /develop/ for: push to develop, PRs targeting develop, scheduled runs, manual dispatch
+      if: |
+        github.ref == 'refs/heads/develop' ||
+        (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'develop')
+      uses: peaceiris/actions-gh-pages@v4
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./target/site
+        destination_dir: develop
+
+    - name: Publish Site (Current)
+      # Publish to /current/ only on Release branch push
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/Release')
+      uses: peaceiris/actions-gh-pages@v4
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./target/site
+        destination_dir: current
+
+    - name: Publish Site (Versioned)
+      # Publish to /v{version}/ only on Release branch push (same time as APHL push)
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/Release')
+      uses: peaceiris/actions-gh-pages@v4
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./target/site
+        destination_dir: v${{ env.BASE_TAG }}
+
     - name: Login to Amazon ECR
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
