@@ -57,8 +57,9 @@ server:
     tomcat:
         accept-count: 200
         max-connections: 16384
-        max-threads: 400
-        max-keep-alive-requests: 1
+        max-threads: 800
+        # ALB configuration will run better with keep-alive requests disabled
+        max-keep-alive-requests: -1
         
     ssl:
         enabled: true
