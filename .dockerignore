@@ -1,0 +1,10 @@
+target/
+.git/
+*.md
+Dockerfile
+.github/
+.idea/
+.vscode/
+*.iml
+node_modules/
+test/
