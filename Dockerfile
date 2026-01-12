@@ -50,10 +50,9 @@ RUN keytool -keystore cacerts -storepass changeit -noprompt -trustcacerts -impor
 
 # Add jar and run script
 ARG JAR_FILENAME
-ADD target/${JAR_FILENAME} /usr/share/izgateway/app.jar
+ADD target/$JAR_FILENAME /usr/share/izgateway/app.jar
 
 WORKDIR /usr/share/izgateway/
-ARG IZGW_VERSION
-ENV IZGW_VERSION=${IZGW_VERSION}
+ENV IZGW_VERSION=$IZGW_VERSION
 
 ENTRYPOINT ["/sbin/tini", "--", "sh", "-c", "crond && exec bash run.sh app.jar"]
