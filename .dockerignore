@@ -1,4 +1,5 @@
 target/
+!target/izgw-hub-*.jar
 .git/
 *.md
 Dockerfile
