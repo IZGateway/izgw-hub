@@ -198,7 +198,7 @@ jobs:
         AMAZON_DYNAMODB_TABLE: izgateway-devalb 
       run: |
         env && mvn -B -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn clean package install site -Dbuildno=${{github.run_number}} \
-            -DdoRevisionCheck=${{env.DO_REVISION_CHECK}} \
+            -X -DdoRevisionCheck=${{env.DO_REVISION_CHECK}} \
             -DskipDependencyCheck=true \
             -Dimage.tag=$IMAGE_TAG
             
