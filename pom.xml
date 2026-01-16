@@ -491,41 +491,6 @@
 				</configuration>
 			</plugin>
 			<plugin>
-				<groupId>com.spotify</groupId>
-				<artifactId>dockerfile-maven-plugin</artifactId>
-				<version>1.4.13</version>
-				<configuration>
-					<repository>iz-gateway</repository>
-					<buildArgs>
-						<JAR_FILENAME>${image.tag}.jar</JAR_FILENAME>
-						<IZGW_VERSION>${project.version}</IZGW_VERSION>
-					</buildArgs>
-				</configuration>
-				<executions>
-					<execution>
-						<id>build-image</id>
-						<goals>
-							<goal>build</goal>
-							<goal>tag</goal>
-						</goals>
-						<phase>install</phase>
-						<configuration>
-							<tag>${image.tag}</tag>
-						</configuration>
-					</execution>
-					<execution>
-						<id>tag-latest</id>
-						<goals>
-							<goal>tag</goal>
-						</goals>
-						<phase>install</phase>
-						<configuration>
-							<tag>latest</tag>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
-			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-dependency-plugin</artifactId>
 			</plugin>
