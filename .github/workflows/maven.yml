@@ -291,7 +291,7 @@ jobs:
       id: build-image
       run: |
         docker buildx build --build-arg JAR_FILENAME=izgw-hub-${{env.IMAGE_TAG}}-${{github.run_number}}.jar --build-arg IZGW_VERSION=${{env.IMAGE_TAG}} \
-            -progress=plain \
+            --progress=plain \
             --cache-from=type=local,src=.buildx-cache \
             --cache-to=type=local,dest=.buildx-cache \ 
             -t iz-gateway:${{env.IMAGE_TAG}} \
