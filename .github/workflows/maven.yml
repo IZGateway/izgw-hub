@@ -201,7 +201,7 @@ jobs:
             -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn \
             -DdoRevisionCheck=${{env.DO_REVISION_CHECK}} \
             -DskipDependencyCheck=true \
-            -Dimage.tag=izgw-hub-$IMAGE_TAG-${{github.run_number}}
+            -Dimage.tag=${{env.IMAGE_TAG}}
             
 # Use GitHub Action to speed up and improve dependency checking
 # You can Disable automatic dependency checking in the build, this replaces it          
@@ -262,25 +262,30 @@ jobs:
         publish_dir: ./target/site
         destination_dir: v${{ env.BASE_TAG }}
 
-    - name: Build Docker Image
-      id: build-image
-      run: |
-        docker build --build-arg JAR_FILENAME=izgw-hub-$IMAGE_TAG-${{github.run_number}}.jar --build-arg IZGW_VERSION=$IMAGE_TAG \
-            -t iz-gateway:$IMAGE_TAG \ 
-            -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-            -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_BRANCH_TAG
-            -t $ECR_REGISTRY/$ECR_REPOSITORY:latest
-            .
-            
     - name: Login to Amazon ECR
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
-
-    - name: Tag, push and deploy image to Amazon ECR
+      
+    - name: Login to GitHub Repository
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Build and push Docker Image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         ECR_REPOSITORY: izgateway-dev-phiz-web-ws
+      id: build-image
       run: |
+        docker build --build-arg JAR_FILENAME=izgw-hub-${{env.IMAGE_TAG}}-${{github.run_number}}.jar --build-arg IZGW_VERSION=${{env.IMAGE_TAG}} \
+            -t iz-gateway:${{env.IMAGE_TAG}} \ 
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:${{env.IMAGE_TAG}}
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:${{env.IMAGE_BRANCH_TAG}}
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:latest
+            .
+        docker image push --all-tags ghcr.io/izgateway/izgw-hub
         docker image push --all-tags $ECR_REGISTRY/$ECR_REPOSITORY
 
     # AWS_REGIONS can be set in GitHub Settings -> Secrets and variables -> Actions -> Variables -> Repository Variables
@@ -312,20 +317,6 @@ jobs:
         done
         
         wait
-
-    - name: Login to GitHub Repository
-      uses: docker/login-action@v3
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Tag, push and deploy image to Github Repository
-      run: |
-        docker image tag iz-gateway:${{env.IMAGE_TAG}} ghcr.io/izgateway/izgw-hub:${{env.IMAGE_TAG}}
-        docker image tag iz-gateway:${{env.IMAGE_TAG}} ghcr.io/izgateway/izgw-hub:${{env.IMAGE_BRANCH_TAG}}
-        docker image tag iz-gateway:${{env.IMAGE_TAG}} ghcr.io/izgateway/izgw-hub:latest
-        docker image push --all-tags ghcr.io/izgateway/izgw-hub
 
     - name: Upload build environment as artifact for failed build
       uses: actions/upload-artifact@v4
