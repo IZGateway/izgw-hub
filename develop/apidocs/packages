@@ -1,0 +1,16 @@
+gov.cdc.perf.histogram
+gov.cdc.izgateway.db
+gov.cdc.izgateway.dynamodb.model
+gov.cdc.izgateway.dynamodb
+gov.cdc.izgateway.dynamodb.repository
+gov.cdc.izgateway.ads.mockdex
+gov.cdc.izgateway.ads
+gov.cdc.izgateway.soap.mock
+gov.cdc.izgateway.soap.mock.perf
+gov.cdc.izgateway
+gov.cdc.izgateway.elastic
+gov.cdc.izgateway.status
+gov.cdc.izgateway.hub
+gov.cdc.izgateway.hub.service
+gov.cdc.izgateway.hub.service.accesscontrol
+gov.cdc.izgateway.hub.repository
