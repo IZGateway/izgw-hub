@@ -1,1 +1,0 @@
-/usr/lib/jvm/temurin-21-jdk-amd64/bin/javadoc -J-Duser.language= -J-Duser.country= -Xdoclint:none @options @packages
