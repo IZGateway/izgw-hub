@@ -281,9 +281,9 @@ jobs:
       run: |
         docker build --build-arg JAR_FILENAME=izgw-hub-${{env.IMAGE_TAG}}-${{github.run_number}}.jar --build-arg IZGW_VERSION=${{env.IMAGE_TAG}} \
             -t iz-gateway:${{env.IMAGE_TAG}} \ 
-            -t $ECR_REGISTRY/$ECR_REPOSITORY:${{env.IMAGE_TAG}}
-            -t $ECR_REGISTRY/$ECR_REPOSITORY:${{env.IMAGE_BRANCH_TAG}}
-            -t $ECR_REGISTRY/$ECR_REPOSITORY:latest
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:${{env.IMAGE_TAG}} \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:${{env.IMAGE_BRANCH_TAG}} \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
             .
         docker image push --all-tags ghcr.io/izgateway/izgw-hub
         docker image push --all-tags $ECR_REGISTRY/$ECR_REPOSITORY
