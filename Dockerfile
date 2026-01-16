@@ -8,7 +8,6 @@ RUN apk update \
 
 # Define arguments (set in izgateway pom.xml)
 ARG JAR_FILENAME
-ARG JAR_RUN_SCRIPT
 ARG IZGW_VERSION
 
 EXPOSE 443 9081 8000
