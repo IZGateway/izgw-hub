@@ -197,10 +197,11 @@ jobs:
         ELASTIC_API_KEY: ${{ secrets.ELASTIC_API_KEY }}
         AMAZON_DYNAMODB_TABLE: izgateway-devalb 
       run: | 
-        env && mvn -B -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn clean package install site -Dbuildno=${{github.run_number}} \
-            -X -DdoRevisionCheck=${{env.DO_REVISION_CHECK}} \
+        env && mvn -B clean package install site -Dbuildno=${{github.run_number}} \
+            -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn \
+            -DdoRevisionCheck=${{env.DO_REVISION_CHECK}} \
             -DskipDependencyCheck=true \
-            -Dimage.tag=$IMAGE_TAG
+            -Dimage.tag=izgw-hub-$IMAGE_TAG-${{github.run_number}}
             
 # Use GitHub Action to speed up and improve dependency checking
 # You can Disable automatic dependency checking in the build, this replaces it          
@@ -264,7 +265,12 @@ jobs:
     - name: Build Docker Image
       id: build-image
       run: |
-        docker build --build-arg JAR_FILENAME=$IMAGE_TAG.jar --build-arg IZGW_VERSION=$IMAGE_TAG -t iz-gateway:$IMAGE_TAG .
+        docker build --build-arg JAR_FILENAME=izgw-hub-$IMAGE_TAG-${{github.run_number}}.jar --build-arg IZGW_VERSION=$IMAGE_TAG \
+            -t iz-gateway:$IMAGE_TAG \ 
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_BRANCH_TAG
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:latest
+            .
             
     - name: Login to Amazon ECR
       id: login-ecr
@@ -275,9 +281,6 @@ jobs:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         ECR_REPOSITORY: izgateway-dev-phiz-web-ws
       run: |
-        docker image tag iz-gateway:${{env.IMAGE_TAG}} $ECR_REGISTRY/$ECR_REPOSITORY:${{env.IMAGE_TAG}}
-        docker image tag iz-gateway:${{env.IMAGE_TAG}} $ECR_REGISTRY/$ECR_REPOSITORY:${{env.IMAGE_BRANCH_TAG}}
-        docker image tag iz-gateway:${{env.IMAGE_TAG}} $ECR_REGISTRY/$ECR_REPOSITORY:latest
         docker image push --all-tags $ECR_REGISTRY/$ECR_REPOSITORY
 
     # AWS_REGIONS can be set in GitHub Settings -> Secrets and variables -> Actions -> Variables -> Repository Variables
