@@ -4,7 +4,7 @@ RUN apk update \
     && apk upgrade --no-cache \
     && apk add --no-cache openjdk21-jre mariadb-client mariadb-connector-c-dev tini \ 
     && npm upgrade -g \
-    && npm outdated -g  \
+    && npm outdated -g
 
 # Define arguments (set in izgateway pom.xml)
 ARG JAR_FILENAME
@@ -38,12 +38,12 @@ COPY docker/data/*.der /usr/lib/jvm/java-17-openjdk/jre/lib/security/
 
 WORKDIR /usr/share/izgateway/
 # Add jar and run script
-ADD target/$JAR_FILENAME app.jar
+COPY target/$JAR_FILENAME app.jar
 
 # Ensure we only use NIST certified publicly available BC-FIPS packages
 COPY docker/data/lib/bcfips/*.jar /usr/share/izgateway/lib/bcfips/
 
-ADD docker/fatjar-run.sh run1.sh
+COPY docker/fatjar-run.sh run1.sh
 
 # Remove carriage returns from batch file (for build on WinDoze).
 RUN tr -d '\r' <run1.sh >run.sh && rm run1.sh && chmod u+r+x run.sh
