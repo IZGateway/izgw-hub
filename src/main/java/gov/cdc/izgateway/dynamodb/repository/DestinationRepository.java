@@ -3,10 +3,10 @@ package gov.cdc.izgateway.dynamodb.repository;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import gov.cdc.izgateway.dynamodb.DynamoDbRepository;
+
 import gov.cdc.izgateway.dynamodb.model.Destination;
 import gov.cdc.izgateway.hub.repository.IDestinationRepository;
-import gov.cdc.izgateway.model.IDestination;
+import gov.cdc.izgateway.repository.DynamoDbRepository;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 
 /**
@@ -14,7 +14,7 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
  * 
  * @author Audacious Inquiry
  */
-public class DestinationRepository extends DynamoDbRepository<Destination> implements IDestinationRepository {
+public class DestinationRepository extends DynamoDbRepository<Destination> implements IDestinationRepository<Destination> {
 	/**
 	 * Construct a new DestinationRepository from the DynamoDb enhanced client.
 	 * @param client The client
@@ -25,23 +25,20 @@ public class DestinationRepository extends DynamoDbRepository<Destination> imple
 	}
 	
 	@Override
-	public List<? extends IDestination> findAllByDestTypeId(int destType) {
+	public List<Destination> findAllByDestTypeId(int destType) {
 		return this.findByType(Integer.toString(destType) + "#");
 	}
 
 	@Override
-	public Destination store(IDestination dest) {
+	public Destination store(Destination dest) {
 		if (dest == null) {
 			throw new NullPointerException("Entity cannot be null");
 		}
-		if (dest instanceof Destination d) {
-			return saveAndFlush(d);
-		} 
-		return saveAndFlush(new Destination(dest));
+		return saveAndFlush(dest);
 	}
 
 	@Override
-	public IDestination newDestination() {
+	public Destination newDestination() {
 		return new Destination();
 	}
 }

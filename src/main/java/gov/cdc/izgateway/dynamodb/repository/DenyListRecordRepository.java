@@ -1,17 +1,22 @@
 package gov.cdc.izgateway.dynamodb.repository;
 
+import java.util.Date;
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
-import gov.cdc.izgateway.dynamodb.DynamoDbRepository;
+
 import gov.cdc.izgateway.dynamodb.model.DenyListRecord;
 import gov.cdc.izgateway.hub.repository.IDenyListRecordRepository;
-import gov.cdc.izgateway.model.IDenyListRecord;
+import gov.cdc.izgateway.model.IAccessControl;
+import gov.cdc.izgateway.repository.DynamoDbRepository;
+import gov.cdc.izgateway.service.IAccessControlService;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 
 /**
  * Repository for managing {@link DenyListRecord} entities in DynamoDB.
  * Implements business logic for storing, deleting, and retrieving deny list records.
  */
-public class DenyListRecordRepository extends DynamoDbRepository<DenyListRecord> implements IDenyListRecordRepository {
+public class DenyListRecordRepository extends DynamoDbRepository<DenyListRecord> implements IDenyListRecordRepository<DenyListRecord> {
     /**
      * Constructs a new DenyListRecordRepository with the given DynamoDB client and table name.
      * @param client the DynamoDB enhanced client
@@ -23,28 +28,28 @@ public class DenyListRecordRepository extends DynamoDbRepository<DenyListRecord>
 
     /**
      * Stores the given deny list record in DynamoDB.
-     * @param record the deny list record to store
+     * @param denyListRecord the deny list record to store
      * @return the stored deny list record
      */
     @Override
-    public IDenyListRecord store(IDenyListRecord record) {
-        if (record instanceof DenyListRecord r) {
-            return super.saveAndFlush(r);
-        }
-        return super.saveAndFlush(new DenyListRecord(record));
+    public DenyListRecord store(DenyListRecord denyListRecord) {
+        return super.saveAndFlush(denyListRecord);
     }
 
-    /**
-     * Deletes the given deny list record from DynamoDB.
-     * @param record the deny list record to delete
-     */
-    @Override
-    public void delete(IDenyListRecord record) {
-        if (record instanceof DenyListRecord r) {
-            delete(r.getPrimaryId());
-        } else {
-            DenyListRecord r = new DenyListRecord(record);
-            delete(r.getPrimaryId());
-        }
-    }
+	/**
+	 * Migrate access controls to deny list records.
+	 * @param list	The list of access controls
+	 * @param who	The originator of the original access control record
+	 * @param when	When that happened
+	 */
+	public void migrateAccessControls(List<? extends IAccessControl> list, String who, Date when) {
+		for (IAccessControl ac : list) {
+			if (!ac.getCategory().equals(IAccessControlService.GROUP_CATEGORY) || !ac.getName().equals("blacklist")) {
+				continue;
+			}
+			DenyListRecord dlr = new DenyListRecord(ac, who, when);
+			super.saveAndFlush(dlr);
+		}
+		
+	}
 }

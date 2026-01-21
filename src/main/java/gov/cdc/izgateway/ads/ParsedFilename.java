@@ -7,6 +7,7 @@ import java.util.Date;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.time.FastDateFormat;
 
 import lombok.Data;
@@ -36,10 +37,10 @@ class ParsedFilename {
 		// Save the original filename in case we need it later.
 		this.originalFilename = filename;
 		// If this file is for testing (based on name)
-		if (StringUtils.containsIgnoreCase(filename, "test")) {
+		if (Strings.CI.contains(filename, "test")) {
 			// Set testing flag and adjust filename.
 			testfile = true;
-			filename = StringUtils.removeIgnoreCase(filename, "test");
+			filename = Strings.CI.remove(filename, "test");
 		}
 		this.filename = filename;
 		this.errors = errors;
@@ -94,15 +95,15 @@ class ParsedFilename {
 	private String checkRiverFilename(String[] parts) {
 		// Monthly files
 		filetype = parts.length > 0 ? parts[0] : "";
-		if (StringUtils.containsIgnoreCase(filetype, "farmer")) {
+		if (Strings.CI.contains(filetype, "farmer")) {
 		    filetype = "farmerFluVaccination";
-		} else if (StringUtils.containsIgnoreCase(filetype, "flu")) {
+		} else if (Strings.CI.contains(filetype, "flu")) {
 		    filetype = "influenzaVaccination";
-		} else if (StringUtils.containsIgnoreCase(filetype, "rsv")) {
+		} else if (Strings.CI.contains(filetype, "rsv")) {
 			filetype = "rsvPrevention";
-		} else if (StringUtils.containsIgnoreCase(filetype, "all")) {
+		} else if (Strings.CI.contains(filetype, "all")) {
 			filetype = "covidallMonthlyVaccination";
-		} else if (StringUtils.containsIgnoreCase(filetype, "measles")) {
+		} else if (Strings.CI.contains(filetype, "measles")) {
 			filetype = "measlesVaccination";
 		} else {
 		    filetype = "genericImmunization";

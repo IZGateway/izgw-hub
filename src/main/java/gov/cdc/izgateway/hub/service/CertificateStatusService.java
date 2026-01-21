@@ -20,8 +20,8 @@ import java.util.List;
  *
  */
 @Service
-public class CertificateStatusService implements ICertificateStatusService {
-    private final ICertificateStatusRepository certificateStatusRepository;
+public class CertificateStatusService implements ICertificateStatusService<ICertificateStatus> {
+    private final ICertificateStatusRepository<CertificateStatus> certificateStatusRepository;
     
     /**
      * Constructor
@@ -38,21 +38,28 @@ public class CertificateStatusService implements ICertificateStatusService {
     }
 
     @Override
-	public ICertificateStatus save(ICertificateStatus certificateStatus){
-		return certificateStatusRepository.store(certificateStatus);
+	public CertificateStatus save(ICertificateStatus certificateStatus){
+    	CertificateStatus cs;
+    	if (certificateStatus instanceof CertificateStatus cs2) {
+			cs = cs2;
+		} else {
+			cs = new CertificateStatus(certificateStatus);
+		}
+		return certificateStatusRepository.store(cs);
     }
     
     @Override
-	public ICertificateStatus findByCertificateId(String certificateId) {
+	public CertificateStatus findByCertificateId(String certificateId) {
     	return certificateStatusRepository.findByCertificateId(certificateId);
     }
 
 	@Override
 	public void refresh() {
+		// There is no refresh needed for this implementation.
 	}
 
 	@Override
-	public ICertificateStatus create(X509Certificate cert) {
+	public CertificateStatus create(X509Certificate cert) {
 		return new CertificateStatus(cert);
 	}
 }

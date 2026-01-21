@@ -1,16 +1,16 @@
 package gov.cdc.izgateway.hub;
 
+import gov.cdc.izgateway.Application;
 import gov.cdc.izgateway.ads.ADSController;
 import gov.cdc.izgateway.configuration.SenderConfig;
-import gov.cdc.izgateway.hub.service.AccessControlService;
 import gov.cdc.izgateway.hub.service.DestinationService;
+import gov.cdc.izgateway.hub.service.accesscontrol.AccessControlService;
 import gov.cdc.izgateway.logging.RequestContext;
 import gov.cdc.izgateway.logging.info.DestinationInfo;
 import gov.cdc.izgateway.logging.info.HostInfo;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.model.IEndpointStatus;
 import gov.cdc.izgateway.security.AccessControlRegistry;
-import gov.cdc.izgateway.security.Roles;
 import gov.cdc.izgateway.service.IMessageHeaderService;
 import gov.cdc.izgateway.service.impl.EndpointStatusService;
 import gov.cdc.izgateway.soap.SoapControllerBase;
@@ -19,6 +19,8 @@ import gov.cdc.izgateway.soap.fault.SecurityFault;
 import gov.cdc.izgateway.soap.fault.UnknownDestinationFault;
 import gov.cdc.izgateway.soap.message.*;
 import gov.cdc.izgateway.soap.net.MessageSender;
+import lombok.extern.slf4j.Slf4j;
+
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -27,11 +29,11 @@ import org.springframework.http.ResponseEntity;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Base controller class that contains common functionality shared between HubWSDLController and CDCWSDLController.
  */
+@Slf4j
 public abstract class BaseGatewayController extends SoapControllerBase {
 
     /**
@@ -111,10 +113,6 @@ public abstract class BaseGatewayController extends SoapControllerBase {
         return result;
     }
 
-    protected boolean isAdministrator() {
-        return RequestContext.getRoles().contains(Roles.ADMIN) && !RequestContext.getRoles().contains(Roles.NOT_ADMIN_HEADER);
-    }
-
     /**
      * Checks to see if a user can send to the destination.
      * The method allows access controls to be set on a destination to allow or prohibit users
@@ -134,18 +132,11 @@ public abstract class BaseGatewayController extends SoapControllerBase {
      *
      * @throws SecurityFault if the user is not permitted to access the destination.
      */
-    protected void checkAccess(String destGroup) throws SecurityFault {
-        destGroup = StringUtils.upperCase(destGroup);
-        if (!accessControlService.groupExists(destGroup)) {
+    protected void checkAccess(String destId) throws SecurityFault {
+        if (Application.isAdministrator()) {
             return;
         }
-        if (isAdministrator()) {
-            return;
-        }
-
-        if (!accessControlService.isMemberOf(RequestContext.getSourceInfo().getCommonName(), destGroup)) {
-            throw SecurityFault.generalSecurity("Source Not Allowed", destGroup, null);
-        }
+        accessControlService.checkAccessToDestination(destId);
     }
 
     @Override

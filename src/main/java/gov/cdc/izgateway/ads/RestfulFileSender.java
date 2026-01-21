@@ -151,11 +151,9 @@ public abstract class RestfulFileSender implements FileSender {
         // Create the HTTP URL to send
         long elapsedTimeIIS = 0;
         HttpURLConnection con = null;
-        String path = null;
         try  {
             meta.setUploadedDate(new Date());
             con = getConnection("POST", route, meta, data);
-            path = StringUtils.substringBefore(con.getURL().getPath(), "?");
             checkForSpace(con, route, meta.getFileSize());
 
             elapsedTimeIIS = -System.currentTimeMillis();
@@ -249,7 +247,7 @@ public abstract class RestfulFileSender implements FileSender {
 			}
 	        return getSubmissionStatus(con);
 		} catch (HttpResponseException ex) {
-			String path = StringUtils.substringBefore(con.getURL().toString(), "?");
+			String path = StringUtils.substringBefore(con.getURL().toString(), "?");  // NOSONAR con cannot be null here
 			throw HubClientFault.httpError(route, ex.getStatusCode(), ex.getMessage(), path);
         } catch (URISyntaxException | IOException e) {
 			throw HubClientFault.invalidMessage(e, route, 0, null);
@@ -405,35 +403,40 @@ public abstract class RestfulFileSender implements FileSender {
     
 	protected void addHeadersFromMetadata(Metadata meta, List<Header> headers) {
     	boolean isProd = !"test".equals(meta.getDestinationId());
-    	
         for (Method m: Metadata.class.getMethods()) {
             JsonProperty ann = m.getAnnotation(JsonProperty.class);
             if (ann != null) {
                 String name = ann.value();
-                String value = null;
                 if (name.startsWith("izgw") && isProd) {
                 	// Don't send IZGW Extension fields to production environments
                 	continue;
                 }
-                try {
-                    Object o = m.invoke(meta);
-                    if (o == null) {
-                    	continue;
-                    }
-                    if (m.getReturnType() == Date.class) {
-                   		value = Metadata.RFC2616_DATE_FORMAT.format(m.invoke(meta));
-                    } else if (Metadata.TESTFILE.equals(name) && o instanceof Boolean b) {
-                		value = b ? "yes" : "no";
-                	} else {
-                		value = o.toString();
-                    }
-                } catch (Exception e) {
-                    log.error(Markers2.append(e), "Error serializing Metadata: {}", e.getMessage(), e);
+                String value = getHeaderValue(meta, m, name);
+                if (value != null) {
+                	headers.add(new BasicHeader("x-ms-meta-" + name, value));
                 }
-                headers.add(new BasicHeader("x-ms-meta-" + name, value));
             }
         }
     }
+	
+	private String getHeaderValue(Metadata meta, Method m, String name) {
+		try {
+		    Object o = m.invoke(meta);
+		    if (o == null) {
+		    	return null;
+		    } 
+		    if (m.getReturnType() == Date.class) {
+		   		return Metadata.RFC2616_DATE_FORMAT.format(m.invoke(meta));
+		    } 
+		    if (Metadata.TESTFILE.equals(name) && o instanceof Boolean b) {
+				return Boolean.TRUE.equals(b) ? "yes" : "no";
+			} 
+		    return o.toString();
+		} catch (Exception e) {
+		    log.error(Markers2.append(e), "Error serializing Metadata: {}", e.getMessage(), e);
+	    	return null;
+		}
+	}
 
     @Override
     public final String getStatus(IDestination route) throws HubClientFault, MetadataFault, DestinationConnectionFault, SecurityFault {

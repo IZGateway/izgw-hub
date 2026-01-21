@@ -1,17 +1,17 @@
 package gov.cdc.izgateway.dynamodb.repository;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import gov.cdc.izgateway.dynamodb.DynamoDbRepository;
+
 import gov.cdc.izgateway.dynamodb.model.FileType;
 import gov.cdc.izgateway.hub.repository.IFileTypeRepository;
-import gov.cdc.izgateway.model.IFileType;
+import gov.cdc.izgateway.repository.DynamoDbRepository;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 
 /**
  * Repository for managing {@link FileType} entities in DynamoDB.
  * Implements business logic for storing, deleting, and retrieving file types.
  */
-public class FileTypeRepository extends DynamoDbRepository<FileType> implements IFileTypeRepository {
+public class FileTypeRepository extends DynamoDbRepository<FileType> implements IFileTypeRepository<FileType> {
     /**
      * Constructs a new FileTypeRepository with the given DynamoDB client and table name.
      * @param client the DynamoDB enhanced client
@@ -27,24 +27,7 @@ public class FileTypeRepository extends DynamoDbRepository<FileType> implements 
      * @return the stored file type
      */
     @Override
-    public IFileType store(IFileType fileType) {
-        if (fileType instanceof FileType f) {
-            return super.saveAndFlush(f);
-        }
-        return super.saveAndFlush(new FileType(fileType));
-    }
-
-    /**
-     * Deletes the given file type from DynamoDB.
-     * @param fileType the file type to delete
-     */
-    @Override
-    public void delete(IFileType fileType) {
-        if (fileType instanceof FileType f) {
-            delete(f.getPrimaryId());
-        } else {
-            FileType f = new FileType(fileType);
-            delete(f.getPrimaryId());
-        }
+    public FileType store(FileType fileType) {
+        return saveAndFlush(fileType);
     }
 }

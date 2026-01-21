@@ -5,14 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
 import java.util.List;
-
-
-
-import org.apache.commons.lang3.StringUtils;
-import org.junit.jupiter.api.BeforeEach;
+import org.apache.commons.lang3.Strings;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.opentest4j.AssertionFailedError;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -21,16 +18,14 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletResponse;
 import com.fasterxml.jackson.core.JsonFactory;
-
 import gov.cdc.izgateway.common.HealthService;
 import gov.cdc.izgateway.logging.MemoryAppender;
 import gov.cdc.izgateway.logging.event.Health;
 import gov.cdc.izgateway.logging.event.LogEvent;
 import lombok.extern.slf4j.Slf4j;
 
-import javax.sql.DataSource;
-
 @Slf4j
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT,
 	useMainMethod = SpringBootTest.UseMainMethod.ALWAYS
 )
@@ -41,19 +36,19 @@ class ApplicationTests {
 	AppController appController;
 	@Autowired(required = true)
 	LogController logController;
-	
+
 	static {
 		Application.setAbortOnNoIIS(false);
+		Application.skipMigrations(true);
 	}
 	
-	@Autowired ApplicationTests() {
-		log.info("Started");
-	}
-	
-	@BeforeEach void initData() {
-		log.info("Before Each");
-	}
-	
+
+    @BeforeAll
+    void setupParameters() {
+    	// We want a larger memory appender for these tests, because some tests log more info.
+        MemoryAppender.getInstance("memory").setSize(100);
+    }
+
 	@Test
 	void applicationIsHealthy() {
 		assertTrue(HealthService.getHealth().isHealthy());
@@ -67,9 +62,9 @@ class ApplicationTests {
 	}
 	
 	@Test
-	void buildAndHealthAreReportedInLogs() throws IOException {
+	void buildAndHealthAreReportedInLogs() {
 		MemoryAppender mem = MemoryAppender.getInstance("memory");
-		testLoggingEvents(mem.getLoggedEvents().stream().map(event -> new LogEvent(event)).toList());
+		testLoggingEvents(mem.getLoggedEvents().stream().map(LogEvent::new).toList());
 	}
 	
 	void testLoggingEvents(List<LogEvent> list) {
@@ -78,9 +73,9 @@ class ApplicationTests {
 		Health health = null;
 		boolean isHealthy = true;
 		for (LogEvent event : list) {
-			if (StringUtils.contains(event.getMessage(), "Build:")) {
+			if (Strings.CS.contains(event.getMessage(), "Build:")) {
 				hasBuild = true;
-			} else if (StringUtils.contains(event.getMessage(), "Heartbeat")) {
+			} else if (Strings.CS.contains(event.getMessage(), "Heartbeat")) {
 				hasHeartbeat = true;
 			}
 			
@@ -114,18 +109,18 @@ class ApplicationTests {
 		HealthService.setHealthy(true, "Reset");
 	}
 	
-	@Test void logControllerTest() throws IOException {
+	@Test void logControllerTest() {
 		assertNotNull(logController);
 		List<LogEvent> list = logController.getLogs(null);
 		testLoggingEvents(list);
 	}
 	
 	@Test
-	void testLogEvents() throws IOException {
+	void testLogEvents() {
 		int count = 0;
 		for (LogEvent event: logController.getLogs(null)) {
 			count++;
-			if ("DEBUG".equals(event.getLevel()) || StringUtils.startsWith(event.getLoggerName(), "gov.cdc.izgateway.db.RefreshQueueService"))  {
+			if ("DEBUG".equals(event.getLevel()) || Strings.CS.startsWith(event.getLoggerName(), "gov.cdc.izgateway.db.RefreshQueueService"))  {
 				// Skip these, we don't care about them right now.
 				continue;
 			}
@@ -140,5 +135,4 @@ class ApplicationTests {
 			}
 		}
 	}
-
-}
+}	

@@ -8,15 +8,18 @@ import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbConvertedBy;
 
 import java.io.Serializable;
-import java.util.Date;
-import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
+
 import gov.cdc.izgateway.model.IAccessGroup;
-import gov.cdc.izgateway.model.DateConverter;
+import gov.cdc.izgateway.repository.EmptySetToNullConverter;
 import gov.cdc.izgateway.model.DynamoDbAudit;
 import gov.cdc.izgateway.model.DynamoDbEntity;
 
 /**
  * DynamoDB entity for AccessGroup, representing an access control group record.
+ * 
+ * @author Audacious Inquiry
  */
 @SuppressWarnings("serial")
 @Data
@@ -26,17 +29,34 @@ import gov.cdc.izgateway.model.DynamoDbEntity;
 @DynamoDbBean
 public class AccessGroup extends DynamoDbAudit implements DynamoDbEntity, Serializable, IAccessGroup {
     private String groupName;
-    private Integer environment;
+    private int environment;
     private String description;
-    private List<String> roles;
-    private List<String> users;
-    private List<String> groups;
+    private Set<String> roles = new TreeSet<>();
+    private Set<String> users = new TreeSet<>();
+    private Set<String> groups = new TreeSet<>();
     
-	@Override
-	public String getPrimaryId() {
-		return String.format("%d#%s", this.environment, this.groupName);
+    @DynamoDbConvertedBy(EmptySetToNullConverter.class)
+    public Set<String> getRoles() {
+		if (roles == null) {
+			roles = new TreeSet<>();
+		}
+		return roles;
 	}
-
+    @DynamoDbConvertedBy(EmptySetToNullConverter.class)
+    public Set<String> getUsers() {
+    	if (users == null) {
+			users = new TreeSet<>();
+    	}
+		return users;
+	}
+    @DynamoDbConvertedBy(EmptySetToNullConverter.class)
+    public Set<String> getGroups() {
+    	if (groups == null) {
+    		groups = new TreeSet<>();
+    	}
+		return groups;
+	}
+    
     /**
      * Copy constructor
      * @param other	the other AccessGroup object to copy from
@@ -47,9 +67,20 @@ public class AccessGroup extends DynamoDbAudit implements DynamoDbEntity, Serial
             this.groupName = other.getGroupName();
             this.environment = other.getEnvironment();
             this.description = other.getDescription();
-            this.roles = other.getRoles() != null ? List.copyOf(other.getRoles()) : null;
-            this.users = other.getUsers() != null ? List.copyOf(other.getUsers()) : null;
-            this.groups = other.getGroups() != null ? List.copyOf(other.getGroups()) : null;
+            if (other.getRoles() != null) {
+            	this.roles.addAll(other.getRoles());
+            }
+            if (other.getUsers() != null) {
+            	this.users.addAll(other.getUsers());
+            }
+            if (other.getGroups() != null) {
+            	this.groups.addAll(other.getGroups());
+            }
         }
     }
+    
+	@Override
+	public String getPrimaryId() {
+		return String.format("%d#%s", this.environment, this.groupName);
+	}
 }

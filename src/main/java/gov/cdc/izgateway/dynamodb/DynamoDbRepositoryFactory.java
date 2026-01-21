@@ -8,7 +8,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
+import gov.cdc.izgateway.dynamodb.model.Destination;
 import gov.cdc.izgateway.dynamodb.model.Event;
+import gov.cdc.izgateway.dynamodb.model.Jurisdiction;
+import gov.cdc.izgateway.dynamodb.model.MessageHeader;
 import gov.cdc.izgateway.dynamodb.repository.AccessControlRepository;
 import gov.cdc.izgateway.dynamodb.repository.AccessGroupRepository;
 import gov.cdc.izgateway.dynamodb.repository.AllowedUserRepository;
@@ -20,8 +23,6 @@ import gov.cdc.izgateway.dynamodb.repository.MessageHeaderRepository;
 import gov.cdc.izgateway.dynamodb.repository.DenyListRecordRepository;
 import gov.cdc.izgateway.dynamodb.repository.FileTypeRepository;
 import gov.cdc.izgateway.dynamodb.repository.OrganizationRecordRepository;
-import gov.cdc.izgateway.hub.repository.IAccessControlRepository;
-import gov.cdc.izgateway.hub.repository.ICertificateStatusRepository;
 import gov.cdc.izgateway.hub.repository.IDestinationRepository;
 import gov.cdc.izgateway.hub.repository.IJurisdictionRepository;
 import gov.cdc.izgateway.hub.repository.IMessageHeaderRepository;
@@ -107,7 +108,7 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
      * Get the DynamoDbRepository for Access Controls
      * @return	The AccessControlRepository
      */
-    public IAccessControlRepository accessControlRepository() {
+    public AccessControlRepository accessControlRepository() {
 		if (acr == null) {
     		acr = new AccessControlRepository(client, this.tableName);
     	}
@@ -118,7 +119,7 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
      * Get the DynamoDbRepository for Certificate Status
      * @return	The CertificateStatusRepository
      */
-    public ICertificateStatusRepository certificateStatusRepository() {
+    public CertificateStatusRepository certificateStatusRepository() {
     	if (csr == null) {
     		csr = new CertificateStatusRepository(client, this.tableName);
     	}
@@ -130,7 +131,7 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
      * Get the DynamoDbRepository for Destinations
      * @return	The DestinationRepository
      */
-    public IDestinationRepository destinationRepository() {
+    public IDestinationRepository<Destination> destinationRepository() {
     	if (dr == null) {
     		dr = new DestinationRepository(client, this.tableName);
     	}
@@ -141,7 +142,7 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
      * Get the DynamoDbRepository for Jurisdictions
      * @return	The JurisdictionRepository
      */
-    public IJurisdictionRepository jurisdictionRepository() {
+    public IJurisdictionRepository<Jurisdiction> jurisdictionRepository() {
     	if (jr == null) {
     		jr = new JurisdictionRepository(client, this.tableName);
     	}
@@ -152,7 +153,7 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
      * Get the DynamoDbRepository for Message Headers
      * @return	The MessageHeaderRepository
      */
-    public IMessageHeaderRepository messageHeaderRepository() {
+    public IMessageHeaderRepository<MessageHeader> messageHeaderRepository() {
     	if (mhr == null) {
     		mhr = new MessageHeaderRepository(client, this.tableName);
     	}
