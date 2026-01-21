@@ -1,3 +1,13 @@
+# IZ Gateway Release 2.10.0
+* IGDD-1665 - Xform: Refactor EndpointStatusRepository and EndpointStatus
+* IGDD-2087 - Request to add discrete log data when a NOT Trusted certificate is processed by IZG Hub
+* IGDD-2104 - CI/CD updated based on results from tech-debt sprint for IZ Gateway Hub
+* IGDD-2105 - CI/CD pipeline updated based on results of tech-debt sprint for IZ Gateway Core
+* IGDD-2129 Create Access Control Page and add Navigation to It
+* IGDD-2130 Create Add Sender Page and Legend Popup
+* IGDD-2409 Enable disk caching of logs in IZGW Hub
+* IGDD-2416 netty version bump
+
 # IZ Gateway Release 2.9.1
 Maintenance release to deploy updated Docker image with IZG Base Image updates
 * IGDD-2311 - CVE-2025-64118 - tar packaged with npm in base image
