@@ -7788,7 +7788,6 @@
                           "async function moreTests() {\r",
                           "    utils.getLogs(null, pm).then((logData) => {\r",
                           "        logs = logData.json();\r",
-                          "        console.log({ \"logs\": logs });\r",
                           "        pm.test('Log has transactionData.processErrorSummary == \"Destination Threw SecurityFault\" for IGDD-2413', function () {\r",
                           "            txData = utils.getTxData(logs);\r",
                           "            pm.expect(txData.length).to.be.greaterThan(1);\r",
