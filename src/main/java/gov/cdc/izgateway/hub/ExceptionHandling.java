@@ -49,7 +49,7 @@ public class ExceptionHandling {
         if (ex instanceof MethodArgumentNotValidException manv) {
         	status = handleValidationException(errors, manv);
         } else if (ex instanceof BadRequestException) {
-        	status = HttpStatus.BAD_REQUEST;
+        	status = HttpStatus.BAD_REQUEST;  // NOSONAR, this unnecessary line is for clarity
         } else if (ex instanceof ResourceNotFoundException) {
         	status = HttpStatus.NOT_FOUND;
         } else if (ex instanceof Fault fault) {

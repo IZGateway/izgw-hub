@@ -119,39 +119,30 @@ jobs:
             <activeProfiles />
           </settings>
           EOF
-          echo BASE_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout` >> $GITHUB_ENV
+          BASE_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout`
+          echo BASE_TAG=$BASE_TAG >> $GITHUB_ENV
+          echo VERSION_ONLY_TAG=`echo -n $BASE_TAG | sed "s/-.*$//g"` >> $GITHUB_ENV
 
     - name: Sets env vars for push or pull request to release branch (default behavior)
       run: |
-        VERSION_ONLY_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed "s/-.*$//g"`
-        echo VERSION_ONLY_TAG=$VERSION_ONLY_TAG >> $GITHUB_ENV
-        echo IMAGE_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed "s/-SNAPSHOT$/-SNAPSHOT-${{github.run_number}}/"` >> $GITHUB_ENV
-        echo IMAGE_BRANCH_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout` >> $GITHUB_ENV
-        # default to force a revision check unless releasing
-        echo DO_REVISION_CHECK=true >> $GITHUB_ENV
+        echo IMAGE_TAG=`echo -n ${{env.VERSION_ONLY_TAG}}-SNAPSHOT-${{github.run_number}}` >> $GITHUB_ENV
+        echo IMAGE_BRANCH_TAG=${{env.VERSION_ONLY_TAG}}-SNAPSHOT >> $GITHUB_ENV
 
     # If pulling to release branch (cutting a release), set branch tag appropriately
     - name: Sets env vars for pull to release branch
       if: ${{ startsWith(github.base_ref, 'Release')}}
       run: |
-        IMAGE_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed "s/-.*$/-IZGW-SNAPSHOT-${{github.run_number}}/"`
-        echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
-        IMAGE_BRANCH_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed "s/-.*$/-IZGW-SNAPSHOT/"`
-        echo IMAGE_BRANCH_TAG=$IMAGE_BRANCH_TAG >> $GITHUB_ENV
-        mvn versions:set -DnewVersion=$IMAGE_BRANCH_TAG -f pom.xml
-
-        # Skip revision check on merge
-        echo DO_REVISION_CHECK=false >> $GITHUB_ENV
+        echo IMAGE_TAG=`echo -n ${{env.VERSION_ONLY_TAG}}-SNAPSHOT-${{github.run_number}}` >> $GITHUB_ENV
+        echo IMAGE_BRANCH_TAG=${{env.VERSION_ONLY_TAG}}-SNAPSHOT >> $GITHUB_ENV
+        mvn versions:set -DnewVersion=${{env.VERSION_ONLY_TAG}}-IZGW-SNAPSHOT -f pom.xml
 
     # If pushing to release branch (cutting a release), set branch tag appropriately
     - name: Sets env vars for pull to release branch
       if: ${{ startsWith(github.ref_name, 'Release')}}
       run: |
-        IMAGE_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed "s/-.*$/-IZGW-RELEASE-${{github.run_number}}/"`
-        echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
-        IMAGE_BRANCH_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed "s/-.*$/-IZGW-RELEASE/"`
-        echo IMAGE_BRANCH_TAG=$IMAGE_BRANCH_TAG >> $GITHUB_ENV
-        mvn versions:set -DnewVersion=$IMAGE_BRANCH_TAG -f pom.xml
+        echo IMAGE_TAG=`echo -n ${{env.VERSION_ONLY_TAG}}-RELEASE-${{github.run_number}}` >> $GITHUB_ENV
+        echo IMAGE_BRANCH_TAG=${{env.VERSION_ONLY_TAG}}-RELEASE >> $GITHUB_ENV
+        mvn versions:set -DnewVersion=${{env.VERSION_ONLY_TAG}}-IZGW-RELEASE -f pom.xml
         if [ ${{ github.event_name }} == 'push' ]
         then
           git config user.name github-actions
@@ -164,8 +155,6 @@ jobs:
             git push
           fi
         fi
-        # Disable revision check on push to release branch.
-        echo DO_REVISION_CHECK=false >> $GITHUB_ENV
 
     - name: List m2
       shell: bash
@@ -196,11 +185,11 @@ jobs:
         COMMON_PASS: ${{ secrets.COMMON_PASS }}
         ELASTIC_API_KEY: ${{ secrets.ELASTIC_API_KEY }}
         AMAZON_DYNAMODB_TABLE: izgateway-devalb 
-      run: |
+      run: | 
         env && mvn -B clean package install site -Dbuildno=${{github.run_number}} \
-            -DdoRevisionCheck=${{env.DO_REVISION_CHECK}} \
+            -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn \
             -DskipDependencyCheck=true \
-            -Dimage.tag=$IMAGE_TAG
+            -Dimage.tag=${{env.IMAGE_TAG}}
             
 # Use GitHub Action to speed up and improve dependency checking
 # You can Disable automatic dependency checking in the build, this replaces it          
@@ -264,39 +253,45 @@ jobs:
     - name: Login to Amazon ECR
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
+      
+    - name: Login to GitHub Repository
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Tag, push and deploy image to Amazon ECR
+    - name: Restore Docker build cache
+      uses: actions/cache@v4
+      with:
+        path: .buildx-cache
+        key: ${{ runner.os }}-buildx-izgwhub-${{ hashFiles('**/Dockerfile') }}
+        restore-keys: |
+          ${{ runner.os }}-buildx-izgwhub-        
+                
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+          
+    - name: Build and push Docker Image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         ECR_REPOSITORY: izgateway-dev-phiz-web-ws
+      id: build-image
       run: |
-        docker image tag iz-gateway:${{env.IMAGE_TAG}} $ECR_REGISTRY/$ECR_REPOSITORY:${{env.IMAGE_TAG}}
-        docker image tag iz-gateway:${{env.IMAGE_TAG}} $ECR_REGISTRY/$ECR_REPOSITORY:${{env.IMAGE_BRANCH_TAG}}
-        docker image tag iz-gateway:${{env.IMAGE_TAG}} $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        docker buildx build --build-arg JAR_FILENAME=${{env.IMAGE_TAG}}.jar --build-arg IZGW_VERSION=${{env.IMAGE_TAG}} \
+            --progress=plain --load \
+            --cache-from=type=local,src=.buildx-cache \
+            --cache-to=type=local,dest=.buildx-cache,mode=max \
+            -t iz-gateway:${{env.IMAGE_TAG}} \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:${{env.IMAGE_TAG}} \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:${{env.IMAGE_BRANCH_TAG}} \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
+            -t ghcr.io/izgateway/izgw-hub:${{env.IMAGE_TAG}} \
+            -t ghcr.io/izgateway/izgw-hub:${{env.IMAGE_BRANCH_TAG}} \
+            -t ghcr.io/izgateway/izgw-hub:latest .
+        docker image push --all-tags ghcr.io/izgateway/izgw-hub
         docker image push --all-tags $ECR_REGISTRY/$ECR_REPOSITORY
 
-    # This is faster and easier than a db restore    
-    # Enable this step to undo previous migration if needed
-    - name: Undo any previous migration in the database 
-      if: ${{ false }}
-      env:
-        TABLE_NAME: izgateway-devalb
-        PK: entityType
-        SK: sortKey
-      run: |
-        # Collect records to delete
-        aws dynamodb execute-statement \
-          --statement "SELECT entityType, sortKey FROM \"$TABLE_NAME\" \
-            WHERE (\"entityType\" = 'Event' AND \"target\" \
-            IN ('AccessGroupRepository', 'AllowedUserRepository', 'FileTypeRepository', 'DenyListRecordRepository','OrganizationRecordRepository', 'ImportAllowedUsers')) \
-            OR \"entityType\" IN ('AccessGroup','AllowedUser','FileType','DenyListRecord','OrganizationRecord')" \
-            | jq -r ".Items[] | [.entityType.S, .sortKey.S] | @tsv" > items_to_delete.txt
-
-        # Query for all Migration items for the new Model
-        while read -r ENTITY KEY; do
-          aws dynamodb delete-item --table-name $TABLE_NAME --key "{\"$PK\": {\"S\": \"$ENTITY\"}, \"$SK\": {\"S\": \"$KEY\"}}"
-        done < items_to_delete.txt
-        
     # AWS_REGIONS can be set in GitHub Settings -> Secrets and variables -> Actions -> Variables -> Repository Variables
     # Format: space-separated regions (e.g., "us-east-1 us-west-2")
     # Default of us-east-1 will be used if this is not set
@@ -326,20 +321,6 @@ jobs:
         done
         
         wait
-
-    - name: Login to GitHub Repository
-      uses: docker/login-action@v3
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Tag, push and deploy image to Github Repository
-      run: |
-        docker image tag iz-gateway:${{env.IMAGE_TAG}} ghcr.io/izgateway/izgw-hub:${{env.IMAGE_TAG}}
-        docker image tag iz-gateway:${{env.IMAGE_TAG}} ghcr.io/izgateway/izgw-hub:${{env.IMAGE_BRANCH_TAG}}
-        docker image tag iz-gateway:${{env.IMAGE_TAG}} ghcr.io/izgateway/izgw-hub:latest
-        docker image push --all-tags ghcr.io/izgateway/izgw-hub
 
     - name: Upload build environment as artifact for failed build
       uses: actions/upload-artifact@v4
