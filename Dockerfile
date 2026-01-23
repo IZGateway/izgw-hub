@@ -50,7 +50,7 @@ RUN tr -d '\r' <run1.sh >run.sh && rm run1.sh && chmod u+r+x run.sh
 
 # Update base keystore in cacerts by adding AWS Certificate and converting to BCFKS format
 WORKDIR /usr/lib/jvm/java-17-openjdk/jre/lib/security
-RUN keytool -keystore cacerts -storepass changeit -noprompt -trustcacerts -importcert -alias awscert -file certificate.der \ 
+RUN keytool -keystore cacerts -storepass changeit -noprompt -trustcacerts -importcert -alias awscert -file certificate.der \
     && BC_FIPS_JAR=$(find /usr/share/izgateway/lib/bcfips/ -name "bc-fips-*.jar" -type f | head -n1) \
     && keytool -importkeystore -srckeystore cacerts -srcstoretype JKS -srcstorepass changeit \
       -destkeystore jssecacerts -deststorepass changeit -deststoretype BCFKS -providername BCFIPS \

@@ -168,10 +168,12 @@ public class DestinationService implements InitializingBean, IDestinationService
 	public void clearMaintenance(IDestination dest) {
 		refresh(); // Ensure we have the latest version of the destination
 		IDestination actualDest = findByDestId(dest.getDestId());
-		actualDest.setMaintStart(null); 
-		actualDest.setMaintEnd(null);
-		actualDest.setMaintReason(null);
-		saveAndFlush(actualDest);
+		if (actualDest.getMaintStart() != null || actualDest.getMaintEnd() != null || actualDest.getMaintReason() != null) {
+			actualDest.setMaintStart(null); 
+			actualDest.setMaintEnd(null);
+			actualDest.setMaintReason(null);
+			saveAndFlush(actualDest);
+		}
 	}
 
 	@Override
