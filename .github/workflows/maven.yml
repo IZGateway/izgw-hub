@@ -121,7 +121,11 @@ jobs:
           EOF
           echo BASE_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout` >> $GITHUB_ENV
           echo VERSION_ONLY_TAG=`echo -n $BASE_TAG | sed "s/-.*$//g"` >> $GITHUB_ENV
+<<<<<<< HEAD
             
+=======
+
+>>>>>>> refs/heads/slim_down_dockerfile
     - name: Sets env vars for push or pull request to release branch (default behavior)
       run: |
         echo VERSION_ONLY_TAG=$VERSION_ONLY_TAG >> $GITHUB_ENV
