@@ -125,16 +125,14 @@ jobs:
     - name: Sets env vars for push or pull request to release branch (default behavior)
       run: |
         echo IMAGE_TAG=`echo -n ${{env.VERSION_ONLY_TAG}}-SNAPSHOT-${{github.run_number}}` >> $GITHUB_ENV
-        echo IMAGE_BRANCH_TAG=$BASE_TAG >> $GITHUB_ENV
+        echo IMAGE_BRANCH_TAG=${{env.VERSION_ONLY_TAG}}-SNAPSHOT >> $GITHUB_ENV
 
     # If pulling to release branch (cutting a release), set branch tag appropriately
     - name: Sets env vars for pull to release branch
       if: ${{ startsWith(github.base_ref, 'Release')}}
       run: |
         echo IMAGE_TAG=`echo -n ${{env.VERSION_ONLY_TAG}}-SNAPSHOT-${{github.run_number}}` >> $GITHUB_ENV
-        echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
-        IMAGE_BRANCH_TAG=`echo -n ${{env.VERSION_ONLY_TAG}}-SNAPSHOT"`
-        echo IMAGE_BRANCH_TAG=${{env.VERSION_ONLY_TAG}}-IZGW-SNAPSHOT" >> $GITHUB_ENV
+        echo IMAGE_BRANCH_TAG=${{env.VERSION_ONLY_TAG}}-SNAPSHOT >> $GITHUB_ENV
         mvn versions:set -DnewVersion=${{env.VERSION_ONLY_TAG}}-IZGW-SNAPSHOT -f pom.xml
 
     # If pushing to release branch (cutting a release), set branch tag appropriately
@@ -142,8 +140,7 @@ jobs:
       if: ${{ startsWith(github.ref_name, 'Release')}}
       run: |
         echo IMAGE_TAG=`echo -n ${{env.VERSION_ONLY_TAG}}-RELEASE-${{github.run_number}}` >> $GITHUB_ENV
-        echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
-        echo IMAGE_BRANCH_TAG=${{env.VERSION_ONLY_TAG}}-IZGW-RELEASE" >> $GITHUB_ENV
+        echo IMAGE_BRANCH_TAG=${{env.VERSION_ONLY_TAG}}-RELEASE >> $GITHUB_ENV
         mvn versions:set -DnewVersion=${{env.VERSION_ONLY_TAG}}-IZGW-RELEASE -f pom.xml
         if [ ${{ github.event_name }} == 'push' ]
         then
