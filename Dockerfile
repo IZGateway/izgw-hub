@@ -30,7 +30,7 @@ RUN rm -f /filebeat/filebeat.yml && cp /usr/share/izgateway/filebeat.yml /filebe
 WORKDIR /usr/share/izgateway/
 
 # Create lib and webapp directory
-RUN mkdir lib webapp webapp/static webapp/static/images 
+RUN mkdir -p lib webapp webapp/static webapp/static/images 
 
 # Add AWS Aurora cert to java keystore and update java.security
 COPY docker/data/java.security /usr/lib/jvm/java-17-openjdk/conf/security/
