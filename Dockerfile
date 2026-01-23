@@ -30,7 +30,7 @@ RUN rm -f /filebeat/filebeat.yml && cp /usr/share/izgateway/filebeat.yml /filebe
 WORKDIR /usr/share/izgateway/
 
 # Create lib and webapp directory
-RUN mkdir lib webapp webapp/static webapp/static/images 
+RUN mkdir -p lib webapp webapp/static webapp/static/images 
 
 # Add AWS Aurora cert to java keystore and update java.security
 COPY docker/data/java.security /usr/lib/jvm/java-17-openjdk/conf/security/
@@ -50,7 +50,7 @@ RUN tr -d '\r' <run1.sh >run.sh && rm run1.sh && chmod u+r+x run.sh
 
 # Update base keystore in cacerts by adding AWS Certificate and converting to BCFKS format
 WORKDIR /usr/lib/jvm/java-17-openjdk/jre/lib/security
-RUN keytool -keystore cacerts -storepass changeit -noprompt -trustcacerts -importcert -alias awscert -file certificate.der \ 
+RUN keytool -keystore cacerts -storepass changeit -noprompt -trustcacerts -importcert -alias awscert -file certificate.der \
     && BC_FIPS_JAR=$(find /usr/share/izgateway/lib/bcfips/ -name "bc-fips-*.jar" -type f | head -n1) \
     && keytool -importkeystore -srckeystore cacerts -srcstoretype JKS -srcstorepass changeit \
       -destkeystore jssecacerts -deststorepass changeit -deststoretype BCFKS -providername BCFIPS \
