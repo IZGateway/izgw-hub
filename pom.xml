@@ -11,8 +11,8 @@
 	</parent>
 	<artifactId>izgw-hub</artifactId>
 	<packaging>jar</packaging>
-	<version>2.10.0-SNAPSHOT</version>
-	<name>IZ Gateway Hub 2.10.0</name>
+	<version>2.11.0-IZGW-SNAPSHOT</version>
+	<name>IZ Gateway Hub 2.11.0</name>
 	<description>IZ Gateway Hub</description>
 	<properties>
 		<maven.build.timestamp.format>yyyyMMddHHmm</maven.build.timestamp.format>
@@ -664,4 +664,5 @@
 		</plugins>
 	</reporting>
 </project>
+
 

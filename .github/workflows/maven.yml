@@ -119,39 +119,30 @@ jobs:
             <activeProfiles />
           </settings>
           EOF
-          echo BASE_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout` >> $GITHUB_ENV
+          BASE_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout`
+          echo BASE_TAG=$BASE_TAG >> $GITHUB_ENV
           echo VERSION_ONLY_TAG=`echo -n $BASE_TAG | sed "s/-.*$//g"` >> $GITHUB_ENV
 
     - name: Sets env vars for push or pull request to release branch (default behavior)
       run: |
-        echo VERSION_ONLY_TAG=$VERSION_ONLY_TAG >> $GITHUB_ENV
-        echo IMAGE_TAG=`echo -n "$VERSION_ONLY_TAG"-SNAPSHOT-"${{github.run_number}}"` >> $GITHUB_ENV
-        echo IMAGE_BRANCH_TAG=$BASE_TAG >> $GITHUB_ENV
-        # default to force a revision check unless releasing
-        echo DO_REVISION_CHECK=true >> $GITHUB_ENV
+        echo IMAGE_TAG=`echo -n ${{env.VERSION_ONLY_TAG}}-SNAPSHOT-${{github.run_number}}` >> $GITHUB_ENV
+        echo IMAGE_BRANCH_TAG=${{env.VERSION_ONLY_TAG}}-SNAPSHOT >> $GITHUB_ENV
 
     # If pulling to release branch (cutting a release), set branch tag appropriately
     - name: Sets env vars for pull to release branch
       if: ${{ startsWith(github.base_ref, 'Release')}}
       run: |
-        echo IMAGE_TAG=`echo -n "$VERSION_ONLY_TAG"-SNAPSHOT-"${{github.run_number}}"` >> $GITHUB_ENV
-        echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
-        IMAGE_BRANCH_TAG=`echo -n $BASE_TAG | sed "s/-.*$/-IZGW-SNAPSHOT/"`
-        echo IMAGE_BRANCH_TAG="$VERSION_ONLY_TAG"-IZGW-SNAPSHOT" >> $GITHUB_ENV
-        mvn versions:set -DnewVersion=$IMAGE_BRANCH_TAG -f pom.xml
-
-        # Skip revision check on merge
-        echo DO_REVISION_CHECK=false >> $GITHUB_ENV
+        echo IMAGE_TAG=`echo -n ${{env.VERSION_ONLY_TAG}}-SNAPSHOT-${{github.run_number}}` >> $GITHUB_ENV
+        echo IMAGE_BRANCH_TAG=${{env.VERSION_ONLY_TAG}}-SNAPSHOT >> $GITHUB_ENV
+        mvn versions:set -DnewVersion=${{env.VERSION_ONLY_TAG}}-IZGW-SNAPSHOT -f pom.xml
 
     # If pushing to release branch (cutting a release), set branch tag appropriately
     - name: Sets env vars for pull to release branch
       if: ${{ startsWith(github.ref_name, 'Release')}}
       run: |
-        echo IMAGE_TAG=`echo -n "$VERSION_ONLY_TAG"-RELEASE-"${{github.run_number}}"` >> $GITHUB_ENV
-        echo IMAGE_TAG=$IMAGE_TAG >> $GITHUB_ENV
-        echo IMAGE_BRANCH_TAG="$VERSION_ONLY_TAG"-IZGW-RELEASE" >> $GITHUB_ENV
-        echo IMAGE_BRANCH_TAG=$IMAGE_BRANCH_TAG >> $GITHUB_ENV
-        mvn versions:set -DnewVersion=$IMAGE_BRANCH_TAG -f pom.xml
+        echo IMAGE_TAG=`echo -n ${{env.VERSION_ONLY_TAG}}-RELEASE-${{github.run_number}}` >> $GITHUB_ENV
+        echo IMAGE_BRANCH_TAG=${{env.VERSION_ONLY_TAG}}-RELEASE >> $GITHUB_ENV
+        mvn versions:set -DnewVersion=${{env.VERSION_ONLY_TAG}}-IZGW-RELEASE -f pom.xml
         if [ ${{ github.event_name }} == 'push' ]
         then
           git config user.name github-actions
@@ -164,8 +155,6 @@ jobs:
             git push
           fi
         fi
-        # Disable revision check on push to release branch.
-        echo DO_REVISION_CHECK=false >> $GITHUB_ENV
 
     - name: List m2
       shell: bash
@@ -199,7 +188,6 @@ jobs:
       run: |
         env && mvn -B clean package install site -Dbuildno=${{github.run_number}} \
             -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn \
-            -DdoRevisionCheck=${{env.DO_REVISION_CHECK}} \
             -DskipDependencyCheck=true \
             -Dimage.tag=${{env.IMAGE_TAG}}
             
