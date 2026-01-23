@@ -119,7 +119,8 @@ jobs:
             <activeProfiles />
           </settings>
           EOF
-          echo BASE_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout` >> $GITHUB_ENV
+          BASE_TAG=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout`
+          echo BASE_TAG=$BASE_TAG >> $GITHUB_ENV
           echo VERSION_ONLY_TAG=`echo -n $BASE_TAG | sed "s/-.*$//g"` >> $GITHUB_ENV
 
     - name: Sets env vars for push or pull request to release branch (default behavior)
