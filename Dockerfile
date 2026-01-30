@@ -2,7 +2,8 @@ FROM ghcr.io/izgateway/alpine-node-openssl-fips:latest
 
 RUN apk update \
     && apk upgrade --no-cache \
-    && apk add --no-cache openjdk21-jre mariadb-client mariadb-connector-c-dev tini \ 
+    && apk add --no-cache mariadb-client mariadb-connector-c-dev tini \ 
+    && apk add --no-cache openjdk21-jre --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community \
     && npm upgrade -g \
     && npm outdated -g
 
