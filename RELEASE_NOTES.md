@@ -1,3 +1,11 @@
+# IZ Gateway Release 2.10.2
+- IGDD-2527 - Fix for resart causing default to deny access
+- IGDD-2505 - Bump OpenJDK version
+
+# IZ Gateway Release 2.10.1
+- IGDD-2462 - izgw-bom bump to 1.2.0 (bump logback)
+- IGDD-2413 - Fix for logging after security fault
+
 # IZ Gateway Release 2.10.0
 * IGDD-1665 - Xform: Refactor EndpointStatusRepository and EndpointStatus
 * IGDD-2087 - Request to add discrete log data when a NOT Trusted certificate is processed by IZG Hub
