@@ -268,7 +268,7 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
         String sender = RequestContext.getSourceInfo().getCommonName();
         if (!canAccessDestination(sender, destId)) {
             SecurityFault fault = SecurityFault.generalSecurity("Source Not Allowed", String.format("%s is not permitted to send messages to %s", sender, destId), null);
-        	if (accessControlAction.equalsIgnoreCase("warn")) {
+        	if (!accessControlAction.equalsIgnoreCase("deny")) {
         		// Log a warning but allow the message to be sent
 				log.warn(Markers2.append(fault), "Access control violation warning: {}", fault.getMessage());
 				return;
