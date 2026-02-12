@@ -1,3 +1,6 @@
+# IZ Gateway Release 2.10.2
+- IGDD-2527 - Fix for resart causing default to deny access
+
 # IZ Gateway Release 2.10.1
 - IGDD-2462 - izgw-bom bump to 1.2.0 (bump logback)
 - IGDD-2413 - Fix for logging after security fault
