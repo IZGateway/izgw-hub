@@ -98,7 +98,7 @@ public class AccessControlMigrator {
 	 * @return True if migration was performed or already migrated, false if migration was skipped or failed.
      */
     public boolean checkForMigration() {
-    	Boolean[] furtherMigrationNeeded = { false };
+    	boolean[] furtherMigrationNeeded = { false };
     	try {
     		DynamoDbRepository.setServerName(serverName);
     		if (!Application.isSkipMigrations()) { // Prevent unit tests from causing migrations
@@ -106,7 +106,11 @@ public class AccessControlMigrator {
 					log.info("Migrating data to {}", r.getClass().getSimpleName());
 					furtherMigrationNeeded[0] |= migrateToNewAccessControlModel(r);
 				});
-	    		migrateFromCSV();
+				// Only migrate from CSV if any of the repositories needed migration
+				if (furtherMigrationNeeded[0]) {
+					migrateFromCSV();
+					log.info("Access Control update from CSV completed");
+    			}
 	    		return true;
 			}
 	    	return false;

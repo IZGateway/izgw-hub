@@ -58,12 +58,13 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 	private final IAccessControlRegistry registry;
     private final AccessControlMigrator migrator;
 
-    @Value("${hub.access-control.action:deny}")
+    @Getter
+    @Value("${hub.access-control.action:warn}")
     protected String accessControlAction;
 
-    OldModelHelper oldModelHelper; 
-    NewModelHelper newModelHelper;
-    AccessControlModelHelper currentModelHelper = oldModelHelper;
+    private OldModelHelper oldModelHelper; 
+    private NewModelHelper newModelHelper;
+    private AccessControlModelHelper currentModelHelper;
 	
     @Getter
 	private boolean migrated = false;
@@ -109,7 +110,7 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
     	// Initialize both model helpers here because they need access to the service after
     	// it has been constructed.
 	    newModelHelper = new NewModelHelper(this);
-	    oldModelHelper = new OldModelHelper(this);
+	    currentModelHelper = oldModelHelper = new OldModelHelper(this);
     	try {
         	migrated = migrator.checkForMigration();
         	currentModelHelper = migrated ? newModelHelper : oldModelHelper;
@@ -267,12 +268,12 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
         String sender = RequestContext.getSourceInfo().getCommonName();
         if (!canAccessDestination(sender, destId)) {
             SecurityFault fault = SecurityFault.generalSecurity("Source Not Allowed", String.format("%s is not permitted to send messages to %s", sender, destId), null);
-        	if (accessControlAction.equalsIgnoreCase("warn")) {
-        		RequestContext.getTransactionData().setProcessError(fault);
+        	if (!accessControlAction.equalsIgnoreCase("deny")) {
         		// Log a warning but allow the message to be sent
 				log.warn(Markers2.append(fault), "Access control violation warning: {}", fault.getMessage());
 				return;
-			}
+			} 
+        	RequestContext.getTransactionData().setProcessError(fault);
         	throw fault;
         }
 	}
