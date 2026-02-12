@@ -85,6 +85,7 @@ import gov.cdc.izgateway.ads.ADSUtils;
 import gov.cdc.izgateway.common.HealthService;
 import gov.cdc.izgateway.configuration.AppProperties;
 import gov.cdc.izgateway.hub.service.MessageHeaderService;
+import gov.cdc.izgateway.hub.service.accesscontrol.AccessControlService;
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.annotations.info.Contact;
 import io.swagger.v3.oas.annotations.info.License;
@@ -141,7 +142,7 @@ public class Application implements WebMvcConfigurer {
 	}
 	
 	private static AbstractHttp11JsseProtocol<?> protocol;
-	private static boolean skipMigrations;
+	private static boolean skipMigrations = false;
 	
 	/**
 	 * Reload the SSL configuration for the HTTPS connector.
@@ -253,9 +254,11 @@ public class Application implements WebMvcConfigurer {
         MDC.put("sessionId", "0");
 	}
 
-	private static void initializeHealth() {
-    HealthService.setBuildName(getBuild());
-    HealthService.setServerName(serverName);
+	private static void initializeHealth(ConfigurableApplicationContext ctx) {
+	    HealthService.setBuildName(getBuild());
+	    HealthService.setServerName(serverName);
+        AccessControlService accessControlService = ctx.getBean(AccessControlService.class);
+		HealthService.setAccessControlAction(accessControlService.getAccessControlAction());
 		setIpAddresses();
 	}
 
@@ -294,7 +297,7 @@ public class Application implements WebMvcConfigurer {
         serverName = props.getServerName();
         DynamoDbRepository.setServerName(serverName);
         
-		initializeHealth();
+		initializeHealth(ctx);
         IMessageHeaderService messageHeaderService = ctx.getBean(MessageHeaderService.class);
         StatusCheckScheduler sc = ctx.getBean(StatusCheckScheduler.class);
         Application app = ctx.getBean(Application.class);
