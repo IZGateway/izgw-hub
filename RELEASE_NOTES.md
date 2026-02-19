@@ -1,3 +1,8 @@
+# IZ Gateway Release 2.11.0
+
+- IGDD-2413 IZG Hub logging issue when credentials are incorrect.
+- IGDD-2487 CVE-2025-69420 - openssl/openssl, openssl/openssl and 2 more
+
 # IZ Gateway Release 2.10.2
 - IGDD-2527 - Fix for resart causing default to deny access
 - IGDD-2505 - Bump OpenJDK version
