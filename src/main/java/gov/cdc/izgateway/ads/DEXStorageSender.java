@@ -6,9 +6,12 @@ import gov.cdc.izgateway.ads.mockdex.DexConfiguration;
 import gov.cdc.izgateway.logging.markers.Markers2;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.security.ClientTlsSupport;
+import gov.cdc.izgateway.security.crypto.CryptoException;
+import gov.cdc.izgateway.security.crypto.CryptoSupport;
 import gov.cdc.izgateway.security.oauth.ExternalTokenStore;
 import gov.cdc.izgateway.soap.fault.DestinationConnectionFault;
 import gov.cdc.izgateway.soap.fault.MessageTooLargeFault;
+import gov.cdc.izgateway.soap.fault.SecurityFault;
 import gov.cdc.izgateway.utils.CapturingSSLSocketFactory;
 import io.tus.java.client.*;
 import jakarta.servlet.http.HttpServletResponse;
@@ -214,7 +217,7 @@ public class DEXStorageSender extends RestfulFileSender implements FileSender {
 		public void prepareConnection(@NotNull HttpURLConnection connection) {
 		    try {
 	    		setToken(getToken(route));
-		    } catch (IOException e) {
+		    } catch (IOException | SecurityFault e) {
 		        // Log the error here.  The missing token will cause exceptions later
 		        // that will also be caught and logged.  No need to throw and since
 		        // this is over-ride of external API, we cannot change it.
@@ -282,7 +285,7 @@ public class DEXStorageSender extends RestfulFileSender implements FileSender {
     }
 
 	@Override
-    public HttpURLConnection getConnection(String type, IDestination route, Metadata meta, DataHandler data) throws IOException, DestinationConnectionFault, MetadataFault {
+    public HttpURLConnection getConnection(String type, IDestination route, Metadata meta, DataHandler data) throws IOException, DestinationConnectionFault, MetadataFault, SecurityFault {
         HttpURLConnection con = null;
         // Base for status request
         URL base = null;
@@ -405,10 +408,14 @@ public class DEXStorageSender extends RestfulFileSender implements FileSender {
         return map;
     }
     
-    private String getToken(IDestination route) throws IOException {
+    private String getToken(IDestination route) throws IOException, SecurityFault {
         URL base = new URL(route.getDestUri());
         ExternalTokenStore ts = null;
-        ts = ExternalTokenStore.getTokenStore(base, route.getUsername(), route.getPassword());
+		try {
+			ts = ExternalTokenStore.getTokenStore(base, route.getUsername(), CryptoSupport.decrypt(route.getPassword()));
+		} catch (CryptoException e) {
+			throw SecurityFault.decryptionFailure(route, e);
+		}
         ts.setUsingQueryParameters(dexConfig.isUsingQueryParameters());
         ts.setTlsSupport(tlsSupport);
         ts.setDebugging(fiddle);
