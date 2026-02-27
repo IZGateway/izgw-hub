@@ -10,6 +10,9 @@ metricbeat.modules:
       - core            # Per CPU core usage
       - diskio          # Disk IO
       - socket          # Sockets and connection info (linux only)
+      - filesystem      # Filesystem usage  
+      - fsstat          # Filesystem statistics
+      - socket_summary  # Summary of socket information
     enabled: true
     period: 60s
 
