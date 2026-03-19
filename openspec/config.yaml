@@ -1,0 +1,81 @@
+schema: spec-driven
+
+# Project context
+context: |
+  Project: IZ Gateway Hub (izgw-hub)
+  
+  Tech Stack:
+  - Backend: Spring Boot 3.5.0, Java 17, Maven
+  - Database: AWS DynamoDB with Enhanced Client
+  - Caching: Caffeine (via HAPI FHIR)
+  - Security: OAuth 2.0, JWT, TLS client certificates
+  - API: RESTful, OpenAPI/Swagger documentation
+  - Logging: SLF4J with Logback, structured logging with markers
+  
+  Frontend: izg-configuration-console (separate project)
+  - Framework: Next.js, React, TypeScript
+  - UI: Material-UI (MUI)
+  - State: SWR for data fetching
+  
+  Domain:
+  - Immunization Information System (IIS) gateway
+  - HL7 v2 message routing and transformation
+  - Automated Data Submission (ADS) to CDC endpoints
+  - Azure Blob Storage and legacy DEX integration
+  - Configuration management for healthcare data exchange
+  
+  Conventions:
+  - Follow Spring Boot best practices
+  - Use Lombok (@Slf4j, @Data, @Service, @Getter, @Setter)
+  - Constructor-based dependency injection
+  - Use Optional<T> for nullable returns, not in parameters
+  - Comprehensive JavaDoc for public APIs
+  - Never use System.out, always SLF4J logging
+  - Log at appropriate levels: debug (trace), info (significant events), warn (recoverable issues), error (failures)
+  - Package structure: gov.cdc.izgateway.*
+  - Test classes suffix with "Tests"
+  
+  Key Principles:
+  - Maintain backward compatibility
+  - No breaking API changes
+  - Database-driven configuration preferred
+  - Performance: cache expensive operations
+  - Security: admin-only for configuration, audit all changes
+  - Robustness: validate early, fail gracefully
+
+# Per-artifact rules
+rules:
+  proposal:
+    - Start with "Why" section explaining business problem
+    - Include real-world examples of pain points
+    - Document alternatives considered with rationale
+    - Specify affected code and dependencies
+    - Include testing impact and API impact
+    - Address security and performance considerations
+    
+  design:
+    - Include architecture diagrams using ASCII art
+    - Provide code examples for key components
+    - Document data flow with sequence diagrams
+    - Specify algorithms with pseudocode
+    - Define caching strategy
+    - Address error handling and edge cases
+    - Include performance characteristics
+    
+  tasks:
+    - Break into 1-4 hour chunks
+    - Include acceptance criteria (checkboxes)
+    - Specify exact file paths to modify/create
+    - Estimate effort realistically
+    - Document dependencies between tasks
+    - Include test case requirements
+    - Provide implementation notes/hints
+    - Create task summary table with totals
+    
+  specs:
+    - Document algorithms with examples and test cases
+    - Include validation rules with positive and negative examples
+    - Provide regex patterns where applicable
+    - Show step-by-step processing examples
+    - Include edge cases and special handling
+    - Reference related specifications and standards

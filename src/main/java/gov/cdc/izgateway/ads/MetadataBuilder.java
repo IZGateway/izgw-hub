@@ -12,11 +12,8 @@ import org.slf4j.MDC;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -75,36 +72,122 @@ public class MetadataBuilder {
         return errors;
     }
 
-    private static final Set<String> DEX_REPORT_TYPES = new LinkedHashSet<>(Arrays.asList(
-    		"covidallmonthlyvaccination",
-    		"influenzavaccination",
-    		"routineimmunization",
-    		"rsvprevention",
-    		"measlesvaccination"
-    		));
     static final String GENERIC = "genericImmunization";
+    
     /**
-     * Set the report type
+     * Compute the meta_ext_event value from the fileTypeName.
+     * Special case: "farmerFlu" becomes "farmerFluVaccination" for backward compatibility.
+     * 
+     * @param fileTypeName the file type name
+     * @return the computed meta_ext_event value
+     */
+    private static String computeMetaExtEvent(String fileTypeName) {
+        if (fileTypeName == null || fileTypeName.isEmpty()) {
+            return GENERIC;
+        }
+        
+        // Special case for backward compatibility
+        if ("farmerFlu".equalsIgnoreCase(fileTypeName)) {
+            return "farmerFluVaccination";
+        }
+        
+        return fileTypeName;
+    }
+    
+    /**
+     * Compute the meta_ext_event_type value from the fileTypeName.
+     * This is always the fileTypeName itself.
+     * 
+     * @param fileTypeName the file type name
+     * @return the computed meta_ext_event_type value
+     */
+    private static String computeMetaExtEventType(String fileTypeName) {
+        return fileTypeName;
+    }
+    
+    /**
+     * Compute the period type (MONTHLY, QUARTERLY, or BOTH) from the fileTypeName.
+     * Rules:
+     * - Contains "quarter" or "quarterly" → QUARTERLY
+     * - Starts with "ri" or equals "routineImmunization" → QUARTERLY
+     * - Equals "genericImmunization" → BOTH
+     * - Default → MONTHLY
+     * 
+     * @param fileTypeName the file type name
+     * @return the computed period type
+     */
+    private static String computePeriodType(String fileTypeName) {
+        if (fileTypeName == null || fileTypeName.isEmpty()) {
+            return "MONTHLY";
+        }
+        
+        String lower = fileTypeName.toLowerCase();
+        
+        if (lower.contains("quarter") || lower.contains("quarterly")) {
+            return "QUARTERLY";
+        }
+        
+        if (lower.startsWith("ri") || lower.equals("routineimmunization")) {
+            return "QUARTERLY";
+        }
+        
+        if (GENERIC.equals(fileTypeName)) {
+            return "BOTH";
+        }
+        
+        return "MONTHLY"; // default
+    }
+    
+    /**
+     * Compute the data stream ID from the fileTypeName by inserting hyphens
+     * before uppercase letters (except the first) and converting to lowercase.
+     * Examples:
+     * - "influenzaVaccination" → "influenza-vaccination"
+     * - "covidAllMonthlyVaccination" → "covid-all-monthly-vaccination"
+     * - "routineImmunization" → "routine-immunization"
+     * 
+     * @param fileTypeName the file type name
+     * @return the computed data stream ID
+     */
+    private static String computeDataStreamId(String fileTypeName) {
+        if (fileTypeName == null || fileTypeName.isEmpty()) {
+            return "generic-immunization";
+        }
+        
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < fileTypeName.length(); i++) {
+            char c = fileTypeName.charAt(i);
+            if (i > 0 && Character.isUpperCase(c)) {
+                result.append('-');
+            }
+            result.append(Character.toLowerCase(c));
+        }
+        return result.toString();
+    }
+    
+    /**
+     * Set the report type using computation-based metadata generation.
+     * All metadata fields are computed from the reportType name itself.
+     * 
      * @param reportType the report type
      * @return The metadata builder.
      */
     public MetadataBuilder setReportType(String reportType) {
-    	// If it's one of the original report types, set it
-    	// on meta_ext_event as well as meta_ext_event_type
-    	if (DEX_REPORT_TYPES.contains(reportType.toLowerCase())) {
-    		meta.setExtEvent(reportType);
-    	} else if ("farmerFlu".equalsIgnoreCase(reportType)) {
-    		meta.setExtEvent("farmerFluVaccination");
-    	} else {
-    		meta.setExtEvent(GENERIC);
-    		// Force V2 if Generic is used.
-    		meta.setExtSourceVersion(Metadata.DEX_VERSION2);
-    	}
-        meta.setExtEventType(reportType);
         if (StringUtils.isBlank(reportType)) {
             errors.add("Report Type must be present and not empty");
             return this;
         }
+        
+        // Compute all metadata fields from the reportType
+        String metaExtEvent = computeMetaExtEvent(reportType);
+        meta.setExtEvent(metaExtEvent);
+        meta.setExtEventType(computeMetaExtEventType(reportType));
+        
+        // Force V2 if Generic is used
+        if (GENERIC.equals(metaExtEvent)) {
+            meta.setExtSourceVersion(Metadata.DEX_VERSION2);
+        }
+        
         return this;
     }
 

@@ -1,0 +1,65 @@
+schema: spec-driven
+
+# Change metadata
+change:
+  title: ADS Metadata Management Simplification (Computation-Only)
+  status: planning
+  created: 2026-03-16
+  updated: 2026-03-18
+  estimated_effort: 12h
+  approach: computation-only
+
+# Context for AI assistance
+context: |
+  Tech Stack:
+  - Backend: Spring Boot 3.5.0, Java 17, Maven
+  - Database: AWS DynamoDB with Enhanced Client
+  - Caching: Caffeine (via HAPI FHIR dependency)
+  - Frontend: Next.js, React, TypeScript, Material-UI
+  - Testing: JUnit 5, Mockito, Spring Boot Test
+  
+  Domain:
+  - Automated Data Submission (ADS) to CDC endpoints
+  - Azure Blob Storage and legacy DEX uploads
+  - Metadata generation for public health reporting
+  - File type configuration for immunization programs
+  
+  Project Conventions:
+  - Follow Spring Boot best practices
+  - Use Lombok for boilerplate reduction (@Slf4j, @Data, @Service)
+  - Inject dependencies via constructor
+  - Use Optional<T> for nullable returns
+  - Log at appropriate levels (debug for trace, warn for data issues)
+  - Write comprehensive JavaDoc
+  - Use SLF4J for logging, never System.out
+  
+  Key Requirements:
+  - Maintain full backward compatibility
+  - No breaking API changes
+  - Database-driven configuration
+  - Comprehensive filename validation
+  - Performance: cache database lookups
+  - Security: admin-only file type management
+
+# Per-artifact rules
+rules:
+  proposal:
+    - Focus on business value and problem statement
+    - Include real-world examples
+    - Document alternatives considered
+  design:
+    - Include architecture diagrams using ASCII art
+    - Provide code examples for key algorithms
+    - Document data flow with diagrams
+    - Specify caching strategy
+  tasks:
+    - Break into 1-4 hour chunks
+    - Include acceptance criteria for each task
+    - Specify file paths to modify/create
+    - Estimate effort realistically
+    - Include dependencies between tasks
+  specs:
+    - Document algorithms with examples
+    - Include test cases
+    - Specify validation rules clearly
+    - Provide regex patterns where applicable
