@@ -1,11 +1,16 @@
 package gov.cdc.izgateway.ads;
 
+import gov.cdc.izgateway.ads.util.FilenameValidationResult;
+import gov.cdc.izgateway.ads.util.FilenameValidator;
 import gov.cdc.izgateway.logging.event.EventIdMdcConverter;
 import gov.cdc.izgateway.logging.event.TransactionData;
 import gov.cdc.izgateway.model.IDestination;
+import gov.cdc.izgateway.model.IFileType;
+import gov.cdc.izgateway.service.IAccessControlService;
 import gov.cdc.izgateway.service.IDestinationService;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.MDC;
@@ -20,8 +25,9 @@ import java.util.UUID;
  * This class implements the builder pattern to create Metadata for processing an ADS Request.
  * It handles all the business rules for validating content before building the Metadata object.
  */
+@Slf4j
 public class MetadataBuilder {
-	private static final String MONTH_PATTERN = "(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)";
+    private static final String MONTH_PATTERN = "(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)";
     private static final String PERIOD_PATTERN = "^\\d{4}(Q[1-4]|-" + MONTH_PATTERN + "|((-\\d{2}){1,2}))$";
     /**
      * This is the facility id assigned to IZ Gateway by NDLP.
@@ -32,13 +38,32 @@ public class MetadataBuilder {
     private String destUrl;
     @Getter
     @Setter
-	private boolean metadataValidationEnabled = true;
+    private boolean metadataValidationEnabled = true;
     private static final String DEFAULT_SCHEMA_VERSION = "2.0";
-	
+
+    /** Optional access control service used to look up registered file types. */
+    private final IAccessControlService accessControlService;
+
+    static final String GENERIC = "genericImmunization";
+
     /**
-     * Create a new MetadataBuider.
+     * Create a new MetadataBuilder without file-type lookup support.
+     * Report-type metadata will be computed purely from the report type name.
      */
     public MetadataBuilder() {
+        this(null);
+    }
+
+    /**
+     * Create a new MetadataBuilder with access to the file-type registry.
+     * When {@code accessControlService} is non-null, {@link #setReportType(String)} will
+     * validate the report type against the registry and warn if it is unrecognised.
+     *
+     * @param accessControlService the service used to look up registered file types, or
+     *                             {@code null} to skip registry validation
+     */
+    public MetadataBuilder(IAccessControlService accessControlService) {
+        this.accessControlService = accessControlService;
         meta.setExtSource("IZGW");
     }
 
@@ -72,122 +97,50 @@ public class MetadataBuilder {
         return errors;
     }
 
-    static final String GENERIC = "genericImmunization";
-    
     /**
-     * Compute the meta_ext_event value from the fileTypeName.
-     * Special case: "farmerFlu" becomes "farmerFluVaccination" for backward compatibility.
-     * 
-     * @param fileTypeName the file type name
-     * @return the computed meta_ext_event value
-     */
-    private static String computeMetaExtEvent(String fileTypeName) {
-        if (fileTypeName == null || fileTypeName.isEmpty()) {
-            return GENERIC;
-        }
-        
-        // Special case for backward compatibility
-        if ("farmerFlu".equalsIgnoreCase(fileTypeName)) {
-            return "farmerFluVaccination";
-        }
-        
-        return fileTypeName;
-    }
-    
-    /**
-     * Compute the meta_ext_event_type value from the fileTypeName.
-     * This is always the fileTypeName itself.
-     * 
-     * @param fileTypeName the file type name
-     * @return the computed meta_ext_event_type value
-     */
-    private static String computeMetaExtEventType(String fileTypeName) {
-        return fileTypeName;
-    }
-    
-    /**
-     * Compute the period type (MONTHLY, QUARTERLY, or BOTH) from the fileTypeName.
-     * Rules:
-     * - Contains "quarter" or "quarterly" → QUARTERLY
-     * - Starts with "ri" or equals "routineImmunization" → QUARTERLY
-     * - Equals "genericImmunization" → BOTH
-     * - Default → MONTHLY
-     * 
-     * @param fileTypeName the file type name
-     * @return the computed period type
-     */
-    private static String computePeriodType(String fileTypeName) {
-        if (fileTypeName == null || fileTypeName.isEmpty()) {
-            return "MONTHLY";
-        }
-        
-        String lower = fileTypeName.toLowerCase();
-        
-        if (lower.contains("quarter") || lower.contains("quarterly")) {
-            return "QUARTERLY";
-        }
-        
-        if (lower.startsWith("ri") || lower.equals("routineimmunization")) {
-            return "QUARTERLY";
-        }
-        
-        if (GENERIC.equals(fileTypeName)) {
-            return "BOTH";
-        }
-        
-        return "MONTHLY"; // default
-    }
-    
-    /**
-     * Compute the data stream ID from the fileTypeName by inserting hyphens
-     * before uppercase letters (except the first) and converting to lowercase.
-     * Examples:
-     * - "influenzaVaccination" → "influenza-vaccination"
-     * - "covidAllMonthlyVaccination" → "covid-all-monthly-vaccination"
-     * - "routineImmunization" → "routine-immunization"
-     * 
-     * @param fileTypeName the file type name
-     * @return the computed data stream ID
-     */
-    private static String computeDataStreamId(String fileTypeName) {
-        if (fileTypeName == null || fileTypeName.isEmpty()) {
-            return "generic-immunization";
-        }
-        
-        StringBuilder result = new StringBuilder();
-        for (int i = 0; i < fileTypeName.length(); i++) {
-            char c = fileTypeName.charAt(i);
-            if (i > 0 && Character.isUpperCase(c)) {
-                result.append('-');
-            }
-            result.append(Character.toLowerCase(c));
-        }
-        return result.toString();
-    }
-    
-    /**
-     * Set the report type using computation-based metadata generation.
-     * All metadata fields are computed from the reportType name itself.
-     * 
-     * @param reportType the report type
-     * @return The metadata builder.
+     * Set the report type and compute all derived metadata fields from it.
+     * <p>
+     * If an {@link IAccessControlService} was supplied at construction time the report type
+     * is looked up in the file-type registry.  A warning is logged when the type is not
+     * found, but processing continues so that unregistered types still work.
+     * </p>
+     * <p>
+     * Derived fields set here:
+     * <ul>
+     *   <li>{@code meta_ext_event} – from {@code computeMetaExtEvent()}</li>
+     *   <li>{@code meta_ext_event_type} – always the raw report type name</li>
+     *   <li>{@code data_stream_id} – from {@link IAccessControlService#computeDataStreamId(String)}</li>
+     * </ul>
+     * </p>
+     *
+     * @param reportType the report type name
+     * @return this builder
      */
     public MetadataBuilder setReportType(String reportType) {
         if (StringUtils.isBlank(reportType)) {
             errors.add("Report Type must be present and not empty");
             return this;
         }
-        
-        // Compute all metadata fields from the reportType
+
+        // Validate against the registered file-type registry when available.
+        if (accessControlService != null) {
+            IFileType fileType = accessControlService.getFileType(reportType);
+            if (fileType == null) {
+                log.warn("Report type '{}' is not registered in the file-type registry", reportType);
+            }
+        }
+
+        // Compute all metadata fields from the reportType name.
         String metaExtEvent = computeMetaExtEvent(reportType);
         meta.setExtEvent(metaExtEvent);
-        meta.setExtEventType(computeMetaExtEventType(reportType));
-        
-        // Force V2 if Generic is used
+        meta.setExtEventType(reportType);
+        meta.setDataStreamId(IAccessControlService.computeDataStreamId(reportType));
+
+        // Force V2 if Generic is used.
         if (GENERIC.equals(metaExtEvent)) {
             meta.setExtSourceVersion(Metadata.DEX_VERSION2);
         }
-        
+
         return this;
     }
 
@@ -220,16 +173,16 @@ public class MetadataBuilder {
      * @return	The MetadataBuilder
      */
     public MetadataBuilder setFilename(String filename) {
-    	filename = filename.trim();
+        filename = filename.trim();
         meta.setFilename(filename);
         if (!ADSUtils.validateFilename(filename)) {
             errors.add(String.format("Filename (%s) is invalid. Characters must be in the range of [0x20, 0xD7FF] and must not include  *, \\, ?, >, <, :, |, /, \\ or <DEL>", filename));
-        } 
-    	ParsedFilename pf = ParsedFilename.parse(filename, errors);
-   		meta.setTestFile(pf.isTestfile());
-   		
+        }
+        ParsedFilename pf = ParsedFilename.parse(filename, errors);
+        meta.setTestFile(pf.isTestfile());
+
         if (isMetadataValidationEnabled()) {
-           	validateMetadata(pf);
+            validateMetadata(pf);
         }
         return this;
     }
@@ -257,33 +210,112 @@ public class MetadataBuilder {
         return this;
     }
     
-    private void validateMetadata(ParsedFilename pf ) {
-		if (!pf.getEntityId().equalsIgnoreCase(meta.getExtEntity())) {
-			errors.add(String.format("Entity ID (%s) does not match Entity (%s) in filename (%s)", meta.getExtEntity(), pf.getEntityId(), meta.getFilename()));
-		}
-		// Filetype validation isn't relevant when type is genericImmunization. These could be anything and we won't know.
-		if (!GENERIC.equalsIgnoreCase(meta.getExtEvent()) && !pf.getFiletype().equalsIgnoreCase(meta.getExtEvent())) {
-			errors.add(String.format("File type (%s) does not match file type (%s) in filename (%s)", meta.getExtEvent(), pf.getFiletype(), meta.getFilename()));
-		}
-		Calendar cal = Calendar.getInstance();
-		if (pf.getDate() != null) {
-			cal.setTime(pf.getDate());
-		}
-		Calendar metaDate = meta.getPeriodAsCalendar(); 
-		int divisor = pf.getFiletype().equals(ParsedFilename.ROUTINE_IMMUNIZATION) ? 3 : 1;
-		if (!checkDate(cal, metaDate, divisor)) {
-			// Failed first time through, try JUST one day later on date from file name
-			cal.add(Calendar.DAY_OF_MONTH, 1);
-			if (!checkDate(cal, metaDate, divisor)) {
-				errors.add(String.format("File date from filename (%s) does not match period (%s)", meta.getFilename(), meta.getPeriod()));
-			}
-		}
-	}
+    private void validateMetadata(ParsedFilename pf) {
+        String filename = meta.getFilename();
+        String ext = org.apache.commons.lang3.StringUtils.substringAfterLast(filename, ".").toLowerCase();
 
-	private boolean checkDate(Calendar cal, Calendar metaDate, int divisor) {
-		return cal.get(Calendar.MONTH) / divisor == metaDate.get(Calendar.MONTH) / divisor &&
-			cal.get(Calendar.YEAR) == metaDate.get(Calendar.YEAR);
-	}
+        if ("csv".equals(ext)) {
+            // CSV files use the new structured FilenameValidator.
+            String periodType = computePeriodType(meta.getExtEvent());
+            FilenameValidationResult result = FilenameValidator.validate(
+                    filename,
+                    periodType,
+                    meta.getExtEntity(),
+                    meta.getPeriod());
+            errors.addAll(result.getErrors());
+        } else {
+            // ZIP files (routine immunization) use a different filename format
+            // (EEE_YYYYMMDD_yyyymmdd_Z.zip) that FilenameValidator does not handle.
+            // Retain the original ParsedFilename-based entity and date checks.
+            validateZipMetadata(pf);
+        }
+    }
+
+    /**
+     * Validate metadata for ZIP (routine immunization) files using the original
+     * ParsedFilename logic. ZIP filenames follow a different structure than CSV files:
+     * {@code EEE_YYYYMMDD_yyyymmdd_Z.zip} (entity_startdate_submissiondate_zone).
+     *
+     * @param pf the parsed filename
+     */
+    private void validateZipMetadata(ParsedFilename pf) {
+        if (!pf.getEntityId().equalsIgnoreCase(meta.getExtEntity())) {
+            errors.add(String.format("Entity ID (%s) does not match Entity (%s) in filename (%s)",
+                    meta.getExtEntity(), pf.getEntityId(), meta.getFilename()));
+        }
+        // Filetype validation isn't relevant when type is genericImmunization.
+        if (!GENERIC.equalsIgnoreCase(meta.getExtEvent()) && !pf.getFiletype().equalsIgnoreCase(meta.getExtEvent())) {
+            errors.add(String.format("File type (%s) does not match file type (%s) in filename (%s)",
+                    meta.getExtEvent(), pf.getFiletype(), meta.getFilename()));
+        }
+        Calendar cal = Calendar.getInstance();
+        if (pf.getDate() != null) {
+            cal.setTime(pf.getDate());
+        }
+        Calendar metaDate = meta.getPeriodAsCalendar();
+        int divisor = pf.getFiletype().equals(ParsedFilename.ROUTINE_IMMUNIZATION) ? 3 : 1;
+        if (!checkDate(cal, metaDate, divisor)) {
+            // Failed first time through, try just one day later on date from file name.
+            cal.add(Calendar.DAY_OF_MONTH, 1);
+            if (!checkDate(cal, metaDate, divisor)) {
+                errors.add(String.format("File date from filename (%s) does not match period (%s)",
+                        meta.getFilename(), meta.getPeriod()));
+            }
+        }
+    }
+
+    private boolean checkDate(Calendar cal, Calendar metaDate, int divisor) {
+        return cal.get(Calendar.MONTH) / divisor == metaDate.get(Calendar.MONTH) / divisor
+                && cal.get(Calendar.YEAR) == metaDate.get(Calendar.YEAR);
+    }
+
+    /**
+     * Compute the meta_ext_event value from the fileTypeName.
+     * Special case: "farmerFlu" becomes "farmerFluVaccination" for backward compatibility.
+     *
+     * @param fileTypeName the file type name
+     * @return the computed meta_ext_event value
+     */
+    private static String computeMetaExtEvent(String fileTypeName) {
+        if (fileTypeName == null || fileTypeName.isEmpty()) {
+            return GENERIC;
+        }
+        // Special case for backward compatibility
+        if ("farmerFlu".equalsIgnoreCase(fileTypeName)) {
+            return "farmerFluVaccination";
+        }
+        return fileTypeName;
+    }
+
+    /**
+     * Compute the period type (MONTHLY, QUARTERLY, or BOTH) from the fileTypeName.
+     * Rules:
+     * <ul>
+     *   <li>Contains "quarter" → QUARTERLY</li>
+     *   <li>Starts with "ri" or equals "routineImmunization" → QUARTERLY</li>
+     *   <li>Equals "genericImmunization" → BOTH</li>
+     *   <li>Default → MONTHLY</li>
+     * </ul>
+     *
+     * @param fileTypeName the file type name
+     * @return the computed period type
+     */
+    static String computePeriodType(String fileTypeName) {
+        if (fileTypeName == null || fileTypeName.isEmpty()) {
+            return "MONTHLY";
+        }
+        String lower = fileTypeName.toLowerCase();
+        if (lower.contains("quarter")) {
+            return "QUARTERLY";
+        }
+        if (lower.startsWith("ri") || lower.equals("routineimmunization")) {
+            return "QUARTERLY";
+        }
+        if (GENERIC.equals(fileTypeName)) {
+            return "BOTH";
+        }
+        return "MONTHLY";
+    }
 
     /**
      * Set the route identifier

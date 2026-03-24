@@ -123,6 +123,20 @@ public class ADSController implements ADSChecker {
 
 	private final ADSControllerConfiguration config;
 
+	/**
+	 * DTO describing a single registered ADS report type, returned by the
+	 * {@code GET /rest/ads/reportTypes} discovery endpoint.
+	 */
+	@Data
+	public static class ReportTypeInfo {
+		/** The canonical file type name used as the {@code reportType} parameter (e.g. {@code "routineImmunization"}). */
+		private final String fileTypeName;
+		/** The computed DEX data stream ID (e.g. {@code "routine-immunization"}). */
+		private final String dataStreamId;
+		/** The submission cadence: {@code "MONTHLY"}, {@code "QUARTERLY"}, or {@code "BOTH"}. */
+		private final String periodType;
+	}
+
 	@Autowired
 	public ADSController(ADSControllerConfiguration config, AccessControlRegistry registry) {
 		this.config = config;
@@ -291,7 +305,7 @@ public class ADSController implements ADSChecker {
 
 	private MetadataImpl getMetadata(String messageId, String destinationId, String facilityId, String reportType,
 			String period, String filename, boolean force) throws MetadataFault {
-		MetadataBuilder m = new MetadataBuilder();
+		MetadataBuilder m = new MetadataBuilder(config.getAccessControls());
 		TransactionData tData = initLogging(destinationId, messageId, m);
 
 		m.setRouteId(config.getDests(), destinationId);
@@ -410,6 +424,23 @@ public class ADSController implements ADSChecker {
 		}
 	}
 
+	@GetMapping(value = "/ads/reportTypes", produces = MediaType.APPLICATION_JSON_VALUE)
+	@Operation(
+		summary = "List available ADS report types",
+		description = "Returns the current list of registered report types with their computed data stream ID and period type. "
+			+ "Use the fileTypeName value as the reportType parameter when submitting a file.")
+	@ApiResponse(responseCode = "200", description = "Success", content = @Content(mediaType = "application/json",
+		schema = @Schema(implementation = ReportTypeInfo.class)))
+	public List<ReportTypeInfo> getAvailableReportTypes() {
+		return config.getAccessControls().getEventTypes().stream()
+				.sorted()
+				.map(fileTypeName -> new ReportTypeInfo(
+						fileTypeName,
+						IAccessControlService.computeDataStreamId(fileTypeName),
+						MetadataBuilder.computePeriodType(fileTypeName)))
+				.toList();
+	}
+
 	@PostMapping(value = "/ads/{destinationId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	@Operation(summary = "Upload an ADS submission and metadata", description = "This is the primary IZGW Upload API endpoint. It accepts a file upload for "
 			+ "the given period containing either a Routine Vaccination Report in CSV format, "
@@ -422,9 +453,7 @@ public class ADSController implements ADSChecker {
 			@RequestHeader(name = "X-Request-ID", required = false) String xRequestId,
 			@RequestHeader(name = "X-Correlation-ID", required = false) String xCorrelationId,
 			@RequestParam("facilityId") @Schema(description = "The submitting jurisdiction in scA format where sc = the jurisidiction state code (e.g., MAA for Massachusetts). XXA can be used for testing", pattern = "[A-Z][A-Z]A") String facilityId,
-			@Schema(description = "The type of report", allowableValues = { "covidAllMonthlyVaccination",
-					"influenzaVaccination", "rsvPrevention", "routineImmunization",
-					"farmerFlu", "measlesVaccination", "" }) @RequestParam("reportType") String reportType,
+			@Schema(description = "The type of report. See GET /rest/ads/reportTypes for the current list of valid values.") @RequestParam("reportType") String reportType,
 			@Schema(description = "The file to upload, either a CSV file for RVR submissions, or a .ZIP file for Routine Immunization Reporting") @RequestParam("file") MultipartFile file,
 			@Schema(description = "The period in YYYY-MMM format for RVR files, or YYYYQ# for RI files") @RequestParam("period") String period,
 			@RequestParam(required = false) String filename,

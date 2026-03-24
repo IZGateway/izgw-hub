@@ -65,19 +65,21 @@ Add minimal methods to AccessControlService for file type lookup and data stream
 - `src/main/java/gov/cdc/izgateway/hub/service/accesscontrol/AccessControlModelHelper.java`
 
 **Acceptance Criteria:**
-- [ ] Add 2 new methods to IAccessControlService:
-  - [ ] `FileType getFileType(String reportType)` - Case-insensitive lookup
-  - [ ] `String computeDataStreamId(String fileTypeName)` - Algorithm application
-- [ ] Implement in AccessControlService (delegate to NewModelHelper)
-- [ ] Add `getFileType()` to NewModelHelper (lookup from existing fileTypeCache)
-- [ ] Add static `computeDataStreamId()` to AccessControlModelHelper interface
-- [ ] Add JavaDoc
-- [ ] NO new caching - reuses existing fileTypeCache
+- [x] Add 2 new methods to IAccessControlService:
+  - [x] `FileType getFileType(String reportType)` - Case-insensitive lookup
+  - [x] `String computeDataStreamId(String fileTypeName)` - Algorithm application
+- [x] Implement in AccessControlService (delegate to NewModelHelper)
+- [x] Add `getFileType()` to NewModelHelper (lookup from existing fileTypeCache)
+- [x] Add static `computeDataStreamId()` to AccessControlModelHelper interface
+- [x] Add JavaDoc
+- [x] NO new caching - reuses existing fileTypeCache
 
 **Implementation Notes:**
 - NewModelHelper already has fileTypeCache refreshed every 5 minutes
 - getFileType() does case-insensitive lookup from existing cache
 - No database changes needed
+
+**Status:** ✅ COMPLETED
 
 ---
 
@@ -99,17 +101,19 @@ Examples: MonthlyFlu_XXA_2026FEB.csv, QuarterlyRI_XXA_2026Q2.csv
 - `src/main/java/gov/cdc/izgateway/ads/util/FilenameComponents.java`
 
 **Acceptance Criteria:**
-- [ ] Implement `validate()` method with 4 validation checks
-- [ ] Implement `parseFilename()` with regex pattern matching
-- [ ] Create result and components DTOs
-- [ ] Support .csv and .zip extensions
-- [ ] Add comprehensive JavaDoc
+- [x] Implement `validate()` method with 4 validation checks
+- [x] Implement `parseFilename()` with regex pattern matching
+- [x] Create result and components DTOs
+- [x] Support .csv and .zip extensions
+- [x] Add comprehensive JavaDoc
 
 **Test Cases:**
 - Valid: "MonthlyFlu_XXA_2026FEB.csv", "QuarterlyRI_XXA_2026Q2.csv"
 - Invalid entity: "MonthlyRI_XYZ_2026FEB.csv"
 - Period mismatch: "QuarterlyRI_XXA_2026FEB.csv"
 - Missing frequency: "RI_XXA_2026Q2.csv"
+
+**Status:** ✅ COMPLETED
 
 ---
 
@@ -123,17 +127,20 @@ Refactor MetadataBuilder to use AccessControlService and FileTypeMetadataUtil fo
 - `src/main/java/gov/cdc/izgateway/ads/MetadataBuilder.java`
 
 **Acceptance Criteria:**
-- [ ] Add IAccessControlService field with constructor injection
-- [ ] Refactor `setReportType()` to:
-  - [ ] Look up FileType from accessControlService.getFileType()
-  - [ ] Compute metaExtEvent using FileTypeMetadataUtil
-  - [ ] Compute metaExtEventType using FileTypeMetadataUtil
-  - [ ] Compute and store dataStreamId
-  - [ ] Handle not-found case
-- [ ] Update `validateMetadataWithFileType()` to:
-  - [ ] Compute periodType using FileTypeMetadataUtil
-  - [ ] Call FilenameValidator.validate() with computed values
-- [ ] Maintain backward compatibility
+- [x] Add IAccessControlService field with constructor injection
+- [x] Refactor `setReportType()` to:
+  - [x] Look up FileType from accessControlService.getFileType()
+  - [x] Compute metaExtEvent using computeMetaExtEvent()
+  - [x] Compute metaExtEventType (set to raw report type name)
+  - [x] Compute and store dataStreamId via IAccessControlService.computeDataStreamId()
+  - [x] Handle not-found case (log warning, continue processing)
+- [x] Update `validateMetadata()` to:
+  - [x] Compute periodType using computePeriodType()
+  - [x] Call FilenameValidator.validate() for CSV files with computed values
+  - [x] Retain original ParsedFilename-based validation for ZIP files (different format)
+- [x] Maintain backward compatibility (no-arg constructor delegates to new constructor with null)
+
+**Status:** ✅ COMPLETED
 
 ---
 
@@ -147,8 +154,12 @@ Update MetadataImpl to store computed dataStreamId value.
 - `src/main/java/gov/cdc/izgateway/ads/MetadataImpl.java`
 
 **Acceptance Criteria:**
-- [ ] Add `dataStreamId` field
-- [ ] Update `getDataStreamId()` to return stored value with fallback
+- [x] Add `dataStreamId` field
+- [x] Override `getDataStreamId()` to return stored value with fallback to Metadata interface default switch
+- [x] Copy `dataStreamId` in copy constructor
+- [x] Handle `data_stream_id` in `set()` method
+
+**Status:** ✅ COMPLETED
 
 ---
 
