@@ -91,8 +91,8 @@ Implement comprehensive filename validation utility according to ADS specificati
 
 **Actual Filename Pattern:**
 ```
-[Frequency][ReportType]_[Entity]_[Date].[extension]
-Examples: MonthlyFlu_XXA_2026FEB.csv, QuarterlyRI_XXA_2026Q2.csv
+{Frequency}{ReportType}_{Entity}_{Date}.{extension} or {ReportType}{Frequency}_{Entity}_{Date}.{extension}
+Examples: MonthlyFlu_XXA_2026FEB.csv, riQuarterly_XXA_2026Q2.csv
 ```
 
 **Files to create:**
