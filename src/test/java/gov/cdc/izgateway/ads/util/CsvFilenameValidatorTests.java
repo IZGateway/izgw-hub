@@ -9,13 +9,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 /**
- * Unit tests for {@link FilenameValidator}.
+ * Unit tests for {@link CsvFilenameValidator}.
  * <p>
- * Verifies that each filename is parsed into the correct {@link FilenameComponents}
+ * Verifies that each filename is parsed into the correct {@link CsvFilenameComponents}
  * and that structural validation behaves as expected.
  * </p>
  */
-class FilenameValidatorTests {
+class CsvFilenameValidatorTests {
 
     // -------------------------------------------------------------------------
     // 1. testMonthlyRSV_XXA_2022SEP.csv  – contains "test", otherwise valid
@@ -23,7 +23,7 @@ class FilenameValidatorTests {
 
     @Test
     void parseFilename_testPrefix_strippedAndFlagSet() {
-        FilenameComponents c = FilenameValidator.parseFilename("testMonthlyRSV_XXA_2022SEP.csv");
+        CsvFilenameComponents c = CsvFilenameValidator.parseFilename("testMonthlyRSV_XXA_2022SEP.csv");
 
         assertNotNull(c, "Should parse successfully after stripping 'test'");
         assertTrue(c.isTestFile(),           "isTestFile should be true");
@@ -41,8 +41,8 @@ class FilenameValidatorTests {
 
     @Test
     void validate_testPrefix_passesWithPeriodAndEntity() {
-        FilenameValidationResult result =
-            FilenameValidator.validate("testMonthlyRSV_XXA_2022SEP.csv", "MONTHLY", "XXA", "2022-SEP");
+        CsvFilenameValidationResult result =
+            CsvFilenameValidator.validate("testMonthlyRSV_XXA_2022SEP.csv", "MONTHLY", "XXA", "2022-SEP");
 
         assertTrue(result.isValid(), () -> "Expected valid but got errors: " + result.getErrors());
         assertTrue(result.getComponents().isTestFile());
@@ -54,7 +54,7 @@ class FilenameValidatorTests {
 
     @Test
     void parseFilename_monthlyRSV() {
-        FilenameComponents c = FilenameValidator.parseFilename("MonthlyRSV_XXA_2022SEP.csv");
+        CsvFilenameComponents c = CsvFilenameValidator.parseFilename("MonthlyRSV_XXA_2022SEP.csv");
 
         assertNotNull(c);
         assertFalse(c.isTestFile());
@@ -70,8 +70,8 @@ class FilenameValidatorTests {
 
     @Test
     void validate_monthlyRSV_passesAllChecks() {
-        FilenameValidationResult result =
-            FilenameValidator.validate("MonthlyRSV_XXA_2022SEP.csv", "MONTHLY", "XXA", "2022-SEP");
+        CsvFilenameValidationResult result =
+            CsvFilenameValidator.validate("MonthlyRSV_XXA_2022SEP.csv", "MONTHLY", "XXA", "2022-SEP");
 
         assertTrue(result.isValid(), () -> result.getErrors().toString());
     }
@@ -82,7 +82,7 @@ class FilenameValidatorTests {
 
     @Test
     void parseFilename_monthlyFlu() {
-        FilenameComponents c = FilenameValidator.parseFilename("MonthlyFlu_XXA_2022SEP.csv");
+        CsvFilenameComponents c = CsvFilenameValidator.parseFilename("MonthlyFlu_XXA_2022SEP.csv");
 
         assertNotNull(c);
         assertFalse(c.isTestFile());
@@ -98,8 +98,8 @@ class FilenameValidatorTests {
 
     @Test
     void validate_monthlyFlu_passesAllChecks() {
-        FilenameValidationResult result =
-            FilenameValidator.validate("MonthlyFlu_XXA_2022SEP.csv", "MONTHLY", "XXA", "2022-SEP");
+        CsvFilenameValidationResult result =
+            CsvFilenameValidator.validate("MonthlyFlu_XXA_2022SEP.csv", "MONTHLY", "XXA", "2022-SEP");
 
         assertTrue(result.isValid(), () -> result.getErrors().toString());
     }
@@ -110,7 +110,7 @@ class FilenameValidatorTests {
 
     @Test
     void parseFilename_monthlyFarmerFlu() {
-        FilenameComponents c = FilenameValidator.parseFilename("MonthlyFarmerFlu_XXA_2022SEP.csv");
+        CsvFilenameComponents c = CsvFilenameValidator.parseFilename("MonthlyFarmerFlu_XXA_2022SEP.csv");
 
         assertNotNull(c);
         assertFalse(c.isTestFile());
@@ -126,8 +126,8 @@ class FilenameValidatorTests {
 
     @Test
     void validate_monthlyFarmerFlu_passesAllChecks() {
-        FilenameValidationResult result =
-            FilenameValidator.validate("MonthlyFarmerFlu_XXA_2022SEP.csv", "MONTHLY", "XXA", "2022-SEP");
+        CsvFilenameValidationResult result =
+            CsvFilenameValidator.validate("MonthlyFarmerFlu_XXA_2022SEP.csv", "MONTHLY", "XXA", "2022-SEP");
 
         assertTrue(result.isValid(), () -> result.getErrors().toString());
     }
@@ -138,7 +138,7 @@ class FilenameValidatorTests {
 
     @Test
     void parseFilename_monthlyMeasles() {
-        FilenameComponents c = FilenameValidator.parseFilename("MonthlyMeasles_XXA_2022SEP.csv");
+        CsvFilenameComponents c = CsvFilenameValidator.parseFilename("MonthlyMeasles_XXA_2022SEP.csv");
 
         assertNotNull(c);
         assertFalse(c.isTestFile());
@@ -154,8 +154,8 @@ class FilenameValidatorTests {
 
     @Test
     void validate_monthlyMeasles_passesAllChecks() {
-        FilenameValidationResult result =
-            FilenameValidator.validate("MonthlyMeasles_XXA_2022SEP.csv", "MONTHLY", "XXA", "2022-SEP");
+        CsvFilenameValidationResult result =
+            CsvFilenameValidator.validate("MonthlyMeasles_XXA_2022SEP.csv", "MONTHLY", "XXA", "2022-SEP");
 
         assertTrue(result.isValid(), () -> result.getErrors().toString());
     }
@@ -169,7 +169,7 @@ class FilenameValidatorTests {
 
     @Test
     void parseFilename_riQuarterlyAggregate_parsesSuccessfully() {
-        FilenameComponents c = FilenameValidator.parseFilename("riQuarterlyAggregate_XXA_2025Q4.csv");
+        CsvFilenameComponents c = CsvFilenameValidator.parseFilename("riQuarterlyAggregate_XXA_2025Q4.csv");
 
         assertNotNull(c, "Should parse: 'Quarterly' is present (case-insensitive) in the prefix");
         assertFalse(c.isTestFile());
@@ -187,8 +187,8 @@ class FilenameValidatorTests {
 
     @Test
     void validate_riQuarterlyAggregate_passesAllChecks() {
-        FilenameValidationResult result =
-            FilenameValidator.validate("riQuarterlyAggregate_XXA_2025Q4.csv", "QUARTERLY", "XXA", "2025Q4");
+        CsvFilenameValidationResult result =
+            CsvFilenameValidator.validate("riQuarterlyAggregate_XXA_2025Q4.csv", "QUARTERLY", "XXA", "2025Q4");
 
         assertTrue(result.isValid(), () -> "Expected valid but got errors: " + result.getErrors());
     }
@@ -199,15 +199,15 @@ class FilenameValidatorTests {
 
     @Test
     void parseFilename_RIA_16M_failsPattern() {
-        FilenameComponents c = FilenameValidator.parseFilename("RIA_16M.csv");
+        CsvFilenameComponents c = CsvFilenameValidator.parseFilename("RIA_16M.csv");
 
         assertNull(c, "Should not parse: missing frequency prefix and wrong structure");
     }
 
     @Test
     void validate_RIA_16M_failsWithError() {
-        FilenameValidationResult result =
-            FilenameValidator.validate("RIA_16M.csv", "MONTHLY", "RIA", null);
+        CsvFilenameValidationResult result =
+            CsvFilenameValidator.validate("RIA_16M.csv", "MONTHLY", "RIA", null);
 
         assertFalse(result.isValid());
         assertFalse(result.getErrors().isEmpty());

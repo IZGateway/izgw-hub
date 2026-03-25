@@ -1,7 +1,8 @@
 package gov.cdc.izgateway.ads;
 
-import gov.cdc.izgateway.ads.util.FilenameValidationResult;
-import gov.cdc.izgateway.ads.util.FilenameValidator;
+import gov.cdc.izgateway.ads.util.CsvFilenameComponents;
+import gov.cdc.izgateway.ads.util.CsvFilenameValidationResult;
+import gov.cdc.izgateway.ads.util.CsvFilenameValidator;
 import gov.cdc.izgateway.logging.event.EventIdMdcConverter;
 import gov.cdc.izgateway.logging.event.TransactionData;
 import gov.cdc.izgateway.model.IDestination;
@@ -178,11 +179,25 @@ public class MetadataBuilder {
         if (!ADSUtils.validateFilename(filename)) {
             errors.add(String.format("Filename (%s) is invalid. Characters must be in the range of [0x20, 0xD7FF] and must not include  *, \\, ?, >, <, :, |, /, \\ or <DEL>", filename));
         }
-        ParsedFilename pf = ParsedFilename.parse(filename, errors);
-        meta.setTestFile(pf.isTestfile());
 
-        if (isMetadataValidationEnabled()) {
-            validateMetadata(pf);
+        String ext = StringUtils.substringAfterLast(filename, ".").toLowerCase();
+        boolean isCsv = "csv".equals(ext);
+
+        if (isCsv) {
+            // CSV validation is handled entirely by CsvFilenameValidator.
+            // Use CsvFilenameValidator.parseFilename() to obtain the isTestFile flag only.
+            CsvFilenameComponents fc = CsvFilenameValidator.parseFilename(filename);
+            meta.setTestFile(fc != null && fc.isTestFile());
+            if (isMetadataValidationEnabled()) {
+                validateCsvMetadata();
+            }
+        } else {
+            // ZIP (routine immunization) files: use ZipFilenameComponents for parsing and validation.
+            ZipFilenameComponents zfc = ZipFilenameComponents.parse(filename, errors);
+            meta.setTestFile(zfc.isTestfile());
+            if (isMetadataValidationEnabled()) {
+                validateZipMetadata(zfc);
+            }
         }
         return this;
     }
@@ -210,35 +225,28 @@ public class MetadataBuilder {
         return this;
     }
     
-    private void validateMetadata(ParsedFilename pf) {
-        String filename = meta.getFilename();
-        String ext = org.apache.commons.lang3.StringUtils.substringAfterLast(filename, ".").toLowerCase();
-
-        if ("csv".equals(ext)) {
-            // CSV files use the new structured FilenameValidator.
-            String periodType = computePeriodType(meta.getExtEvent());
-            FilenameValidationResult result = FilenameValidator.validate(
-                    filename,
-                    periodType,
-                    meta.getExtEntity(),
-                    meta.getPeriod());
-            errors.addAll(result.getErrors());
-        } else {
-            // ZIP files (routine immunization) use a different filename format
-            // (EEE_YYYYMMDD_yyyymmdd_Z.zip) that FilenameValidator does not handle.
-            // Retain the original ParsedFilename-based entity and date checks.
-            validateZipMetadata(pf);
-        }
+    /**
+     * Validate metadata for CSV (RIVER) files using {@link CsvFilenameValidator}.
+     * All inputs come from previously set {@code meta} fields.
+     */
+    private void validateCsvMetadata() {
+        String periodType = computePeriodType(meta.getExtEvent());
+        CsvFilenameValidationResult result = CsvFilenameValidator.validate(
+                meta.getFilename(),
+                periodType,
+                meta.getExtEntity(),
+                meta.getPeriod());
+        errors.addAll(result.getErrors());
     }
 
     /**
-     * Validate metadata for ZIP (routine immunization) files using the original
-     * ParsedFilename logic. ZIP filenames follow a different structure than CSV files:
+     * Validate metadata for ZIP (routine immunization) files using {@link ZipFilenameComponents}.
+     * ZIP filenames follow a different structure than CSV files:
      * {@code EEE_YYYYMMDD_yyyymmdd_Z.zip} (entity_startdate_submissiondate_zone).
      *
      * @param pf the parsed filename
      */
-    private void validateZipMetadata(ParsedFilename pf) {
+    private void validateZipMetadata(ZipFilenameComponents pf) {
         if (!pf.getEntityId().equalsIgnoreCase(meta.getExtEntity())) {
             errors.add(String.format("Entity ID (%s) does not match Entity (%s) in filename (%s)",
                     meta.getExtEntity(), pf.getEntityId(), meta.getFilename()));
@@ -253,7 +261,7 @@ public class MetadataBuilder {
             cal.setTime(pf.getDate());
         }
         Calendar metaDate = meta.getPeriodAsCalendar();
-        int divisor = pf.getFiletype().equals(ParsedFilename.ROUTINE_IMMUNIZATION) ? 3 : 1;
+        int divisor = pf.getFiletype().equals(ZipFilenameComponents.ROUTINE_IMMUNIZATION) ? 3 : 1;
         if (!checkDate(cal, metaDate, divisor)) {
             // Failed first time through, try just one day later on date from file name.
             cal.add(Calendar.DAY_OF_MONTH, 1);

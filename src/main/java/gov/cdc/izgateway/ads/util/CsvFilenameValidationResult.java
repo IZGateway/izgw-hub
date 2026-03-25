@@ -6,7 +6,7 @@ import java.util.List;
 import lombok.Value;
 
 /**
- * Immutable value object holding the result of validating an ADS submission filename.
+ * Immutable value object holding the result of validating a CSV ADS submission filename.
  * <p>
  * Callers should check {@link #isValid()} first. If validation failed, {@link #getErrors()}
  * contains one or more human-readable messages describing each problem found.
@@ -15,17 +15,17 @@ import lombok.Value;
  * </p>
  *
  * <pre>{@code
- * FilenameValidationResult result = FilenameValidator.validate(filename, periodType, expectedEntity, period);
+ * CsvFilenameValidationResult result = CsvFilenameValidator.validate(filename, periodType, expectedEntity, period);
  * if (!result.isValid()) {
  *     result.getErrors().forEach(log::warn);
  * }
  * }</pre>
  *
- * @see FilenameValidator
- * @see FilenameComponents
+ * @see CsvFilenameValidator
+ * @see CsvFilenameComponents
  */
 @Value
-public class FilenameValidationResult {
+public class CsvFilenameValidationResult {
 
     /** True when the filename passed all validation checks. */
     boolean valid;
@@ -40,7 +40,7 @@ public class FilenameValidationResult {
      * Structured components parsed from the filename, or {@code null} if the filename
      * did not match the expected pattern and could not be parsed.
      */
-    FilenameComponents components;
+    CsvFilenameComponents components;
 
     /**
      * Creates a successful validation result with the parsed components.
@@ -48,8 +48,8 @@ public class FilenameValidationResult {
      * @param components the successfully parsed filename components
      * @return a valid result
      */
-    public static FilenameValidationResult success(FilenameComponents components) {
-        return new FilenameValidationResult(true, Collections.emptyList(), components);
+    public static CsvFilenameValidationResult success(CsvFilenameComponents components) {
+        return new CsvFilenameValidationResult(true, Collections.emptyList(), components);
     }
 
     /**
@@ -59,7 +59,7 @@ public class FilenameValidationResult {
      * @param components the partially parsed components, or {@code null} if parsing failed entirely
      * @return an invalid result
      */
-    public static FilenameValidationResult failure(List<String> errors, FilenameComponents components) {
-        return new FilenameValidationResult(false, Collections.unmodifiableList(errors), components);
+    public static CsvFilenameValidationResult failure(List<String> errors, CsvFilenameComponents components) {
+        return new CsvFilenameValidationResult(false, Collections.unmodifiableList(errors), components);
     }
 }

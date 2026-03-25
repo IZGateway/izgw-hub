@@ -4,18 +4,18 @@ import lombok.Builder;
 import lombok.Value;
 
 /**
- * Immutable value object holding the parsed components of an ADS submission filename.
+ * Immutable value object holding the parsed components of a CSV ADS submission filename.
  * <p>
- * ADS filenames follow the structure:
+ * CSV ADS filenames follow the structure:
  * <pre>{@code [Frequency][ReportType]_[Entity]_[Date].[extension]}</pre>
  * For example: {@code MonthlyFlu_XXA_2026FEB.csv}, {@code QuarterlyRI_XXA_2026Q2.csv}
  * </p>
  *
- * @see FilenameValidator
+ * @see CsvFilenameValidator
  */
 @Value
 @Builder
-public class FilenameComponents {
+public class CsvFilenameComponents {
 
     /**
      * The frequency keyword extracted from the filename prefix.
@@ -65,8 +65,7 @@ public class FilenameComponents {
 
     /**
      * True if the original filename contained the word "test" (case-insensitive),
-     * indicating this is a test submission. The word is stripped before structural
-     * parsing, matching the behaviour of {@code ParsedFilename}.
+     * indicating this is a test submission. The word is stripped before structural parsing.
      */
     boolean testFile;
 
