@@ -9865,7 +9865,7 @@
                         },
                         {
                           "key": "reportType",
-                          "value": "covidAllMonthlyVaccination",
+                          "value": "covidallMonthlyVaccination",
                           "type": "text"
                         },
                         {
@@ -10274,7 +10274,8 @@
                           "utils.setup(pm);"
                         ],
                         "type": "text/javascript",
-                        "packages": {}
+                        "packages": {},
+                        "requests": {}
                       }
                     },
                     {
@@ -10290,7 +10291,7 @@
                           "    var metadata = pm.response.json();\r",
                           "    pm.expect(metadata.meta_ext_event_type, \"meta_ext_event_type\").to.be.eql(\"farmerFlu\");\r",
                           "    pm.expect(metadata.meta_ext_event, \"meta_ext_event\").to.be.eql(\"farmerFluVaccination\");\r",
-                          "    pm.expect(metadata.data_stream_id, \"data_stream_id\").to.be.eql(\"farmer-flu-vaccination\");\r",
+                          "    pm.expect(metadata.data_stream_id, \"data_stream_id\").to.be.eql(\"farmer-flu\");\r",
                           "\r",
                           "});\r",
                           "\r",
@@ -10316,7 +10317,8 @@
                           ""
                         ],
                         "type": "text/javascript",
-                        "packages": {}
+                        "packages": {},
+                        "requests": {}
                       }
                     }
                   ],
@@ -11148,7 +11150,7 @@
                   "        pm.expect(metadata.version).to.be.eql(metadata.meta_schema_version);",
                   "        pm.expect(metadata.data_stream_route, \"data_stream_route\").to.match(/other|csv/);",
                   "        pm.expect(metadata.data_stream_id, \"data_stream_id\").to.match(",
-                  "            /routine-immunization|covid-bridge-vaccination|covid-all-monthly-vaccination|covidall-monthly-vaccination|rsv-prevention|influenza-vaccination|generic-immunization|farmer-flu-vaccination|farmer-flu|measles-vaccination/);",
+                  "            /routine-immunization|covid-bridge-vaccination|covid-all-monthly-vaccination|covidall-monthly-vaccination|rsv-prevention|influenza-vaccination|generic-immunization|farmer-flu-vaccination|farmer-flu|measles-vaccination|ri-quarterly-aggregate/);",
                   "        pm.expect(metadata.izgw_submission_status, \"izgw_submission_status\").to.be.eql(\"SUCCESS\");",
                   "        pm.expect(metadata.izgw_submission_location, \"izgw_submission_location\").to.not.be.eql(null);",
                   "        pm.expect(metadata.meta_ext_testfile, \"meta_ext_testfile\").to.match(/true|false/);",
