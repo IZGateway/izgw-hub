@@ -91,12 +91,12 @@ function toggleDisplay(elementId) {
 <th>Success Rate</th>
 <th>Time</th></tr>
 <tr class="b">
-<td>12</td>
+<td>26</td>
 <td>0</td>
 <td>0</td>
 <td>6</td>
-<td>50.0%</td>
-<td>12.70 s</td></tr></table><br />
+<td>76.9%</td>
+<td>9.550 s</td></tr></table><br />
 <p>Note: failures are anticipated and checked for with assertions while errors are unanticipated.</p><br /></section><section><a id="Package_List"></a>
 <h2>Package List</h2>
 <p>[<a href="#Summary">Summary</a>] [<a href="#Package_List">Package List</a>] [<a href="#Test_Cases">Test Cases</a>]</p><br />
@@ -110,14 +110,42 @@ function toggleDisplay(elementId) {
 <th>Success Rate</th>
 <th>Time</th></tr>
 <tr class="b">
+<td><a href="#gov.cdc.izgateway.ads.util">gov.cdc.izgateway.ads.util</a></td>
+<td>14</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>100%</td>
+<td>0.027 s</td></tr>
+<tr class="a">
 <td><a href="#gov.cdc.izgateway">gov.cdc.izgateway</a></td>
 <td>12</td>
 <td>0</td>
 <td>0</td>
 <td>6</td>
 <td>50.0%</td>
-<td>12.70 s</td></tr></table><br />
-<p>Note: package statistics are not computed recursively, they only sum up all of its testsuites numbers.</p><section><a id="gov.cdc.izgateway"></a>
+<td>9.523 s</td></tr></table><br />
+<p>Note: package statistics are not computed recursively, they only sum up all of its testsuites numbers.</p><section><a id="gov.cdc.izgateway.ads.util"></a>
+<h3>gov.cdc.izgateway.ads.util</h3>
+<table class="table table-striped">
+<tr class="a">
+<th>-</th>
+<th>Class</th>
+<th>Tests</th>
+<th>Errors</th>
+<th>Failures</th>
+<th>Skipped</th>
+<th>Success Rate</th>
+<th>Time</th></tr>
+<tr class="b">
+<td><a href="#gov.cdc.izgateway.ads.util.CsvFilenameValidatorTests"><img src="images/icon_success_sml.gif" /></a></td>
+<td><a href="#gov.cdc.izgateway.ads.util.CsvFilenameValidatorTests">CsvFilenameValidatorTests</a></td>
+<td>14</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>100%</td>
+<td>0.027 s</td></tr></table></section><section><a id="gov.cdc.izgateway"></a>
 <h3>gov.cdc.izgateway</h3>
 <table class="table table-striped">
 <tr class="a">
@@ -137,7 +165,7 @@ function toggleDisplay(elementId) {
 <td>0</td>
 <td>0</td>
 <td>100%</td>
-<td>12.70 s</td></tr>
+<td>9.522 s</td></tr>
 <tr class="a">
 <td><a href="#gov.cdc.izgateway.AccessControlTests"><img src="images/icon_warning_sml.gif" /></a></td>
 <td><a href="#gov.cdc.izgateway.AccessControlTests">AccessControlTests</a></td>
@@ -148,21 +176,79 @@ function toggleDisplay(elementId) {
 <td>0%</td>
 <td>0.001 s</td></tr></table></section><br /></section><section><a id="Test_Cases"></a>
 <h2>Test Cases</h2>
-<p>[<a href="#Summary">Summary</a>] [<a href="#Package_List">Package List</a>] [<a href="#Test_Cases">Test Cases</a>]</p><section><a id="gov.cdc.izgateway.ApplicationTests"></a>
+<p>[<a href="#Summary">Summary</a>] [<a href="#Package_List">Package List</a>] [<a href="#Test_Cases">Test Cases</a>]</p><section><a id="gov.cdc.izgateway.ads.util.CsvFilenameValidatorTests"></a>
+<h3>CsvFilenameValidatorTests</h3>
+<table class="table table-striped">
+<tr class="a">
+<td><img src="images/icon_success_sml.gif" /></td>
+<td><a id="TC_gov.cdc.izgateway.ads.util.CsvFilenameValidatorTests.parseFilename_monthlyFarmerFlu"></a>parseFilename_monthlyFarmerFlu</td>
+<td>0.003 s</td></tr>
+<tr class="b">
+<td><img src="images/icon_success_sml.gif" /></td>
+<td><a id="TC_gov.cdc.izgateway.ads.util.CsvFilenameValidatorTests.validate_monthlyFarmerFlu_passesAllChecks"></a>validate_monthlyFarmerFlu_passesAllChecks</td>
+<td>0.001 s</td></tr>
+<tr class="a">
+<td><img src="images/icon_success_sml.gif" /></td>
+<td><a id="TC_gov.cdc.izgateway.ads.util.CsvFilenameValidatorTests.parseFilename_RIA_16M_failsPattern"></a>parseFilename_RIA_16M_failsPattern</td>
+<td>0.001 s</td></tr>
+<tr class="b">
+<td><img src="images/icon_success_sml.gif" /></td>
+<td><a id="TC_gov.cdc.izgateway.ads.util.CsvFilenameValidatorTests.parseFilename_testPrefix_strippedAndFlagSet"></a>parseFilename_testPrefix_strippedAndFlagSet</td>
+<td>0.001 s</td></tr>
+<tr class="a">
+<td><img src="images/icon_success_sml.gif" /></td>
+<td><a id="TC_gov.cdc.izgateway.ads.util.CsvFilenameValidatorTests.validate_riQuarterlyAggregate_passesAllChecks"></a>validate_riQuarterlyAggregate_passesAllChecks</td>
+<td>0.001 s</td></tr>
+<tr class="b">
+<td><img src="images/icon_success_sml.gif" /></td>
+<td><a id="TC_gov.cdc.izgateway.ads.util.CsvFilenameValidatorTests.parseFilename_monthlyFlu"></a>parseFilename_monthlyFlu</td>
+<td>0.004 s</td></tr>
+<tr class="a">
+<td><img src="images/icon_success_sml.gif" /></td>
+<td><a id="TC_gov.cdc.izgateway.ads.util.CsvFilenameValidatorTests.parseFilename_monthlyRSV"></a>parseFilename_monthlyRSV</td>
+<td>0.001 s</td></tr>
+<tr class="b">
+<td><img src="images/icon_success_sml.gif" /></td>
+<td><a id="TC_gov.cdc.izgateway.ads.util.CsvFilenameValidatorTests.validate_testPrefix_passesWithPeriodAndEntity"></a>validate_testPrefix_passesWithPeriodAndEntity</td>
+<td>0.004 s</td></tr>
+<tr class="a">
+<td><img src="images/icon_success_sml.gif" /></td>
+<td><a id="TC_gov.cdc.izgateway.ads.util.CsvFilenameValidatorTests.validate_monthlyRSV_passesAllChecks"></a>validate_monthlyRSV_passesAllChecks</td>
+<td>0.001 s</td></tr>
+<tr class="b">
+<td><img src="images/icon_success_sml.gif" /></td>
+<td><a id="TC_gov.cdc.izgateway.ads.util.CsvFilenameValidatorTests.parseFilename_monthlyMeasles"></a>parseFilename_monthlyMeasles</td>
+<td>0.002 s</td></tr>
+<tr class="a">
+<td><img src="images/icon_success_sml.gif" /></td>
+<td><a id="TC_gov.cdc.izgateway.ads.util.CsvFilenameValidatorTests.parseFilename_riQuarterlyAggregate_parsesSuccessfully"></a>parseFilename_riQuarterlyAggregate_parsesSuccessfully</td>
+<td>0 s</td></tr>
+<tr class="b">
+<td><img src="images/icon_success_sml.gif" /></td>
+<td><a id="TC_gov.cdc.izgateway.ads.util.CsvFilenameValidatorTests.validate_monthlyMeasles_passesAllChecks"></a>validate_monthlyMeasles_passesAllChecks</td>
+<td>0.001 s</td></tr>
+<tr class="a">
+<td><img src="images/icon_success_sml.gif" /></td>
+<td><a id="TC_gov.cdc.izgateway.ads.util.CsvFilenameValidatorTests.validate_monthlyFlu_passesAllChecks"></a>validate_monthlyFlu_passesAllChecks</td>
+<td>0.001 s</td></tr>
+<tr class="b">
+<td><img src="images/icon_success_sml.gif" /></td>
+<td><a id="TC_gov.cdc.izgateway.ads.util.CsvFilenameValidatorTests.validate_RIA_16M_failsWithError"></a>validate_RIA_16M_failsWithError</td>
+<td>0.001 s</td></tr></table></section><section><a id="gov.cdc.izgateway.ApplicationTests"></a>
 <h3>ApplicationTests</h3>
 <table class="table table-striped">
 <tr class="a">
 <td><img src="images/icon_success_sml.gif" /></td>
 <td><a id="TC_gov.cdc.izgateway.ApplicationTests.testLogEvents"></a>testLogEvents</td>
-<td>0.576 s</td></tr>
+<td>0.589 s</td></tr>
 <tr class="b">
 <td><img src="images/icon_success_sml.gif" /></td>
 <td><a id="TC_gov.cdc.izgateway.ApplicationTests.appControllerHealthTest"></a>appControllerHealthTest</td>
-<td>0.012 s</td></tr>
+<td>0.015 s</td></tr>
 <tr class="a">
 <td><img src="images/icon_success_sml.gif" /></td>
 <td><a id="TC_gov.cdc.izgateway.ApplicationTests.applicationIsHealthy"></a>applicationIsHealthy</td>
-<td>0.004 s</td></tr>
+<td>0.003 s</td></tr>
 <tr class="b">
 <td><img src="images/icon_success_sml.gif" /></td>
 <td><a id="TC_gov.cdc.izgateway.ApplicationTests.buildNoIsValid"></a>buildNoIsValid</td>
@@ -174,7 +260,7 @@ function toggleDisplay(elementId) {
 <tr class="b">
 <td><img src="images/icon_success_sml.gif" /></td>
 <td><a id="TC_gov.cdc.izgateway.ApplicationTests.buildAndHealthAreReportedInLogs"></a>buildAndHealthAreReportedInLogs</td>
-<td>0.004 s</td></tr></table></section><section><a id="gov.cdc.izgateway.AccessControlTests"></a>
+<td>0.003 s</td></tr></table></section><section><a id="gov.cdc.izgateway.AccessControlTests"></a>
 <h3>AccessControlTests</h3>
 <table class="table table-striped">
 <tr class="a">
