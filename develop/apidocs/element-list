@@ -1,7 +1,6 @@
 gov.cdc.izgateway
 gov.cdc.izgateway.ads
 gov.cdc.izgateway.ads.mockdex
-gov.cdc.izgateway.ads.util
 gov.cdc.izgateway.db
 gov.cdc.izgateway.dynamodb
 gov.cdc.izgateway.dynamodb.model

@@ -1,1 +1,1 @@
-tagSearchIndex = [{"l":"Constant Field Values","h":"","u":"constant-values.html"},{"l":"Serialized Form","h":"","u":"serialized-form.html"},{"l":"Validation Checks","h":"class gov.cdc.izgateway.ads.util.FilenameValidator","d":"Section","u":"gov/cdc/izgateway/ads/util/FilenameValidator.html#validation-checks-heading"}];updateSearchResults();
+tagSearchIndex = [{"l":"Constant Field Values","h":"","u":"constant-values.html"},{"l":"Serialized Form","h":"","u":"serialized-form.html"}];updateSearchResults();
