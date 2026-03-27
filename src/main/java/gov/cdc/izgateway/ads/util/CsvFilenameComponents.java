@@ -1,15 +1,26 @@
 package gov.cdc.izgateway.ads.util;
 
+import java.util.Collections;
+import java.util.List;
+
 import lombok.Builder;
 import lombok.Value;
 
 /**
- * Immutable value object holding the parsed components of a CSV ADS submission filename.
+ * Immutable value object holding the parsed components of a CSV ADS submission filename,
+ * plus any validation errors collected by {@link CsvFilenameValidator#validate}.
  * <p>
  * CSV ADS filenames follow the structure:
- * <pre>{@code [Frequency][ReportType]_[Entity]_[Date].[extension]}</pre>
- * For example: {@code MonthlyFlu_XXA_2026FEB.csv}, {@code QuarterlyRI_XXA_2026Q2.csv}
+ * <pre>{@code [Prefix]_[Entity]_[Date].[extension]}</pre>
+ * where {@code [Prefix]} contains a frequency keyword ("Monthly" or "Quarterly",
+ * detected case-insensitively at any position) plus a report-type abbreviation.
+ * For example: {@code MonthlyFlu_XXA_2026FEB.csv}, {@code riQuarterlyAggregate_XXA_2025Q4.csv}
  * </p>
+ *
+ * <p>Call {@link #isValid()} to check whether validation passed. When invalid,
+ * {@link #getErrors()} contains one or more human-readable messages.  Parsed
+ * component fields ({@link #getFrequency()}, etc.) will be {@code null} when
+ * the filename could not be parsed at all (i.e. pattern match failed).</p>
  *
  * @see CsvFilenameValidator
  */
@@ -20,6 +31,7 @@ public class CsvFilenameComponents {
     /**
      * The frequency keyword extracted from the filename prefix.
      * Either {@code "Monthly"} or {@code "Quarterly"}.
+     * {@code null} when the filename failed structural parsing.
      */
     String frequency;
 
@@ -36,7 +48,7 @@ public class CsvFilenameComponents {
     String entityId;
 
     /**
-     * The date string as it appears in the filename.
+     * The date string as it appears in the filename (uppercased).
      * Monthly format: {@code "2026FEB"}; quarterly format: {@code "2026Q2"}.
      */
     String dateString;
@@ -70,6 +82,23 @@ public class CsvFilenameComponents {
     boolean testFile;
 
     /**
+     * Validation errors collected during {@link CsvFilenameValidator#validate}.
+     * Empty when the filename is valid.  May contain a parse-failure message even
+     * when all other fields are {@code null}.
+     */
+    @Builder.Default
+    List<String> errors = Collections.emptyList();
+
+    /**
+     * Returns {@code true} if no validation errors were found.
+     *
+     * @return true when errors is empty
+     */
+    public boolean isValid() {
+        return errors.isEmpty();
+    }
+
+    /**
      * Returns {@code true} if the frequency keyword is {@code "Quarterly"}.
      *
      * @return true for quarterly submissions
@@ -79,11 +108,12 @@ public class CsvFilenameComponents {
     }
 
     /**
-     * Returns {@code true} if the frequency keyword is {@code "Monthly"}.
+     * Returns {@code true} if the frequency keyword is {@code "Monthly"} or if no
+     * frequency keyword was detected (monthly is the default assumption).
      *
-     * @return true for monthly submissions
+     * @return true for monthly submissions or when frequency is undetermined
      */
     public boolean isMonthly() {
-        return "Monthly".equals(frequency);
+        return !"Quarterly".equals(frequency);
     }
 }

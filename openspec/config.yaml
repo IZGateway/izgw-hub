@@ -1,81 +1,110 @@
+# openspec/config.yaml
+# Generated from codebase analysis on 2026-03-27
+
 schema: spec-driven
 
-# Project context
 context: |
-  Project: IZ Gateway Hub (izgw-hub)
-  
-  Tech Stack:
-  - Backend: Spring Boot 3.5.0, Java 17, Maven
-  - Database: AWS DynamoDB with Enhanced Client
-  - Caching: Caffeine (via HAPI FHIR)
-  - Security: OAuth 2.0, JWT, TLS client certificates
-  - API: RESTful, OpenAPI/Swagger documentation
-  - Logging: SLF4J with Logback, structured logging with markers
-  
-  Frontend: izg-configuration-console (separate project)
-  - Framework: Next.js, React, TypeScript
-  - UI: Material-UI (MUI)
-  - State: SWR for data fetching
-  
-  Domain:
-  - Immunization Information System (IIS) gateway
-  - HL7 v2 message routing and transformation
-  - Automated Data Submission (ADS) to CDC endpoints
-  - Azure Blob Storage and legacy DEX integration
-  - Configuration management for healthcare data exchange
-  
-  Conventions:
-  - Follow Spring Boot best practices
-  - Use Lombok (@Slf4j, @Data, @Service, @Getter, @Setter)
-  - Constructor-based dependency injection
-  - Use Optional<T> for nullable returns, not in parameters
-  - Comprehensive JavaDoc for public APIs
-  - Never use System.out, always SLF4J logging
-  - Log at appropriate levels: debug (trace), info (significant events), warn (recoverable issues), error (failures)
-  - Package structure: gov.cdc.izgateway.*
-  - Test classes suffix with "Tests"
-  
-  Key Principles:
-  - Maintain backward compatibility
-  - No breaking API changes
-  - Database-driven configuration preferred
-  - Performance: cache expensive operations
-  - Security: admin-only for configuration, audit all changes
-  - Robustness: validate early, fail gracefully
+  Domain: CDC federal immunization data exchange hub — routes HL7v2 SOAP messages between
+  healthcare providers/national organizations and state Immunization Information Systems (IISs).
+  Also handles Automated Data Submission (ADS) of vaccination reports to CDC DEX endpoints.
+  Users: IIS jurisdictions, multijurisdictional healthcare providers, CDC program offices.
 
-# Per-artifact rules
+  Tech Stack:
+    Language: Java 21 (source/target 21, Temurin distribution)
+    Framework: Spring Boot 3.5.8 (from izgw-bom BOM), Spring Security, Spring Retry
+    Database: AWS DynamoDB (Enhanced Client); optional JPA/Hibernate for test/local (SPRING_DATABASE=jpa)
+    Messaging: AWS SQS (refresh queue)
+    Storage: AWS S3/Azure Blob Storage (ADS file submissions), TUS resumable upload protocol
+    Logging: SLF4J + Logback; logstash-logback-encoder for structured JSON; Elasticsearch/Kibana; in-memory MemoryAppender
+    Infrastructure: AWS ECS/Docker (Alpine + OpenJDK 21), AWS Secrets Manager, Elasticsearch
+    Build: Maven 3.9+, Maven Wrapper (mvnw), JaCoCo for coverage, OWASP Dependency-Check (fail CVSS ≥ 7)
+    CI/CD: GitHub Actions (.github/workflows/maven.yml for develop/Release*, main.yml for main)
+    Security: BouncyCastle FIPS (bc-fips, bcpkix-fips, bctls-fips); BCFKS keystore format; mTLS (client-auth=need); TLS 1.2/1.3 only; OAuth2/JWT (spring-security-oauth2-resource-server, jjwt); IP denylist; OCSP (optional)
+
+  Architecture:
+    Pattern: Layered monolith (controller → service → repository); Spring MVC + WebFlux co-deployed
+    Primary API: SOAP/WSDL (CDC 2011 and 2014 schemas) for HL7v2 message routing; REST/JSON for ADS, admin, status
+    OpenAPI: springdoc at /swagger/ui.html and /swagger/api-docs
+    Module Structure: gov.cdc.izgateway.{hub, ads, soap, dynamodb, elastic, status, db, security}
+      hub/           — SOAP gateway controllers (HubWSDLController, CDCWSDLController)
+      hub/service/   — business logic (DestinationService, AccessControlService, CertificateStatusService)
+      hub/repository/— repository interfaces (IDestinationRepository, IDenyListRecordRepository, etc.)
+      dynamodb/      — DynamoDB model + repository implementations
+      ads/           — Automated Data Submission (TUS upload, Azure Blob, DEX)
+      soap/          — SOAP message infrastructure, fault types, MessageSender
+      elastic/       — Elasticsearch status/host repositories
+      status/        — endpoint health check scheduler and circuit breaker
+    Auth: mTLS client certificates (primary); OAuth2 JWT bearer (ADS/REST); role-based (@RolesAllowed, Roles.*); admin role bypasses access control checks
+    Error Handling: SOAP Fault hierarchy (SecurityFault, MessageTooLargeFault, DestinationConnectionFault, etc.) mapped to HTTP status via ExceptionHandling @ControllerAdvice; retry strategies (NORMAL, CHECK_IIS_STATUS, CORRECT_MESSAGE, CONTACT_SUPPORT) defined in application.yml
+
+  Standards:
+    Testing: JUnit 5 (Jupiter); Spring Boot Test (@SpringBootTest); test classes suffix "Tests"; surefire includes **/*Tests.java; integration tests use real DynamoDB table (izgateway-devalb) or JPA
+    Linting: Checkstyle via AiCheckstyle.xml (max line 128, max method 300 lines, full Javadoc on public types/methods/fields, camelCase members, no star imports except static, cyclomatic complexity checks)
+    Git: Branch strategy: develop → Release_v* → main; PRs to main MUST come from Release_v* branches; commit messages are plain-text (no conventional commits enforced)
+    Code Style: Lombok (@Slf4j, @Data, @Getter, @Setter, @Service); constructor injection; Optional<T> for nullable returns (not parameters); no System.out (always SLF4J); package-info.java required per package; interface prefix "I" (e.g., IDestination, IDestinationRepository)
+
+  Domain Standards:
+    - HL7v2.5.1 (HAPI hapi-structures-v251) for immunization message encoding/validation
+    - CDC IIS SOAP WSDL 2011 and 2014 schemas for message exchange
+    - FIPS 140-2 compliance required: use only BouncyCastle FIPS provider; BCFKS keystore format; no JKS/PKCS12 in production
+    - ADS versioning: V2023-09-01 schema for CDC DEX file submissions
+    - PHI masking: HL7 message content masked in prod mode (PHIZ_MODE=prod)
+
+  Key Constraints:
+    - No breaking changes to SOAP WSDL API (CDC 2011/2014 schemas are fixed contracts)
+    - All cryptographic operations MUST use BCFIPS provider (not default JVM provider)
+    - Database-driven configuration preferred over code changes for routing/access control
+    - Shared izgw-bom and izgw-core libraries — changes to shared types require coordinated BOM update
+    - Max message size enforced at gateway (hub.max-message-size, default 65536 in dev, 4MB in prod)
+    - Each package MUST have a package-info.java with Javadoc
+    - OWASP dependency check: builds fail on CVSS ≥ 7 CVEs
+
 rules:
   proposal:
-    - Start with "Why" section explaining business problem
-    - Include real-world examples of pain points
-    - Document alternatives considered with rationale
-    - Specify affected code and dependencies
-    - Include testing impact and API impact
-    - Address security and performance considerations
-    
-  design:
-    - Include architecture diagrams using ASCII art
-    - Provide code examples for key components
-    - Document data flow with sequence diagrams
-    - Specify algorithms with pseudocode
-    - Define caching strategy
-    - Address error handling and edge cases
-    - Include performance characteristics
-    
-  tasks:
-    - Break into 1-4 hour chunks
-    - Include acceptance criteria (checkboxes)
-    - Specify exact file paths to modify/create
-    - Estimate effort realistically
-    - Document dependencies between tasks
-    - Include test case requirements
-    - Provide implementation notes/hints
-    - Create task summary table with totals
-    
+    - Begin with "Why" — state the business/operational problem and reference IGDD Jira ticket if applicable
+    - Include real-world failure scenarios or pain points from IIS partners or CDC operations
+    - Document alternatives considered with rationale for rejection
+    - Identify affected modules (hub, ads, soap, dynamodb, etc.) and shared BOM/core dependencies
+    - Address FIPS compliance impact — any new crypto/TLS work must use BouncyCastle FIPS
+    - Address PHI exposure risk — any logging or error message changes must preserve prod-mode masking
+    - Include backward compatibility analysis for SOAP WSDL and REST API consumers
+    - Specify performance impact on high-throughput routing paths
+
   specs:
-    - Document algorithms with examples and test cases
-    - Include validation rules with positive and negative examples
-    - Provide regex patterns where applicable
-    - Show step-by-step processing examples
-    - Include edge cases and special handling
-    - Reference related specifications and standards
+    - State every normative requirement as a named "### Requirement:" section using RFC 2119 keywords
+      (SHALL / SHALL NOT / MUST / MUST NOT / SHOULD / SHOULD NOT / MAY); never use "must" or "should" in lowercase for normative statements
+    - Follow each requirement with one or more "#### Scenario:" sections using strict GIVEN-WHEN-THEN format:
+        ### Requirement: <name>
+        The system SHALL <requirement statement>.
+        #### Scenario: <name>
+        - GIVEN <precondition>
+        - WHEN <action or event>
+        - THEN <expected outcome>
+        - AND <additional outcome>  (use AND for extra THEN or GIVEN clauses, not a new bullet type)
+    - Document HL7v2 field mappings with MSH/PID/RXA segment references where applicable
+    - Specify SOAP fault types (from gov.cdc.izgateway.soap.fault.*) that apply to error scenarios
+    - Provide validation rules with positive (valid) and negative (invalid) HL7 or JSON examples
+    - Include retry strategy classification (NORMAL / CHECK_IIS_STATUS / CORRECT_MESSAGE / CONTACT_SUPPORT)
+    - Reference existing CDC WSDL schemas (2011/2014) and ADS versioning (V2023-09-01) when relevant
+    - Document edge cases: empty destinationId, message-too-large, circuit breaker thrown, FIPS key errors
+
+  design:
+    - Include ASCII sequence diagrams for SOAP routing flows and ADS submission flows
+    - Show DynamoDB table access patterns (partition key + sort key) for any new data models
+    - Define Spring Security filter chain impact for auth-related changes
+    - Address FIPS provider usage — specify which BouncyCastle APIs are used and why
+    - Document structured log marker strategy (Markers2.*) for any new auditable events
+    - Specify circuit breaker and retry behavior for new destination types
+    - Include error handling mapping: exception type → SOAP fault type → HTTP status → retry strategy
+    - Address access control: admin-only vs. role-based vs. destination-specific group membership
+
+  tasks:
+    - Break into 1–4 hour chunks with explicit acceptance criteria (checkboxes)
+    - Specify exact file paths to create or modify (use gov.cdc.izgateway.* package conventions)
+    - Include a task for adding/updating package-info.java if a new package is introduced
+    - Include test tasks: unit test in src/test/java/**/*Tests.java and Spring Boot integration test if needed
+    - Flag any task requiring BCFIPS provider changes or keystore format updates
+    - Include a documentation task if CONFIGURATION.md or RELEASE_NOTES.md must be updated
+    - Note DynamoDB table schema changes separately — coordinate with infrastructure team
+    - Add a security review checkpoint for any change touching auth, TLS, or PHI logging
+    - Create task summary table with estimated hours and dependencies

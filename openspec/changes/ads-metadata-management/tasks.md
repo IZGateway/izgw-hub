@@ -285,3 +285,23 @@ Each task is considered complete when:
 - [ ] Documentation updated
 
 **NO database changes** = NO migration/rollback needed!
+
+---
+
+## Review and Approval Checklist
+
+### Technical Review
+- [ ] Architecture sound — AccessControlService enhancement appropriate
+- [ ] Algorithm correct — `computeDataStreamId` reproduces all existing hardcoded values
+- [ ] Filename validation covers all known production patterns
+- [ ] Backward compatibility maintained (no API or database changes)
+- [ ] Test coverage adequate for all computation methods and validators
+
+### Product Owner
+- [ ] Business problem validated
+- [ ] Computation-only approach (no DB/UI changes) acceptable
+- [ ] Success metrics agreed upon
+
+### Go / No-Go
+**Go if:** approvals obtained, no blocking design concerns, team capacity available  
+**No-Go if:** key approvals missing, unresolved design concerns, or capacity unavailable

@@ -3,9 +3,9 @@ schema: spec-driven
 # Change metadata
 change:
   title: ADS Metadata Management Simplification (Computation-Only)
-  status: planning
+  status: in-progress
   created: 2026-03-16
-  updated: 2026-03-18
+  updated: 2026-03-27
   estimated_effort: 12h
   approach: computation-only
 

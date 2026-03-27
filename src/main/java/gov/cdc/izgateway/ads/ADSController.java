@@ -123,20 +123,6 @@ public class ADSController implements ADSChecker {
 
 	private final ADSControllerConfiguration config;
 
-	/**
-	 * DTO describing a single registered ADS report type, returned by the
-	 * {@code GET /rest/ads/reportTypes} discovery endpoint.
-	 */
-	@Data
-	public static class ReportTypeInfo {
-		/** The canonical file type name used as the {@code reportType} parameter (e.g. {@code "routineImmunization"}). */
-		private final String fileTypeName;
-		/** The computed DEX data stream ID (e.g. {@code "routine-immunization"}). */
-		private final String dataStreamId;
-		/** The submission cadence: {@code "MONTHLY"}, {@code "QUARTERLY"}, or {@code "BOTH"}. */
-		private final String periodType;
-	}
-
 	@Autowired
 	public ADSController(ADSControllerConfiguration config, AccessControlRegistry registry) {
 		this.config = config;
@@ -422,23 +408,6 @@ public class ADSController implements ADSChecker {
 		} catch (IOException e) {
 			throw new ResourceNotFoundException("Unable to read submission resource", e);
 		}
-	}
-
-	@GetMapping(value = "/ads/reportTypes", produces = MediaType.APPLICATION_JSON_VALUE)
-	@Operation(
-		summary = "List available ADS report types",
-		description = "Returns the current list of registered report types with their computed data stream ID and period type. "
-			+ "Use the fileTypeName value as the reportType parameter when submitting a file.")
-	@ApiResponse(responseCode = "200", description = "Success", content = @Content(mediaType = "application/json",
-		schema = @Schema(implementation = ReportTypeInfo.class)))
-	public List<ReportTypeInfo> getAvailableReportTypes() {
-		return config.getAccessControls().getEventTypes().stream()
-				.sorted()
-				.map(fileTypeName -> new ReportTypeInfo(
-						fileTypeName,
-						IAccessControlService.computeDataStreamId(fileTypeName),
-						MetadataBuilder.computePeriodType(fileTypeName)))
-				.toList();
 	}
 
 	@PostMapping(value = "/ads/{destinationId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

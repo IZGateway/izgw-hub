@@ -1483,3 +1483,237 @@ c) Archive to separate table
 - Multi-region replication of file type configurations
 - Version history for file type changes
 - A/B testing support for new report type configurations
+
+---
+
+## Appendix A — Actual Production Filename Patterns
+
+### Confirmed Pattern
+
+```
+[Frequency][ReportType]_[Entity]_[Date].[extension]
+```
+
+Separators are **underscores** between components; there is **no separator** between the frequency keyword and the report type abbreviation. The frequency keyword is PascalCase.
+
+### Production Examples
+
+| Filename | fileTypeName | metaExtEvent | data_stream_id |
+|----------|--------------|--------------|----------------|
+| `MonthlyFlu_XXA_2026FEB.csv` | influenzaVaccination | influenzaVaccination | influenza-vaccination |
+| `QuarterlyRI_XXA_2026Q2.csv` | routineImmunization | routineImmunization | routine-immunization |
+| `MonthlyAllCOVID_XXA_2026FEB.csv` | covidAllMonthlyVaccination | covidAllMonthlyVaccination | covid-all-monthly-vaccination |
+| `MonthlyRSV_XXA_2026FEB.csv` | rsvPrevention | rsvPrevention | rsv-prevention |
+| `MonthlyMeasles_XXA_2026FEB.csv` | measlesVaccination | measlesVaccination | measles-vaccination |
+| `MonthlyFarmerFlu_XXA_2026FEB.csv` | farmerFlu | farmerFluVaccination | farmer-flu-vaccination |
+
+**Note:** The filename abbreviation (Flu, RI, RSV) is for human readability. The authoritative report type comes from the `reportType` API parameter. Filename validation checks structure, entity, and date — not that the abbreviation maps to the report type.
+
+### Corrected Validation Regex
+
+```regex
+^(Monthly|Quarterly)([A-Za-z]+)_([A-Z]{2}A)_((\d{4})Q([1-4])|(\d{4})(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC))\.(csv|zip)$
+```
+
+Note that frequency detection is now done case-insensitively anywhere in the prefix segment (not anchored to the start), matching the `CsvFilenameValidator` implementation.
+
+---
+
+## Appendix B — Design Decision: Enhance AccessControlService (Not New FileTypeService)
+
+**Decision date:** 2026-03-16
+
+### Options Considered
+
+| | Option A: New FileTypeService | Option B: Enhance AccessControlService (chosen) |
+|--|--|--|
+| New files | FileTypeService.java + tests | 0 |
+| Modified files | 9 | 4 (IAccessControlService, AccessControlService, NewModelHelper, AccessControlModelHelper) |
+| Cache | New Caffeine cache, new refresh cycle | Reuses existing `fileTypeCache` in NewModelHelper, refreshed every 5 min |
+| Injection | New injection in ADSController + MetadataBuilder | Already injected via `config.getAccessControls()` |
+| Effort | ~4h | ~3h |
+
+### Rationale
+
+- `NewModelHelper` already caches `FileType` records and exposes `getEventTypes()` — metadata operations are a natural extension of the same cache
+- `AccessControlService` is already available everywhere it is needed; no new wiring required
+- Single cache = single source of truth, no risk of stale data divergence
+- Saves ~6.5 hours across Tasks 3, 5, 7, 12, 15
+
+---
+
+## Appendix C — Computation Methods Refactoring (Task 1)
+
+The original design proposed a separate `FileTypeMetadataUtil` class. During implementation, the computation methods were placed as `private static` methods directly on `MetadataBuilder` — the only consumer.
+
+### Before
+
+```java
+private static final Set<String> DEX_REPORT_TYPES = new LinkedHashSet<>(Arrays.asList(
+    "covidallmonthlyvaccination", "influenzavaccination", "routineimmunization",
+    "rsvprevention", "measlesvaccination"
+));
+
+public MetadataBuilder setReportType(String reportType) {
+    if (DEX_REPORT_TYPES.contains(reportType.toLowerCase())) {
+        meta.setExtEvent(reportType);
+    } else if ("farmerFlu".equalsIgnoreCase(reportType)) {
+        meta.setExtEvent("farmerFluVaccination");
+    } else {
+        meta.setExtEvent(GENERIC);
+        meta.setExtSourceVersion(Metadata.DEX_VERSION2);
+    }
+    meta.setExtEventType(reportType);
+}
+```
+
+### After
+
+```java
+public MetadataBuilder setReportType(String reportType) {
+    if (StringUtils.isBlank(reportType)) {
+        errors.add("Report Type must be present and not empty");
+        return this;
+    }
+    String metaExtEvent = computeMetaExtEvent(reportType);
+    meta.setExtEvent(metaExtEvent);
+    meta.setExtEventType(reportType);
+    meta.setDataStreamId(IAccessControlService.computeDataStreamId(reportType));
+    if (GENERIC.equals(metaExtEvent)) {
+        meta.setExtSourceVersion(Metadata.DEX_VERSION2);
+    }
+    return this;
+}
+```
+
+### Computation Method Test Cases
+
+| Input | `computeMetaExtEvent` | `computePeriodType` | `computeDataStreamId` |
+|-------|----------------------|--------------------|-----------------------|
+| `routineImmunization` | `routineImmunization` | `QUARTERLY` | `routine-immunization` |
+| `influenzaVaccination` | `influenzaVaccination` | `MONTHLY` | `influenza-vaccination` |
+| `farmerFlu` | `farmerFluVaccination` | `MONTHLY` | `farmer-flu` |
+| `genericImmunization` | `genericImmunization` | `BOTH` | `generic-immunization` |
+| `rsvPrevention` | `rsvPrevention` | `MONTHLY` | `rsv-prevention` |
+| `measlesVaccination` | `measlesVaccination` | `MONTHLY` | `measles-vaccination` |
+| `covidAllMonthlyVaccination` | `covidAllMonthlyVaccination` | `MONTHLY` | `covid-all-monthly-vaccination` |
+
+---
+
+## Appendix D — Data Stream ID Algorithm
+
+### Purpose
+
+Convert camelCase/PascalCase fileTypeNames to hyphenated lowercase Azure data-stream IDs.
+Example: `influenzaVaccination` → `influenza-vaccination`
+
+### Rules
+
+1. Insert a hyphen before an uppercase letter when either:
+   - the previous character is lowercase (start of a new word), or
+   - the next character is lowercase and position > 0 (last letter of an acronym)
+2. Convert the entire result to lowercase
+3. Never insert a hyphen at position 0
+
+### Java Implementation
+
+```java
+public static String computeDataStreamId(String fileTypeName) {
+    if (StringUtils.isBlank(fileTypeName)) {
+        return null;
+    }
+    StringBuilder result = new StringBuilder();
+    char[] chars = fileTypeName.toCharArray();
+    for (int i = 0; i < chars.length; i++) {
+        char current = chars[i];
+        char next    = (i + 1 < chars.length) ? chars[i + 1] : '\0';
+        char prev    = (i > 0)                ? chars[i - 1] : '\0';
+        boolean isUpper    = Character.isUpperCase(current);
+        boolean nextIsLower = Character.isLowerCase(next);
+        boolean prevIsLower = Character.isLowerCase(prev);
+        if (isUpper && i > 0 && (prevIsLower || nextIsLower)) {
+            result.append('-');
+        }
+        result.append(Character.toLowerCase(current));
+    }
+    return result.toString();
+}
+```
+
+### Algorithm Test Cases
+
+| Input | Output |
+|-------|--------|
+| `routineImmunization` | `routine-immunization` |
+| `influenzaVaccination` | `influenza-vaccination` |
+| `rsvPrevention` | `rsv-prevention` |
+| `farmerFluVaccination` | `farmer-flu-vaccination` |
+| `covidAllMonthlyVaccination` | `covid-all-monthly-vaccination` |
+| `genericImmunization` | `generic-immunization` |
+| `measlesVaccination` | `measles-vaccination` |
+| `RIQuarterlyAggregate` | `ri-quarterly-aggregate` |
+| `ABCDef` | `ab-cdef` |
+| `ABC` | `abc` |
+| `""` / `null` | `null` |
+
+---
+
+## Appendix E — CSV Filename Validation Specification
+
+### Filename Structure
+
+```
+[Frequency][ReportType]_[Entity]_[Date].[extension]
+```
+
+### Component Rules
+
+**Frequency + ReportType prefix**
+- Frequency keyword (`Monthly` or `Quarterly`) detected case-insensitively anywhere in the first `_`-delimited segment; removed to yield the report type abbreviation
+- No separator between frequency and report type abbreviation
+
+**Entity ID** — format `[A-Z]{2}A` (2 uppercase letters + `A`); must match facilityId
+
+**Date**
+- Monthly: `YYYYMMM` (e.g., `2026FEB`) — must use a valid 3-letter month abbreviation
+- Quarterly: `YYYYQ#` (e.g., `2026Q2`) — quarter must be 1–4
+- Format must match frequency; date must match the `period` API parameter (after normalisation: uppercase, hyphens stripped)
+
+**Extension** — `csv` or `zip` (case-insensitive)
+
+### Validation Steps (in order)
+
+1. Parse with regex — return failure if no match or no frequency keyword found
+2. Frequency/period-type consistency — `MONTHLY` requires `Monthly`, `QUARTERLY` requires `Quarterly`, `BOTH` accepts either
+3. Entity ID match — case-insensitive comparison against facilityId (skip if null)
+4. Date/period match — normalise both sides (uppercase, strip hyphens) and compare (skip if null)
+
+### Valid Test Cases
+
+| Filename | periodType | entity | period | Valid? |
+|----------|------------|--------|--------|--------|
+| `MonthlyFlu_XXA_2026FEB.csv` | MONTHLY | XXA | 2026-FEB | ✅ |
+| `QuarterlyRI_XXA_2026Q2.csv` | QUARTERLY | XXA | 2026Q2 | ✅ |
+| `riQuarterlyAggregate_XXA_2025Q4.csv` | QUARTERLY | XXA | 2025Q4 | ✅ |
+| `testMonthlyRSV_XXA_2022SEP.csv` | MONTHLY | XXA | 2022-SEP | ✅ (isTestFile=true) |
+| `MonthlyFarmerFlu_XXA_2026FEB.csv` | MONTHLY | XXA | 2026-FEB | ✅ |
+
+### Invalid Test Cases
+
+| Filename | Error |
+|----------|-------|
+| `RIA_16M.csv` | No frequency keyword, pattern mismatch |
+| `Flu_XXA_2026FEB.csv` | Missing frequency keyword |
+| `MonthlyRI_XYZ_2026FEB.csv` | Entity `XYZ` doesn't end in `A` |
+| `MonthlyRI_XXA_26FEB.csv` | Year must be 4 digits |
+| `QuarterlyRI_XXA_2026Q5.csv` | Quarter must be 1–4 |
+| `MonthlyRI_XXA_2026Q1.csv` | Monthly frequency with quarterly date |
+| `MonthlyRI_XXA_2026JAN.csv` (period=2026-FEB) | Date doesn't match period |
+
+### Period Normalisation
+
+```java
+String normalizedPeriod = period.trim().toUpperCase().replace("-", "");
+// "2026-FEB" → "2026FEB"
+// "2026Q2"   → "2026Q2"
+```

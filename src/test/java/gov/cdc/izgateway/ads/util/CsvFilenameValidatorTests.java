@@ -41,11 +41,11 @@ class CsvFilenameValidatorTests {
 
     @Test
     void validate_testPrefix_passesWithPeriodAndEntity() {
-        CsvFilenameValidationResult result =
-            CsvFilenameValidator.validate("testMonthlyRSV_XXA_2022SEP.csv", "MONTHLY", "XXA", "2022-SEP");
+        CsvFilenameComponents result =
+            CsvFilenameValidator.validate("testMonthlyRSV_XXA_2022SEP.csv", "XXA", "2022-SEP");
 
         assertTrue(result.isValid(), () -> "Expected valid but got errors: " + result.getErrors());
-        assertTrue(result.getComponents().isTestFile());
+        assertTrue(result.isTestFile());
     }
 
     // -------------------------------------------------------------------------
@@ -70,8 +70,8 @@ class CsvFilenameValidatorTests {
 
     @Test
     void validate_monthlyRSV_passesAllChecks() {
-        CsvFilenameValidationResult result =
-            CsvFilenameValidator.validate("MonthlyRSV_XXA_2022SEP.csv", "MONTHLY", "XXA", "2022-SEP");
+        CsvFilenameComponents result =
+            CsvFilenameValidator.validate("MonthlyRSV_XXA_2022SEP.csv", "XXA", "2022-SEP");
 
         assertTrue(result.isValid(), () -> result.getErrors().toString());
     }
@@ -98,8 +98,8 @@ class CsvFilenameValidatorTests {
 
     @Test
     void validate_monthlyFlu_passesAllChecks() {
-        CsvFilenameValidationResult result =
-            CsvFilenameValidator.validate("MonthlyFlu_XXA_2022SEP.csv", "MONTHLY", "XXA", "2022-SEP");
+        CsvFilenameComponents result =
+            CsvFilenameValidator.validate("MonthlyFlu_XXA_2022SEP.csv", "XXA", "2022-SEP");
 
         assertTrue(result.isValid(), () -> result.getErrors().toString());
     }
@@ -126,8 +126,8 @@ class CsvFilenameValidatorTests {
 
     @Test
     void validate_monthlyFarmerFlu_passesAllChecks() {
-        CsvFilenameValidationResult result =
-            CsvFilenameValidator.validate("MonthlyFarmerFlu_XXA_2022SEP.csv", "MONTHLY", "XXA", "2022-SEP");
+        CsvFilenameComponents result =
+            CsvFilenameValidator.validate("MonthlyFarmerFlu_XXA_2022SEP.csv", "XXA", "2022-SEP");
 
         assertTrue(result.isValid(), () -> result.getErrors().toString());
     }
@@ -154,8 +154,8 @@ class CsvFilenameValidatorTests {
 
     @Test
     void validate_monthlyMeasles_passesAllChecks() {
-        CsvFilenameValidationResult result =
-            CsvFilenameValidator.validate("MonthlyMeasles_XXA_2022SEP.csv", "MONTHLY", "XXA", "2022-SEP");
+        CsvFilenameComponents result =
+            CsvFilenameValidator.validate("MonthlyMeasles_XXA_2022SEP.csv", "XXA", "2022-SEP");
 
         assertTrue(result.isValid(), () -> result.getErrors().toString());
     }
@@ -187,8 +187,8 @@ class CsvFilenameValidatorTests {
 
     @Test
     void validate_riQuarterlyAggregate_passesAllChecks() {
-        CsvFilenameValidationResult result =
-            CsvFilenameValidator.validate("riQuarterlyAggregate_XXA_2025Q4.csv", "QUARTERLY", "XXA", "2025Q4");
+        CsvFilenameComponents result =
+            CsvFilenameValidator.validate("riQuarterlyAggregate_XXA_2025Q4.csv", "XXA", "2025Q4");
 
         assertTrue(result.isValid(), () -> "Expected valid but got errors: " + result.getErrors());
     }
@@ -206,8 +206,8 @@ class CsvFilenameValidatorTests {
 
     @Test
     void validate_RIA_16M_failsWithError() {
-        CsvFilenameValidationResult result =
-            CsvFilenameValidator.validate("RIA_16M.csv", "MONTHLY", "RIA", null);
+        CsvFilenameComponents result =
+            CsvFilenameValidator.validate("RIA_16M.csv", "RIA", null);
 
         assertFalse(result.isValid());
         assertFalse(result.getErrors().isEmpty());

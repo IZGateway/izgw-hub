@@ -1,6 +1,7 @@
 package gov.cdc.izgateway.ads.util;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -18,23 +19,24 @@ import org.apache.commons.lang3.Strings;
  * For example: {@code MonthlyFlu_XXA_2026FEB.csv}, {@code riQuarterlyAggregate_XXA_2025Q4.csv}
  * </p>
  *
+ * <p>The frequency keyword in the filename determines whether the submission is monthly
+ * or quarterly — no external period-type lookup is performed.  Monthly is the default
+ * assumption when no frequency keyword can be detected.</p>
+ *
  * <h2>Validation Checks</h2>
  * <ol>
  *   <li><strong>Pattern parse</strong> – filename must match the expected regex structure
- *       and contain a recognisable frequency keyword in the first segment</li>
- *   <li><strong>Frequency / period-type match</strong> – detected frequency must be
- *       consistent with the report type's {@code periodType} ("MONTHLY", "QUARTERLY", or "BOTH")</li>
+ *       and contain a recognisable frequency keyword in the first segment; fail-fast</li>
  *   <li><strong>Entity ID match</strong> – entity code in the filename must match the
- *       expected facility/entity value</li>
+ *       expected facility/entity value (when provided)</li>
  *   <li><strong>Date / period match</strong> – date encoded in the filename must match the
- *       {@code period} parameter supplied at submission time</li>
+ *       {@code period} parameter supplied at submission time (when provided)</li>
  * </ol>
  *
  * <p>ZIP filename validation is handled by {@link gov.cdc.izgateway.ads.ZipFilenameComponents}.</p>
  * <p>All methods are static; this class is not instantiable.</p>
  *
  * @see CsvFilenameComponents
- * @see CsvFilenameValidationResult
  */
 public final class CsvFilenameValidator {
 
@@ -42,7 +44,7 @@ public final class CsvFilenameValidator {
      * Regex pattern for the structural parts of a CSV ADS filename.
      * <pre>
      * Group 1 – Prefix segment:     everything before the first underscore (frequency + report type)
-     * Group 2 – Entity ID:          exactly 2 uppercase letters followed by 'A'
+     * Group 2 – Entity ID:          exactly 2 letters followed by 'A' (case-insensitive)
      * Group 3 – Full date string:   YYYYQ# or YYYYMMM
      * Group 4 – Quarterly year:     4 digits  (present only for quarterly dates)
      * Group 5 – Quarter number:     1-4       (present only for quarterly dates)
@@ -72,8 +74,7 @@ public final class CsvFilenameValidator {
      * <p>
      * The frequency keyword ("Monthly" or "Quarterly") is detected case-insensitively
      * anywhere within the first underscore-delimited segment and then removed to leave
-     * the report-type abbreviation — the same technique used for the "test" word.
-     * The extension is always returned in lowercase.
+     * the report-type abbreviation.  The extension is always returned in lowercase.
      * </p>
      *
      * @param filename the raw filename (with extension) to parse; may be {@code null}
@@ -136,38 +137,36 @@ public final class CsvFilenameValidator {
     }
 
     /**
-     * Validate a CSV ADS submission filename against the four required business rules.
+     * Validate a CSV ADS submission filename against three business rules.
      *
      * <ol>
-     *   <li>The filename must match the expected structural pattern.</li>
-     *   <li>The frequency prefix ("Monthly"/"Quarterly") must be consistent with
-     *       the report type's {@code periodType}.</li>
+     *   <li>The filename must match the expected structural pattern (fail-fast).</li>
      *   <li>The entity ID encoded in the filename must match {@code expectedEntity}
      *       (case-insensitive). Pass {@code null} to skip this check.</li>
      *   <li>The date encoded in the filename must match the {@code period} parameter
      *       supplied at submission time. Pass {@code null} to skip this check.</li>
      * </ol>
      *
+     * <p>The frequency keyword in the filename ("Monthly"/"Quarterly") determines
+     * the submission cadence; no external period-type is required.  Monthly is
+     * assumed as the default when no frequency keyword is detectable.</p>
+     *
      * @param filename       the raw filename to validate (with extension)
-     * @param periodType     the report type's period classification:
-     *                       {@code "MONTHLY"}, {@code "QUARTERLY"}, or {@code "BOTH"};
-     *                       pass {@code null} to skip the frequency check
      * @param expectedEntity the expected entity/facility code (e.g. {@code "XXA"});
      *                       pass {@code null} to skip the entity check
      * @param period         the submission period parameter (e.g. {@code "2026-FEB"} or
      *                       {@code "2026Q2"}); pass {@code null} to skip the period check
-     * @return a {@link CsvFilenameValidationResult} describing whether validation passed
-     *         and any errors that were found
+     * @return a {@link CsvFilenameComponents} describing the parse result and any errors;
+     *         call {@link CsvFilenameComponents#isValid()} to check success
      */
-    public static CsvFilenameValidationResult validate(
+    public static CsvFilenameComponents validate(
             String filename,
-            String periodType,
             String expectedEntity,
             String period) {
 
         List<String> errors = new ArrayList<>();
 
-        // Check 1: structural pattern parse
+        // Check 1: structural pattern parse (fail-fast)
         CsvFilenameComponents components = parseFilename(filename);
         if (components == null) {
             errors.add(String.format(
@@ -175,21 +174,34 @@ public final class CsvFilenameValidator {
                 "[Monthly|Quarterly][ReportType]_[XXA]_[YYYY(MMM|Q#)].(csv|zip). " +
                 "Examples: MonthlyFlu_XXA_2026FEB.csv, QuarterlyRI_XXA_2026Q2.csv",
                 filename));
-            return CsvFilenameValidationResult.failure(errors, null);
+            return CsvFilenameComponents.builder()
+                    .errors(Collections.unmodifiableList(errors))
+                    .build();
         }
 
-        // Check 2: frequency / period-type consistency
-        validateFrequency(filename, components, periodType, errors);
-
-        // Check 3: entity ID match
+        // Check 2: entity ID match
         validateEntity(filename, components, expectedEntity, errors);
 
-        // Check 4: date / period match
+        // Check 3: date / period match
         validatePeriod(filename, components, period, errors);
 
-        return errors.isEmpty()
-                ? CsvFilenameValidationResult.success(components)
-                : CsvFilenameValidationResult.failure(errors, components);
+        if (errors.isEmpty()) {
+            return components;
+        }
+
+        // Rebuild with errors attached
+        return CsvFilenameComponents.builder()
+                .frequency(components.getFrequency())
+                .reportTypeAbbrev(components.getReportTypeAbbrev())
+                .entityId(components.getEntityId())
+                .dateString(components.getDateString())
+                .year(components.getYear())
+                .month(components.getMonth())
+                .quarter(components.getQuarter())
+                .extension(components.getExtension())
+                .testFile(components.isTestFile())
+                .errors(Collections.unmodifiableList(errors))
+                .build();
     }
 
     // -------------------------------------------------------------------------
@@ -197,39 +209,7 @@ public final class CsvFilenameValidator {
     // -------------------------------------------------------------------------
 
     /**
-     * Check 2: The filename's frequency keyword must be compatible with the report type's
-     * {@code periodType}.
-     * <ul>
-     *   <li>{@code "MONTHLY"} requires the {@code "Monthly"} prefix.</li>
-     *   <li>{@code "QUARTERLY"} requires the {@code "Quarterly"} prefix.</li>
-     *   <li>{@code "BOTH"} accepts either prefix.</li>
-     * </ul>
-     */
-    private static void validateFrequency(
-            String filename,
-            CsvFilenameComponents components,
-            String periodType,
-            List<String> errors) {
-
-        if (StringUtils.isBlank(periodType) || "BOTH".equalsIgnoreCase(periodType)) {
-            return;
-        }
-
-        if ("MONTHLY".equalsIgnoreCase(periodType) && !components.isMonthly()) {
-            errors.add(String.format(
-                "Filename '%s' must start with 'Monthly' for report types with periodType MONTHLY " +
-                "(found '%s')",
-                filename, components.getFrequency()));
-        } else if ("QUARTERLY".equalsIgnoreCase(periodType) && !components.isQuarterly()) {
-            errors.add(String.format(
-                "Filename '%s' must start with 'Quarterly' for report types with periodType QUARTERLY " +
-                "(found '%s')",
-                filename, components.getFrequency()));
-        }
-    }
-
-    /**
-     * Check 3: The entity ID in the filename must match the expected entity value
+     * Check 2: The entity ID in the filename must match the expected entity value
      * (case-insensitive comparison).
      */
     private static void validateEntity(
@@ -249,7 +229,7 @@ public final class CsvFilenameValidator {
     }
 
     /**
-     * Check 4: The date encoded in the filename must match the submission period parameter.
+     * Check 3: The date encoded in the filename must match the submission period parameter.
      * <p>
      * The period parameter may arrive in several formats (e.g. {@code "2026-FEB"},
      * {@code "2026FEB"}, {@code "2026Q4"}). Both sides are normalised by uppercasing and

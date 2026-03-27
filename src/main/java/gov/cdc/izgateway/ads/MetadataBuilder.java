@@ -1,7 +1,6 @@
 package gov.cdc.izgateway.ads;
 
 import gov.cdc.izgateway.ads.util.CsvFilenameComponents;
-import gov.cdc.izgateway.ads.util.CsvFilenameValidationResult;
 import gov.cdc.izgateway.ads.util.CsvFilenameValidator;
 import gov.cdc.izgateway.logging.event.EventIdMdcConverter;
 import gov.cdc.izgateway.logging.event.TransactionData;
@@ -110,7 +109,7 @@ public class MetadataBuilder {
      * <ul>
      *   <li>{@code meta_ext_event} – from {@code computeMetaExtEvent()}</li>
      *   <li>{@code meta_ext_event_type} – always the raw report type name</li>
-     *   <li>{@code data_stream_id} – from {@link IAccessControlService#computeDataStreamId(String)}</li>
+     *   <li>{@code data_stream_id} – from {@link MetadataBuilder#computeDataStreamId(String)}</li>
      * </ul>
      * </p>
      *
@@ -135,7 +134,7 @@ public class MetadataBuilder {
         String metaExtEvent = computeMetaExtEvent(reportType);
         meta.setExtEvent(metaExtEvent);
         meta.setExtEventType(reportType);
-        meta.setDataStreamId(IAccessControlService.computeDataStreamId(reportType));
+        meta.setDataStreamId(computeDataStreamId(reportType));
 
         // Force V2 if Generic is used.
         if (GENERIC.equals(metaExtEvent)) {
@@ -230,10 +229,8 @@ public class MetadataBuilder {
      * All inputs come from previously set {@code meta} fields.
      */
     private void validateCsvMetadata() {
-        String periodType = computePeriodType(meta.getExtEvent());
-        CsvFilenameValidationResult result = CsvFilenameValidator.validate(
+        CsvFilenameComponents result = CsvFilenameValidator.validate(
                 meta.getFilename(),
-                periodType,
                 meta.getExtEntity(),
                 meta.getPeriod());
         errors.addAll(result.getErrors());
@@ -296,33 +293,47 @@ public class MetadataBuilder {
     }
 
     /**
-     * Compute the period type (MONTHLY, QUARTERLY, or BOTH) from the fileTypeName.
-     * Rules:
+     * Compute the ADS data stream ID from a file type name by converting camelCase
+     * (including acronyms) to kebab-case and lowercasing the result.
+     * <p>
+     * A hyphen is inserted before an uppercase letter when:
      * <ul>
-     *   <li>Contains "quarter" → QUARTERLY</li>
-     *   <li>Starts with "ri" or equals "routineImmunization" → QUARTERLY</li>
-     *   <li>Equals "genericImmunization" → BOTH</li>
-     *   <li>Default → MONTHLY</li>
+     *   <li>the preceding character is a lowercase letter or digit
+     *       (e.g. {@code farmerFlu} → {@code farmer-flu}), or</li>
+     *   <li>the preceding character is uppercase <em>and</em> the following character
+     *       is lowercase, marking the boundary between an acronym and the next word
+     *       (e.g. {@code RIQuarterlyAggregate} → {@code ri-quarterly-aggregate}).</li>
+     * </ul>
+     * <p>Examples:</p>
+     * <ul>
+     *   <li>{@code "routineImmunization"} → {@code "routine-immunization"}</li>
+     *   <li>{@code "RIQuarterlyAggregate"} → {@code "ri-quarterly-aggregate"}</li>
+     *   <li>{@code "COVID19Vaccine"} → {@code "covid19-vaccine"}</li>
      * </ul>
      *
-     * @param fileTypeName the file type name
-     * @return the computed period type
+     * @param fileTypeName the file type name to convert
+     * @return the computed data stream ID, or {@code "generic-immunization"} if the input is null/empty
      */
-    static String computePeriodType(String fileTypeName) {
+    static String computeDataStreamId(String fileTypeName) {
         if (fileTypeName == null || fileTypeName.isEmpty()) {
-            return "MONTHLY";
+            return "generic-immunization";
         }
-        String lower = fileTypeName.toLowerCase();
-        if (lower.contains("quarter")) {
-            return "QUARTERLY";
+        StringBuilder result = new StringBuilder();
+        int len = fileTypeName.length();
+        for (int i = 0; i < len; i++) {
+            char c = fileTypeName.charAt(i);
+            if (i > 0 && Character.isUpperCase(c)) {
+                char prev = fileTypeName.charAt(i - 1);
+                char next = (i + 1 < len) ? fileTypeName.charAt(i + 1) : '\0';
+                boolean prevLowerOrDigit = Character.isLowerCase(prev) || Character.isDigit(prev);
+                boolean nextLower = Character.isLowerCase(next);
+                if (prevLowerOrDigit || (Character.isUpperCase(prev) && nextLower)) {
+                    result.append('-');
+                }
+            }
+            result.append(Character.toLowerCase(c));
         }
-        if (lower.startsWith("ri") || lower.equals("routineimmunization")) {
-            return "QUARTERLY";
-        }
-        if (GENERIC.equals(fileTypeName)) {
-            return "BOTH";
-        }
-        return "MONTHLY";
+        return result.toString();
     }
 
     /**
