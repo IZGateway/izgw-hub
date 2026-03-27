@@ -291,7 +291,7 @@ public class ADSController implements ADSChecker {
 
 	private MetadataImpl getMetadata(String messageId, String destinationId, String facilityId, String reportType,
 			String period, String filename, boolean force) throws MetadataFault {
-		MetadataBuilder m = new MetadataBuilder();
+		MetadataBuilder m = new MetadataBuilder(config.getAccessControls());
 		TransactionData tData = initLogging(destinationId, messageId, m);
 
 		m.setRouteId(config.getDests(), destinationId);
@@ -422,9 +422,7 @@ public class ADSController implements ADSChecker {
 			@RequestHeader(name = "X-Request-ID", required = false) String xRequestId,
 			@RequestHeader(name = "X-Correlation-ID", required = false) String xCorrelationId,
 			@RequestParam("facilityId") @Schema(description = "The submitting jurisdiction in scA format where sc = the jurisidiction state code (e.g., MAA for Massachusetts). XXA can be used for testing", pattern = "[A-Z][A-Z]A") String facilityId,
-			@Schema(description = "The type of report", allowableValues = { "covidAllMonthlyVaccination",
-					"influenzaVaccination", "rsvPrevention", "routineImmunization",
-					"farmerFlu", "measlesVaccination" }) @RequestParam("reportType") String reportType,
+			@Schema(description = "The type of report. See GET /rest/ads/reportTypes for the current list of valid values.") @RequestParam("reportType") String reportType,
 			@Schema(description = "The file to upload, either a CSV file for RVR submissions, or a .ZIP file for Routine Immunization Reporting") @RequestParam("file") MultipartFile file,
 			@Schema(description = "The period in YYYY-MMM format for RVR files, or YYYYQ# for RI files") @RequestParam("period") String period,
 			@RequestParam(required = false) String filename,
