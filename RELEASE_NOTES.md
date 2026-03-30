@@ -1,3 +1,9 @@
+# IZ Gateway Release 2.12.0
+
+- IGDD-2136 - Display System Resources Widget on the Home page
+- IGDD-2521 - Update Dex to use CryptoStorage for reading passwords from database
+- IGDD-2572 - Bump com.fasterxml.jackson.core:jackson-core dependency version
+
 # IZ Gateway Release 2.11.0
 
 - IGDD-2413 IZG Hub logging issue when credentials are incorrect.
