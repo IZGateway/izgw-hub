@@ -12,11 +12,20 @@ import org.apache.commons.lang3.time.FastDateFormat;
 
 import lombok.Data;
 
-/** 
- * This class is used to verify that metadata aligns with a filename.
+/**
+ * Parses and validates ZIP (routine immunization) filenames for ADS submissions.
+ * <p>
+ * ZIP filenames follow the format {@code EEE_YYYYMMDD_yyyymmdd_Z.zip}
+ * (entity_startdate_submissiondate_zone). This class also detects the "test" keyword
+ * in any filename to set the {@link #testfile} flag.
+ * </p>
+ * <p>
+ * CSV filename validation is handled separately by
+ * {@link gov.cdc.izgateway.ads.util.CsvFilenameValidator}.
+ * </p>
  */
 @Data
-class ParsedFilename {
+class ZipFilenameComponents {
 	public static final String ROUTINE_IMMUNIZATION = "routineImmunization";
 	String entityId = "";
 	String submissionDate = "";
@@ -29,47 +38,41 @@ class ParsedFilename {
 	List<String> errors;
 	boolean formatError = false;
 	boolean testfile = false;
-	
-	private ParsedFilename(String filename, List<String> errors) {
+
+	private ZipFilenameComponents(String filename, List<String> errors) {
 		if (errors == null) {
 			errors = new ArrayList<>();
 		}
-		// Save the original filename in case we need it later.
 		this.originalFilename = filename;
-		// If this file is for testing (based on name)
 		if (Strings.CI.contains(filename, "test")) {
-			// Set testing flag and adjust filename.
 			testfile = true;
 			filename = Strings.CI.remove(filename, "test");
 		}
 		this.filename = filename;
 		this.errors = errors;
-    	parts = StringUtils.substringBeforeLast(filename,".").split("_");
+		parts = StringUtils.substringBeforeLast(filename, ".").split("_");
 	}
-	
-	static ParsedFilename parse(String filename, List<String> errors) {
-		ParsedFilename parsed = new ParsedFilename(filename, errors);
+
+	/**
+	 * Parse a ZIP filename. CSV validation is delegated to
+	 * {@link gov.cdc.izgateway.ads.util.CsvFilenameValidator} and should not be
+	 * passed here.
+	 *
+	 * @param filename the filename to parse
+	 * @param errors   list to which any validation errors are appended
+	 * @return the parsed result (testfile flag is always populated regardless of extension)
+	 */
+	static ZipFilenameComponents parse(String filename, List<String> errors) {
+		ZipFilenameComponents parsed = new ZipFilenameComponents(filename, errors);
 		String ext = StringUtils.substringAfterLast(filename, ".");
 		if (ext.equalsIgnoreCase("zip")) {
 			parsed.parseRoutineImmunizationFilename();
-		} else if (ext.equalsIgnoreCase("csv")) {
-			parsed.parseRiverFilename();
-		} else {
-			parsed.formatError = true;
-			parsed.errors.add(String.format("Filename (%s) is invalid. It must be a CSV or ZIP file.", filename));
 		}
+		// CSV validation is handled by CsvFilenameValidator; no action needed here.
 		return parsed;
 	}
-	
-	private void parseRiverFilename() {
-		filetype = checkRiverFilename(parts);
-		entityId = parts.length > 1 ? parts[1] : "";
-		period = parts.length > 2 ? parts[2] : "";
-		date = checkPeriod("yyyyMMM");
-	}
-	
+
 	private void parseRoutineImmunizationFilename() {
-		// Routine Immunization
 		entityId = parts.length > 0 ? parts[0] : "";
 		if (parts.length < 2 || StringUtils.isEmpty(parts[1])) {
 			formatError = true;
@@ -79,38 +82,18 @@ class ParsedFilename {
 		if (parts.length < 3 || StringUtils.isEmpty(parts[2])) {
 			formatError = true;
 		} else {
-    		submissionDate = parts[2];  
+			submissionDate = parts[2];
 		}
 		filetype = ROUTINE_IMMUNIZATION;
 		if (formatError) {
-	    	errors.add(
-	    		String.format(
-	    			"Filename (%s) is in wrong format (It is expected to match EEE_YYYYMMDD_yyyymmdd_Z.zip)", 
-	    			filename)
-	    		);
+			errors.add(String.format(
+				"Filename (%s) is in wrong format (It is expected to match EEE_YYYYMMDD_yyyymmdd_Z.zip)",
+				filename));
 		} else {
 			date = checkPeriod("yyyyMMdd");
 		}
 	}
-	private String checkRiverFilename(String[] parts) {
-		// Monthly files
-		filetype = parts.length > 0 ? parts[0] : "";
-		if (Strings.CI.contains(filetype, "farmer")) {
-		    filetype = "farmerFluVaccination";
-		} else if (Strings.CI.contains(filetype, "flu")) {
-		    filetype = "influenzaVaccination";
-		} else if (Strings.CI.contains(filetype, "rsv")) {
-			filetype = "rsvPrevention";
-		} else if (Strings.CI.contains(filetype, "all")) {
-			filetype = "covidallMonthlyVaccination";
-		} else if (Strings.CI.contains(filetype, "measles")) {
-			filetype = "measlesVaccination";
-		} else {
-		    filetype = "genericImmunization";
-		}
-		return filetype;
-	}
-	
+
 	private Date parseDate(String dateString, String format) {
 		FastDateFormat ft = FastDateFormat.getInstance(format);
 		try {
@@ -120,16 +103,16 @@ class ParsedFilename {
 			return null;
 		}
 	}
-	
+
 	private Date checkPeriod(String format) {
 		Date start = parseDate(period, format);
 		Date end = StringUtils.isNotEmpty(submissionDate) ? parseDate(submissionDate, format) : null;
-		
+
 		if (end != null && end.before(start)) {
 			errors.add(String.format("Dates (%s %s) are invalid, start is after submission date.", period, submissionDate));
 		}
 
-		// Fix for Pacific Island Metadata Issue: IGDD-1644 
+		// Fix for Pacific Island Metadata Issue: IGDD-1644
 		Date tomorrow = new Date(System.currentTimeMillis() + Duration.ofDays(1).toMillis());
 		if ((start != null && tomorrow.before(start)) || (end != null && tomorrow.before(end))) {
 			if (end == null) {

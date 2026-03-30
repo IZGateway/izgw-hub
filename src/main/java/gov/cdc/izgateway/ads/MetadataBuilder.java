@@ -1,30 +1,33 @@
 package gov.cdc.izgateway.ads;
 
+import gov.cdc.izgateway.ads.util.CsvFilenameComponents;
+import gov.cdc.izgateway.ads.util.CsvFilenameValidator;
 import gov.cdc.izgateway.logging.event.EventIdMdcConverter;
 import gov.cdc.izgateway.logging.event.TransactionData;
 import gov.cdc.izgateway.model.IDestination;
+import gov.cdc.izgateway.model.IFileType;
+import gov.cdc.izgateway.service.IAccessControlService;
 import gov.cdc.izgateway.service.IDestinationService;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.MDC;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
 /**
  * This class implements the builder pattern to create Metadata for processing an ADS Request.
  * It handles all the business rules for validating content before building the Metadata object.
  */
+@Slf4j
 public class MetadataBuilder {
-	private static final String MONTH_PATTERN = "(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)";
+    private static final String MONTH_PATTERN = "(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)";
     private static final String PERIOD_PATTERN = "^\\d{4}(Q[1-4]|-" + MONTH_PATTERN + "|((-\\d{2}){1,2}))$";
     /**
      * This is the facility id assigned to IZ Gateway by NDLP.
@@ -35,13 +38,32 @@ public class MetadataBuilder {
     private String destUrl;
     @Getter
     @Setter
-	private boolean metadataValidationEnabled = true;
+    private boolean metadataValidationEnabled = true;
     private static final String DEFAULT_SCHEMA_VERSION = "2.0";
-	
+
+    /** Optional access control service used to look up registered file types. */
+    private final IAccessControlService accessControlService;
+
+    static final String GENERIC = "genericImmunization";
+
     /**
-     * Create a new MetadataBuider.
+     * Create a new MetadataBuilder without file-type lookup support.
+     * Report-type metadata will be computed purely from the report type name.
      */
     public MetadataBuilder() {
+        this(null);
+    }
+
+    /**
+     * Create a new MetadataBuilder with access to the file-type registry.
+     * When {@code accessControlService} is non-null, {@link #setReportType(String)} will
+     * validate the report type against the registry and warn if it is unrecognised.
+     *
+     * @param accessControlService the service used to look up registered file types, or
+     *                             {@code null} to skip registry validation
+     */
+    public MetadataBuilder(IAccessControlService accessControlService) {
+        this.accessControlService = accessControlService;
         meta.setExtSource("IZGW");
     }
 
@@ -75,36 +97,50 @@ public class MetadataBuilder {
         return errors;
     }
 
-    private static final Set<String> DEX_REPORT_TYPES = new LinkedHashSet<>(Arrays.asList(
-    		"covidallmonthlyvaccination",
-    		"influenzavaccination",
-    		"routineimmunization",
-    		"rsvprevention",
-    		"measlesvaccination"
-    		));
-    static final String GENERIC = "genericImmunization";
     /**
-     * Set the report type
-     * @param reportType the report type
-     * @return The metadata builder.
+     * Set the report type and compute all derived metadata fields from it.
+     * <p>
+     * If an {@link IAccessControlService} was supplied at construction time the report type
+     * is looked up in the file-type registry.  A warning is logged when the type is not
+     * found, but processing continues so that unregistered types still work.
+     * </p>
+     * <p>
+     * Derived fields set here:
+     * <ul>
+     *   <li>{@code meta_ext_event} – from {@code computeMetaExtEvent()}</li>
+     *   <li>{@code meta_ext_event_type} – always the raw report type name</li>
+     *   <li>{@code data_stream_id} – from {@link MetadataBuilder#computeDataStreamId(String)}</li>
+     * </ul>
+     * </p>
+     *
+     * @param reportType the report type name
+     * @return this builder
      */
     public MetadataBuilder setReportType(String reportType) {
-    	// If it's one of the original report types, set it
-    	// on meta_ext_event as well as meta_ext_event_type
-    	if (DEX_REPORT_TYPES.contains(reportType.toLowerCase())) {
-    		meta.setExtEvent(reportType);
-    	} else if ("farmerFlu".equalsIgnoreCase(reportType)) {
-    		meta.setExtEvent("farmerFluVaccination");
-    	} else {
-    		meta.setExtEvent(GENERIC);
-    		// Force V2 if Generic is used.
-    		meta.setExtSourceVersion(Metadata.DEX_VERSION2);
-    	}
-        meta.setExtEventType(reportType);
         if (StringUtils.isBlank(reportType)) {
             errors.add("Report Type must be present and not empty");
             return this;
         }
+
+        // Validate against the registered file-type registry when available.
+        if (accessControlService != null) {
+            IFileType fileType = accessControlService.getFileType(reportType);
+            if (fileType == null) {
+                log.warn("Report type '{}' is not registered in the file-type registry", reportType);
+            }
+        }
+
+        // Compute all metadata fields from the reportType name.
+        String metaExtEvent = computeMetaExtEvent(reportType);
+        meta.setExtEvent(metaExtEvent);
+        meta.setExtEventType(reportType);
+        meta.setDataStreamId(computeDataStreamId(reportType));
+
+        // Force V2 if Generic is used.
+        if (GENERIC.equals(metaExtEvent)) {
+            meta.setExtSourceVersion(Metadata.DEX_VERSION2);
+        }
+
         return this;
     }
 
@@ -137,16 +173,30 @@ public class MetadataBuilder {
      * @return	The MetadataBuilder
      */
     public MetadataBuilder setFilename(String filename) {
-    	filename = filename.trim();
+        filename = filename.trim();
         meta.setFilename(filename);
         if (!ADSUtils.validateFilename(filename)) {
             errors.add(String.format("Filename (%s) is invalid. Characters must be in the range of [0x20, 0xD7FF] and must not include  *, \\, ?, >, <, :, |, /, \\ or <DEL>", filename));
-        } 
-    	ParsedFilename pf = ParsedFilename.parse(filename, errors);
-   		meta.setTestFile(pf.isTestfile());
-   		
-        if (isMetadataValidationEnabled()) {
-           	validateMetadata(pf);
+        }
+
+        String ext = StringUtils.substringAfterLast(filename, ".").toLowerCase();
+        boolean isCsv = "csv".equals(ext);
+
+        if (isCsv) {
+            // CSV validation is handled entirely by CsvFilenameValidator.
+            // Use CsvFilenameValidator.parseFilename() to obtain the isTestFile flag only.
+            CsvFilenameComponents fc = CsvFilenameValidator.parseFilename(filename);
+            meta.setTestFile(fc != null && fc.isTestFile());
+            if (isMetadataValidationEnabled()) {
+                validateCsvMetadata();
+            }
+        } else {
+            // ZIP (routine immunization) files: use ZipFilenameComponents for parsing and validation.
+            ZipFilenameComponents zfc = ZipFilenameComponents.parse(filename, errors);
+            meta.setTestFile(zfc.isTestfile());
+            if (isMetadataValidationEnabled()) {
+                validateZipMetadata(zfc);
+            }
         }
         return this;
     }
@@ -174,33 +224,117 @@ public class MetadataBuilder {
         return this;
     }
     
-    private void validateMetadata(ParsedFilename pf ) {
-		if (!pf.getEntityId().equalsIgnoreCase(meta.getExtEntity())) {
-			errors.add(String.format("Entity ID (%s) does not match Entity (%s) in filename (%s)", meta.getExtEntity(), pf.getEntityId(), meta.getFilename()));
-		}
-		// Filetype validation isn't relevant when type is genericImmunization. These could be anything and we won't know.
-		if (!GENERIC.equalsIgnoreCase(meta.getExtEvent()) && !pf.getFiletype().equalsIgnoreCase(meta.getExtEvent())) {
-			errors.add(String.format("File type (%s) does not match file type (%s) in filename (%s)", meta.getExtEvent(), pf.getFiletype(), meta.getFilename()));
-		}
-		Calendar cal = Calendar.getInstance();
-		if (pf.getDate() != null) {
-			cal.setTime(pf.getDate());
-		}
-		Calendar metaDate = meta.getPeriodAsCalendar(); 
-		int divisor = pf.getFiletype().equals(ParsedFilename.ROUTINE_IMMUNIZATION) ? 3 : 1;
-		if (!checkDate(cal, metaDate, divisor)) {
-			// Failed first time through, try JUST one day later on date from file name
-			cal.add(Calendar.DAY_OF_MONTH, 1);
-			if (!checkDate(cal, metaDate, divisor)) {
-				errors.add(String.format("File date from filename (%s) does not match period (%s)", meta.getFilename(), meta.getPeriod()));
-			}
-		}
-	}
+    /**
+     * Validate metadata for CSV (RIVER) files using {@link CsvFilenameValidator}.
+     * All inputs come from previously set {@code meta} fields.
+     */
+    private void validateCsvMetadata() {
+        CsvFilenameComponents result = CsvFilenameValidator.validate(
+                meta.getFilename(),
+                meta.getExtEntity(),
+                meta.getPeriod());
+        errors.addAll(result.getErrors());
+    }
 
-	private boolean checkDate(Calendar cal, Calendar metaDate, int divisor) {
-		return cal.get(Calendar.MONTH) / divisor == metaDate.get(Calendar.MONTH) / divisor &&
-			cal.get(Calendar.YEAR) == metaDate.get(Calendar.YEAR);
-	}
+    /**
+     * Validate metadata for ZIP (routine immunization) files using {@link ZipFilenameComponents}.
+     * ZIP filenames follow a different structure than CSV files:
+     * {@code EEE_YYYYMMDD_yyyymmdd_Z.zip} (entity_startdate_submissiondate_zone).
+     *
+     * @param pf the parsed filename
+     */
+    private void validateZipMetadata(ZipFilenameComponents pf) {
+        if (!pf.getEntityId().equalsIgnoreCase(meta.getExtEntity())) {
+            errors.add(String.format("Entity ID (%s) does not match Entity (%s) in filename (%s)",
+                    meta.getExtEntity(), pf.getEntityId(), meta.getFilename()));
+        }
+        // Filetype validation isn't relevant when type is genericImmunization.
+        if (!GENERIC.equalsIgnoreCase(meta.getExtEvent()) && !pf.getFiletype().equalsIgnoreCase(meta.getExtEvent())) {
+            errors.add(String.format("File type (%s) does not match file type (%s) in filename (%s)",
+                    meta.getExtEvent(), pf.getFiletype(), meta.getFilename()));
+        }
+        Calendar cal = Calendar.getInstance();
+        if (pf.getDate() != null) {
+            cal.setTime(pf.getDate());
+        }
+        Calendar metaDate = meta.getPeriodAsCalendar();
+        int divisor = pf.getFiletype().equals(ZipFilenameComponents.ROUTINE_IMMUNIZATION) ? 3 : 1;
+        if (!checkDate(cal, metaDate, divisor)) {
+            // Failed first time through, try just one day later on date from file name.
+            cal.add(Calendar.DAY_OF_MONTH, 1);
+            if (!checkDate(cal, metaDate, divisor)) {
+                errors.add(String.format("File date from filename (%s) does not match period (%s)",
+                        meta.getFilename(), meta.getPeriod()));
+            }
+        }
+    }
+
+    private boolean checkDate(Calendar cal, Calendar metaDate, int divisor) {
+        return cal.get(Calendar.MONTH) / divisor == metaDate.get(Calendar.MONTH) / divisor
+                && cal.get(Calendar.YEAR) == metaDate.get(Calendar.YEAR);
+    }
+
+    /**
+     * Compute the meta_ext_event value from the fileTypeName.
+     * Special case: "farmerFlu" becomes "farmerFluVaccination" for backward compatibility.
+     *
+     * @param fileTypeName the file type name
+     * @return the computed meta_ext_event value
+     */
+    private static String computeMetaExtEvent(String fileTypeName) {
+        if (fileTypeName == null || fileTypeName.isEmpty()) {
+            return GENERIC;
+        }
+        // Special case for backward compatibility
+        if ("farmerFlu".equalsIgnoreCase(fileTypeName)) {
+            return "farmerFluVaccination";
+        }
+        return fileTypeName;
+    }
+
+    /**
+     * Compute the ADS data stream ID from a file type name by converting camelCase
+     * (including acronyms) to kebab-case and lowercasing the result.
+     * <p>
+     * A hyphen is inserted before an uppercase letter when:
+     * <ul>
+     *   <li>the preceding character is a lowercase letter or digit
+     *       (e.g. {@code farmerFlu} → {@code farmer-flu}), or</li>
+     *   <li>the preceding character is uppercase <em>and</em> the following character
+     *       is lowercase, marking the boundary between an acronym and the next word
+     *       (e.g. {@code RIQuarterlyAggregate} → {@code ri-quarterly-aggregate}).</li>
+     * </ul>
+     * <p>Examples:</p>
+     * <ul>
+     *   <li>{@code "routineImmunization"} → {@code "routine-immunization"}</li>
+     *   <li>{@code "RIQuarterlyAggregate"} → {@code "ri-quarterly-aggregate"}</li>
+     *   <li>{@code "COVID19Vaccine"} → {@code "covid19-vaccine"}</li>
+     * </ul>
+     *
+     * @param fileTypeName the file type name to convert
+     * @return the computed data stream ID, or {@code "generic-immunization"} if the input is null/empty
+     */
+    static String computeDataStreamId(String fileTypeName) {
+        if (fileTypeName == null || fileTypeName.isEmpty()) {
+            return "generic-immunization";
+        }
+        StringBuilder result = new StringBuilder();
+        int len = fileTypeName.length();
+        for (int i = 0; i < len; i++) {
+            char c = fileTypeName.charAt(i);
+            if (i > 0 && Character.isUpperCase(c)) {
+                char prev = fileTypeName.charAt(i - 1);
+                char next = (i + 1 < len) ? fileTypeName.charAt(i + 1) : '\0';
+                boolean prevLowerOrDigit = Character.isLowerCase(prev) || Character.isDigit(prev);
+                boolean nextLower = Character.isLowerCase(next);
+                if (prevLowerOrDigit || (Character.isUpperCase(prev) && nextLower)) {
+                    result.append('-');
+                }
+            }
+            result.append(Character.toLowerCase(c));
+        }
+        return result.toString();
+    }
 
     /**
      * Set the route identifier

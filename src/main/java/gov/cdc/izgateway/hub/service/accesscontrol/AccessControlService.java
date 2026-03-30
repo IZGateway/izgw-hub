@@ -19,6 +19,7 @@ import gov.cdc.izgateway.hub.repository.IFileTypeRepository;
 import gov.cdc.izgateway.hub.repository.RepositoryFactory;
 import gov.cdc.izgateway.logging.RequestContext;
 import gov.cdc.izgateway.logging.markers.Markers2;
+import gov.cdc.izgateway.model.IFileType;
 import gov.cdc.izgateway.security.Roles;
 import gov.cdc.izgateway.service.IAccessControlRegistry;
 import gov.cdc.izgateway.service.IAccessControlService;
@@ -256,6 +257,18 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 		this.migrated = migrated;
 		this.currentModelHelper = migrated ? newModelHelper : oldModelHelper;
 		refresh();
+	}
+
+	/**
+	 * Look up a FileType by report type name (case-insensitive).
+	 * Delegates to NewModelHelper which holds the fileTypeCache.
+	 *
+	 * @param reportType the report type name (e.g. "routineImmunization")
+	 * @return the matching FileType, or null if not found
+	 */
+	@Override
+	public IFileType getFileType(String reportType) {
+		return newModelHelper.getFileType(reportType);
 	}
 
 	/**
