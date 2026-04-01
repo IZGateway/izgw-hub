@@ -43,6 +43,8 @@ public class MetadataImpl implements Metadata {
 	private String submissionStatus;
 	private String submissionLocation;
 	private boolean isTestFile;
+	/** Computed data stream ID stored at report-type resolution time. Null until set. */
+	private String dataStreamId;
 	@JsonIgnore
     private transient IDestination destination;
 
@@ -80,9 +82,10 @@ public class MetadataImpl implements Metadata {
     	submissionStatus = resp.getSubmissionStatus();
     	submissionLocation = resp.getSubmissionLocation();
     	isTestFile = resp.isTestFile();
-    	
+
         if (resp instanceof MetadataImpl r2) {
         	destination = r2.getDestination();
+        	dataStreamId = r2.getDataStreamId();
         }
     }
 
@@ -107,6 +110,9 @@ public class MetadataImpl implements Metadata {
 			break;
 		case "meta_ext_event_type":
 			setExtEventType(value);
+			break;
+		case "data_stream_id":
+			setDataStreamId(value);
 			break;
 		case "meta_ext_entity":
 			setExtEntity(value);
@@ -164,6 +170,19 @@ public class MetadataImpl implements Metadata {
 	public void setExtSourceVersion(String version) {
 		extSourceVersion = version;
     	setSchemaVersion(getVersion());
+	}
+
+	/**
+	 * Returns the stored data stream ID if one has been computed and stored, otherwise
+	 * falls back to the default computation in the {@link Metadata} interface.
+	 * @return the data stream ID for this submission
+	 */
+	@Override
+	public String getDataStreamId() {
+		if (dataStreamId != null) {
+			return dataStreamId;
+		}
+		return Metadata.super.getDataStreamId();
 	}
 	
 	private static final List<String> MONTHS = Arrays.asList("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC");

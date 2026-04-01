@@ -14,6 +14,7 @@ import gov.cdc.izgateway.dynamodb.model.FileType;
 import gov.cdc.izgateway.logging.RequestContext;
 import gov.cdc.izgateway.model.IAccessGroup;
 import gov.cdc.izgateway.model.IDenyListRecord;
+import gov.cdc.izgateway.model.IFileType;
 import gov.cdc.izgateway.repository.IRepository;
 import gov.cdc.izgateway.utils.SystemUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -96,7 +97,35 @@ class NewModelHelper implements AccessControlModelHelper {
 	public Set<String> getEventTypes() {
 		return 	fileTypeCache.keySet();
 	}
-	
+
+	/**
+	 * Look up a FileType by report type name, case-insensitively.
+	 * The underlying fileTypeCache is keyed by the exact fileTypeName from the database,
+	 * so this method iterates the cache entries to find a case-insensitive match.
+	 *
+	 * @param reportType the report type name to look up
+	 * @return the matching FileType, or null if not found or input is blank
+	 */
+	IFileType getFileType(String reportType) {
+		if (reportType == null || reportType.isBlank()) {
+			return null;
+		}
+		if (fileTypeCache.isEmpty()) {
+			refresh();
+		}
+		// fileTypeCache is a TreeMap (case-sensitive); try exact match first
+		FileType exact = fileTypeCache.get(reportType);
+		if (exact != null) {
+			return exact;
+		}
+		// Fall back to case-insensitive scan
+		return fileTypeCache.entrySet().stream()
+				.filter(e -> e.getKey().equalsIgnoreCase(reportType))
+				.map(Map.Entry::getValue)
+				.findFirst()
+				.orElse(null);
+	}
+
 	@Override
 	public boolean isUserInRole(String user, String role) {
 		return accessGroupCache.values().stream()
