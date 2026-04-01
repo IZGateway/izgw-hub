@@ -1,3 +1,10 @@
+# IZ Gateway Release 2.13.0
+
+- IGDD-2464 Update ADS metadata to support riAggregateQuarterly reporting
+- IGDD-2635 org.springframework.security:spring-security-web version bump
+- IGDD-2660 bind version bump in base image
+- IGDD-2661 libpng version bump in base image
+
 # IZ Gateway Release 2.12.0
 
 - IGDD-2136 - Display System Resources Widget on the Home page
