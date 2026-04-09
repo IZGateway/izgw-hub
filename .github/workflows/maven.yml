@@ -10,6 +10,7 @@ on:
     branches:
       - Release*
       - develop
+  workflow_dispatch:
 
   # Schedule runs on the default branch.
   schedule:

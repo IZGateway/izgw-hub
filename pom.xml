@@ -6,13 +6,13 @@
 	<parent>
         <groupId>gov.cdc.izgw</groupId>
         <artifactId>izgw-bom</artifactId>
-        <version>1.4.0</version>
+        <version>1.5.0</version>
         <relativePath />
 	</parent>
 	<artifactId>izgw-hub</artifactId>
 	<packaging>jar</packaging>
-	<version>2.13.0-IZGW-RELEASE</version>
-	<name>IZ Gateway Hub 2.13.0</name>
+	<version>2.13.1-IZGW-RELEASE</version>
+	<name>IZ Gateway Hub 2.13.1</name>
 	<description>IZ Gateway Hub</description>
 	<properties>
 		<maven.build.timestamp.format>yyyyMMddHHmm</maven.build.timestamp.format>
