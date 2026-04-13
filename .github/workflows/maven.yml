@@ -433,7 +433,6 @@ jobs:
         # Just Running the Smoke Test ONCE should be enough to warm up
         newman run ../scripts/IZGW_2.0_Integration_Test.postman_collection.json -n 1 --folder "Smoke Test" \
           "--environment" ../scripts/dev.postman_environment.json \
-          "--timeout-request 360000" \
           "--ssl-extra-ca-certs" ../certs/izgwroot.pem \
           "--ssl-client-cert" ../newman.pem \
           "--ssl-client-key" ../newman.key \
@@ -453,6 +452,7 @@ jobs:
           "--env-var" "build=`grep Build target\classes\build.txt | cut '-d:' -f2 | cut -c2-99`" \
           "--env-var" "timestamp=`grep Timestamp target\classes\build.txt | cut '-d:' -f2 | cut -c2-99`" \
           "--environment" ../scripts/dev.postman_environment.json \
+          "--timeout-request" 360000 \
           "--ssl-extra-ca-certs" certs/izgwroot.pem \
           "--ssl-client-cert" ../newman.pem \
           "--ssl-client-key" ../newman.key \
