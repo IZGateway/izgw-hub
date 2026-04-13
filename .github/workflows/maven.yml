@@ -452,7 +452,6 @@ jobs:
           "--env-var" "build=`grep Build target\classes\build.txt | cut '-d:' -f2 | cut -c2-99`" \
           "--env-var" "timestamp=`grep Timestamp target\classes\build.txt | cut '-d:' -f2 | cut -c2-99`" \
           "--environment" ../scripts/dev.postman_environment.json \
-          "--timeout-request" 360000 \
           "--ssl-extra-ca-certs" certs/izgwroot.pem \
           "--ssl-client-cert" ../newman.pem \
           "--ssl-client-key" ../newman.key \
