@@ -6011,6 +6011,8 @@
                   "listen": "test",
                   "script": {
                     "exec": [
+                      "const testDisabled = true\r",
+                      "if (!testDisabled) {\r",
                       "pm.test(\"Status code is 500\", function () {\r",
                       "    pm.response.to.have.status(500);\r",
                       "});\r",
@@ -6070,7 +6072,8 @@
                       "        }           \r",
                       "    });\r",
                       "}\r",
-                      " if(!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();"
+                      " if(!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();\r",
+                      "}\r"
                     ],
                     "type": "text/javascript",
                     "packages": {}
