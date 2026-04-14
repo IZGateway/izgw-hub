@@ -1,3 +1,7 @@
+# IZ Gateway Release 2.13.2
+
+- Update dependency versions and base docker image
+
 # IZ Gateway Release 2.13.1
 
 - Update dependency versions and base docker image
