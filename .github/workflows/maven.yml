@@ -113,7 +113,13 @@ jobs:
                 <password>${{ secrets.GITHUB_TOKEN }}</password>
               </server>
             </servers>
-            <mirrors />
+            <mirrors>
+              <mirror>
+                <id>apache-snapshots-https</id>
+                <mirrorOf>apache.snapshots</mirrorOf>
+                <url>https://repository.apache.org/snapshots</url>
+              </mirror>
+            </mirrors>
             <proxies />
             <profiles />
             <activeProfiles />
