@@ -347,15 +347,12 @@ jobs:
   verify:
     needs: build
     runs-on: ubuntu-latest
-    env:
-      UV_TCP_KEEPALIVE_TIMEOUT: "120000"
     steps:
 
     - name: Collect Workflow Telemetry
       uses: catchpoint/workflow-telemetry-action@v2
 
     - uses: actions/checkout@v4
-
     - name: Set up Tools
       shell: bash
       run: |
