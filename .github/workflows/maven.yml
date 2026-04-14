@@ -347,14 +347,18 @@ jobs:
   verify:
     needs: build
     runs-on: ubuntu-latest
-    env:
-      NODE_OPTIONS: '--http-parser=legacy'
     steps:
 
     - name: Collect Workflow Telemetry
       uses: catchpoint/workflow-telemetry-action@v2
 
     - uses: actions/checkout@v4
+
+    - name: Pin Node.js to 20.20.1
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.20.1'
+
     - name: Set up Tools
       shell: bash
       run: |
