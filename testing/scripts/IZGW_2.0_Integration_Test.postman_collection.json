@@ -6005,127 +6005,6 @@
               "response": []
             },
             {
-              "name": "TC_13c Test against Unresponsive or down  IIS",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "const testDisabled = true\r",
-                      "if (!testDisabled) {\r",
-                      "pm.test(\"Status code is 500\", function () {\r",
-                      "    pm.response.to.have.status(500);\r",
-                      "});\r",
-                      "\r",
-                      "pm.test(\"Response has DestinationConnectionFault\", function () {\r",
-                      "    pm.expect(responseBody).to.contain('DestinationConnectionFault>');\r",
-                      "    pm.expect(responseBody).to.contain('urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessage:Fault:DestinationConnectionFault');\r",
-                      "});\r",
-                      "\r",
-                      "pm.test(\"Response has correct soap reason about connection time out\", function () {\r",
-                      "    var jsonObject = xml2Json(responseBody);\r",
-                      "    var reasonText= jsonObject['soap:Envelope']['soap:Body']['soap:Fault']['soap:Reason']['soap:Text']['_'];\r",
-                      "    pm.expect(reasonText).to.include(\"Connect Timeout\");\r",
-                      "});\r",
-                      "\r",
-                      "var response = utils.removeNS(xml2Json(responseBody));\r",
-                      "pm.test(\"Response has Summary = ConnectTimeout\", function() {\r",
-                      "   var summary = response['Envelope']['Body']['Fault']['Detail']['Summary'];\r",
-                      "   pm.expect(summary).to.be.eql('ConnectTimeout');\r",
-                      "});\r",
-                      "pm.test(\"Response has Retry = CHECK_IIS_STATUS\", function() {\r",
-                      "   var retry = response['Envelope']['Body']['Fault']['Detail']['Retry'];\r",
-                      "   pm.expect(retry).to.be.eql('CHECK_IIS_STATUS');\r",
-                      "});\r",
-                      "\r",
-                      "const interval = setTimeout(() => {}, 3000);\r",
-                      "async function moreTests() {\r",
-                      "    utils.getLogs(null, pm).then((logData) => {\r",
-                      "        logs = logData.json();\r",
-                      "        utils.testLogs(logs, pm, 0, \"DestinationConnectionFault\", \"ConnectTimeout\", \"CHECK_IIS_STATUS\");\r",
-                      "\r",
-                      "        txData = utils.getTxData(logs);\r",
-                      "        for (entry of txData) {\r",
-                      "            // Only check entries for Gateway, not for Mock\r",
-                      "            if (entry.transactionData.serviceType != \"Gateway\") {\r",
-                      "                continue;\r",
-                      "            }\r",
-                      "            if (entry.eventId < 2) continue; // Skip internal calls\r",
-                      "            pm.test(\"transactionData.destination.id is not null\", function () {\r",
-                      "                pm.expect(entry.transactionData.destination.id).to.not.be.eql(null);\r",
-                      "            });\r",
-                      "            pm.test(\"transactionData.destination.url is not null\", function () {\r",
-                      "                pm.expect(entry.transactionData.destination.url).to.not.be.eql(null);\r",
-                      "            });\r",
-                      "            pm.test(\"transactionData.destination.connected is false\", function () {\r",
-                      "                pm.expect(entry.transactionData.destination.connected).to.be.eql(false);\r",
-                      "            });\r",
-                      "            pm.test(\"transactionData.destination.ipAddress is not 'unknown'\", function () {\r",
-                      "                pm.expect(entry.transactionData.destination.ipAddress).to.not.be.eql(\"unknown\");\r",
-                      "            });\r",
-                      "            pm.test(\"transactionData.destination.cipherSuite is null\", function () {\r",
-                      "                pm.expect(entry.transactionData.destination.cipherSuite).to.be.eql(null);\r",
-                      "            });\r",
-                      "            pm.test(\"transactionData.destination.commonName is null\", function () {\r",
-                      "                pm.expect(entry.transactionData.destination.cipherSuite).to.be.eql(null);\r",
-                      "            });\r",
-                      "        }           \r",
-                      "    });\r",
-                      "}\r",
-                      " if(!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();\r",
-                      "}\r"
-                    ],
-                    "type": "text/javascript",
-                    "packages": {}
-                  }
-                },
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "exec": [
-                      "utils.setup(pm, \"down\");"
-                    ],
-                    "type": "text/javascript",
-                    "packages": {}
-                  }
-                }
-              ],
-              "protocolProfileBehavior": {
-                "disabledSystemHeaders": {
-                  "host": true
-                }
-              },
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Host",
-                    "value": "{{hostHeader}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/xml"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>down</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|||TEST|TC_13C|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS|SIISCLIENT28374</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
-                },
-                "url": {
-                  "raw": "https://{{host}}:{{port}}/IISHubService",
-                  "protocol": "https",
-                  "host": [
-                    "{{host}}"
-                  ],
-                  "port": "{{port}}",
-                  "path": [
-                    "IISHubService"
-                  ]
-                }
-              },
-              "response": []
-            },
-            {
               "name": "TC_13d Test against Rejecting IIS",
               "event": [
                 {
@@ -9670,7 +9549,8 @@
                           "utils.setup(pm);"
                         ],
                         "type": "text/javascript",
-                        "packages": {}
+                        "packages": {},
+                        "requests": {}
                       }
                     },
                     {
@@ -9713,7 +9593,8 @@
                           ""
                         ],
                         "type": "text/javascript",
-                        "packages": {}
+                        "packages": {},
+                        "requests": {}
                       }
                     }
                   ],
@@ -13104,6 +12985,124 @@
           ]
         },
         {
+          "name": "TC_13c Test against Unresponsive or down  IIS",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 500\", function () {\r",
+                  "    pm.response.to.have.status(500);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Response has DestinationConnectionFault\", function () {\r",
+                  "    pm.expect(responseBody).to.contain('DestinationConnectionFault>');\r",
+                  "    pm.expect(responseBody).to.contain('urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessage:Fault:DestinationConnectionFault');\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Response has correct soap reason about connection time out\", function () {\r",
+                  "    var jsonObject = xml2Json(responseBody);\r",
+                  "    var reasonText= jsonObject['soap:Envelope']['soap:Body']['soap:Fault']['soap:Reason']['soap:Text']['_'];\r",
+                  "    pm.expect(reasonText).to.include(\"Connect Timeout\");\r",
+                  "});\r",
+                  "\r",
+                  "var response = utils.removeNS(xml2Json(responseBody));\r",
+                  "pm.test(\"Response has Summary = ConnectTimeout\", function() {\r",
+                  "   var summary = response['Envelope']['Body']['Fault']['Detail']['Summary'];\r",
+                  "   pm.expect(summary).to.be.eql('ConnectTimeout');\r",
+                  "});\r",
+                  "pm.test(\"Response has Retry = CHECK_IIS_STATUS\", function() {\r",
+                  "   var retry = response['Envelope']['Body']['Fault']['Detail']['Retry'];\r",
+                  "   pm.expect(retry).to.be.eql('CHECK_IIS_STATUS');\r",
+                  "});\r",
+                  "\r",
+                  "const interval = setTimeout(() => {}, 3000);\r",
+                  "async function moreTests() {\r",
+                  "    utils.getLogs(null, pm).then((logData) => {\r",
+                  "        logs = logData.json();\r",
+                  "        utils.testLogs(logs, pm, 0, \"DestinationConnectionFault\", \"ConnectTimeout\", \"CHECK_IIS_STATUS\");\r",
+                  "\r",
+                  "        txData = utils.getTxData(logs);\r",
+                  "        for (entry of txData) {\r",
+                  "            // Only check entries for Gateway, not for Mock\r",
+                  "            if (entry.transactionData.serviceType != \"Gateway\") {\r",
+                  "                continue;\r",
+                  "            }\r",
+                  "            if (entry.eventId < 2) continue; // Skip internal calls\r",
+                  "            pm.test(\"transactionData.destination.id is not null\", function () {\r",
+                  "                pm.expect(entry.transactionData.destination.id).to.not.be.eql(null);\r",
+                  "            });\r",
+                  "            pm.test(\"transactionData.destination.url is not null\", function () {\r",
+                  "                pm.expect(entry.transactionData.destination.url).to.not.be.eql(null);\r",
+                  "            });\r",
+                  "            pm.test(\"transactionData.destination.connected is false\", function () {\r",
+                  "                pm.expect(entry.transactionData.destination.connected).to.be.eql(false);\r",
+                  "            });\r",
+                  "            pm.test(\"transactionData.destination.ipAddress is not 'unknown'\", function () {\r",
+                  "                pm.expect(entry.transactionData.destination.ipAddress).to.not.be.eql(\"unknown\");\r",
+                  "            });\r",
+                  "            pm.test(\"transactionData.destination.cipherSuite is null\", function () {\r",
+                  "                pm.expect(entry.transactionData.destination.cipherSuite).to.be.eql(null);\r",
+                  "            });\r",
+                  "            pm.test(\"transactionData.destination.commonName is null\", function () {\r",
+                  "                pm.expect(entry.transactionData.destination.cipherSuite).to.be.eql(null);\r",
+                  "            });\r",
+                  "        }           \r",
+                  "    });\r",
+                  "}\r",
+                  " if(!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "utils.setup(pm, \"down\");"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disabledSystemHeaders": {
+              "host": true
+            }
+          },
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Host",
+                "value": "{{hostHeader}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/xml"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>down</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|||TEST|TC_13C|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS|SIISCLIENT28374</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+            },
+            "url": {
+              "raw": "https://{{host}}:{{port}}/IISHubService",
+              "protocol": "https",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "IISHubService"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "Blacklist a User",
           "request": {
             "method": "POST",
@@ -14961,8 +14960,7 @@
   "variable": [
     {
       "key": "GoodMessage",
-      "value": "MSH|^~\\&amp;|IRIS IIS|IRIS|TEST|TC_04|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS|SIISCLIENT28374|\nQPD|Z34^Request Immunization History^CDCPHINVS|20210330093013LA231|LAMASM77BF4BA6^^^IZGATEWAYTEST&amp;2.16.840.1.113883.40.1&amp;ISO^MR|JohnsonIZG^James^Andrew^^^^L|Leung^Jen^^^^^M|20160414|M|Main Street&amp;&amp;123^^New Orleans^LA^70115^^L|^PRN^PH^^^555^5551111|Y|1",
-      "type": "string"
+      "value": "MSH|^~\\&amp;|IRIS IIS|IRIS|TEST|TC_04|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS|SIISCLIENT28374|\nQPD|Z34^Request Immunization History^CDCPHINVS|20210330093013LA231|LAMASM77BF4BA6^^^IZGATEWAYTEST&amp;2.16.840.1.113883.40.1&amp;ISO^MR|JohnsonIZG^James^Andrew^^^^L|Leung^Jen^^^^^M|20160414|M|Main Street&amp;&amp;123^^New Orleans^LA^70115^^L|^PRN^PH^^^555^5551111|Y|1"
     },
     {
       "key": "GoodResponse",
@@ -15006,13 +15004,11 @@
     },
     {
       "key": "azure-endpoint",
-      "value": "azurite",
-      "type": "string"
+      "value": "azurite"
     },
     {
       "key": "dex-endpoint",
-      "value": "dex-dev",
-      "type": "string"
+      "value": "dex-dev"
     }
   ]
 }
