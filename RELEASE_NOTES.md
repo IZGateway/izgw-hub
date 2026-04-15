@@ -1,3 +1,11 @@
+# IZ Gateway Release 2.13.2
+
+- Update dependency versions and base docker image
+
+# IZ Gateway Release 2.13.1
+
+- Update dependency versions and base docker image
+
 # IZ Gateway Release 2.13.0
 
 - IGDD-2464 Update ADS metadata to support riAggregateQuarterly reporting
