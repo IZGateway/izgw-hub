@@ -10,6 +10,7 @@ on:
     branches:
       - Release*
       - develop
+  workflow_dispatch:
 
   # Schedule runs on the default branch.
   schedule:
@@ -364,12 +365,12 @@ jobs:
 
     - name: Setup certs
       env:
-        AUSTIN_TESTING_CERT: ${{ secrets.AUSTIN_TESTING_CERT }}
-        AUSTIN_TESTING_KEY: ${{ secrets.AUSTIN_TESTING_KEY }}
+        TESTING_CERT: ${{ secrets.TESTING_CERT }}
+        TESTING_KEY: ${{ secrets.TESTING_KEY }}
       run: |
-        echo "$AUSTIN_TESTING_CERT" > testing/newman.pem
+        echo "$TESTING_CERT" > testing/newman.pem
         # Don't upload this file !!!
-        echo "$AUSTIN_TESTING_KEY" > testing/newman.key
+        echo "$TESTING_KEY" > testing/newman.key
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
@@ -426,7 +427,7 @@ jobs:
     - name: Run Warm Up for Functional Testing
       working-directory: ./testing/testdata
       env:
-        AUSTIN_TESTING_PASS: ${{ secrets.AUSTIN_TESTING_PASS }}
+        TESTING_PASS: ${{ secrets.TESTING_PASS }}
       run: |
         mkdir ../logs
         startTime=$(date +%s);
@@ -436,7 +437,7 @@ jobs:
           "--ssl-extra-ca-certs" ../certs/izgwroot.pem \
           "--ssl-client-cert" ../newman.pem \
           "--ssl-client-key" ../newman.key \
-          "--ssl-client-passphrase" $AUSTIN_TESTING_PASS \
+          "--ssl-client-passphrase" $TESTING_PASS \
           "--insecure" -x > ../logs/warmup.log
         endTime=$(date +%s);
         WARMUP=$(($endTime-$startTime));
@@ -446,7 +447,7 @@ jobs:
       id: FunctionalTests
       working-directory: ./testing/testdata
       env:
-        AUSTIN_TESTING_PASS: ${{ secrets.AUSTIN_TESTING_PASS }}
+        TESTING_PASS: ${{ secrets.TESTING_PASS }}
       run: |
         newman run ../scripts/IZGW_2.0_Integration_Test.postman_collection.json -n 1 --folder "Working" \
           "--env-var" "build=`grep Build target\classes\build.txt | cut '-d:' -f2 | cut -c2-99`" \
@@ -455,7 +456,7 @@ jobs:
           "--ssl-extra-ca-certs" certs/izgwroot.pem \
           "--ssl-client-cert" ../newman.pem \
           "--ssl-client-key" ../newman.key \
-          "--ssl-client-passphrase" $AUSTIN_TESTING_PASS \
+          "--ssl-client-passphrase" $TESTING_PASS \
           "--insecure" --reporters cli,junitfull --reporter-junitfull-export ../logs/integration-test.xml
 
         xunit-viewer -r ../logs/integration-test.xml
