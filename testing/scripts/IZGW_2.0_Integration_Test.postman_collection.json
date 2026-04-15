@@ -1,10 +1,10 @@
 {
   "info": {
-    "_postman_id": "9d291434-2eb7-44db-ac8a-cebddedc5f58",
+    "_postman_id": "7ccc8390-7ad9-4008-bbdd-83d73a0439ad",
     "name": "IZGW 2.0 Integtration Test",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_exporter_id": "940288",
-    "_collection_link": "https://go.postman.co/collection/940288-9d291434-2eb7-44db-ac8a-cebddedc5f58?source=collection_link"
+    "_exporter_id": "2729094",
+    "_collection_link": "https://go.postman.co/collection/2729094-7ccc8390-7ad9-4008-bbdd-83d73a0439ad?source=collection_link"
   },
   "item": [
     {
@@ -390,13 +390,7 @@
                       "});\r",
                       "\r",
                       "pm.test(\"Content-Type is correct\", function () {\r",
-                      "    var contentType = null;\r",
-                      "    for (header in pm.response.headers.members) {\r",
-                      "        if (pm.response.headers.members[header].key == \"Content-Type\") {\r",
-                      "            contentType = pm.response.headers.members[header].value;\r",
-                      "            break;\r",
-                      "        }\r",
-                      "    }\r",
+                      "    var contentType = pm.response.headers.get(\"Content-Type\");\r",
                       "    pm.expect(contentType).to.match(/[\\/+]xml/);\r",
                       "});\r",
                       "\r",
@@ -404,7 +398,9 @@
                       "    pm.expect(responseBody).to.match(/\\/(<[a-zA-Z0-9_]+:)?definitions/);\r",
                       "});"
                     ],
-                    "type": "text/javascript"
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
                   }
                 },
                 {
@@ -413,7 +409,9 @@
                     "exec": [
                       "utils.setup(pm);"
                     ],
-                    "type": "text/javascript"
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
                   }
                 }
               ],
@@ -470,13 +468,7 @@
                       "});\r",
                       "\r",
                       "pm.test(\"Content-Type is correct\", function () {\r",
-                      "    var contentType = null;\r",
-                      "    for (header in pm.response.headers.members) {\r",
-                      "        if (pm.response.headers.members[header].key == \"Content-Type\") {\r",
-                      "            contentType = pm.response.headers.members[header].value;\r",
-                      "            break;\r",
-                      "        }\r",
-                      "    }\r",
+                      "    var contentType = pm.response.headers.get(\"Content-Type\");\r",
                       "    pm.expect(contentType).to.match(/[\\/+]xml/);\r",
                       "});\r",
                       "\r",
@@ -484,7 +476,9 @@
                       "    pm.expect(responseBody).to.match(/\\/(<[a-zA-Z0-9_]+:)?definitions/);\r",
                       "});"
                     ],
-                    "type": "text/javascript"
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
                   }
                 },
                 {
@@ -493,7 +487,9 @@
                     "exec": [
                       "utils.setup(pm);"
                     ],
-                    "type": "text/javascript"
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
                   }
                 }
               ],
@@ -550,13 +546,7 @@
                       "});\r",
                       "\r",
                       "pm.test(\"Content-Type is correct\", function () {\r",
-                      "    var contentType = null;\r",
-                      "    for (header in pm.response.headers.members) {\r",
-                      "        if (pm.response.headers.members[header].key == \"Content-Type\") {\r",
-                      "            contentType = pm.response.headers.members[header].value;\r",
-                      "            break;\r",
-                      "        }\r",
-                      "    }\r",
+                      "    var contentType = pm.response.headers.get(\"Content-Type\");\r",
                       "    pm.expect(contentType).to.match(/[\\/+]xml/);\r",
                       "});\r",
                       "\r",
@@ -565,7 +555,8 @@
                       "});"
                     ],
                     "type": "text/javascript",
-                    "packages": {}
+                    "packages": {},
+                    "requests": {}
                   }
                 },
                 {
@@ -575,7 +566,8 @@
                       "utils.setup(pm);"
                     ],
                     "type": "text/javascript",
-                    "packages": {}
+                    "packages": {},
+                    "requests": {}
                   }
                 }
               ],
@@ -13773,7 +13765,10 @@
           "name": "New Request",
           "request": {
             "method": "GET",
-            "header": []
+            "header": [],
+            "url": {
+              "raw": ""
+            }
           },
           "response": []
         }
