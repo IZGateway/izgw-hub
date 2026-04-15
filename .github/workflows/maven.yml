@@ -456,6 +456,7 @@ jobs:
           "--ssl-client-cert" ../newman.pem \
           "--ssl-client-key" ../newman.key \
           "--ssl-client-passphrase" $TESTING_PASS \
+          "--timeout-request" 120000 \
           "--insecure" --reporters cli,junitfull --reporter-junitfull-export ../logs/integration-test.xml
 
         xunit-viewer -r ../logs/integration-test.xml
