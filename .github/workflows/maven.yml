@@ -353,6 +353,13 @@ jobs:
       uses: catchpoint/workflow-telemetry-action@v2
 
     - uses: actions/checkout@v4
+
+    - name: Tune TCP keepalive for long-running requests
+      run: |
+        sudo sysctl -w net.ipv4.tcp_keepalive_time=10
+        sudo sysctl -w net.ipv4.tcp_keepalive_intvl=10
+        sudo sysctl -w net.ipv4.tcp_keepalive_probes=6
+
     - name: Set up Tools
       shell: bash
       run: |
