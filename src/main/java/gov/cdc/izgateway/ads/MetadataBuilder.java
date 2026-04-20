@@ -109,9 +109,8 @@ public class MetadataBuilder {
      * <ul>
      *   <li>{@code meta_ext_event} – from {@code computeMetaExtEvent()}</li>
      *   <li>{@code meta_ext_event_type} – always the raw report type name</li>
-     *   <li>{@code data_stream_id} – from {@link MetadataBuilder#computeDataStreamId(String)}</li>
+     *   <li>{@code data_stream_id} – computed lazily via {@link Metadata#getDataStreamId()}</li>
      * </ul>
-     * </p>
      *
      * @param reportType the report type name
      * @return this builder
@@ -134,7 +133,6 @@ public class MetadataBuilder {
         String metaExtEvent = computeMetaExtEvent(reportType);
         meta.setExtEvent(metaExtEvent);
         meta.setExtEventType(reportType);
-        meta.setDataStreamId(computeDataStreamId(reportType));
 
         // Force V2 if Generic is used.
         if (GENERIC.equals(metaExtEvent)) {

@@ -57,8 +57,8 @@ class MetadataBuilderSetReportTypeTests {
         "covidAllMonthlyVaccination,  covidAllMonthlyVaccination,  covid-all-monthly-vaccination",
         "covidBridgeVaccination,      covidBridgeVaccination,      covid-bridge-vaccination",
         "genericImmunization,         genericImmunization,         generic-immunization",
-        // farmerFlu: special extEvent mapping, but dataStreamId uses the raw input
-        "farmerFlu,                   farmerFluVaccination,        farmer-flu",
+        // farmerFlu: special extEvent mapping drives the correct dataStreamId
+        "farmerFlu,                   farmerFluVaccination,        farmer-flu-vaccination",
         "farmerFluVaccination,        farmerFluVaccination,        farmer-flu-vaccination",
     })
     void setReportType_setsAllDerivedFields(
@@ -124,7 +124,7 @@ class MetadataBuilderSetReportTypeTests {
     @ParameterizedTest(name = "no-service: setReportType({0}).dataStreamId = {1}")
     @CsvSource({
         "routineImmunization,  routine-immunization",
-        "farmerFlu,            farmer-flu",
+        "farmerFlu,            farmer-flu-vaccination",
         "genericImmunization,  generic-immunization",
     })
     void setReportType_noService_stillComputesDataStreamId(String reportType, String expectedDataStreamId)
