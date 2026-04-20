@@ -48,12 +48,16 @@ known types and gives wrong output for unknown types.
   `dataStreamId` should never be pre-computed from the raw `reportType`.
 - Replace the hardcoded switch in `Metadata.getDataStreamId()` with a single call to
   `MetadataBuilder.computeDataStreamId(getExtEvent())`, eliminating all special cases.
+- Normalize `reportType` to its canonical casing from the file-type registry before
+  any computation, so `"covidall"`, `"covidAll"`, and `"covidAllMonthlyVaccination"` all
+  produce the same `extEvent` and `dataStreamId`.
 - Add end-to-end unit tests asserting `setReportType(x)` → `getDataStreamId()` produces
-  the correct kebab value for every known file type name.
+  the correct kebab value for every known file type name, including case variants.
 - Resubmit the two affected test files to NDLP after the fix is deployed.
 
 **Non-Goals:**
 - No changes to `ADSUtils.getPath()`, `AzureBlobStorageSender`, or `MetadataImpl`.
+- No changes to `NewModelHelper.getFileType()` — it already does case-insensitive lookup.
 - No new file type names.
 
 ## Decisions
@@ -100,7 +104,34 @@ including future file types without requiring a code change.
 | `genericImmunization` | `genericImmunization` | `generic-immunization` ✅ |
 | `measlesVaccination` | `measlesVaccination` | `measles-vaccination` ✅ |
 
-### Decision 3: Unit tests covering all known file types end-to-end
+### Decision 3: Normalize `reportType` to canonical casing from the registry
+
+**Chosen:** In `MetadataBuilder.setReportType()`, when the registry lookup succeeds,
+replace the caller-supplied `reportType` with `fileType.getFileTypeName()` before any
+computation:
+
+```java
+if (accessControlService != null) {
+    IFileType fileType = accessControlService.getFileType(reportType);
+    if (fileType == null) {
+        log.warn("Report type '{}' is not registered", reportType);
+    } else {
+        reportType = fileType.getFileTypeName(); // normalize to canonical casing
+    }
+}
+```
+
+**Rationale:** `NewModelHelper.getFileType()` already performs a case-insensitive scan,
+so `"covidall"`, `"COVIDALL"`, and `"covidAllMonthlyVaccination"` all resolve to the same
+`IFileType`. Using the canonical name from `getFileTypeName()` ensures all downstream
+computation (`computeMetaExtEvent`, `computeDataStreamId`) operates on the correctly-cased
+camelCase string that the algorithms expect. Without this, a submitter who passes
+`"covidall"` would get `extEvent = "covidall"` and `dataStreamId = "covidall"` (wrong).
+
+**Note:** When no service is injected (or the type is unrecognised), the raw submitted
+value is used as before — computation proceeds with a warning.
+
+### Decision 4: Unit tests covering all known file types end-to-end
 
 **Chosen:** Add tests in `MetadataBuilderTests` that call `setReportType()` and assert
 the resulting `getDataStreamId()` for every known file type, with `farmerFlu` as the
