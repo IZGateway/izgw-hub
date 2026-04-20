@@ -8,120 +8,146 @@ The blob storage path for DEX v2 uploads is:
 {container_base_path}/{dataStreamId}/{extEntity}/{YYYY}/{MM}/{DD}/{filename}
 ```
 
-The `dataStreamId` segment is produced by a **two-step chain**:
+The `dataStreamId` segment flows through three layers:
 
 1. **`MetadataBuilder.computeMetaExtEvent(reportType)`** — maps `reportType` to a
-   camelCase `extEvent`. Special case: `"farmerFlu"` → `"farmerFluVaccination"`.
-2. **`MetadataImpl.getDataStreamId()`** — returns the stored `dataStreamId` field if
-   non-null; otherwise falls through to `Metadata.getDataStreamId()` which maps
-   `extEvent` via a `switch` to the correct kebab-case string.
+   camelCase `extEvent`. Has special cases, e.g. `"farmerFlu"` → `"farmerFluVaccination"`.
+2. **`MetadataBuilder.computeDataStreamId(fileTypeName)`** — pure camelCase→kebab
+   algorithm, no special cases. `"farmerFlu"` → `"farmer-flu"`.
+3. **`MetadataImpl.getDataStreamId()`** — returns the stored `dataStreamId` field if
+   non-null; otherwise delegates to `Metadata.getDataStreamId()` which currently uses a
+   hardcoded switch over `extEvent` values.
 
 ### Root Cause
 
 **`MetadataBuilder.setReportType()` (line 137) calls `computeDataStreamId(reportType)` and
-explicitly stores the result**, bypassing the switch entirely:
+explicitly stores the result in `MetadataImpl.dataStreamId`**, causing two problems:
 
 ```java
-// Line 137 — BUG: uses reportType, not metaExtEvent
+// Line 137 — BUG
 meta.setDataStreamId(computeDataStreamId(reportType));
 ```
 
-`computeDataStreamId()` is a pure camelCase→kebab converter with no special cases. For
-`"farmerFlu"` it produces `"farmer-flu"`, not `"farmer-flu-vaccination"`. Because
-`MetadataImpl.getDataStreamId()` returns the stored field first (non-null), the switch
-mapping for `"farmerFluVaccination"` → `"farmer-flu-vaccination"` is never reached.
+1. `computeDataStreamId()` has no special cases. For `"farmerFlu"` it produces
+   `"farmer-flu"`, not `"farmer-flu-vaccination"`.
+2. Once the field is stored non-null, `MetadataImpl.getDataStreamId()` returns it
+   directly — the `Metadata.getDataStreamId()` switch is never reached.
 
-For `"covidAllMonthlyVaccination"`: `computeDataStreamId("covidAllMonthlyVaccination")`
-produces the correct `"covid-all-monthly-vaccination"` — but only if the `reportType`
-passed is the full name. If a shorter alias was submitted, the wrong path would result
-for that too.
+### Why the Switch Is Also Redundant
+
+Examining `Metadata.getDataStreamId()`, every explicit `case` produces exactly the same
+value that `computeDataStreamId()` would compute for the same camelCase input. The
+`default:` branch returns `value.toLowerCase()` — all-lowercase with no hyphens —
+which is wrong for any new or unrecognized type. The switch therefore adds no value for
+known types and gives wrong output for unknown types.
 
 ## Goals / Non-Goals
 
 **Goals:**
-- Fix `MetadataBuilder.setReportType()` to compute `dataStreamId` from `metaExtEvent`
-  (post-special-case) rather than the raw `reportType`.
-- Add unit tests asserting the correct `dataStreamId` for all known file type names,
-  including `farmerFlu` and `covidAllMonthlyVaccination`.
-- Resubmit the two affected test files to NDLP with correct paths after the fix is deployed.
+- Remove `meta.setDataStreamId(computeDataStreamId(reportType))` from `setReportType()`;
+  `dataStreamId` should never be pre-computed from the raw `reportType`.
+- Replace the hardcoded switch in `Metadata.getDataStreamId()` with a single call to
+  `MetadataBuilder.computeDataStreamId(getExtEvent())`, eliminating all special cases.
+- Add end-to-end unit tests asserting `setReportType(x)` → `getDataStreamId()` produces
+  the correct kebab value for every known file type name.
+- Resubmit the two affected test files to NDLP after the fix is deployed.
 
 **Non-Goals:**
-- No changes to `ADSUtils.getPath()` or `AzureBlobStorageSender`.
-- No changes to the switch table in `Metadata.getDataStreamId()`.
-- No new file type names beyond those already registered.
+- No changes to `ADSUtils.getPath()`, `AzureBlobStorageSender`, or `MetadataImpl`.
+- No new file type names.
 
 ## Decisions
 
-### Decision 1: Compute `dataStreamId` from `metaExtEvent`, not `reportType`
+### Decision 1: Remove eager `setDataStreamId()` from `setReportType()`
 
-**Chosen:** Change line 137 of `MetadataBuilder.setReportType()` from:
+**Chosen:** Delete line 137 from `MetadataBuilder.setReportType()`:
 ```java
+// Remove this line entirely:
 meta.setDataStreamId(computeDataStreamId(reportType));
 ```
-to:
+
+**Rationale:** `dataStreamId` should be computed lazily from `extEvent` (which is already
+set correctly by `computeMetaExtEvent()`). Pre-computing it from the raw `reportType`
+bypasses the special-case logic and stores a wrong value that shadows everything else.
+
+`MetadataImpl.getDataStreamId()` already falls through to `Metadata.getDataStreamId()`
+when the field is null — no other changes to `MetadataImpl` are needed.
+
+### Decision 2: Replace the switch in `Metadata.getDataStreamId()` with the algorithm
+
+**Chosen:** Replace the entire switch body with:
 ```java
-meta.setDataStreamId(computeDataStreamId(metaExtEvent));
+default String getDataStreamId() {
+    return MetadataBuilder.computeDataStreamId(getExtEvent());
+}
 ```
 
-**Rationale:** `metaExtEvent` is already the post-special-case value (e.g.,
-`"farmerFluVaccination"` for `farmerFlu`). Running it through `computeDataStreamId()`
-then yields the correct kebab path segment (`"farmer-flu-vaccination"`) without needing
-any additional special cases.
+**Rationale:** Every explicit case in the switch produces the same value that
+`computeDataStreamId()` produces for the same camelCase `extEvent` input. The switch is
+pure duplication. Worse, the `default:` branch returns `value.toLowerCase()` (no hyphens),
+which is wrong for any new or unrecognised type. The algorithm handles all cases correctly
+including future file types without requiring a code change.
 
-**Verified outcomes after fix:**
-| `reportType` | `metaExtEvent` | `computeDataStreamId(metaExtEvent)` |
+**Verified outcomes:**
+| `reportType` | `extEvent` (via `computeMetaExtEvent`) | `computeDataStreamId(extEvent)` |
 |---|---|---|
 | `farmerFlu` | `farmerFluVaccination` | `farmer-flu-vaccination` ✅ |
 | `covidAllMonthlyVaccination` | `covidAllMonthlyVaccination` | `covid-all-monthly-vaccination` ✅ |
 | `routineImmunization` | `routineImmunization` | `routine-immunization` ✅ |
 | `influenzaVaccination` | `influenzaVaccination` | `influenza-vaccination` ✅ |
+| `rsvPrevention` | `rsvPrevention` | `rsv-prevention` ✅ |
+| `covidBridgeVaccination` | `covidBridgeVaccination` | `covid-bridge-vaccination` ✅ |
+| `genericImmunization` | `genericImmunization` | `generic-immunization` ✅ |
+| `measlesVaccination` | `measlesVaccination` | `measles-vaccination` ✅ |
 
-**Alternative considered:** Remove the explicit `setDataStreamId()` call and rely solely
-on the switch in `Metadata.getDataStreamId()` — rejected because it would break
-serialization paths where `dataStreamId` is read from the stored field directly.
-
-### Decision 2: Unit tests covering all known file types end-to-end
+### Decision 3: Unit tests covering all known file types end-to-end
 
 **Chosen:** Add tests in `MetadataBuilderTests` that call `setReportType()` and assert
-the resulting `getDataStreamId()` value for every file type in the switch table.
+the resulting `getDataStreamId()` for every known file type, with `farmerFlu` as the
+primary regression case.
 
-**Rationale:** The bug existed because `computeDataStreamId(reportType)` and
-`computeDataStreamId(metaExtEvent)` give different results only for `farmerFlu` (the
-one special-cased name). A test for each file type would have caught this immediately.
+**Rationale:** The bug existed because the only tests for `computeDataStreamId()` tested
+the algorithm in isolation. End-to-end tests through `setReportType()` would have caught
+the short-circuit immediately.
 
-### Decision 3: Manual resubmission to NDLP onboarding container
+### Decision 4: Manual resubmission to NDLP onboarding container
 
 No automated redelivery mechanism exists. The two affected test files are resubmitted
 manually to CDC contact (Juan Alvarado, wok1@cdc.gov) after deployment.
 
 ## Risks / Trade-offs
 
-- **Risk:** `computeDataStreamId(metaExtEvent)` must produce the same value as the
-  switch table for all non-special-case types. If any discrepancy exists, the switch
-  table wins (since it was the intended mapping). Tests will catch this.
-  → **Mitigation:** New tests compare against the switch table values directly.
+- **Risk:** `computeDataStreamId()` is currently package-private (`static`). `Metadata`
+  is in the same package so the call compiles, but it creates a dependency from an
+  interface to a builder class. This is acceptable short-term; the algorithm can be
+  moved to a utility class if it becomes a concern.
 
-- **Risk:** The `ads-metadata-management` change (27/46 tasks) introduced the `switch`
-  table. If that change is not yet deployed, the switch may not exist.
-  → **Mitigation:** This fix targets the same `setReportType()` method and does not
-  depend on the switch — `computeDataStreamId(metaExtEvent)` is self-sufficient.
+- **Risk:** Removing the switch removes an explicit allowlist of valid `dataStreamId`
+  values. Any typo in a `reportType` will now silently produce a wrong-but-plausible
+  kebab string instead of a validation error. The existing warn-on-unregistered-type log
+  in `setReportType()` provides partial mitigation.
+  → **Mitigation:** The file-type registry validation (already present) is the correct
+  place to enforce valid types, not `getDataStreamId()`.
+
+- **Risk:** `MetadataImpl.getDataStreamId()` returns the stored field first. If any
+  existing caller sets `dataStreamId` explicitly to a legacy or incorrect value, that
+  value will still win. This is intentional — deserialized data is preserved.
 
 ## Migration Plan
 
-1. Apply one-line fix in `MetadataBuilder.setReportType()` (line 137).
-2. Add unit tests; confirm all green.
-3. Deploy to the onboarding environment.
-4. Resubmit `farmerFlu` test file to `ext-immunization-izgw/farmer-flu-vaccination/`.
-5. Resubmit `covidAllMonthly` test file to `ext-immunization-izgw/covid-all-monthly-vaccination/`.
-6. Confirm with Juan Alvarado (wok1@cdc.gov).
+1. Delete `meta.setDataStreamId(computeDataStreamId(reportType))` from `setReportType()`.
+2. Replace switch body in `Metadata.getDataStreamId()` with `return MetadataBuilder.computeDataStreamId(getExtEvent())`.
+3. Add end-to-end unit tests; confirm all green.
+4. Deploy to the onboarding environment.
+5. Resubmit `farmerFlu` test file to `ext-immunization-izgw/farmer-flu-vaccination/`.
+6. Resubmit `covidAllMonthly` test file to `ext-immunization-izgw/covid-all-monthly-vaccination/`.
+7. Confirm with Juan Alvarado (wok1@cdc.gov).
 
-**Rollback:** Revert the one-line change. No schema or data migration involved.
+**Rollback:** Revert two files. No schema or data migration involved.
 
 ## Open Questions
 
-1. Was the `covidAllMonthlyVaccination` submission made with `reportType = "covidAllMonthly"` 
-   (shorter alias) or the full name? If an alias, the fix above still resolves it since
-   `computeMetaExtEvent("covidAllMonthly")` returns `"covidAllMonthly"` and
-   `computeDataStreamId("covidAllMonthly")` = `"covid-all-monthly"` — which would still
-   be wrong. Confirm the exact `reportType` string used in the failing submission.
+1. Was the `covidAllMonthlyVaccination` submission made with `reportType = "covidAllMonthly"`
+   (shorter alias) or the full name? With this fix the answer doesn't change the
+   implementation, but it determines whether resubmission of that file is necessary.
 
