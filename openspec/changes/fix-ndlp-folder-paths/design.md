@@ -8,98 +8,120 @@ The blob storage path for DEX v2 uploads is:
 {container_base_path}/{dataStreamId}/{extEntity}/{YYYY}/{MM}/{DD}/{filename}
 ```
 
-The `dataStreamId` segment is produced by a **two-step chain** in the current codebase:
+The `dataStreamId` segment is produced by a **two-step chain**:
 
-1. **`MetadataBuilder.computeMetaExtEvent(fileTypeName)`** — maps `fileTypeName` to a
-   camelCase `extEvent` string. Special case: `"farmerFlu"` → `"farmerFluVaccination"`.
-2. **`Metadata.getDataStreamId()`** (default interface method) — maps `extEvent` values
-   via a `switch` to kebab-case `dataStreamId` strings:
-   - `"farmerFluVaccination"` → `"farmer-flu-vaccination"` ✅
-   - `"covidAllMonthlyVaccination"` → `"covid-all-monthly-vaccination"` ✅
+1. **`MetadataBuilder.computeMetaExtEvent(reportType)`** — maps `reportType` to a
+   camelCase `extEvent`. Special case: `"farmerFlu"` → `"farmerFluVaccination"`.
+2. **`MetadataImpl.getDataStreamId()`** — returns the stored `dataStreamId` field if
+   non-null; otherwise falls through to `Metadata.getDataStreamId()` which maps
+   `extEvent` via a `switch` to the correct kebab-case string.
 
-A separate `computeDataStreamId(fileTypeName)` method exists in `MetadataBuilder` and
-produces a **raw camelCase→kebab conversion** (e.g., `"farmerFlu"` → `"farmer-flu"`) but
-this method is **not used in the upload path** — it is only used as a utility for
-initial value seeding. The upload path always goes through `Metadata.getDataStreamId()`.
+### Root Cause
 
-**Conclusion from investigation:** The upload path code is correct today. The wrong
-submissions to NDLP were made when the `ads-metadata-management` changes (which added the
-`switch`-based mapping in `Metadata.getDataStreamId()`) had not yet been deployed, or
-files were manually submitted with uncorrected paths.
+**`MetadataBuilder.setReportType()` (line 137) calls `computeDataStreamId(reportType)` and
+explicitly stores the result**, bypassing the switch entirely:
+
+```java
+// Line 137 — BUG: uses reportType, not metaExtEvent
+meta.setDataStreamId(computeDataStreamId(reportType));
+```
+
+`computeDataStreamId()` is a pure camelCase→kebab converter with no special cases. For
+`"farmerFlu"` it produces `"farmer-flu"`, not `"farmer-flu-vaccination"`. Because
+`MetadataImpl.getDataStreamId()` returns the stored field first (non-null), the switch
+mapping for `"farmerFluVaccination"` → `"farmer-flu-vaccination"` is never reached.
+
+For `"covidAllMonthlyVaccination"`: `computeDataStreamId("covidAllMonthlyVaccination")`
+produces the correct `"covid-all-monthly-vaccination"` — but only if the `reportType`
+passed is the full name. If a shorter alias was submitted, the wrong path would result
+for that too.
 
 ## Goals / Non-Goals
 
 **Goals:**
-- Verify the existing `Metadata.getDataStreamId()` mapping for `farmerFlu` and
-  `covidAllMonthly` is correct and covered by unit tests.
-- Add or update unit tests to assert the correct `dataStreamId` for all file type names.
-- Resubmit the two affected test files to the NDLP onboarding container with correct paths.
-- Confirm with CDC/Juan Alvarado that the resubmission resolves the issue.
+- Fix `MetadataBuilder.setReportType()` to compute `dataStreamId` from `metaExtEvent`
+  (post-special-case) rather than the raw `reportType`.
+- Add unit tests asserting the correct `dataStreamId` for all known file type names,
+  including `farmerFlu` and `covidAllMonthlyVaccination`.
+- Resubmit the two affected test files to NDLP with correct paths after the fix is deployed.
 
 **Non-Goals:**
-- No changes to `computeDataStreamId()` — it is not used in the upload path.
-- No changes to `ADSUtils.getPath()` or blob storage URL construction.
-- No new file type names or mappings beyond the two affected ones.
+- No changes to `ADSUtils.getPath()` or `AzureBlobStorageSender`.
+- No changes to the switch table in `Metadata.getDataStreamId()`.
+- No new file type names beyond those already registered.
 
 ## Decisions
 
-### Decision 1: No code change to path computation logic
+### Decision 1: Compute `dataStreamId` from `metaExtEvent`, not `reportType`
 
-**Chosen:** No code change needed to `MetadataBuilder`, `Metadata`, or `ADSUtils`.
+**Chosen:** Change line 137 of `MetadataBuilder.setReportType()` from:
+```java
+meta.setDataStreamId(computeDataStreamId(reportType));
+```
+to:
+```java
+meta.setDataStreamId(computeDataStreamId(metaExtEvent));
+```
 
-**Rationale:** Investigation confirmed that `Metadata.getDataStreamId()` already maps
-`"farmerFluVaccination"` → `"farmer-flu-vaccination"` and `"covidAllMonthlyVaccination"`
-→ `"covid-all-monthly-vaccination"` correctly. The wrong submissions were a historical
-artifact of pre-deployment state.
+**Rationale:** `metaExtEvent` is already the post-special-case value (e.g.,
+`"farmerFluVaccination"` for `farmerFlu`). Running it through `computeDataStreamId()`
+then yields the correct kebab path segment (`"farmer-flu-vaccination"`) without needing
+any additional special cases.
 
-**Alternative considered:** Add an override/special case in `computeDataStreamId()` —
-rejected because this method is not in the upload path and adding dead code would be
-misleading.
+**Verified outcomes after fix:**
+| `reportType` | `metaExtEvent` | `computeDataStreamId(metaExtEvent)` |
+|---|---|---|
+| `farmerFlu` | `farmerFluVaccination` | `farmer-flu-vaccination` ✅ |
+| `covidAllMonthlyVaccination` | `covidAllMonthlyVaccination` | `covid-all-monthly-vaccination` ✅ |
+| `routineImmunization` | `routineImmunization` | `routine-immunization` ✅ |
+| `influenzaVaccination` | `influenzaVaccination` | `influenza-vaccination` ✅ |
 
-### Decision 2: Add unit tests as the primary deliverable
+**Alternative considered:** Remove the explicit `setDataStreamId()` call and rely solely
+on the switch in `Metadata.getDataStreamId()` — rejected because it would break
+serialization paths where `dataStreamId` is read from the stored field directly.
 
-**Chosen:** Add explicit unit test assertions in `MetadataBuilderTests` verifying the
-full `fileTypeName` → `dataStreamId` chain for all known file types, including
-`farmerFlu` and `covidAllMonthlyVaccination`.
+### Decision 2: Unit tests covering all known file types end-to-end
 
-**Rationale:** The bug was caused by lack of end-to-end test coverage for the path
-computation chain. Tests prevent regression and document the expected behavior.
+**Chosen:** Add tests in `MetadataBuilderTests` that call `setReportType()` and assert
+the resulting `getDataStreamId()` value for every file type in the switch table.
+
+**Rationale:** The bug existed because `computeDataStreamId(reportType)` and
+`computeDataStreamId(metaExtEvent)` give different results only for `farmerFlu` (the
+one special-cased name). A test for each file type would have caught this immediately.
 
 ### Decision 3: Manual resubmission to NDLP onboarding container
 
-**Chosen:** Resubmit the two test files manually to the corrected folder paths in the
-NDLP onboarding container once the deployed code is confirmed correct.
-
-**Rationale:** The files are test/onboarding artifacts, not production data. No automated
-re-delivery mechanism exists. CDC contact (Juan Alvarado) will verify receipt.
+No automated redelivery mechanism exists. The two affected test files are resubmitted
+manually to CDC contact (Juan Alvarado, wok1@cdc.gov) after deployment.
 
 ## Risks / Trade-offs
 
-- **Risk:** The `ads-metadata-management` change (27/46 tasks) may not yet be deployed,
-  meaning `Metadata.getDataStreamId()` switch may not be in the deployed codebase.
-  → **Mitigation:** Verify the fix is in the deployed version before resubmitting.
-  If not deployed, this change depends on `ads-metadata-management` completing first.
+- **Risk:** `computeDataStreamId(metaExtEvent)` must produce the same value as the
+  switch table for all non-special-case types. If any discrepancy exists, the switch
+  table wins (since it was the intended mapping). Tests will catch this.
+  → **Mitigation:** New tests compare against the switch table values directly.
 
-- **Risk:** Other file types may have similar path mismatches not yet reported.
-  → **Mitigation:** The new unit tests cover all known file types in the `switch` table,
-  providing a regression safety net going forward.
+- **Risk:** The `ads-metadata-management` change (27/46 tasks) introduced the `switch`
+  table. If that change is not yet deployed, the switch may not exist.
+  → **Mitigation:** This fix targets the same `setReportType()` method and does not
+  depend on the switch — `computeDataStreamId(metaExtEvent)` is self-sufficient.
 
 ## Migration Plan
 
-1. Confirm `ads-metadata-management` changes (specifically `Metadata.getDataStreamId()`
-   switch) are deployed to the onboarding environment.
-2. Add unit tests asserting correct `dataStreamId` for all file type names.
-3. Run tests; confirm green.
+1. Apply one-line fix in `MetadataBuilder.setReportType()` (line 137).
+2. Add unit tests; confirm all green.
+3. Deploy to the onboarding environment.
 4. Resubmit `farmerFlu` test file to `ext-immunization-izgw/farmer-flu-vaccination/`.
 5. Resubmit `covidAllMonthly` test file to `ext-immunization-izgw/covid-all-monthly-vaccination/`.
-6. Reply to Juan Alvarado (wok1@cdc.gov) confirming resubmission; request verification.
+6. Confirm with Juan Alvarado (wok1@cdc.gov).
 
-**Rollback:** No code change means no rollback needed. Resubmitted files can be deleted
-from the container if NDLP reports further issues.
+**Rollback:** Revert the one-line change. No schema or data migration involved.
 
 ## Open Questions
 
-1. Is the `ads-metadata-management` change fully deployed to the NDLP onboarding
-   environment, or is this fix blocked on that deployment?
-2. Should the resubmission be automated (triggered by a CI job) or remain manual?
-   Current volume is low (2 files); manual is appropriate for now.
+1. Was the `covidAllMonthlyVaccination` submission made with `reportType = "covidAllMonthly"` 
+   (shorter alias) or the full name? If an alias, the fix above still resolves it since
+   `computeMetaExtEvent("covidAllMonthly")` returns `"covidAllMonthly"` and
+   `computeDataStreamId("covidAllMonthly")` = `"covid-all-monthly"` — which would still
+   be wrong. Confirm the exact `reportType` string used in the failing submission.
+
