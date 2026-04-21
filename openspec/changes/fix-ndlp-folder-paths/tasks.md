@@ -27,8 +27,8 @@ Jira: IGDD-2775
 
 ## 5. Report types discovery endpoint
 
-- [ ] 5.1 Add `GET /rest/ads/reportTypes` to `ADSController` returning `config.getAccessControls().getEventTypes()` as `List<String>`.
-- [ ] 5.2 Confirm the existing `@Schema` description on `reportType` parameter already references this URL (no change needed).
+- [x] 5.1 Add `GET /rest/ads/reportTypes` to `ADSController` returning `config.getAccessControls().getEventTypes()` as `List<String>`.
+- [x] 5.2 Confirm the existing `@Schema` description on `reportType` parameter already references this URL (no change needed).
 
 
 - [ ] 4.1 After deployment to onboarding environment, resubmit `farmerFlu` test file targeting path `ext-immunization-izgw/farmer-flu-vaccination/`.
