@@ -1,3 +1,18 @@
+## Reference Specification
+
+The authoritative source for all NDLP metadata field names and required values is the
+CDC DMI specification:
+
+> **[`specs/DMI_IZGW_to_NDLP_Routine_Immunizations_Spec.xlsx`](specs/DMI_IZGW_to_NDLP_Routine_Immunizations_Spec.xlsx)**
+> — "Metadata Fields For Submission" tab
+
+A human-readable extract of that tab is maintained at
+[`specs/metadata-requirements.md`](specs/metadata-requirements.md).
+This spec is the source of truth for `data_stream_id` values, `meta_ext_event` values,
+and submission period formats used in the computation algorithms below.
+
+---
+
 ## Context
 
 IGDD-2775: CDC NDLP reported that two ADS test file submissions landed in wrong folders
