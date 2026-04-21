@@ -101,18 +101,21 @@ public class MetadataBuilder {
      * Set the report type and compute all derived metadata fields from it.
      * <p>
      * If an {@link IAccessControlService} was supplied at construction time the report type
-     * is looked up in the file-type registry.  A warning is logged when the type is not
-     * found, but processing continues so that unregistered types still work.
+     * is looked up in the file-type registry using a case-insensitive match.  When a match
+     * is found the supplied value is replaced with the canonical name from
+     * {@link IFileType#getFileTypeName()} before any computation, ensuring correct camelCase
+     * casing for downstream hyphenation.  A warning is logged when the type is not found,
+     * but processing continues so that unregistered types still work.
      * </p>
      * <p>
      * Derived fields set here:
      * <ul>
      *   <li>{@code meta_ext_event} – from {@code computeMetaExtEvent()}</li>
-     *   <li>{@code meta_ext_event_type} – always the raw report type name</li>
+     *   <li>{@code meta_ext_event_type} – the canonical report type name</li>
      *   <li>{@code data_stream_id} – computed lazily via {@link Metadata#getDataStreamId()}</li>
      * </ul>
      *
-     * @param reportType the report type name
+     * @param reportType the report type name (case-insensitive; normalized to registry casing)
      * @return this builder
      */
     public MetadataBuilder setReportType(String reportType) {
@@ -122,10 +125,14 @@ public class MetadataBuilder {
         }
 
         // Validate against the registered file-type registry when available.
+        // Normalize to canonical casing from the registry so that computeDataStreamId()
+        // always receives the correctly-cased camelCase string it needs for correct hyphenation.
         if (accessControlService != null) {
             IFileType fileType = accessControlService.getFileType(reportType);
             if (fileType == null) {
                 log.warn("Report type '{}' is not registered in the file-type registry", reportType);
+            } else {
+                reportType = fileType.getFileTypeName();
             }
         }
 

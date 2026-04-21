@@ -4,9 +4,9 @@ Jira: IGDD-2775
 
 ## 1. Code changes
 
-- [ ] 1.1 In `MetadataBuilder.setReportType()`, delete the line `meta.setDataStreamId(computeDataStreamId(reportType))` and remove its mention from the method's Javadoc `@code data_stream_id` bullet.
-- [ ] 1.2 In `Metadata.getDataStreamId()`, replace the entire switch body with `return MetadataBuilder.computeDataStreamId(getExtEvent());` and update the Javadoc comment block above it.
-- [ ] 1.3 In `MetadataBuilder.setReportType()`, after a successful registry lookup add `reportType = fileType.getFileTypeName();` to normalize to canonical casing before any computation. Update Javadoc to note case-insensitive normalization.
+- [x] 1.1 In `MetadataBuilder.setReportType()`, delete the line `meta.setDataStreamId(computeDataStreamId(reportType))` and remove its mention from the method's Javadoc `@code data_stream_id` bullet.
+- [x] 1.2 In `Metadata.getDataStreamId()`, replace the entire switch body with `return MetadataBuilder.computeDataStreamId(getExtEvent());` and update the Javadoc comment block above it.
+- [x] 1.3 In `MetadataBuilder.setReportType()`, after a successful registry lookup add `reportType = fileType.getFileTypeName();` to normalize to canonical casing before any computation. Update Javadoc to note case-insensitive normalization.
 
 ## 2. Tests
 
