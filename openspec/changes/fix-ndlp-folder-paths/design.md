@@ -176,6 +176,33 @@ manually to CDC contact (Juan Alvarado, wok1@cdc.gov) after deployment.
 
 **Rollback:** Revert two files. No schema or data migration involved.
 
+### Decision 5: Add `GET /rest/ads/reportTypes` discovery endpoint
+
+**Moved from:** `ads-metadata-management` CR (implemented that CR's core work; this endpoint was
+deferred and `ReportTypeInfo` DTO was subsequently removed as unnecessary).
+
+**Chosen:** Add a simple endpoint to `ADSController` that returns the currently registered
+report type names as a plain list of strings:
+
+```java
+@GetMapping("/ads/reportTypes")
+@Operation(summary = "List valid report types")
+public List<String> getAvailableReportTypes() {
+    return config.getAccessControls().getEventTypes();
+}
+```
+
+Update the existing `@Schema` description on the `reportType` parameter (which already
+references this URL) so callers can discover valid values at runtime.
+
+**Rationale:** The `reportType` `@Schema` description already says
+*"See GET /rest/ads/reportTypes for the current list of valid values."* but the endpoint
+does not exist — API clients following that hint get a 404. A one-line implementation
+using the existing `getEventTypes()` method closes the gap with no new DTO.
+
+`ReportTypeInfo` (originally designed with `fileTypeName`, `dataStreamId`, and `periodType`
+fields) was removed from scope — the plain string list is sufficient for the discovery use case.
+
 ## Open Questions
 
 1. Was the `covidAllMonthlyVaccination` submission made with `reportType = "covidAllMonthly"`
