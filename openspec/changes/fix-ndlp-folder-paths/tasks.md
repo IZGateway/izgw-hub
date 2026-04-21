@@ -10,7 +10,7 @@ Jira: IGDD-2775
 
 ## 2. Tests
 
-- [ ] 2.1 Add a `@ParameterizedTest` to `MetadataBuilderTests` that calls `setReportType(x)` and asserts `getDataStreamId()` for every known file type using canonical casing:
+- [x] 2.1 Add a `@ParameterizedTest` to `MetadataBuilderTests` that calls `setReportType(x)` and asserts `getDataStreamId()` for every known file type using canonical casing:
   - `farmerFlu` → `farmer-flu-vaccination` (primary regression case)
   - `routineImmunization` → `routine-immunization`
   - `influenzaVaccination` → `influenza-vaccination`
@@ -19,16 +19,16 @@ Jira: IGDD-2775
   - `covidBridgeVaccination` → `covid-bridge-vaccination`
   - `genericImmunization` → `generic-immunization`
   - `measlesVaccination` → `measles-vaccination`
-- [ ] 2.2 Add case-variant assertions to the same test (or a separate parameterized test) confirming that incorrect-casing inputs produce the same correct output:
+- [x] 2.2 Add case-variant assertions to the same test (or a separate parameterized test) confirming that incorrect-casing inputs produce the same correct output:
   - `"covidall"` → `"covid-all-monthly-vaccination"`
   - `"farmerflu"` → `"farmer-flu-vaccination"`
   - `"ROUTINEIMMUNIZATION"` → `"routine-immunization"`
-- [ ] 2.3 Run `mvn test` and confirm all tests green including `ComputeDataStreamIdTests`.
+- [x] 2.3 Run `mvn test` and confirm all tests green including `ComputeDataStreamIdTests`.
 
 ## 3. Validation
 
-- [ ] 3.1 Run `mvn compile -q` — confirm zero errors.
-- [ ] 3.2 Run `mvn javadoc:javadoc` — confirm zero errors.
+- [x] 3.1 Run `mvn compile -q` — confirm zero errors.
+- [x] 3.2 Run `mvn javadoc:javadoc` — confirm zero errors (pre-existing warnings in unrelated files; no new errors introduced).
 
 ## 4. Postman
 

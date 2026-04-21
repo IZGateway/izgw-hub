@@ -40,8 +40,14 @@ class MetadataBuilderSetReportTypeTests {
     void setUp() {
         mockService  = mock(IAccessControlService.class);
         mockFileType = mock(IFileType.class);
-        // Default: report type found in registry
-        when(mockService.getFileType(anyString())).thenReturn(mockFileType);
+        // Default: getFileType(x) returns a mock whose getFileTypeName() returns x (identity —
+        // canonical inputs already have the right casing, so normalization is a no-op for them).
+        when(mockService.getFileType(anyString())).thenAnswer(inv -> {
+            String name = inv.getArgument(0);
+            IFileType ft = mock(IFileType.class);
+            when(ft.getFileTypeName()).thenReturn(name);
+            return ft;
+        });
     }
 
     // -------------------------------------------------------------------------
@@ -81,8 +87,6 @@ class MetadataBuilderSetReportTypeTests {
 
     @Test
     void setReportType_withService_lookupsFileType() {
-        when(mockService.getFileType("influenzaVaccination")).thenReturn(mockFileType);
-
         MetadataBuilder builder = new MetadataBuilder(mockService);
         builder.setReportType("influenzaVaccination");
 
@@ -161,6 +165,38 @@ class MetadataBuilderSetReportTypeTests {
         // extSourceVersion should not be set to DEX_VERSION2 by setReportType alone
         assertFalse(Metadata.DEX_VERSION2.equals(builder.build().getExtSourceVersion()),
                 "setReportType should only force VERSION2 for genericImmunization");
+    }
+
+    // -------------------------------------------------------------------------
+    // Case-variant inputs — normalization must produce correct dataStreamId (task 2.2)
+    // -------------------------------------------------------------------------
+
+    @ParameterizedTest(name = "case-variant: setReportType({0}) → dataStreamId={2}, extEventType={1}")
+    @CsvSource({
+        // input,                   canonical name,               expected dataStreamId
+        "covidall,                  covidAllMonthlyVaccination,   covid-all-monthly-vaccination",
+        "COVIDALLMONTHLYVACCINATION,covidAllMonthlyVaccination,   covid-all-monthly-vaccination",
+        "farmerflu,                 farmerFluVaccination,         farmer-flu-vaccination",
+        "FARMERFLU,                 farmerFluVaccination,         farmer-flu-vaccination",
+        "ROUTINEIMMUNIZATION,       routineImmunization,          routine-immunization",
+    })
+    void setReportType_caseVariant_normalizesAndComputesCorrectDataStreamId(
+            String input, String canonicalName, String expectedDataStreamId) throws MetadataFault {
+
+        // Override the default stub for this specific case-variant input so that
+        // getFileTypeName() returns the canonical registry name, not the raw input.
+        IFileType canonicalFileType = mock(IFileType.class);
+        when(canonicalFileType.getFileTypeName()).thenReturn(canonicalName.trim());
+        when(mockService.getFileType(input.trim())).thenReturn(canonicalFileType);
+
+        MetadataBuilder builder = new MetadataBuilder(mockService);
+        builder.setMetadataValidationEnabled(false);
+        builder.setReportType(input.trim());
+
+        MetadataImpl meta = builder.build();
+        assertEquals(expectedDataStreamId.trim(), meta.getDataStreamId(), "dataStreamId");
+        assertEquals(canonicalName.trim(),        meta.getExtEventType(), "extEventType normalized to canonical");
+        assertTrue(builder.getErrors().isEmpty(), "no errors expected");
     }
 
     // -------------------------------------------------------------------------
