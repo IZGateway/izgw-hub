@@ -66,13 +66,22 @@ The `data_stream_id` determines the DEX storage container. It is computed from t
 
 The `meta_ext_event` field (NDLP scope) drives storage container routing.
 
-| Report Type | `meta_ext_event` |
+> **Casing note:** The canonical `extEvent` values in the IZGW file-type registry are the
+> gold standard for correct camelCase spelling. These values are used directly by
+> `MetadataBuilder.computeDataStreamId()` to produce hyphenated `data_stream_id` strings —
+> incorrect casing produces incorrect hyphenation (e.g. `"covidallmonthly-vaccination"` instead
+> of `"covid-all-monthly-vaccination"`). The external DMI spec document uses inconsistent
+> casing; always defer to the registry values. The case-insensitive normalization in Decision 3
+> of the design ensures that any casing variant submitted by a client resolves to the correct
+> canonical form before computation.
+
+| Report Type | `meta_ext_event` (canonical registry value) |
 |---|---|
 | Routine Immunization | `routineImmunization` |
 | Influenza | `influenzaVaccination` |
 | RSV | `rsvPrevention` |
-| COVID monthly aggregate | `covidallmonthlyVaccination` |
-| Farmer Flu | `farmerfluVaccination` |
+| COVID monthly aggregate | `covidAllMonthlyVaccination` |
+| Farmer Flu | `farmerFluVaccination` |
 | Measles | `measlesVaccination` |
 | RI Quarterly Aggregate | `riQuarterlyAggregate` |
 

@@ -143,6 +143,15 @@ computation (`computeMetaExtEvent`, `computeDataStreamId`) operates on the corre
 camelCase string that the algorithms expect. Without this, a submitter who passes
 `"covidall"` would get `extEvent = "covidall"` and `dataStreamId = "covidall"` (wrong).
 
+**Hyphenation correctness:** The canonical registry values are the gold standard for
+correct camelCase spelling. The external DMI spec document uses inconsistent casing (e.g.
+`"covidallmonthlyVaccination"`, `"farmerfluVaccination"`) which would produce wrong
+hyphenation (`"covidallmonthly-vaccination"`, `"farmerflu-vaccination"`) if used directly.
+Normalizing through the registry ensures `computeDataStreamId()` always receives the
+correctly-cased input and produces the correct kebab output regardless of what casing the
+caller supplies. See [`specs/metadata-requirements.md`](specs/metadata-requirements.md)
+for the canonical values.
+
 **Note:** When no service is injected (or the type is unrecognised), the raw submitted
 value is used as before — computation proceeds with a warning.
 
