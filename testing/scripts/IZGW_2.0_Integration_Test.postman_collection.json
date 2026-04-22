@@ -10167,7 +10167,7 @@
                           "    var metadata = pm.response.json();\r",
                           "    pm.expect(metadata.meta_ext_event_type, \"meta_ext_event_type\").to.be.eql(\"farmerFlu\");\r",
                           "    pm.expect(metadata.meta_ext_event, \"meta_ext_event\").to.be.eql(\"farmerFluVaccination\");\r",
-                          "    pm.expect(metadata.data_stream_id, \"data_stream_id\").to.be.eql(\"farmer-flu\");\r",
+                          "    pm.expect(metadata.data_stream_id, \"data_stream_id\").to.be.eql(\"farmer-flu-vaccination\");\r",
                           "\r",
                           "});\r",
                           "\r",

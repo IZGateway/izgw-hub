@@ -32,7 +32,7 @@ Jira: IGDD-2775
 
 ## 4. Postman
 
-- [ ] 4.1 Update Postman collection line asserting `data_stream_id` for farmerFlu test: change `"farmer-flu"` → `"farmer-flu-vaccination"`.
+- [x] 4.1 Update Postman collection line asserting `data_stream_id` for farmerFlu test: change `"farmer-flu"` → `"farmer-flu-vaccination"`.
 
 ## 5. Report types discovery endpoint
 
