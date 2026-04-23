@@ -193,33 +193,49 @@ jobs:
             
 # Use GitHub Action to speed up and improve dependency checking
 # You can Disable automatic dependency checking in the build, this replaces it          
+    - name: Get current date for cache key
+      id: date
+      run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+    - name: Cache Dependency-Check NVD data
+      uses: actions/cache@v4
+      with:
+        path: ~/dependency-check-data
+        key: dependency-check-nvd-${{ runner.os }}-${{ steps.date.outputs.date }}
+        restore-keys: |
+          dependency-check-nvd-${{ runner.os }}-
+
     - name: Dependency Check
       env:
         # Per https://github.com/marketplace/actions/dependency-check, fix JAVA_HOME location for action
         JAVA_HOME: /opt/jdk
       uses: dependency-check/Dependency-Check_Action@main
       continue-on-error: true
-      timeout-minutes: 5
+      timeout-minutes: 15
       with:
         project: IZ Gateway Hub
         path: target/${{env.IMAGE_TAG}}.jar
         format: 'HTML'
         out: 'target/site'
         args: >
+          --data /github/home/dependency-check-data
           --ossIndexUsername ${{ secrets.OSS_INDEX_USERNAME }}
           --ossIndexPassword ${{ secrets.OSS_INDEX_PASSWORD }}       
           --failOnCVSS 7
+          --format JSON
           --suppression ./dependency-suppression.xml
+          --nvdApiKey ${{ secrets.NVDAPIKEY }}
           --disableNuspec    
           --disableNugetconf  
           --disableAssembly            
+          --disableCentral
 
     - name: Upload dependency check log
       uses: actions/upload-artifact@v4
       if: ${{ always() }}
       with:
         name: DependencyCheck
-        path: ./target/site/dependency-check-report.html
+        path: ./target/site/dependency-check-report.*
 
     - name: Publish Site (Develop)
       # Publish to /develop/ for: push to develop, PRs targeting develop, scheduled runs, manual dispatch
