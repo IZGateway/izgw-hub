@@ -39,7 +39,19 @@ Jira: IGDD-2775
 - [x] 5.1 Add `GET /rest/ads/reportTypes` to `ADSController` returning `config.getAccessControls().getEventTypes()` as `List<String>`.
 - [x] 5.2 Confirm the existing `@Schema` description on `reportType` parameter already references this URL (no change needed).
 
-## 6. Post-deploy
+## 7. Noise-word registry matching (backward compatibility)
+
+- [x] 7.1 In `NewModelHelper.getFileType()`, add a third matching tier that strips noise
+  words (`vaccination`, `immunization`, `prevention`, `monthly`, `quarterly`) from both
+  the submitted value and each registry key (case-insensitively) before comparing. This
+  allows `"farmerFlu"` to match `"farmerFluVaccination"` and `"covidall"` to match
+  `"covidAllMonthlyVaccination"`.
+- [x] 7.2 Make `fileTypeCache` package-private to allow stub subclass in tests.
+- [x] 7.3 Add `NewModelHelperGetFileTypeTests` covering tier-1, tier-2, tier-3, and
+  no-match cases.
+- [x] 7.4 Run `mvn test` and confirm all tests green.
+- [x] 7.5 Run `mvn compile -q` — confirm zero errors.
+- [x] 7.6 Update spec `report-type-normalization.md` to document three-tier matching.
 
 - [ ] 6.1 After deployment to onboarding environment, resubmit `farmerFlu` test file targeting path `ext-immunization-izgw/farmer-flu-vaccination/`.
 - [ ] 6.2 Confirm `covidAllMonthlyVaccination` path and resubmit if affected.

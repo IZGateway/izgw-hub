@@ -10,14 +10,20 @@ identical metadata and blob storage paths.
 
 ### Registry lookup
 
-- WHEN `setReportType(reportType)` is called, the system SHALL perform a case-insensitive
-  lookup of `reportType` in the file-type registry.
-- The lookup SHALL first attempt an exact-case match; if not found, it SHALL scan for a
-  case-insensitive match.
-- WHEN a match is found, the canonical `fileTypeName` from the registry record SHALL
-  replace the submitted value for all subsequent computation in that request.
-- WHEN no match is found, the system SHALL log a warning at WARN level and continue
-  processing using the submitted value unchanged.
+- WHEN `setReportType(reportType)` is called, the system SHALL perform a three-tier
+  lookup of `reportType` in the file-type registry:
+  1. **Exact match** — case-sensitive against the stored `fileTypeName`.
+  2. **Case-insensitive match** — handles casing variants (e.g. `"ROUTINEIMMUNIZATION"`
+     → `"routineImmunization"`).
+  3. **Noise-word stripped match** — strips the words `"vaccination"`, `"immunization"`,
+     `"prevention"`, `"monthly"`, and `"quarterly"` (case-insensitively) from both the
+     submitted value and each registry key before comparing. This allows legacy submission
+     values that omit noise-word components (e.g. `"farmerFlu"`, `"covidall"`) to match
+     their canonical registry entries and preserves backward compatibility.
+- WHEN a match is found at any tier, the canonical `fileTypeName` from the registry
+  record SHALL replace the submitted value for all subsequent computation in that request.
+- WHEN no match is found at any tier, the system SHALL log a warning at WARN level and
+  continue processing using the submitted value unchanged.
 
 ### Field values after normalization
 
@@ -36,5 +42,7 @@ identical metadata and blob storage paths.
 - Unit tests SHALL verify that case variants of at least `farmerFlu` and
   `covidAllMonthlyVaccination` produce the same `data_stream_id` as the canonical form
   when a registry service is present.
+- Unit tests SHALL verify that noise-word stripped variants such as `"farmerFlu"`,
+  `"rsv"`, `"influenza"`, and `"measles"` resolve to their canonical registry entries.
 - Unit tests SHALL verify that without a service, the raw submitted value drives
   computation (no normalization occurs).
