@@ -335,8 +335,8 @@ public class ADSController implements ADSChecker {
 	}
 
 	private void normalizeReportType(MetadataBuilder m, String reportType) {
-		Optional<String> normalizedReportType = config.getAccessControls().getEventTypes().stream()
-				.filter(e -> e.equalsIgnoreCase(reportType)).findFirst();
+		Optional<String> normalizedReportType = ADSUtils.matchReportType(
+				reportType, config.getAccessControls().getEventTypes());
 		if (normalizedReportType.isPresent()) {
 			m.setReportType(normalizedReportType.get());
 		} else {

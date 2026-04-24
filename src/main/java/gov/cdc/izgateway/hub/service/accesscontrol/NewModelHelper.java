@@ -1,6 +1,5 @@
 package gov.cdc.izgateway.hub.service.accesscontrol;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -9,6 +8,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.function.Function;
 
+import gov.cdc.izgateway.ads.ADSUtils;
 import gov.cdc.izgateway.dynamodb.model.AccessGroup;
 import gov.cdc.izgateway.dynamodb.model.AllowedUser;
 import gov.cdc.izgateway.dynamodb.model.DenyListRecord;
@@ -27,25 +27,19 @@ class NewModelHelper implements AccessControlModelHelper {
     /**
      * Noise words stripped from both the submitted reportType and registry keys
      * when performing the third-tier fuzzy match in {@link #getFileType(String)}.
-     * This allows legacy submissions such as {@code "farmerFlu"} to match the
-     * canonical registry entry {@code "farmerFluVaccination"}.
+     * Delegated to {@link ADSUtils#NOISE_WORDS}.
      */
-    private static final List<String> NOISE_WORDS =
-            Arrays.asList("vaccination", "immunization", "prevention", "monthly", "quarterly");
+    private static final List<String> NOISE_WORDS = ADSUtils.NOISE_WORDS;
 
     /**
-     * Strip all occurrences of {@link #NOISE_WORDS} from {@code s} (case-insensitively)
-     * and return the result in lower-case.
+     * Strip all occurrences of noise words from {@code s} (case-insensitively).
+     * Delegated to {@link ADSUtils#stripNoiseWords(String)}.
      *
      * @param s the input string
      * @return lower-cased string with noise words removed
      */
     private static String stripNoiseWords(String s) {
-        String result = s.toLowerCase();
-        for (String noise : NOISE_WORDS) {
-            result = result.replace(noise, "");
-        }
-        return result;
+        return ADSUtils.stripNoiseWords(s);
     }
 	/**
 	 * 
