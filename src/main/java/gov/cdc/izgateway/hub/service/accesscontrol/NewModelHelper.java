@@ -1,7 +1,6 @@
 package gov.cdc.izgateway.hub.service.accesscontrol;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -24,23 +23,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 class NewModelHelper implements AccessControlModelHelper {
 
-    /**
-     * Noise words stripped from both the submitted reportType and registry keys
-     * when performing the third-tier fuzzy match in {@link #getFileType(String)}.
-     * Delegated to {@link ADSUtils#NOISE_WORDS}.
-     */
-    private static final List<String> NOISE_WORDS = ADSUtils.NOISE_WORDS;
-
-    /**
-     * Strip all occurrences of noise words from {@code s} (case-insensitively).
-     * Delegated to {@link ADSUtils#stripNoiseWords(String)}.
-     *
-     * @param s the input string
-     * @return lower-cased string with noise words removed
-     */
-    private static String stripNoiseWords(String s) {
-        return ADSUtils.stripNoiseWords(s);
-    }
 	/**
 	 * 
 	 */
@@ -158,9 +140,9 @@ class NewModelHelper implements AccessControlModelHelper {
 		}
 		// Tier 3: noise-word stripped match for backward compatibility
 		// (e.g. "farmerFlu" matches "farmerFluVaccination")
-		String strippedInput = stripNoiseWords(reportType);
+		String strippedInput = ADSUtils.stripNoiseWords(reportType);
 		return fileTypeCache.entrySet().stream()
-				.filter(e -> stripNoiseWords(e.getKey()).equals(strippedInput))
+				.filter(e -> ADSUtils.stripNoiseWords(e.getKey()).equals(strippedInput))
 				.map(Map.Entry::getValue)
 				.findFirst()
 				.orElse(null);
