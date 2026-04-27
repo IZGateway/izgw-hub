@@ -41,13 +41,9 @@ security:
     # the AWS environment. 
     ssl-path: ${SSL_SHARE:}conf/ssl
 
-    springdoc:
-        swagger-ui:
-            path: /swagger/ui.html
-            # COPILOT-REVIEW: Hardcoded swagger-ui version to override springdoc's bundled version.
-            # Workaround for display issue with springdoc 2.8.17 bundling swagger-ui 5.32.4.
-            # Check when: springdoc.version changes in izgw-bom/pom.xml — verify this override is still needed.
-            version: "5.32.4"
+springdoc:
+    swagger-ui:
+        path: /swagger/ui.html
     api-docs:
         path: /swagger/api-docs
 
