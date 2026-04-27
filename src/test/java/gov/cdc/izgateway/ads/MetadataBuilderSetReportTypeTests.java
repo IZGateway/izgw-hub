@@ -48,6 +48,10 @@ class MetadataBuilderSetReportTypeTests {
             when(ft.getFileTypeName()).thenReturn(name);
             return ft;
         });
+        // farmerFlu is a legacy alias; the registry maps it to the canonical farmerFluVaccination.
+        IFileType farmerFluType = mock(IFileType.class);
+        when(farmerFluType.getFileTypeName()).thenReturn("farmerFluVaccination");
+        when(mockService.getFileType("farmerFlu")).thenReturn(farmerFluType);
     }
 
     // -------------------------------------------------------------------------
@@ -76,7 +80,7 @@ class MetadataBuilderSetReportTypeTests {
 
         MetadataImpl meta = builder.build();
         assertEquals(expectedExtEvent.trim(),       meta.getExtEvent(),      "extEvent");
-        assertEquals(reportType.trim(),             meta.getExtEventType(),  "extEventType (always raw input)");
+        assertEquals(expectedExtEvent.trim(),       meta.getExtEventType(),  "extEventType (canonical when registry match found)");
         assertEquals(expectedDataStreamId.trim(),   meta.getDataStreamId(),  "dataStreamId");
         assertTrue(builder.getErrors().isEmpty(),   "no errors expected");
     }

@@ -27,8 +27,8 @@ identical metadata and blob storage paths.
 
 ### Field values after normalization
 
-- `meta_ext_event_type` SHALL always reflect the **submitted** (raw) value, not the
-  canonical name. This preserves auditability of what was actually sent.
+- `meta_ext_event_type` SHALL reflect the **canonical** name from the registry when a
+  match is found. When no match is found at any tier, it falls back to the submitted value.
 - `meta_ext_event` and `data_stream_id` SHALL be computed from the **canonical** name.
 
 ### No-service fallback

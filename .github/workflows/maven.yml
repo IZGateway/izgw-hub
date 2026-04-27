@@ -218,7 +218,7 @@ jobs:
         format: 'HTML'
         out: 'target/site'
         args: >
-          --data /github/home/dependency-check-data
+          --data ~/dependency-check-data
           --ossIndexUsername ${{ secrets.OSS_INDEX_USERNAME }}
           --ossIndexPassword ${{ secrets.OSS_INDEX_PASSWORD }}       
           --failOnCVSS 7

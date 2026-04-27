@@ -44,7 +44,7 @@ security:
 springdoc:
     swagger-ui:
         path: /swagger/ui.html
-        version: "@swagger-ui.version@"
+        version: ${SWAGGER_UI_VERSION:}
     api-docs:
         path: /swagger/api-docs
 
