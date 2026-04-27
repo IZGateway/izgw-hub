@@ -35,8 +35,8 @@ public class ADSUtils {
      * fuzzy matching against the registry. This allows legacy submissions such
      * as {@code "farmerFlu"} to match the canonical entry {@code "farmerFluVaccination"}.
      */
-    public static final List<String> NOISE_WORDS =
-            Arrays.asList("vaccination", "immunization", "prevention", "monthly", "quarterly");
+    protected static final List<String> NOISE_WORDS =
+            List.of("vaccination", "immunization", "prevention", "monthly", "quarterly");
 
     private ADSUtils() {
     }
