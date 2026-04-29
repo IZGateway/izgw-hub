@@ -44,6 +44,9 @@ security:
 springdoc:
     swagger-ui:
         path: /swagger/ui.html
+        # Must match org.webjars:swagger-ui version in izgw-bom; springdoc reads its own bundled
+        # springdoc.config.properties for the default (5.32.2 in 2.8.17) which differs from the BOM pin.
+        version: 5.32.4
     api-docs:
         path: /swagger/api-docs
 

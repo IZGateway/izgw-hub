@@ -322,9 +322,21 @@ public class ADSController implements ADSChecker {
 		}
 	}
 
+	/**
+	 * Returns the list of valid report type names that may be submitted to ADS.
+	 *
+	 * @return list of valid report type strings
+	 */
+	@GetMapping("/ads/reportTypes")
+	@Operation(summary = "List valid report types", description = "Returns the currently registered report type names accepted by ADS.")
+	@ApiResponse(responseCode = "200", description = "Success")
+	public List<String> getAvailableReportTypes() {
+		return new ArrayList<>(config.getAccessControls().getEventTypes());
+	}
+
 	private void normalizeReportType(MetadataBuilder m, String reportType) {
-		Optional<String> normalizedReportType = config.getAccessControls().getEventTypes().stream()
-				.filter(e -> e.equalsIgnoreCase(reportType)).findFirst();
+		Optional<String> normalizedReportType = ADSUtils.matchReportType(
+				reportType, config.getAccessControls().getEventTypes());
 		if (normalizedReportType.isPresent()) {
 			m.setReportType(normalizedReportType.get());
 		} else {
