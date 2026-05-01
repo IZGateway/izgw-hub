@@ -5831,8 +5831,7 @@
                       ""
                     ],
                     "type": "text/javascript",
-                    "packages": {},
-                    "requests": {}
+                    "packages": {}
                   }
                 },
                 {
@@ -5842,8 +5841,7 @@
                       "utils.setup(pm, \"invalid\");"
                     ],
                     "type": "text/javascript",
-                    "packages": {},
-                    "requests": {}
+                    "packages": {}
                   }
                 }
               ],
@@ -9543,7 +9541,8 @@
                           "utils.setup(pm);"
                         ],
                         "type": "text/javascript",
-                        "packages": {}
+                        "packages": {},
+                        "requests": {}
                       }
                     },
                     {
@@ -9586,7 +9585,8 @@
                           ""
                         ],
                         "type": "text/javascript",
-                        "packages": {}
+                        "packages": {},
+                        "requests": {}
                       }
                     }
                   ],
@@ -9741,7 +9741,7 @@
                         },
                         {
                           "key": "reportType",
-                          "value": "covidallMonthlyVaccination",
+                          "value": "covidAllMonthlyVaccination",
                           "type": "text"
                         },
                         {
@@ -10163,11 +10163,10 @@
                           "});\r",
                           "\r",
                           "pm.test(\"Response is As Expected\", function () {\r",
-                          "    checkDexResponse(pm, 844);\r",
+                          "    checkDexResponse(pm, 844, \"farmerFluVaccination\");\r",
                           "    var metadata = pm.response.json();\r",
-                          "    pm.expect(metadata.meta_ext_event_type, \"meta_ext_event_type\").to.be.eql(\"farmerFlu\");\r",
                           "    pm.expect(metadata.meta_ext_event, \"meta_ext_event\").to.be.eql(\"farmerFluVaccination\");\r",
-                          "    pm.expect(metadata.data_stream_id, \"data_stream_id\").to.be.eql(\"farmer-flu\");\r",
+                          "    pm.expect(metadata.data_stream_id, \"data_stream_id\").to.be.eql(\"farmer-flu-vaccination\");\r",
                           "\r",
                           "});\r",
                           "\r",
@@ -10998,8 +10997,9 @@
                 "type": "text/javascript",
                 "requests": {},
                 "exec": [
-                  "checkDexResponse = function (pm, fileSize) {",
+                  "checkDexResponse = function (pm, fileSize, expectedEventType) {",
                   "    var metadata = pm.response.json();",
+                  "    var eventType = expectedEventType || pm.request.body.formdata.get(\"reportType\");",
                   "    try {",
                   "        pm.expect(metadata.meta_destination_id, \"meta_destination_id\").to.match(/ndlp|test/);",
                   "        pm.expect(metadata.meta_ext_source, \"meta_ext_source\").to.be.eql(\"IZGW\");",
@@ -11016,7 +11016,7 @@
                   "        // Filesizes on unix differ by one from Windows, unsure why.",
                   "        pm.expect(Math.abs(fileSize - metadata.izgw_filesize), \"izgw_filesize\").to.be.lessThan(4);",
                   "        pm.expect(metadata.meta_ext_submissionperiod, \"meta_ext_submissionperiod\").to.be.eql(pm.request.body.formdata.get(\"period\"));",
-                  "        pm.expect(metadata.meta_ext_event_type, \"meta_ext_event_type\").to.be.eql(pm.request.body.formdata.get(\"reportType\"));",
+                  "        pm.expect(metadata.meta_ext_event_type, \"meta_ext_event_type\").to.be.eql(eventType);",
                   "        pm.expect(metadata.meta_ext_entity, \"meta_ext_entity\").to.be.eql(pm.request.body.formdata.get(\"facilityId\"));",
                   "        pm.expect(metadata.received_filename, \"recieved_filename\").to.be.eql(pm.request.body.formdata.get(\"filename\"));",
                   "        pm.expect(metadata.sender_id, \"sender_id\").to.be.eql(\"IZGW\");",
@@ -12527,7 +12527,7 @@
                     },
                     {
                       "key": "reportType",
-                      "value": "covidallmonthlyVaccination",
+                      "value": "covidAllMonthlyVaccination",
                       "type": "text"
                     },
                     {
@@ -12919,8 +12919,9 @@
                 "type": "text/javascript",
                 "packages": {},
                 "exec": [
-                  "checkDexResponse = function (pm, fileSize) {\r",
+                  "checkDexResponse = function (pm, fileSize, expectedEventType) {\r",
                   "    var metadata = pm.response.json();\r",
+                  "    var eventType = expectedEventType || pm.request.body.formdata.get(\"reportType\");\r",
                   "    try {\r",
                   "        pm.expect(metadata.meta_destination_id, \"meta_destination_id\").to.match(/ndlp.*|test/);\r",
                   "        pm.expect(metadata.meta_ext_source, \"meta_ext_source\").to.be.eql(\"IZGW\");\r",
@@ -12937,7 +12938,7 @@
                   "        // Filesizes on unix differ by one from Windows, unsure why.\r",
                   "        pm.expect(Math.abs(fileSize - metadata.izgw_filesize), \"izgw_filesize\").to.be.lessThan(4);\r",
                   "        pm.expect(metadata.meta_ext_submissionperiod, \"meta_ext_submissionperiod\").to.be.eql(pm.request.body.formdata.get(\"period\"));\r",
-                  "        pm.expect(metadata.meta_ext_event_type, \"meta_ext_event_type\").to.be.eql(pm.request.body.formdata.get(\"reportType\"));\r",
+                  "        pm.expect(metadata.meta_ext_event_type, \"meta_ext_event_type\").to.be.eql(eventType);\r",
                   "        pm.expect(metadata.meta_ext_entity, \"meta_ext_entity\").to.be.eql(pm.request.body.formdata.get(\"facilityId\"));\r",
                   "        pm.expect(metadata.received_filename, \"recieved_filename\").to.be.eql(pm.request.body.formdata.get(\"filename\"));\r",
                   "        pm.expect(metadata.sender_id, \"sender_id\").to.be.eql(\"IZGW\");\r",
@@ -12975,6 +12976,124 @@
               }
             }
           ]
+        },
+        {
+          "name": "TC_13c Test against Unresponsive or down  IIS",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 500\", function () {\r",
+                  "    pm.response.to.have.status(500);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Response has DestinationConnectionFault\", function () {\r",
+                  "    pm.expect(responseBody).to.contain('DestinationConnectionFault>');\r",
+                  "    pm.expect(responseBody).to.contain('urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessage:Fault:DestinationConnectionFault');\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Response has correct soap reason about connection time out\", function () {\r",
+                  "    var jsonObject = xml2Json(responseBody);\r",
+                  "    var reasonText= jsonObject['soap:Envelope']['soap:Body']['soap:Fault']['soap:Reason']['soap:Text']['_'];\r",
+                  "    pm.expect(reasonText).to.include(\"Connect Timeout\");\r",
+                  "});\r",
+                  "\r",
+                  "var response = utils.removeNS(xml2Json(responseBody));\r",
+                  "pm.test(\"Response has Summary = ConnectTimeout\", function() {\r",
+                  "   var summary = response['Envelope']['Body']['Fault']['Detail']['Summary'];\r",
+                  "   pm.expect(summary).to.be.eql('ConnectTimeout');\r",
+                  "});\r",
+                  "pm.test(\"Response has Retry = CHECK_IIS_STATUS\", function() {\r",
+                  "   var retry = response['Envelope']['Body']['Fault']['Detail']['Retry'];\r",
+                  "   pm.expect(retry).to.be.eql('CHECK_IIS_STATUS');\r",
+                  "});\r",
+                  "\r",
+                  "const interval = setTimeout(() => {}, 3000);\r",
+                  "async function moreTests() {\r",
+                  "    utils.getLogs(null, pm).then((logData) => {\r",
+                  "        logs = logData.json();\r",
+                  "        utils.testLogs(logs, pm, 0, \"DestinationConnectionFault\", \"ConnectTimeout\", \"CHECK_IIS_STATUS\");\r",
+                  "\r",
+                  "        txData = utils.getTxData(logs);\r",
+                  "        for (entry of txData) {\r",
+                  "            // Only check entries for Gateway, not for Mock\r",
+                  "            if (entry.transactionData.serviceType != \"Gateway\") {\r",
+                  "                continue;\r",
+                  "            }\r",
+                  "            if (entry.eventId < 2) continue; // Skip internal calls\r",
+                  "            pm.test(\"transactionData.destination.id is not null\", function () {\r",
+                  "                pm.expect(entry.transactionData.destination.id).to.not.be.eql(null);\r",
+                  "            });\r",
+                  "            pm.test(\"transactionData.destination.url is not null\", function () {\r",
+                  "                pm.expect(entry.transactionData.destination.url).to.not.be.eql(null);\r",
+                  "            });\r",
+                  "            pm.test(\"transactionData.destination.connected is false\", function () {\r",
+                  "                pm.expect(entry.transactionData.destination.connected).to.be.eql(false);\r",
+                  "            });\r",
+                  "            pm.test(\"transactionData.destination.ipAddress is not 'unknown'\", function () {\r",
+                  "                pm.expect(entry.transactionData.destination.ipAddress).to.not.be.eql(\"unknown\");\r",
+                  "            });\r",
+                  "            pm.test(\"transactionData.destination.cipherSuite is null\", function () {\r",
+                  "                pm.expect(entry.transactionData.destination.cipherSuite).to.be.eql(null);\r",
+                  "            });\r",
+                  "            pm.test(\"transactionData.destination.commonName is null\", function () {\r",
+                  "                pm.expect(entry.transactionData.destination.cipherSuite).to.be.eql(null);\r",
+                  "            });\r",
+                  "        }           \r",
+                  "    });\r",
+                  "}\r",
+                  " if(!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) moreTests();"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "utils.setup(pm, \"down\");"
+                ],
+                "type": "text/javascript",
+                "packages": {}
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disabledSystemHeaders": {
+              "host": true
+            }
+          },
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Host",
+                "value": "{{hostHeader}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/xml"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>down</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|||TEST|TC_13C|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS|SIISCLIENT28374</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+            },
+            "url": {
+              "raw": "https://{{host}}:{{port}}/IISHubService",
+              "protocol": "https",
+              "host": [
+                "{{host}}"
+              ],
+              "port": "{{port}}",
+              "path": [
+                "IISHubService"
+              ]
+            }
+          },
+          "response": []
         },
         {
           "name": "Blacklist a User",

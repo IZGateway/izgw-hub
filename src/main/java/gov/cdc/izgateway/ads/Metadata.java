@@ -131,39 +131,13 @@ public interface Metadata extends Serializable {
     String getExtEventType();
     void setExtEventType(String extEventTyype);
     /*
-     * data_stream_id	New field
-	 * DEX required	Add field
-	 * Allowed values:
-	 * -	routine-immunization
-	 * -	influenza-vaccination
-	 * -	rsv-prevention
-	 * -	covid-all-monthly-vaccination
-	 * -	covid-bridge-vaccination
-	 * -	measles-vaccination
-	 */
+     * data_stream_id  – computed from meta_ext_event via the camelCase→kebab algorithm
+     * in MetadataBuilder.computeDataStreamId().  MetadataImpl overrides this to return
+     * a stored field first, allowing explicit values set during deserialization to win.
+     */
     @JsonProperty("data_stream_id")
     default String getDataStreamId() {
-    	String value = getExtEvent();
-    	switch (value.toLowerCase()) {
-		case "routineimmunization":
-    		return "routine-immunization";
-		case "farmerfluvaccination":
-			return "farmer-flu-vaccination";
-		case "influenzavaccination":
-    		return "influenza-vaccination";
-		case "rsvprevention":
-    		return "rsv-prevention";
-		case "covidallmonthlyvaccination":
-			return "covid-all-monthly-vaccination";
-		case "covidbridgevaccination":
-			return "covid-bridge-vaccination";
-		case "genericimmunization":
-			return "generic-immunization";
-		case "measlesvaccination":
-			return "measles-vaccination";
-		default:
-			return value;
-    	}
+        return MetadataBuilder.computeDataStreamId(getExtEvent());
     }
     
     @JsonProperty("meta_ext_entity")

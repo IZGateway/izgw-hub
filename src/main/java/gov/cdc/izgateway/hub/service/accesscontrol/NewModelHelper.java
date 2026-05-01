@@ -7,6 +7,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.function.Function;
 
+import gov.cdc.izgateway.ads.ADSUtils;
 import gov.cdc.izgateway.dynamodb.model.AccessGroup;
 import gov.cdc.izgateway.dynamodb.model.AllowedUser;
 import gov.cdc.izgateway.dynamodb.model.DenyListRecord;
@@ -21,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 class NewModelHelper implements AccessControlModelHelper {
+
 	/**
 	 * 
 	 */
@@ -35,7 +37,7 @@ class NewModelHelper implements AccessControlModelHelper {
 
 	private Map<String, AccessGroup> accessGroupCache = Collections.emptyMap();
 	private Map<String, DenyListRecord> denyListRecordCache = Collections.emptyMap();
-	private Map<String, FileType> fileTypeCache = Collections.emptyMap();
+	Map<String, FileType> fileTypeCache = new TreeMap<>();
 	private Map<String, Set<AllowedUser>> allowedUserCache = Collections.emptyMap();
 	
 	@Override
@@ -99,12 +101,21 @@ class NewModelHelper implements AccessControlModelHelper {
 	}
 
 	/**
-	 * Look up a FileType by report type name, case-insensitively.
-	 * The underlying fileTypeCache is keyed by the exact fileTypeName from the database,
-	 * so this method iterates the cache entries to find a case-insensitive match.
+	 * Look up a FileType by report type name using a three-tier match:
+	 * <ol>
+	 *   <li>Exact match against the cached {@code fileTypeName}.</li>
+	 *   <li>Case-insensitive match (handles casing variants such as
+	 *       {@code "ROUTINEIMMUNIZATION"} → {@code "routineImmunization"}).</li>
+	 *   <li>Noise-word stripped match — removes {@code "vaccination"},
+	 *       {@code "immunization"}, and {@code "prevention"} from both the
+	 *       submitted value and each registry key before comparing.  This
+	 *       allows legacy submission values such as {@code "farmerFlu"} to
+	 *       match the canonical entry {@code "farmerFluVaccination"} and
+	 *       preserves backward compatibility.</li>
+	 * </ol>
 	 *
 	 * @param reportType the report type name to look up
-	 * @return the matching FileType, or null if not found or input is blank
+	 * @return the matching FileType, or {@code null} if not found or input is blank
 	 */
 	IFileType getFileType(String reportType) {
 		if (reportType == null || reportType.isBlank()) {
@@ -113,14 +124,25 @@ class NewModelHelper implements AccessControlModelHelper {
 		if (fileTypeCache.isEmpty()) {
 			refresh();
 		}
-		// fileTypeCache is a TreeMap (case-sensitive); try exact match first
+		// Tier 1: exact match
 		FileType exact = fileTypeCache.get(reportType);
 		if (exact != null) {
 			return exact;
 		}
-		// Fall back to case-insensitive scan
-		return fileTypeCache.entrySet().stream()
+		// Tier 2: case-insensitive scan
+		FileType caseInsensitive = fileTypeCache.entrySet().stream()
 				.filter(e -> e.getKey().equalsIgnoreCase(reportType))
+				.map(Map.Entry::getValue)
+				.findFirst()
+				.orElse(null);
+		if (caseInsensitive != null) {
+			return caseInsensitive;
+		}
+		// Tier 3: noise-word stripped match for backward compatibility
+		// (e.g. "farmerFlu" matches "farmerFluVaccination")
+		String strippedInput = ADSUtils.stripNoiseWords(reportType);
+		return fileTypeCache.entrySet().stream()
+				.filter(e -> ADSUtils.stripNoiseWords(e.getKey()).equals(strippedInput))
 				.map(Map.Entry::getValue)
 				.findFirst()
 				.orElse(null);
