@@ -173,10 +173,10 @@ Update ADSController to use AccessControlService and add discovery endpoint.
 - `src/main/java/gov/cdc/izgateway/ads/ADSController.java`
 
 **Acceptance Criteria:**
-- [x] Update `getMetadata()` to pass config.getAccessControls() to MetadataBuilder
-- [x] Remove hardcoded allowableValues from @Schema annotation
-- [x] Add `getAvailableReportTypes()` endpoint — **moved to fix-ndlp-folder-paths CR**
-- [x] Create `ReportTypeInfo` DTO — **removed from scope; endpoint returns List\<String\> instead**
+- [ ] Update `getMetadata()` to pass config.getAccessControls() to MetadataBuilder
+- [ ] Remove hardcoded allowableValues from @Schema annotation
+- [ ] Add `getAvailableReportTypes()` endpoint
+- [ ] Create `ReportTypeInfo` DTO
 
 ---
 

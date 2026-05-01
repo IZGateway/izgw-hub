@@ -13,10 +13,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.ServiceConfigurationError;
 import java.util.TreeMap;
 
@@ -30,57 +27,7 @@ import java.util.TreeMap;
 public class ADSUtils {
     private static final Map<String, String> ENTITY_ID_MAP = new TreeMap<>();
 
-    /**
-     * Noise words stripped from submitted reportType values when performing
-     * fuzzy matching against the registry. This allows legacy submissions such
-     * as {@code "farmerFlu"} to match the canonical entry {@code "farmerFluVaccination"}.
-     */
-    protected static final List<String> NOISE_WORDS =
-            List.of("vaccination", "immunization", "prevention", "monthly", "quarterly");
-
     private ADSUtils() {
-    }
-
-    /**
-     * Strip all occurrences of {@link #NOISE_WORDS} from {@code s} (case-insensitively)
-     * and return the result in lower-case.
-     *
-     * @param s the input string
-     * @return lower-cased string with noise words removed
-     */
-    public static String stripNoiseWords(String s) {
-        String result = s.toLowerCase();
-        for (String noise : NOISE_WORDS) {
-            result = result.replace(noise, "");
-        }
-        return result;
-    }
-
-    /**
-     * Find a matching event type from the registry for the submitted reportType using
-     * three-tier matching: exact, case-insensitive, then noise-word stripped.
-     *
-     * @param reportType the submitted reportType value
-     * @param eventTypes the registered event type names
-     * @return the matched canonical event type, or empty if no match found
-     */
-    public static Optional<String> matchReportType(String reportType, Collection<String> eventTypes) {
-        // Tier 1: exact match
-        if (eventTypes.contains(reportType)) {
-            return Optional.of(reportType);
-        }
-        // Tier 2: case-insensitive match
-        Optional<String> match = eventTypes.stream()
-                .filter(e -> e.equalsIgnoreCase(reportType))
-                .findFirst();
-        if (match.isPresent()) {
-            return match;
-        }
-        // Tier 3: noise-word stripped match
-        String strippedSubmitted = stripNoiseWords(reportType);
-        return eventTypes.stream()
-                .filter(e -> stripNoiseWords(e).equals(strippedSubmitted))
-                .findFirst();
     }
 
     /**
