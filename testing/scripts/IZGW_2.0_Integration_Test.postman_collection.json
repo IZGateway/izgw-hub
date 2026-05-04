@@ -9859,7 +9859,7 @@
                         },
                         {
                           "key": "reportType",
-                          "value": "covidallMonthlyVaccination",
+                          "value": "covidAllMonthlyVaccination",
                           "type": "text"
                         },
                         {
@@ -10281,11 +10281,10 @@
                           "});\r",
                           "\r",
                           "pm.test(\"Response is As Expected\", function () {\r",
-                          "    checkDexResponse(pm, 844);\r",
+                          "    checkDexResponse(pm, 844, \"farmerFluVaccination\");\r",
                           "    var metadata = pm.response.json();\r",
-                          "    pm.expect(metadata.meta_ext_event_type, \"meta_ext_event_type\").to.be.eql(\"farmerFlu\");\r",
                           "    pm.expect(metadata.meta_ext_event, \"meta_ext_event\").to.be.eql(\"farmerFluVaccination\");\r",
-                          "    pm.expect(metadata.data_stream_id, \"data_stream_id\").to.be.eql(\"farmer-flu\");\r",
+                          "    pm.expect(metadata.data_stream_id, \"data_stream_id\").to.be.eql(\"farmer-flu-vaccination\");\r",
                           "\r",
                           "});\r",
                           "\r",
@@ -11116,8 +11115,9 @@
                 "type": "text/javascript",
                 "requests": {},
                 "exec": [
-                  "checkDexResponse = function (pm, fileSize) {",
+                  "checkDexResponse = function (pm, fileSize, expectedEventType) {",
                   "    var metadata = pm.response.json();",
+                  "    var eventType = expectedEventType || pm.request.body.formdata.get(\"reportType\");",
                   "    try {",
                   "        pm.expect(metadata.meta_destination_id, \"meta_destination_id\").to.match(/ndlp|test/);",
                   "        pm.expect(metadata.meta_ext_source, \"meta_ext_source\").to.be.eql(\"IZGW\");",
@@ -11134,7 +11134,7 @@
                   "        // Filesizes on unix differ by one from Windows, unsure why.",
                   "        pm.expect(Math.abs(fileSize - metadata.izgw_filesize), \"izgw_filesize\").to.be.lessThan(4);",
                   "        pm.expect(metadata.meta_ext_submissionperiod, \"meta_ext_submissionperiod\").to.be.eql(pm.request.body.formdata.get(\"period\"));",
-                  "        pm.expect(metadata.meta_ext_event_type, \"meta_ext_event_type\").to.be.eql(pm.request.body.formdata.get(\"reportType\"));",
+                  "        pm.expect(metadata.meta_ext_event_type, \"meta_ext_event_type\").to.be.eql(eventType);",
                   "        pm.expect(metadata.meta_ext_entity, \"meta_ext_entity\").to.be.eql(pm.request.body.formdata.get(\"facilityId\"));",
                   "        pm.expect(metadata.received_filename, \"recieved_filename\").to.be.eql(pm.request.body.formdata.get(\"filename\"));",
                   "        pm.expect(metadata.sender_id, \"sender_id\").to.be.eql(\"IZGW\");",
@@ -12645,7 +12645,7 @@
                     },
                     {
                       "key": "reportType",
-                      "value": "covidallmonthlyVaccination",
+                      "value": "covidAllMonthlyVaccination",
                       "type": "text"
                     },
                     {
@@ -13037,8 +13037,9 @@
                 "type": "text/javascript",
                 "packages": {},
                 "exec": [
-                  "checkDexResponse = function (pm, fileSize) {\r",
+                  "checkDexResponse = function (pm, fileSize, expectedEventType) {\r",
                   "    var metadata = pm.response.json();\r",
+                  "    var eventType = expectedEventType || pm.request.body.formdata.get(\"reportType\");\r",
                   "    try {\r",
                   "        pm.expect(metadata.meta_destination_id, \"meta_destination_id\").to.match(/ndlp.*|test/);\r",
                   "        pm.expect(metadata.meta_ext_source, \"meta_ext_source\").to.be.eql(\"IZGW\");\r",
@@ -13055,7 +13056,7 @@
                   "        // Filesizes on unix differ by one from Windows, unsure why.\r",
                   "        pm.expect(Math.abs(fileSize - metadata.izgw_filesize), \"izgw_filesize\").to.be.lessThan(4);\r",
                   "        pm.expect(metadata.meta_ext_submissionperiod, \"meta_ext_submissionperiod\").to.be.eql(pm.request.body.formdata.get(\"period\"));\r",
-                  "        pm.expect(metadata.meta_ext_event_type, \"meta_ext_event_type\").to.be.eql(pm.request.body.formdata.get(\"reportType\"));\r",
+                  "        pm.expect(metadata.meta_ext_event_type, \"meta_ext_event_type\").to.be.eql(eventType);\r",
                   "        pm.expect(metadata.meta_ext_entity, \"meta_ext_entity\").to.be.eql(pm.request.body.formdata.get(\"facilityId\"));\r",
                   "        pm.expect(metadata.received_filename, \"recieved_filename\").to.be.eql(pm.request.body.formdata.get(\"filename\"));\r",
                   "        pm.expect(metadata.sender_id, \"sender_id\").to.be.eql(\"IZGW\");\r",
