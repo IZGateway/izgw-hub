@@ -369,6 +369,13 @@ jobs:
       uses: catchpoint/workflow-telemetry-action@v2
 
     - uses: actions/checkout@v4
+
+    - name: Enable TCP keepalive for long-running requests
+      run: |
+        sudo sysctl -w net.ipv4.tcp_keepalive_time=15
+        sudo sysctl -w net.ipv4.tcp_keepalive_intvl=10
+        sudo sysctl -w net.ipv4.tcp_keepalive_probes=6
+
     - name: Set up Tools
       shell: bash
       run: |
@@ -463,6 +470,7 @@ jobs:
       working-directory: ./testing/testdata
       env:
         TESTING_PASS: ${{ secrets.TESTING_PASS }}
+        NODE_OPTIONS: "--require ${{ github.workspace }}/.github/scripts/enable-keepalive.js"
       run: |
         newman run ../scripts/IZGW_2.0_Integration_Test.postman_collection.json -n 1 --folder "Working" \
           "--env-var" "build=`grep Build target\classes\build.txt | cut '-d:' -f2 | cut -c2-99`" \
