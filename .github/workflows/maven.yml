@@ -450,6 +450,7 @@ jobs:
       working-directory: ./testing/testdata
       env:
         TESTING_PASS: ${{ secrets.TESTING_PASS }}
+        NODE_OPTIONS: "--require ${{ github.workspace }}/.github/scripts/enable-keepalive.js"
       run: |
         mkdir ../logs
         startTime=$(date +%s);
