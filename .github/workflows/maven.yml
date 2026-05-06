@@ -174,7 +174,7 @@ jobs:
         ls -l
 
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@v6
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -277,14 +277,6 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Restore Docker build cache
-      uses: actions/cache@v4
-      with:
-        path: .buildx-cache
-        key: ${{ runner.os }}-buildx-izgwhub-${{ hashFiles('**/Dockerfile') }}
-        restore-keys: |
-          ${{ runner.os }}-buildx-izgwhub-        
-                
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
           
@@ -296,8 +288,8 @@ jobs:
       run: |
         docker buildx build --build-arg JAR_FILENAME=${{env.IMAGE_TAG}}.jar --build-arg IZGW_VERSION=${{env.IMAGE_TAG}} \
             --progress=plain --load \
-            --cache-from=type=local,src=.buildx-cache \
-            --cache-to=type=local,dest=.buildx-cache,mode=max \
+            --cache-from=type=gha,scope=izgwhub \
+            --cache-to=type=gha,scope=izgwhub,mode=max \
             -t iz-gateway:${{env.IMAGE_TAG}} \
             -t $ECR_REGISTRY/$ECR_REPOSITORY:${{env.IMAGE_TAG}} \
             -t $ECR_REGISTRY/$ECR_REPOSITORY:${{env.IMAGE_BRANCH_TAG}} \
@@ -369,14 +361,30 @@ jobs:
       uses: catchpoint/workflow-telemetry-action@v2
 
     - uses: actions/checkout@v4
+
+    - name: Enable TCP keepalive for long-running requests
+      run: |
+        sudo sysctl -w net.ipv4.tcp_keepalive_time=15
+        sudo sysctl -w net.ipv4.tcp_keepalive_intvl=10
+        sudo sysctl -w net.ipv4.tcp_keepalive_probes=6
+
+    - name: Configure npm global prefix
+      run: |
+        npm config set prefix '~/.npm-global'
+        echo "$HOME/.npm-global/bin" >> $GITHUB_PATH
+
+    - name: Cache npm globals
+      uses: actions/cache@v4
+      with:
+        path: ~/.npm-global
+        key: npm-globals-${{ hashFiles('.github/workflows/maven.yml') }}
+        restore-keys: npm-globals-
+
     - name: Set up Tools
       shell: bash
       run: |
+          npm install -g newman newman-reporter-junitfull xunit-viewer
           newman -v
-          npm install -g newman
-          newman -v
-          npm install -g newman-reporter-junitfull
-          npm install -g xunit-viewer
 
     - name: Setup certs
       env:
@@ -388,13 +396,13 @@ jobs:
         echo "$TESTING_KEY" > testing/newman.key
 
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@v6
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{vars.AWS_REGION}}
 
-    # Having the wait for reload at this point allows some of the wasted waiting time to occur during build cleanup phase
+    # Having the wait for reloadat this point allows some of the wasted waiting time to occur during build cleanup phase
     # and setup phase of this job.
     - name: Wait for reload of task to complete
       run: |
@@ -443,6 +451,7 @@ jobs:
       working-directory: ./testing/testdata
       env:
         TESTING_PASS: ${{ secrets.TESTING_PASS }}
+        NODE_OPTIONS: "--require ${{ github.workspace }}/.github/scripts/enable-keepalive.js"
       run: |
         mkdir ../logs
         startTime=$(date +%s);
@@ -463,6 +472,7 @@ jobs:
       working-directory: ./testing/testdata
       env:
         TESTING_PASS: ${{ secrets.TESTING_PASS }}
+        NODE_OPTIONS: "--require ${{ github.workspace }}/.github/scripts/enable-keepalive.js"
       run: |
         newman run ../scripts/IZGW_2.0_Integration_Test.postman_collection.json -n 1 --folder "Working" \
           "--env-var" "build=`grep Build target\classes\build.txt | cut '-d:' -f2 | cut -c2-99`" \
@@ -514,7 +524,7 @@ jobs:
     if: ${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/Release')) }}
     steps:
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -534,7 +544,7 @@ jobs:
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY:latest iz-gateway:$IMAGE_TAG
 
       - name: Configure AWS credentials for APHL
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-access-key-id: ${{ secrets.APHL_AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.APHL_AWS_SECRET_ACCESS_KEY }}
@@ -542,7 +552,7 @@ jobs:
 
       - name: Login to APHL Amazon ECR
         id: login-aphl-ecr
-        uses: aws-actions/amazon-ecr-login@v1
+        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Tag and push image to APHL Amazon ECR
         env:
