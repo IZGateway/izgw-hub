@@ -1,0 +1,104 @@
+@startuml IZ_Gateway_Interactions
+' IZ Gateway Message Flow Interactions
+' Shows the 5 primary communication flows in production
+' For topology context see topology.puml
+
+skinparam {
+  BackgroundColor #FAFAFA
+  ArrowColor #555555
+  BorderColor #444444
+  SequenceArrowThickness 1.5
+  SequenceGroupHeaderFontStyle bold
+  FontName Arial
+  FontSize 11
+  TitleFontSize 14
+  TitleFontStyle bold
+  NoteBackgroundColor #FFFFF0
+  NoteBorderColor #AAAAAA
+}
+
+title IZ Gateway — Key Message Flows\n<i>Production / Onboarding Environment</i>
+
+' ── Participants ─────────────────────────────────────────────
+participant "[SRC] Source IIS\nor Provider System" as SrcIIS
+participant "[AWS] AWS\nGlobal Accelerator\n+ ALB + WAF" as GCA
+participant "[HUB] IZ Gateway Hub\n(ECS Fargate, AZ1\nor AZ2)" as Hub
+participant "[DDB] Amazon\nDynamoDB" as DDB
+participant "[SQS] Amazon\nSQS" as SQS
+participant "[DEST] Destination\nJurisdiction IIS" as DstIIS
+participant "[NDLP] CDC NDLP\nAzure Blob\nStorage" as NDLP
+participant "[USER] IZG Config\nConsole User" as ConsoleUser
+participant "[CC] Config\nConsole\n(ECS)" as CC
+participant "[DIGI] DigiCert\nOCSP" as OCSP
+
+' ══════════════════════════════════════════════════════════════
+' FLOW 1: IIS-to-IIS SOAP Routing
+' ══════════════════════════════════════════════════════════════
+group Flow 1 — Immunization Record Routing [IIS → IIS via SOAP/mTLS]
+  autonumber 1
+  SrcIIS -> GCA : HTTPS POST /IISHubService\n<i>SOAP envelope + HL7 v2.5.1 payload</i>\n<i>Client X.509 cert presented (mTLS)</i>
+  GCA -> Hub : Route to healthy\nECS instance (Port 443)
+  Hub -> Hub : Validate client cert\n(check IZG trust store)\nVerify caller is allowed endpoint
+  Hub -> DDB : Look up destination\nrouting entry\n<i>(jurisdiction → IIS endpoint)</i>
+  Hub <-- DDB : IIS endpoint URL\n+ routing metadata
+  Hub -> DstIIS : Forward SOAP/mTLS\n<i>Hub presents its own X.509 cert</i>\n<i>HL7 ACK or query response</i>
+  Hub <-- DstIIS : SOAP Response / HL7 ACK
+  SrcIIS <-- Hub : Return ACK to\noriginating system
+  autonumber stop
+end
+
+' ══════════════════════════════════════════════════════════════
+' FLOW 2: ADS File Upload → CDC NDLP
+' ══════════════════════════════════════════════════════════════
+group Flow 2 — Flu/Routine Report Submission [ADS File → CDC NDLP Azure Blob]
+  autonumber 1
+  SrcIIS -> GCA : HTTPS POST /rest/submitFile\n<i>Multipart form upload</i>\n<i>HL7 v2 batch or CSV report file</i>\n<i>mTLS client certificate</i>
+  GCA -> Hub : Route to ECS instance\n(Port 443)
+  Hub -> Hub : Validate client cert\nBuffer file using Spring Boot\nnative multipart handling
+  Hub -> NDLP : HTTP PUT to Azure Blob\n<i>Azure Blob Storage REST API</i>\n<i>Auth: SAS (Shared Access Signature) token</i>
+  Hub <-- NDLP : HTTP 201 Created\n<i>Blob accepted by NDLP</i>
+  SrcIIS <-- Hub : HTTP 200 OK\n<i>Submission confirmed</i>
+  autonumber stop
+end
+
+' ══════════════════════════════════════════════════════════════
+' FLOW 3: ECS Health Check
+' ══════════════════════════════════════════════════════════════
+group Flow 3 — Continuous Health Monitoring [ALB → ECS Health Probe]
+  autonumber 1
+  GCA -> Hub : ALB health check ping\n<i>/rest/IISHubService?wsdl</i>\n<i>Every 30 seconds per target</i>
+  Hub -> Hub : Self-check:\nDB connectivity, cert store,\nmemory, disk, Tomcat status
+  GCA <-- Hub : HTTP 200 OK\n(healthy) or 503 (unhealthy)
+  note over GCA : If two consecutive 503 responses,\nALB removes the target from the\nrotation — no traffic sent until\nhealthy again.
+  autonumber stop
+end
+
+' ══════════════════════════════════════════════════════════════
+' FLOW 4: Admin / Config Console + DB Fan-out
+' ══════════════════════════════════════════════════════════════
+group Flow 4 — Administrative Change Propagation [Config Console → All Hubs via SQS]
+  autonumber 1
+  ConsoleUser -> GCA : HTTPS to Config Console\n<i>prod-cc.phiz-project.org</i>\n<i>Auth: Okta SSO</i>
+  GCA -> CC : Route to Config Console\nECS container
+  CC -> DDB : Write routing rule\nor ACL change\n<i>e.g., add new jurisdiction endpoint</i>
+  CC <-- DDB : Write confirmed
+  CC -> SQS : Publish DB change\nnotification event\n<i>JSON message: change type + scope</i>
+  SQS -> Hub : Deliver event to\nall Hub instances
+  Hub -> DDB : Re-read updated\nrouting tables\n<i>Refresh local in-memory cache</i>
+  Hub <-- DDB : Updated records
+  ConsoleUser <-- CC : Change saved confirmation\n<i>All Hubs updated in seconds</i>
+  autonumber stop
+end
+
+' ══════════════════════════════════════════════════════════════
+' FLOW 5: Certificate Revocation Check (OCSP)
+' ══════════════════════════════════════════════════════════════
+group Flow 5 — Certificate Revocation Validation [Hub → DigiCert OCSP]
+  autonumber 1
+  Hub -> OCSP : OCSP request\n<i>Check revocation status of incoming</i>\n<i>or outgoing X.509 client certificate</i>
+  Hub <-- OCSP : OCSP response:\n"good", "revoked", or "unknown"
+  Hub -> Hub : If revoked — reject connection\nLog security event to CloudWatch\nand Elastic
+  autonumber stop
+end
+
+@enduml

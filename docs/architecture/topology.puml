@@ -1,0 +1,192 @@
+@startuml IZ_Gateway_System_Topology
+' IZ Gateway System Topology - APHL Production / Onboarding Environment
+' Sources: Confluence Security Controls page, System Operations Process,
+'          BSI v7.0 (March 2026), Deployment Diagrams 3 and 3-Docker
+
+skinparam {
+  BackgroundColor #FAFAFA
+  ArrowColor #555555
+  BorderColor #444444
+  RectangleBorderColor #444444
+  NoteBackgroundColor #FFFFF0
+  NoteBorderColor #AAAAAA
+  FontName Arial
+  FontSize 11
+  TitleFontSize 14
+  TitleFontStyle bold
+}
+
+title IZ Gateway - System Topology (APHL Production / Onboarding)\n<i>CDC FISMA Moderate | APHL AIMS Platform | Active-Active: AWS US-EAST-1 + US-WEST-2</i>
+
+' ============================================================
+' EXTERNAL ACTORS (Inbound)
+' ============================================================
+together {
+  actor "[1] Source Jurisdiction IIS\n(64 jurisdictions)" as SrcIIS #LightBlue
+  actor "[2] Provider EHR System\n(VAMS, pharmacy, multi-jurisdiction)" as EHR #LightBlue
+  actor "[3] Patient Access App\n(Docket, consumer apps)" as PAApp #LightBlue
+}
+
+' ============================================================
+' EXTERNAL ACTORS (Outbound / Dependencies)
+' ============================================================
+together {
+  actor "[16] Destination Jurisdiction IIS\n(state registry endpoints)" as DstIIS #LightCyan
+  rectangle "[17] CDC National Data\nLakehouse Program (NDLP)\n<i>Azure Blob Storage</i>\n<i>flu/routine immunization reports</i>" as NDLP #LightYellow
+}
+
+together {
+  rectangle "[18] Elastic.co\nElasticSearch Cloud\n(SaaS - HIPAA BAA)\n<i>AWS East, log storage</i>" as Elastic #LightGreen
+  rectangle "[19] DigiCert\nCertificate Authority\n<i>Production PKI CA</i>" as DigiCert #WhiteSmoke
+  rectangle "[20] Okta\nSSO Provider\n<i>Operational staff auth</i>\n<i>to Elasticsearch</i>" as Okta #WhiteSmoke
+}
+
+together {
+  actor "[21] APHL Operations\n(AIMS platform mgmt,\nprod DB admin)" as APHL #Orange
+  actor "[22] Audacious Inquiry\n(code owner, dev,\noperations support)" as AI #PeachPuff
+  actor "[23] IZG Config Console\nUsers\n(admin, onboarding)" as ConsoleUser #PeachPuff
+}
+
+rectangle "[24] GitHub Actions\n(CI/CD - builds & pushes\nDocker images to ECR)" as GH #LightGray
+
+rectangle "[4] AWS Global Accelerator\n<i>Anycast static IPs (2)</i>\n<i>Active-Active routing</i>\n<i>US-EAST-1 + US-WEST-2</i>" as GCA #LightSalmon
+
+' ============================================================
+' APHL AIMS AWS ENVIRONMENT - US-EAST-1
+' ============================================================
+rectangle "APHL AIMS Platform — US-EAST-1\n<i>HITRUST Certified | AWS US-EAST-1</i>" as AIMS {
+
+  rectangle "AWS VPC (Virtual Private Cloud)" as VPC {
+
+    rectangle "[5] Route 53 / ACM\n(DNS + TLS Certs for ALB)\n<i>izgateway.org, phiz-project.org</i>" as R53 #LightSalmon
+
+    rectangle "[6] Application Load Balancer (ALB)\n+ AWS WAF\n<i>Port 443 (HTTPS/mTLS termination)</i>\n<i>Routes SOAP + REST traffic</i>\n<i>WAF: IP allow/deny, rate limiting,</i>\n<i>managed rule groups</i>" as ALB #Orange
+
+    rectangle "ECS Fargate Cluster\n<i>Auto Scaling Group across 2 AZs</i>" as ECSCluster {
+
+      rectangle "Availability Zone 1" as AZ1 {
+        rectangle "[7] IZ Gateway Hub\nDocker Container\n(Alpine Linux 3.17 / OpenJDK 17 / Spring Boot 3.x)" as Hub1 {
+          component "IZ Gateway Hub\n(Embedded Tomcat)\n/IISHubService  port 443\n/izgw  port 443\n/rest  port 443\n/rest/submitFile  port 443" as HubApp1
+          component "Filebeat Agent\n(Elastic log shipper\nv8.10)" as FB1
+        }
+      }
+
+      rectangle "Availability Zone 2" as AZ2 {
+        rectangle "[8] IZ Gateway Hub\nDocker Container\n(Alpine Linux 3.17 / OpenJDK 17 / Spring Boot 3.x)" as Hub2 {
+          component "IZ Gateway Hub\n(Embedded Tomcat)" as HubApp2
+          component "Filebeat Agent" as FB2
+        }
+      }
+    }
+
+    rectangle "[9] IZ Gateway Config Console\nDocker Container\n(NodeJS 22 / React)\n<i>prod-cc.phiz-project.org</i>\n<i>/onboarding.izgateway.org</i>" as ConfigConsole #LightBlue
+
+    database "[10] Amazon DynamoDB\n<i>Routing tables, ACL, key store</i>\n<i>Global Tables (multi-region replication)</i>\n<i>AES-256 encrypted at rest</i>" as DDB #LightYellow
+
+    rectangle "[11] Amazon SQS\n<i>DB refresh fan-out queue</i>\n<i>Broadcasts routing table changes</i>\n<i>to all Hub instances</i>" as SQS #LightYellow
+
+    rectangle "[12] Amazon ECR\n(Container Registry)\n<i>izgw-hub images</i>\n<i>izg-configuration-console images</i>" as ECR #LightGray
+
+    rectangle "[13] Amazon CloudWatch\n<i>Service metrics, CPU, memory,</i>\n<i>disk utilization; ECS health checks</i>" as CW #LightGreen
+
+    rectangle "[14] AWS Secrets Manager\n<i>API keys, credentials,</i>\n<i>Elastic API key</i>" as SM #LightYellow
+
+    rectangle "[15] AWS Certificate Store\n(EFS-backed)\n<i>X.509 keystores/truststores</i>\n<i>IZG CA and partner certs</i>" as CertStore #LightYellow
+  }
+}
+
+rectangle "[25] APHL AIMS Platform — US-WEST-2\n<i>Active-Active — identical configuration to US-EAST-1.</i>\n<i>Serves live traffic at all times.</i>\n<i>Identical ECS Fargate, ALB + AWS WAF,</i>\n<i>ECR, Secrets Manager, CertStore configuration.</i>\n<i>DynamoDB Global Tables sync automatically.</i>\n<i>See US-EAST-1 for full component detail.</i>" as AIMS_WEST #EEEEEE {
+  rectangle "[25a] Application Load Balancer\n+ AWS WAF\n(ALB - US-WEST-2)" as ALB_WEST #Orange
+  rectangle "[25b] ECS Fargate Cluster\n(IZ Gateway Hub containers)" as ECS_WEST #LightBlue
+}
+
+' ============================================================
+' CONNECTIONS - Inbound (via Global Accelerator)
+' ============================================================
+SrcIIS -right-> GCA : "SOAP/mTLS\nHL7 v2.5.1\nPort 443\n(X.509 client cert)"
+EHR -right-> GCA : "SOAP/mTLS\nPort 443"
+PAApp -right-> GCA : "SOAP/mTLS\nPort 443"
+ConsoleUser -right-> GCA : "HTTPS\nPort 443\n(Okta auth)"
+
+GCA -down-> ALB : "routes to\nUS-EAST-1\n(Port 443)"
+GCA -down-> ALB_WEST : "routes to\nUS-WEST-2\n(Port 443)"
+
+ALB --> Hub1 : "TLS (ACM cert)\nSOAP+REST"
+ALB --> Hub2 : "TLS (ACM cert)\nSOAP+REST"
+ALB --> ConfigConsole : "HTTPS"
+
+ALB_WEST --> ECS_WEST : "TLS\nSOAP+REST"
+ECS_WEST -down-> DDB : "DynamoDB\n(Global Tables)"
+
+' ============================================================
+' CONNECTIONS - Internal
+' ============================================================
+HubApp1 -down-> DDB : "DynamoDB\n(routing tables, ACL)"
+HubApp2 -down-> DDB : "DynamoDB"
+HubApp1 -[#888]-> SQS : "publish DB\nchange event"
+HubApp2 -[#888]-> SQS : "publish DB\nchange event"
+SQS -[#888]-> HubApp1 : "consume —\nrefresh local cache"
+SQS -[#888]-> HubApp2 : "consume —\nrefresh local cache"
+HubApp1 -right-> CertStore : "X.509 keystores"
+HubApp2 -right-> CertStore : "X.509 keystores"
+FB1 -[#666]-> CW
+FB2 -[#666]-> CW
+Hub1 <-- ECR : "image pull"
+Hub2 <-- ECR : "image pull"
+ConfigConsole <-- ECR : "image pull"
+SM --> HubApp1 : "secrets injection"
+SM --> HubApp2 : "secrets injection"
+
+' ============================================================
+' CONNECTIONS - Outbound
+' ============================================================
+HubApp1 -right-> DstIIS : "SOAP/mTLS\nHL7 v2.5.1\nPort 443\n(IZG cert, IIS native cert)"
+HubApp2 -right-> DstIIS : "SOAP/mTLS"
+HubApp1 --> NDLP : "HTTPS/REST\nAzure Blob\n(SAS Token)\nflu/routine reports"
+HubApp2 --> NDLP : "HTTPS/REST"
+FB1 -right-> Elastic : "TLS 1.2\nlog shipping\n(Elastic API key)"
+FB2 -right-> Elastic : "TLS 1.2"
+HubApp1 --> DigiCert : "OCSP/CRL\ncert revocation check\n(every 24h)"
+
+' ============================================================
+' CONNECTIONS - Operations
+' ============================================================
+Okta -up-> Elastic : "SSO/OAuth 2.0\noperations staff auth"
+AI -down-> ECR : "Docker push\n(via GitHub Actions)"
+GH --> ECR : "push images"
+APHL -down-> VPC : "ECS deploy,\nDynamoDB admin (prod)"
+R53 -down-> GCA : "DNS → GCA anycast IPs"
+
+' ============================================================
+' NOTES
+' ============================================================
+note bottom of GCA
+  Global Accelerator provides two static anycast IPs.
+  DNS (Route 53): prod.phiz-project.org / izgateway.org → GCA IPs.
+  Traffic is routed to the nearest healthy region (US-EAST-1 or US-WEST-2).
+  If one region becomes unavailable, Global Accelerator detects the failure
+  and routes all traffic to the remaining active region within ~30 seconds.
+end note
+
+note bottom of ALB
+  Production: prod.phiz-project.org / izgateway.org
+  Onboarding: onboarding.phiz-project.org
+  Config Console: prod-cc.phiz-project.org
+  All endpoints require TLS 1.2+ (FIPS cipher suites)
+  mTLS enforced: client X.509 cert required for SOAP/ADS
+end note
+
+note bottom of DDB
+  DynamoDB Global Tables provide active-active multi-region
+  replication (US-EAST-1 <-> US-WEST-2) automatically.
+  No separate read replica needed — both regions share the same global table.
+  Schema: routing table, access control, key/trust store refs.
+end note
+
+note right of NDLP
+  Flu and routine immunization reports submitted
+  here via Azure Blob Storage REST API
+  authenticated with SAS (Shared Access Signature) tokens.
+end note
+
+@enduml

@@ -5,11 +5,15 @@ on:
     branches:
       - Release*
       - develop
+    paths-ignore:
+      - 'docs/**'
 
   pull_request:
     branches:
       - Release*
       - develop
+    paths-ignore:
+      - 'docs/**'
 
   # Schedule runs on the default branch.
   schedule:
