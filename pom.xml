@@ -96,6 +96,15 @@
             <groupId>gov.cdc.izgw</groupId>
             <artifactId>izgw-core</artifactId>
             <version>3.0.0-izgw-core-SNAPSHOT</version>
+            <exclusions>
+                <!-- izgw-core includes both webflux-ui and webmvc-ui; hub is a Tomcat/MVC app.
+                     Having webflux-ui on the classpath triggers SpringDoc WebFlux auto-config,
+                     which breaks the MVC Swagger UI resource handler (TC_92a returns 404). -->
+                <exclusion>
+                    <groupId>org.springdoc</groupId>
+                    <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 		<dependency>
 			<groupId>ca.uhn.hapi</groupId>
