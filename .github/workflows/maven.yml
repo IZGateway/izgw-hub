@@ -361,9 +361,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-    - name: Collect Workflow Telemetry
-      uses: catchpoint/workflow-telemetry-action@v2
-
     - uses: actions/checkout@v6
 
     - name: Enable TCP keepalive for long-running requests
