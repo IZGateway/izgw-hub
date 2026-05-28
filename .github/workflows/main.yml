@@ -18,7 +18,7 @@ jobs:
     # This step should only be done on PUSH to main
     if: github.ref == 'refs/heads/testmain' || github.ref == 'refs/heads/main'
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       # Necessary to enable push to protected branch
       with:
         ssh-key: ${{secrets.ACTIONS_KEY}}
@@ -130,7 +130,7 @@ jobs:
 
     - name: Create GitHub Release
       id: create_release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v3
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -143,7 +143,7 @@ jobs:
           ./docs/release/*.md
 
     - name: Upload release documentation as artifact for failed release
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       if: ${{ failure() }}
       with:
         name: release-failure
