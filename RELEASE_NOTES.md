@@ -1,3 +1,7 @@
+# IZ Gateway Release 2.13.5
+
+- Update dependency versions and update Base Docker Image
+
 # IZ Gateway Release 2.13.4
 
 - IGDD-2881 CVE-2026-4890 - dnsmasq
