@@ -1,5 +1,6 @@
 package gov.cdc.izgateway.hub.service;
 
+import gov.cdc.izgateway.hub.security.ApiKeyPrincipalProvider;
 import gov.cdc.izgateway.security.IzgPrincipal;
 import gov.cdc.izgateway.security.UnauthenticatedPrincipal;
 import gov.cdc.izgateway.principal.provider.CertificatePrincipalProvider;
@@ -20,34 +21,37 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class HubPrincipalService implements PrincipalService {
 
+    private final ApiKeyPrincipalProvider apiKeyPrincipalProvider;
     private final CertificatePrincipalProvider certificatePrincipalProvider;
 
     /**
      * Constructor
+     * @param apiKeyPrincipalProvider  The API key (JWT) principal provider
      * @param certificatePrincipalProvider	 The certificate principal provider
      */
     @Autowired
-    public HubPrincipalService(CertificatePrincipalProvider certificatePrincipalProvider) {
+    public HubPrincipalService(ApiKeyPrincipalProvider apiKeyPrincipalProvider, CertificatePrincipalProvider certificatePrincipalProvider) {
+        this.apiKeyPrincipalProvider = apiKeyPrincipalProvider;
         this.certificatePrincipalProvider = certificatePrincipalProvider;
     }
 
     /**
-     * Get the principal from the request. This will first try to get the principal from the certificate, if that fails, it will return an UnauthenticatedPrincipal.
+     * Get the principal from the request. Tries API key (JWT) auth first, then cert auth, then unauthenticated.
      * @param request
      * @return The new principal
      */
     @Override
     public IzgPrincipal getPrincipal(HttpServletRequest request) {
-        IzgPrincipal izgPrincipal = null;
-
         if (request != null) {
-            izgPrincipal = certificatePrincipalProvider.createPrincipalFromCertificate(request);
+            IzgPrincipal principal = apiKeyPrincipalProvider.getProvider(request);
+            if (principal != null) {
+                return principal;
+            }
+            principal = certificatePrincipalProvider.createPrincipalFromCertificate(request);
+            if (principal != null) {
+                return principal;
+            }
         }
-
-        if (izgPrincipal == null) {
-            izgPrincipal = new UnauthenticatedPrincipal();
-        }
-
-        return izgPrincipal;
+        return new UnauthenticatedPrincipal();
     }
 }

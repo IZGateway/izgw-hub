@@ -188,6 +188,13 @@ logging:
                                 handshake: DEBUG
 
         
+jwt:
+  issuer: ${JWT_ISSUER:}
+  secrets-manager-secret-name: ${JWT_SECRET_NAME:/izg/jwt/signing-secret}
+  secret-cache-ttl: 1h
+  credential-cache-ttl: 5m
+  # jwt.test-secret is for local development only — never set in deployed environments
+
 soap:
   faults:
     DestinationConnectionFault:

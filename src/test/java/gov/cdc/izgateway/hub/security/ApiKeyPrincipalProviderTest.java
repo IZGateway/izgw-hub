@@ -1,0 +1,199 @@
+package gov.cdc.izgateway.hub.security;
+
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.crypto.MACSigner;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
+import gov.cdc.izgateway.dynamodb.model.ApiKeyCredential;
+import gov.cdc.izgateway.dynamodb.repository.ApiKeyCredentialRepository;
+import gov.cdc.izgateway.security.IzgPrincipal;
+import gov.cdc.izgateway.security.principal.JwtTokenExtractor;
+import gov.cdc.izgateway.utils.SystemUtils;
+import jakarta.servlet.http.HttpServletRequest;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class ApiKeyPrincipalProviderTest {
+
+    private static final String TEST_SECRET = "izg-test-secret-igdd-2705-do-not-use-in-production";
+    private static final String TEST_ISSUER = "http://localhost:3000";
+    private static final String TEST_JTI = "018f4e2a-5678-7abc-8def-000000000002";
+    private static final String TEST_KID = "00000000-0000-0000-0000-000000000001";
+    private static final String TEST_ENV = SystemUtils.getDestTypeAsString();
+
+    @Mock private ApiKeyCredentialRepository credentialRepository;
+    @Mock private JwtTokenExtractor jwtTokenExtractor;
+    @Mock private HttpServletRequest request;
+
+    private JwtConfig config;
+    private ApiKeyPrincipalProvider provider;
+
+    @BeforeEach
+    void setUp() {
+        config = new JwtConfig();
+        config.setIssuer(TEST_ISSUER);
+        config.setTestSecret(TEST_SECRET);
+        config.setSecretCacheTtl(Duration.ofHours(1));
+        config.setCredentialCacheTtl(Duration.ofMinutes(5));
+        provider = new ApiKeyPrincipalProvider(config, credentialRepository, jwtTokenExtractor, null);
+    }
+
+    private String buildToken(String alg, String issuer, String jti, String env, Date exp) throws Exception {
+        JWSAlgorithm jwsAlg = "HS256".equals(alg) ? JWSAlgorithm.HS256 : JWSAlgorithm.RS256;
+        JWSHeader header = new JWSHeader.Builder(jwsAlg).keyID(TEST_KID).build();
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .issuer(issuer)
+                .subject("TEST_ORG")
+                .jwtID(jti)
+                .expirationTime(exp != null ? exp : Date.from(Instant.now().plus(Duration.ofDays(365))))
+                .claim("env", env)
+                .claim("dns", "test.example.gov")
+                .claim("roles", List.of("ads", "soap"))
+                .build();
+        if (!"HS256".equals(alg)) {
+            return "eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJvdGhlciJ9.signature";
+        }
+        SignedJWT jwt = new SignedJWT(header, claims);
+        jwt.sign(new MACSigner(TEST_SECRET.getBytes(StandardCharsets.UTF_8)));
+        return jwt.serialize();
+    }
+
+    @Test
+    void happyPath_validJwtActiveCredential_returnsApiKeyPrincipal() throws Exception {
+        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV, null);
+        when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
+
+        ApiKeyCredential cred = new ApiKeyCredential();
+        cred.setStatus("active");
+        when(credentialRepository.findByEnvAndJti(TEST_ENV, TEST_JTI)).thenReturn(Optional.of(cred));
+
+        IzgPrincipal principal = provider.getProvider(request);
+
+        assertThat(principal).isInstanceOf(ApiKeyPrincipal.class);
+        ApiKeyPrincipal apiKey = (ApiKeyPrincipal) principal;
+        assertThat(apiKey.getJti()).isEqualTo(TEST_JTI);
+        assertThat(apiKey.getOrganization()).isEqualTo("TEST_ORG");
+        assertThat(apiKey.getDns()).isEqualTo("test.example.gov");
+        assertThat(apiKey.getRoles()).contains("ads", "soap");
+    }
+
+    @Test
+    void wrongAlgorithm_returnsNull_noSmCall() throws Exception {
+        when(jwtTokenExtractor.extractToken(request)).thenReturn(
+                "eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJvdGhlciJ9.sig");
+
+        IzgPrincipal principal = provider.getProvider(request);
+
+        assertThat(principal).isNull();
+        verifyNoInteractions(credentialRepository);
+    }
+
+    @Test
+    void wrongIssuer_returnsNull_noSmCall() throws Exception {
+        String token = buildToken("HS256", "https://other.example.com", TEST_JTI, TEST_ENV, null);
+        when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
+
+        IzgPrincipal principal = provider.getProvider(request);
+
+        assertThat(principal).isNull();
+        verifyNoInteractions(credentialRepository);
+    }
+
+    @Test
+    void expiredToken_returnsNull() throws Exception {
+        Date past = Date.from(Instant.now().minus(Duration.ofHours(1)));
+        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV, past);
+        when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
+
+        IzgPrincipal principal = provider.getProvider(request);
+
+        assertThat(principal).isNull();
+    }
+
+    @Test
+    void wrongEnv_returnsNull() throws Exception {
+        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, "Production", null);
+        when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
+
+        IzgPrincipal principal = provider.getProvider(request);
+
+        // Only fails if current env != Production; in dev/test environments this will be null
+        // because TEST_ENV != "Production"
+        if (!"Production".equals(TEST_ENV)) {
+            assertThat(principal).isNull();
+        }
+    }
+
+    @Test
+    void revokedSentinelInCache_returnsNull_noDynamoDbCall() throws Exception {
+        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV, null);
+        when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
+
+        // Pre-populate revoked sentinel
+        provider.evictCredential(TEST_JTI);
+
+        IzgPrincipal principal = provider.getProvider(request);
+
+        assertThat(principal).isNull();
+        verifyNoInteractions(credentialRepository);
+    }
+
+    @Test
+    void dynamoDbRevokedStatus_returnsNull_insertsSentinel() throws Exception {
+        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV, null);
+        when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
+
+        ApiKeyCredential cred = new ApiKeyCredential();
+        cred.setStatus("revoked");
+        when(credentialRepository.findByEnvAndJti(TEST_ENV, TEST_JTI)).thenReturn(Optional.of(cred));
+
+        IzgPrincipal principal = provider.getProvider(request);
+
+        assertThat(principal).isNull();
+
+        // Subsequent request must hit sentinel (no DynamoDB call)
+        String token2 = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV, null);
+        when(jwtTokenExtractor.extractToken(request)).thenReturn(token2);
+        IzgPrincipal principal2 = provider.getProvider(request);
+        assertThat(principal2).isNull();
+        verify(credentialRepository, times(1)).findByEnvAndJti(anyString(), anyString());
+    }
+
+    @Test
+    void evictCredential_insertsRevokedSentinel_subsequentLookupReturnsNull() throws Exception {
+        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV, null);
+        ApiKeyCredential cred = new ApiKeyCredential();
+        cred.setStatus("active");
+        when(credentialRepository.findByEnvAndJti(TEST_ENV, TEST_JTI)).thenReturn(Optional.of(cred));
+
+        // First call — populates active cache
+        when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
+        IzgPrincipal first = provider.getProvider(request);
+        assertThat(first).isInstanceOf(ApiKeyPrincipal.class);
+
+        // Evict
+        provider.evictCredential(TEST_JTI);
+
+        // Second call — must return null from REVOKED sentinel
+        when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
+        IzgPrincipal second = provider.getProvider(request);
+        assertThat(second).isNull();
+        verify(credentialRepository, times(1)).findByEnvAndJti(anyString(), anyString());
+    }
+}
