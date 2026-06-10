@@ -4,3 +4,4 @@ gov.cdc.izgateway
 gov.cdc.izgateway.ads
 gov.cdc.izgateway.ads.util
 gov.cdc.izgateway.hub.service.accesscontrol
+gov.cdc.izgateway.hub.security
