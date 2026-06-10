@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.ServiceConfigurationError;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
@@ -20,6 +21,7 @@ import gov.cdc.izgateway.dynamodb.repository.DestinationRepository;
 import gov.cdc.izgateway.dynamodb.repository.EventRepository;
 import gov.cdc.izgateway.dynamodb.repository.JurisdictionRepository;
 import gov.cdc.izgateway.dynamodb.repository.MessageHeaderRepository;
+import gov.cdc.izgateway.dynamodb.repository.ApiKeyCredentialRepository;
 import gov.cdc.izgateway.dynamodb.repository.DenyListRecordRepository;
 import gov.cdc.izgateway.dynamodb.repository.FileTypeRepository;
 import gov.cdc.izgateway.dynamodb.repository.OrganizationRecordRepository;
@@ -56,6 +58,7 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
 	private MessageHeaderRepository mhr;
 	private AccessGroupRepository agr;
 	private AllowedUserRepository aur;
+	private ApiKeyCredentialRepository akcr;
 	private DenyListRecordRepository dlr;
 	private FileTypeRepository ftr;
 	private OrganizationRecordRepository orr;
@@ -190,6 +193,18 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
 			aur = new AllowedUserRepository(client, this.tableName);
 		}
 		return aur;
+	}
+
+	/**
+	 * Get the DynamoDbRepository for ApiKeyCredential
+	 * @return The ApiKeyCredentialRepository
+	 */
+	@Bean
+	public ApiKeyCredentialRepository apiKeyCredentialRepository() {
+		if (akcr == null) {
+			akcr = new ApiKeyCredentialRepository(client, this.tableName);
+		}
+		return akcr;
 	}
 
 	/**

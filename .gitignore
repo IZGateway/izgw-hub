@@ -8,3 +8,4 @@ temp/**
 **/.idea
 **/.env
 **/.m2
+.claude/settings.local.json
