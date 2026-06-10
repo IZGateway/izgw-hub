@@ -44,3 +44,4 @@ Multijurisdictional providers can query IISs to obtain a patient’s full immuni
 ### Benefits
 - Automated submission process simplifies connection and communication of reports to CDC reporting endpoints
 - Simplifies the onboarding process to CDC for reporting
+
