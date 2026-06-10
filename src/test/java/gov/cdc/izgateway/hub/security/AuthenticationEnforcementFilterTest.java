@@ -35,6 +35,15 @@ class AuthenticationEnforcementFilterTest {
     }
 
     @Test
+    void healthEndpoint_isExemptFromAuthCheck() throws Exception {
+        when(request.getServletPath()).thenReturn("/rest/health");
+
+        boolean skipped = filter.shouldNotFilter(request);
+
+        assert skipped : "Health check endpoint must bypass auth filter to allow ALB health checks";
+    }
+
+    @Test
     void authenticatedPrincipal_continuesFilterChain() throws Exception {
         ApiKeyPrincipal principal = new ApiKeyPrincipal("ORG", "jti-123", java.util.List.of("ads"), "dns.example.gov", "http://issuer");
         when(principalService.getPrincipal(request)).thenReturn(principal);
