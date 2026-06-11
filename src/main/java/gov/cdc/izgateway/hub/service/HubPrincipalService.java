@@ -43,10 +43,6 @@ public class HubPrincipalService implements PrincipalService {
     @Override
     public IzgPrincipal getPrincipal(HttpServletRequest request) {
         if (request != null) {
-            // TEMPORARY: log all request headers for TLS passthrough debugging
-            java.util.Collections.list(request.getHeaderNames()).forEach(name ->
-                log.info("REQUEST HEADER: {}={}", name, request.getHeader(name))
-            );
             IzgPrincipal principal = apiKeyPrincipalProvider.getProvider(request);
             if (principal != null) {
                 return principal;
