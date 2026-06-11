@@ -2,7 +2,6 @@ package gov.cdc.izgateway.hub.security;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.Expiry;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.crypto.MACVerifier;
@@ -27,7 +26,6 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 @Component
 @Slf4j
@@ -42,7 +40,8 @@ public class ApiKeyPrincipalProvider {
     private final SecretsManagerClient secretsManagerClient;
 
     private final Cache<String, String> secretCache;
-    private final Cache<String, Object> credentialCache;
+    private final Cache<String, ApiKeyPrincipal> credentialCache;
+    private final Cache<String, Boolean> revokedCache;
 
     @Autowired
     public ApiKeyPrincipalProvider(
@@ -61,28 +60,15 @@ public class ApiKeyPrincipalProvider {
                 .build();
 
         this.credentialCache = Caffeine.newBuilder()
-                .expireAfter(new Expiry<String, Object>() {
-                    @Override
-                    public long expireAfterCreate(String key, Object value, long currentTime) {
-                        if (Boolean.TRUE.equals(value)) {
-                            return TimeUnit.NANOSECONDS.convert(MAX_TOKEN_LIFETIME);
-                        }
-                        return config.getCredentialCacheTtl().toNanos();
-                    }
-                    @Override
-                    public long expireAfterUpdate(String key, Object value, long currentTime, long currentDuration) {
-                        return currentDuration;
-                    }
-                    @Override
-                    public long expireAfterRead(String key, Object value, long currentTime, long currentDuration) {
-                        return currentDuration;
-                    }
-                })
+                .expireAfterWrite(config.getCredentialCacheTtl())
+                .build();
+
+        this.revokedCache = Caffeine.newBuilder()
+                .expireAfterWrite(MAX_TOKEN_LIFETIME)
                 .build();
     }
 
     public IzgPrincipal getProvider(HttpServletRequest request) {
-        log.info("getProvider 1");
         // Step 1: Extract Bearer token — return null if absent (fallback to cert auth)
         String token;
         try {
@@ -111,6 +97,7 @@ public class ApiKeyPrincipalProvider {
         try {
             unverifiedClaims = signedJwt.getJWTClaimsSet();
         } catch (ParseException e) {
+            log.warn("JWT rejected: failed to parse claims: {}", e.getMessage());
             return null;
         }
 
@@ -141,36 +128,37 @@ public class ApiKeyPrincipalProvider {
         JWTClaimsSet claims = unverifiedClaims; // already parsed from verified JWT
         Date expiry = claims.getExpirationTime();
         if (expiry == null || expiry.toInstant().isBefore(Instant.now().minusSeconds(CLOCK_SKEW_SECONDS))) {
-            log.trace("JWT expired: exp={}", expiry);
+            log.warn("JWT rejected: expired exp={}", expiry);
             return null;
         }
 
         String env = (String) claims.getClaim("env");
         if (!SystemUtils.getDestTypeAsString().equals(env)) {
-            log.trace("JWT env mismatch: token env={}, hub env={}", env, SystemUtils.getDestTypeAsString());
+            log.warn("JWT rejected: env mismatch token env={}, hub env={}", env, SystemUtils.getDestTypeAsString());
             return null;
         }
 
         if (!config.getIssuer().equals(claims.getIssuer())) {
+            log.warn("JWT rejected: issuer mismatch in verified payload (expected={}, got={})", config.getIssuer(), claims.getIssuer());
             return null;
         }
 
         // Step 7: Credential cache lookup by jti
         String jti = claims.getJWTID();
         if (jti == null) {
+            log.warn("JWT rejected: missing jti claim");
             return null;
         }
 
-        Object cached = credentialCache.getIfPresent(jti);
-        if (cached != null) {
-            if (Boolean.TRUE.equals(cached)) {
-                log.trace("JWT jti={} is in REVOKED cache", jti);
-                return null;
-            }
-            return (ApiKeyPrincipal) cached;
+        if (revokedCache.getIfPresent(jti) != null) {
+            log.warn("JWT rejected: jti={} is in REVOKED cache", jti);
+            return null;
         }
 
-        log.info("getProvider 10");
+        ApiKeyPrincipal cached = credentialCache.getIfPresent(jti);
+        if (cached != null) {
+            return cached;
+        }
 
         // Step 8: DynamoDB lookup on cache miss
         return lookupAndCacheCredential(claims, env, jti);
@@ -197,9 +185,9 @@ public class ApiKeyPrincipalProvider {
             return principal;
         }
 
-        // Revoked, expired, or absent — cache REVOKED sentinel with max-token-lifetime TTL
-        credentialCache.put(jti, Boolean.TRUE);
-        log.trace("JWT jti={} is revoked or absent, cached REVOKED sentinel", jti);
+        // Revoked, expired, or absent — add to revoked cache with max-token-lifetime TTL
+        revokedCache.put(jti, Boolean.TRUE);
+        log.warn("JWT rejected: jti={} is revoked or absent, cached in REVOKED cache", jti);
         return null;
     }
 
@@ -235,6 +223,7 @@ public class ApiKeyPrincipalProvider {
 
     public void evictCredential(String jti) {
         credentialCache.invalidate(jti);
-        log.info("Evicted credential cache entry for jti={}", jti);
+        revokedCache.invalidate(jti);
+        log.info("Evicted credential cache entries for jti={}", jti);
     }
 }
