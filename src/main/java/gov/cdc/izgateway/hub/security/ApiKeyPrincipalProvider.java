@@ -39,6 +39,7 @@ public class ApiKeyPrincipalProvider {
     private final JwtConfig config;
     private final ApiKeyCredentialRepository credentialRepository;
     private final JwtTokenExtractor jwtTokenExtractor;
+    private final ApiKeyAuditLogger auditLogger;
     private final SecretsManagerClient secretsManagerClient;
 
     private final Cache<String, String> secretCache;
@@ -49,11 +50,13 @@ public class ApiKeyPrincipalProvider {
             JwtConfig config,
             ApiKeyCredentialRepository credentialRepository,
             JwtTokenExtractor jwtTokenExtractor,
+            ApiKeyAuditLogger auditLogger,
             @Autowired(required = false) SecretsManagerClient secretsManagerClient
     ) {
         this.config = config;
         this.credentialRepository = credentialRepository;
         this.jwtTokenExtractor = jwtTokenExtractor;
+        this.auditLogger = auditLogger;
         this.secretsManagerClient = secretsManagerClient;
 
         this.secretCache = Caffeine.newBuilder()
@@ -82,13 +85,12 @@ public class ApiKeyPrincipalProvider {
     }
 
     public IzgPrincipal getProvider(HttpServletRequest request) {
-        log.info("getProvider 1");
         // Step 1: Extract Bearer token — return null if absent (fallback to cert auth)
         String token;
         try {
             token = jwtTokenExtractor.extractToken(request);
         } catch (InvalidJwtTokenException e) {
-            log.info("No Bearer token in request from {}", request.getRemoteAddr());
+            log.trace("No Bearer token in request from {}", request.getRemoteAddr());
             return null;
         }
 
@@ -97,13 +99,13 @@ public class ApiKeyPrincipalProvider {
         try {
             signedJwt = SignedJWT.parse(token);
         } catch (ParseException e) {
-            log.info("Failed to parse JWT token: {}", e.getMessage());
+            log.trace("Failed to parse JWT token: {}", e.getMessage());
             return null;
         }
 
         // Step 3: Pre-check alg and iss before expensive operations
         if (!JWSAlgorithm.HS256.equals(signedJwt.getHeader().getAlgorithm())) {
-            log.info("JWT rejected: unsupported algorithm={}", signedJwt.getHeader().getAlgorithm());
+            log.trace("JWT rejected: unsupported algorithm={}", signedJwt.getHeader().getAlgorithm());
             return null;
         }
 
@@ -115,14 +117,23 @@ public class ApiKeyPrincipalProvider {
         }
 
         if (!config.getIssuer().equals(unverifiedClaims.getIssuer())) {
-            log.info("JWT rejected: issuer mismatch (expected={}, got={})", config.getIssuer(), unverifiedClaims.getIssuer());
+            log.trace("JWT rejected: issuer mismatch (expected={}, got={})", config.getIssuer(), unverifiedClaims.getIssuer());
             return null;
         }
+
+        // From this point the token is identifiably an izg-issued API key (parseable HS256 JWT
+        // claiming our issuer), so any subsequent failure is a genuine API-key authentication
+        // attempt and is audited as API_KEY_AUTH_FAILED (IGDD-2704). Earlier returns above are
+        // "not an API key" — they fall through silently to certificate auth. keyId is read from
+        // the still-unverified claims so it can be reported even when later validation fails.
+        String sourceIp = request.getRemoteAddr();
+        String keyId = unverifiedClaims.getJWTID();
 
         // Step 4: Resolve signing secret by kid
         String kid = signedJwt.getHeader().getKeyID();
         byte[] secretBytes = resolveSecret(kid);
         if (secretBytes == null) {
+            auditLogger.apiKeyAuthFailed(keyId, sourceIp, "signing key unavailable");
             return null;
         }
 
@@ -130,10 +141,12 @@ public class ApiKeyPrincipalProvider {
         try {
             if (!signedJwt.verify(new MACVerifier(secretBytes))) {
                 log.warn("JWT signature verification failed for kid={}", kid);
+                auditLogger.apiKeyAuthFailed(keyId, sourceIp, "signature verification failed");
                 return null;
             }
         } catch (JOSEException e) {
             log.warn("JWT verification exception for kid={}: {}", kid, e.getMessage());
+            auditLogger.apiKeyAuthFailed(keyId, sourceIp, "signature verification error");
             return null;
         }
 
@@ -142,22 +155,21 @@ public class ApiKeyPrincipalProvider {
         Date expiry = claims.getExpirationTime();
         if (expiry == null || expiry.toInstant().isBefore(Instant.now().minusSeconds(CLOCK_SKEW_SECONDS))) {
             log.trace("JWT expired: exp={}", expiry);
+            auditLogger.apiKeyAuthFailed(keyId, sourceIp, "token expired");
             return null;
         }
 
         String env = (String) claims.getClaim("env");
         if (!SystemUtils.getDestTypeAsString().equals(env)) {
             log.trace("JWT env mismatch: token env={}, hub env={}", env, SystemUtils.getDestTypeAsString());
-            return null;
-        }
-
-        if (!config.getIssuer().equals(claims.getIssuer())) {
+            auditLogger.apiKeyAuthFailed(keyId, sourceIp, "environment mismatch");
             return null;
         }
 
         // Step 7: Credential cache lookup by jti
         String jti = claims.getJWTID();
         if (jti == null) {
+            auditLogger.apiKeyAuthFailed(null, sourceIp, "missing jti claim");
             return null;
         }
 
@@ -165,18 +177,19 @@ public class ApiKeyPrincipalProvider {
         if (cached != null) {
             if (Boolean.TRUE.equals(cached)) {
                 log.trace("JWT jti={} is in REVOKED cache", jti);
+                auditLogger.apiKeyAuthFailed(jti, sourceIp, "credential revoked");
                 return null;
             }
-            return (ApiKeyPrincipal) cached;
+            ApiKeyPrincipal principal = (ApiKeyPrincipal) cached;
+            auditLogger.apiKeyUsed(jti, principal.getOrganization(), sourceIp);
+            return principal;
         }
 
-        log.info("getProvider 10");
-
         // Step 8: DynamoDB lookup on cache miss
-        return lookupAndCacheCredential(claims, env, jti);
+        return lookupAndCacheCredential(claims, env, jti, sourceIp);
     }
 
-    private IzgPrincipal lookupAndCacheCredential(JWTClaimsSet claims, String env, String jti) {
+    private IzgPrincipal lookupAndCacheCredential(JWTClaimsSet claims, String env, String jti, String sourceIp) {
         var credentialOpt = credentialRepository.findByEnvAndJti(env, jti);
 
         if (credentialOpt.isPresent() && "active".equals(credentialOpt.get().getStatus())) {
@@ -194,12 +207,17 @@ public class ApiKeyPrincipalProvider {
             );
             credentialCache.put(jti, principal);
             log.debug("Authenticated ApiKeyPrincipal jti={} org={}", jti, sub);
+            auditLogger.apiKeyUsed(jti, sub, sourceIp);
             return principal;
         }
 
         // Revoked, expired, or absent — cache REVOKED sentinel with max-token-lifetime TTL
         credentialCache.put(jti, Boolean.TRUE);
-        log.trace("JWT jti={} is revoked or absent, cached REVOKED sentinel", jti);
+        String reason = credentialOpt.isPresent()
+                ? "credential status " + credentialOpt.get().getStatus()
+                : "credential not found";
+        log.trace("JWT jti={} {}, cached REVOKED sentinel", jti, reason);
+        auditLogger.apiKeyAuthFailed(jti, sourceIp, reason);
         return null;
     }
 

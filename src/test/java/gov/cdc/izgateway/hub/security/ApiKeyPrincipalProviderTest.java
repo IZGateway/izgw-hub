@@ -39,6 +39,7 @@ class ApiKeyPrincipalProviderTest {
 
     @Mock private ApiKeyCredentialRepository credentialRepository;
     @Mock private JwtTokenExtractor jwtTokenExtractor;
+    @Mock private ApiKeyAuditLogger auditLogger;
     @Mock private HttpServletRequest request;
 
     private JwtConfig config;
@@ -51,7 +52,7 @@ class ApiKeyPrincipalProviderTest {
         config.setTestSecret(TEST_SECRET);
         config.setSecretCacheTtl(Duration.ofHours(1));
         config.setCredentialCacheTtl(Duration.ofMinutes(5));
-        provider = new ApiKeyPrincipalProvider(config, credentialRepository, jwtTokenExtractor, null);
+        provider = new ApiKeyPrincipalProvider(config, credentialRepository, jwtTokenExtractor, auditLogger, null);
     }
 
     private String buildToken(String alg, String issuer, String jti, String env, Date exp) throws Exception {
@@ -195,5 +196,102 @@ class ApiKeyPrincipalProviderTest {
         IzgPrincipal second = provider.getProvider(request);
         assertThat(second).isNull();
         verify(credentialRepository, times(1)).findByEnvAndJti(anyString(), anyString());
+    }
+
+    // ---- IGDD-2704: audit event emission ----
+
+    @Test
+    void happyPath_emitsApiKeyUsedAuditEvent() throws Exception {
+        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV, null);
+        when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
+        when(request.getRemoteAddr()).thenReturn("203.0.113.7");
+
+        ApiKeyCredential cred = new ApiKeyCredential();
+        cred.setStatus("active");
+        when(credentialRepository.findByEnvAndJti(TEST_ENV, TEST_JTI)).thenReturn(Optional.of(cred));
+
+        provider.getProvider(request);
+
+        verify(auditLogger).apiKeyUsed(TEST_JTI, "TEST_ORG", "203.0.113.7");
+        verify(auditLogger, never()).apiKeyAuthFailed(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void cachedActiveCredential_emitsApiKeyUsedOnEveryUse() throws Exception {
+        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV, null);
+        ApiKeyCredential cred = new ApiKeyCredential();
+        cred.setStatus("active");
+        when(credentialRepository.findByEnvAndJti(TEST_ENV, TEST_JTI)).thenReturn(Optional.of(cred));
+        when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
+        when(request.getRemoteAddr()).thenReturn("203.0.113.7");
+
+        provider.getProvider(request); // DynamoDB miss path
+        provider.getProvider(request); // credential cache hit path
+
+        // API_KEY_USED is emitted on both the cache-miss and cache-hit successes.
+        verify(auditLogger, times(2)).apiKeyUsed(TEST_JTI, "TEST_ORG", "203.0.113.7");
+    }
+
+    @Test
+    void noBearerToken_emitsNoAuditEvent() throws Exception {
+        when(jwtTokenExtractor.extractToken(request))
+                .thenThrow(new gov.cdc.izgateway.security.principal.InvalidJwtTokenException("no token"));
+
+        IzgPrincipal principal = provider.getProvider(request);
+
+        assertThat(principal).isNull();
+        verifyNoInteractions(auditLogger);
+    }
+
+    @Test
+    void wrongIssuer_emitsNoAuditEvent_silentCertFallback() throws Exception {
+        String token = buildToken("HS256", "https://other.example.com", TEST_JTI, TEST_ENV, null);
+        when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
+
+        provider.getProvider(request);
+
+        // Not an izg API key — must fall through silently without an audit failure event.
+        verifyNoInteractions(auditLogger);
+    }
+
+    @Test
+    void expiredToken_emitsApiKeyAuthFailed() throws Exception {
+        Date past = Date.from(Instant.now().minus(Duration.ofHours(1)));
+        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV, past);
+        when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
+        when(request.getRemoteAddr()).thenReturn("203.0.113.7");
+
+        provider.getProvider(request);
+
+        verify(auditLogger).apiKeyAuthFailed(TEST_JTI, "203.0.113.7", "token expired");
+        verify(auditLogger, never()).apiKeyUsed(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void dynamoDbRevokedStatus_emitsApiKeyAuthFailed() throws Exception {
+        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV, null);
+        when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
+        when(request.getRemoteAddr()).thenReturn("203.0.113.7");
+
+        ApiKeyCredential cred = new ApiKeyCredential();
+        cred.setStatus("revoked");
+        when(credentialRepository.findByEnvAndJti(TEST_ENV, TEST_JTI)).thenReturn(Optional.of(cred));
+
+        provider.getProvider(request);
+
+        verify(auditLogger).apiKeyAuthFailed(TEST_JTI, "203.0.113.7", "credential status revoked");
+    }
+
+    @Test
+    void revokedSentinelInCache_emitsApiKeyAuthFailed() throws Exception {
+        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV, null);
+        when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
+        when(request.getRemoteAddr()).thenReturn("203.0.113.7");
+        provider.evictCredential(TEST_JTI); // pre-populate revoked sentinel
+
+        provider.getProvider(request);
+
+        verify(auditLogger).apiKeyAuthFailed(TEST_JTI, "203.0.113.7", "credential revoked");
+        verifyNoInteractions(credentialRepository);
     }
 }
