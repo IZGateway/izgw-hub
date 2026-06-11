@@ -142,17 +142,22 @@ class ApiKeyPrincipalProviderTest {
     }
 
     @Test
-    void revokedSentinelInCache_returnsNull_noDynamoDbCall() throws Exception {
+    void evictCredential_clearsActiveCache_forcesRevalidation() throws Exception {
         String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV, null);
+        ApiKeyCredential cred = new ApiKeyCredential();
+        cred.setStatus("active");
+        when(credentialRepository.findByEnvAndJti(TEST_ENV, TEST_JTI)).thenReturn(Optional.of(cred));
         when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
 
-        // Pre-populate revoked sentinel
+        // First call caches the active principal (1 DynamoDB lookup)
+        assertThat(provider.getProvider(request)).isInstanceOf(ApiKeyPrincipal.class);
+
+        // evictCredential invalidates both caches (it does not insert a revoked sentinel)
         provider.evictCredential(TEST_JTI);
 
-        IzgPrincipal principal = provider.getProvider(request);
-
-        assertThat(principal).isNull();
-        verifyNoInteractions(credentialRepository);
+        // Second call finds an empty cache and must re-validate against DynamoDB
+        assertThat(provider.getProvider(request)).isInstanceOf(ApiKeyPrincipal.class);
+        verify(credentialRepository, times(2)).findByEnvAndJti(anyString(), anyString());
     }
 
     @Test
@@ -173,28 +178,6 @@ class ApiKeyPrincipalProviderTest {
         when(jwtTokenExtractor.extractToken(request)).thenReturn(token2);
         IzgPrincipal principal2 = provider.getProvider(request);
         assertThat(principal2).isNull();
-        verify(credentialRepository, times(1)).findByEnvAndJti(anyString(), anyString());
-    }
-
-    @Test
-    void evictCredential_insertsRevokedSentinel_subsequentLookupReturnsNull() throws Exception {
-        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV, null);
-        ApiKeyCredential cred = new ApiKeyCredential();
-        cred.setStatus("active");
-        when(credentialRepository.findByEnvAndJti(TEST_ENV, TEST_JTI)).thenReturn(Optional.of(cred));
-
-        // First call — populates active cache
-        when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
-        IzgPrincipal first = provider.getProvider(request);
-        assertThat(first).isInstanceOf(ApiKeyPrincipal.class);
-
-        // Evict
-        provider.evictCredential(TEST_JTI);
-
-        // Second call — must return null from REVOKED sentinel
-        when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
-        IzgPrincipal second = provider.getProvider(request);
-        assertThat(second).isNull();
         verify(credentialRepository, times(1)).findByEnvAndJti(anyString(), anyString());
     }
 
@@ -277,21 +260,13 @@ class ApiKeyPrincipalProviderTest {
         cred.setStatus("revoked");
         when(credentialRepository.findByEnvAndJti(TEST_ENV, TEST_JTI)).thenReturn(Optional.of(cred));
 
+        // First call: DynamoDB reports revoked -> emits "credential status revoked" and caches in revokedCache.
+        provider.getProvider(request);
+        // Second call: served from revokedCache -> emits "credential revoked" with no further DynamoDB lookup.
         provider.getProvider(request);
 
         verify(auditLogger).apiKeyAuthFailed(TEST_JTI, "203.0.113.7", "credential status revoked");
-    }
-
-    @Test
-    void revokedSentinelInCache_emitsApiKeyAuthFailed() throws Exception {
-        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV, null);
-        when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
-        when(request.getRemoteAddr()).thenReturn("203.0.113.7");
-        provider.evictCredential(TEST_JTI); // pre-populate revoked sentinel
-
-        provider.getProvider(request);
-
         verify(auditLogger).apiKeyAuthFailed(TEST_JTI, "203.0.113.7", "credential revoked");
-        verifyNoInteractions(credentialRepository);
+        verify(credentialRepository, times(1)).findByEnvAndJti(anyString(), anyString());
     }
 }
