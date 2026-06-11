@@ -74,7 +74,6 @@ public class ApiKeyPrincipalProvider {
         try {
             token = jwtTokenExtractor.extractToken(request);
         } catch (InvalidJwtTokenException e) {
-            log.info("No Bearer token in request from {}", request.getRemoteAddr());
             return null;
         }
 
