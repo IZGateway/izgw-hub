@@ -82,11 +82,13 @@ public class ApiKeyPrincipalProvider {
     }
 
     public IzgPrincipal getProvider(HttpServletRequest request) {
+        log.info("getProvider 1");
         // Step 1: Extract Bearer token — return null if absent (fallback to cert auth)
         String token;
         try {
             token = jwtTokenExtractor.extractToken(request);
         } catch (InvalidJwtTokenException e) {
+            log.info("No Bearer token in request from {}", request.getRemoteAddr());
             return null;
         }
 
@@ -95,12 +97,13 @@ public class ApiKeyPrincipalProvider {
         try {
             signedJwt = SignedJWT.parse(token);
         } catch (ParseException e) {
-            log.trace("Failed to parse JWT token: {}", e.getMessage());
+            log.info("Failed to parse JWT token: {}", e.getMessage());
             return null;
         }
 
         // Step 3: Pre-check alg and iss before expensive operations
         if (!JWSAlgorithm.HS256.equals(signedJwt.getHeader().getAlgorithm())) {
+            log.info("JWT rejected: unsupported algorithm={}", signedJwt.getHeader().getAlgorithm());
             return null;
         }
 
@@ -112,6 +115,7 @@ public class ApiKeyPrincipalProvider {
         }
 
         if (!config.getIssuer().equals(unverifiedClaims.getIssuer())) {
+            log.info("JWT rejected: issuer mismatch (expected={}, got={})", config.getIssuer(), unverifiedClaims.getIssuer());
             return null;
         }
 
@@ -165,6 +169,8 @@ public class ApiKeyPrincipalProvider {
             }
             return (ApiKeyPrincipal) cached;
         }
+
+        log.info("getProvider 10");
 
         // Step 8: DynamoDB lookup on cache miss
         return lookupAndCacheCredential(claims, env, jti);
