@@ -235,7 +235,6 @@ public class ApiKeyPrincipalProvider {
 
     public void evictCredential(String jti) {
         credentialCache.invalidate(jti);
-        credentialCache.put(jti, Boolean.TRUE);
-        log.info("Evicted and inserted REVOKED sentinel for jti={}", jti);
+        log.info("Evicted credential cache entry for jti={}", jti);
     }
 }
