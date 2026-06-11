@@ -3438,6 +3438,7 @@
                       "\r",
                       "            var a = new Array();\r",
                       "            for (e of logs) {\r",
+                      "                if (!e.eventId) continue;\r",
                       "                eventId = parseInt(e.eventId.split('.')[1]);\r",
                       "                if (eventId > 2) {\r",
                       "                    a.add(e);\r",
