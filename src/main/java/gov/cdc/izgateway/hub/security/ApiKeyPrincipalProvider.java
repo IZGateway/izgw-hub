@@ -82,13 +82,13 @@ public class ApiKeyPrincipalProvider {
         try {
             signedJwt = SignedJWT.parse(token);
         } catch (ParseException e) {
-            log.info("Failed to parse JWT token: {}", e.getMessage());
+            log.debug("Failed to parse JWT token: {}", e.getMessage());
             return null;
         }
 
         // Step 3: Pre-check alg and iss before expensive operations
         if (!JWSAlgorithm.HS256.equals(signedJwt.getHeader().getAlgorithm())) {
-            log.info("JWT rejected: unsupported algorithm={}", signedJwt.getHeader().getAlgorithm());
+            log.warn("JWT rejected: unsupported algorithm={}", signedJwt.getHeader().getAlgorithm());
             return null;
         }
 
@@ -101,7 +101,7 @@ public class ApiKeyPrincipalProvider {
         }
 
         if (!config.getIssuer().equals(unverifiedClaims.getIssuer())) {
-            log.info("JWT rejected: issuer mismatch (expected={}, got={})", config.getIssuer(), unverifiedClaims.getIssuer());
+            log.warn("JWT rejected: issuer mismatch (expected={}, got={})", config.getIssuer(), unverifiedClaims.getIssuer());
             return null;
         }
 
