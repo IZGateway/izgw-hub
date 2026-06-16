@@ -403,7 +403,7 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{vars.AWS_REGION}}
 
-    - name: Add runner's IP to security group
+    - name: Add runner IP to security group
       run: |
         RUNNER_IP=$(curl -sf https://checkip.amazonaws.com)
         echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_ENV
