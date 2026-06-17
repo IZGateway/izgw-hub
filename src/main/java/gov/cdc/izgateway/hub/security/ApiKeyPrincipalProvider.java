@@ -68,7 +68,7 @@ public class ApiKeyPrincipalProvider {
                 .build();
     }
 
-    public IzgPrincipal getProvider(HttpServletRequest request) {
+    public IzgPrincipal getPrincipal(HttpServletRequest request) {
         // Step 1: Extract Bearer token — return null if absent (fallback to cert auth)
         String token;
         try {
@@ -124,7 +124,7 @@ public class ApiKeyPrincipalProvider {
         }
 
         // Step 6: Validate claims against verified payload
-        JWTClaimsSet claims = unverifiedClaims; // already parsed from verified JWT
+        JWTClaimsSet claims = unverifiedClaims;
         Date expiry = claims.getExpirationTime();
         if (expiry == null || expiry.toInstant().isBefore(Instant.now().minusSeconds(CLOCK_SKEW_SECONDS))) {
             log.warn("JWT rejected: expired exp={}", expiry);
@@ -134,11 +134,6 @@ public class ApiKeyPrincipalProvider {
         String env = (String) claims.getClaim("env");
         if (!SystemUtils.getDestTypeAsString().equals(env)) {
             log.warn("JWT rejected: env mismatch token env={}, hub env={}", env, SystemUtils.getDestTypeAsString());
-            return null;
-        }
-
-        if (!config.getIssuer().equals(claims.getIssuer())) {
-            log.warn("JWT rejected: issuer mismatch in verified payload (expected={}, got={})", config.getIssuer(), claims.getIssuer());
             return null;
         }
 
@@ -222,7 +217,7 @@ public class ApiKeyPrincipalProvider {
 
     public void evictCredential(String jti) {
         credentialCache.invalidate(jti);
-        revokedCache.invalidate(jti);
+        revokedCache.put(jti, Boolean.TRUE);
         log.info("Evicted credential cache entries for jti={}", jti);
     }
 }
