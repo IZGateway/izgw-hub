@@ -83,7 +83,7 @@ class ApiKeyPrincipalProviderTest {
         cred.setStatus("active");
         when(credentialRepository.findByEnvAndJti(TEST_ENV, TEST_JTI)).thenReturn(Optional.of(cred));
 
-        IzgPrincipal principal = provider.getProvider(request);
+        IzgPrincipal principal = provider.getPrincipal(request);
 
         assertThat(principal).isInstanceOf(ApiKeyPrincipal.class);
         ApiKeyPrincipal apiKey = (ApiKeyPrincipal) principal;
@@ -98,7 +98,7 @@ class ApiKeyPrincipalProviderTest {
         when(jwtTokenExtractor.extractToken(request)).thenReturn(
                 "eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJvdGhlciJ9.sig");
 
-        IzgPrincipal principal = provider.getProvider(request);
+        IzgPrincipal principal = provider.getPrincipal(request);
 
         assertThat(principal).isNull();
         verifyNoInteractions(credentialRepository);
@@ -109,7 +109,7 @@ class ApiKeyPrincipalProviderTest {
         String token = buildToken("HS256", "https://other.example.com", TEST_JTI, TEST_ENV, null);
         when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
 
-        IzgPrincipal principal = provider.getProvider(request);
+        IzgPrincipal principal = provider.getPrincipal(request);
 
         assertThat(principal).isNull();
         verifyNoInteractions(credentialRepository);
@@ -121,7 +121,7 @@ class ApiKeyPrincipalProviderTest {
         String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV, past);
         when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
 
-        IzgPrincipal principal = provider.getProvider(request);
+        IzgPrincipal principal = provider.getPrincipal(request);
 
         assertThat(principal).isNull();
     }
@@ -131,7 +131,7 @@ class ApiKeyPrincipalProviderTest {
         String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, "Production", null);
         when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
 
-        IzgPrincipal principal = provider.getProvider(request);
+        IzgPrincipal principal = provider.getPrincipal(request);
 
         // Only fails if current env != Production; in dev/test environments this will be null
         // because TEST_ENV != "Production"
@@ -148,7 +148,7 @@ class ApiKeyPrincipalProviderTest {
         // Pre-populate revoked sentinel
         provider.evictCredential(TEST_JTI);
 
-        IzgPrincipal principal = provider.getProvider(request);
+        IzgPrincipal principal = provider.getPrincipal(request);
 
         assertThat(principal).isNull();
         verifyNoInteractions(credentialRepository);
@@ -163,14 +163,14 @@ class ApiKeyPrincipalProviderTest {
         cred.setStatus("revoked");
         when(credentialRepository.findByEnvAndJti(TEST_ENV, TEST_JTI)).thenReturn(Optional.of(cred));
 
-        IzgPrincipal principal = provider.getProvider(request);
+        IzgPrincipal principal = provider.getPrincipal(request);
 
         assertThat(principal).isNull();
 
         // Subsequent request must hit sentinel (no DynamoDB call)
         String token2 = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV, null);
         when(jwtTokenExtractor.extractToken(request)).thenReturn(token2);
-        IzgPrincipal principal2 = provider.getProvider(request);
+        IzgPrincipal principal2 = provider.getPrincipal(request);
         assertThat(principal2).isNull();
         verify(credentialRepository, times(1)).findByEnvAndJti(anyString(), anyString());
     }
@@ -184,7 +184,7 @@ class ApiKeyPrincipalProviderTest {
 
         // First call — populates active cache
         when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
-        IzgPrincipal first = provider.getProvider(request);
+        IzgPrincipal first = provider.getPrincipal(request);
         assertThat(first).isInstanceOf(ApiKeyPrincipal.class);
 
         // Evict
@@ -192,7 +192,7 @@ class ApiKeyPrincipalProviderTest {
 
         // Second call — must return null from REVOKED sentinel
         when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
-        IzgPrincipal second = provider.getProvider(request);
+        IzgPrincipal second = provider.getPrincipal(request);
         assertThat(second).isNull();
         verify(credentialRepository, times(1)).findByEnvAndJti(anyString(), anyString());
     }
