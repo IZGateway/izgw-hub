@@ -405,6 +405,16 @@ jobs:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{vars.AWS_REGION}}
+        
+    - name: Add runner IP to security group
+      run: |
+        RUNNER_IP=$(curl -sf https://checkip.amazonaws.com)
+        echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_ENV
+        aws ec2 authorize-security-group-ingress \
+          --group-id ${{ vars.AWS_SECURITY_GROUP_ID }} \
+          --protocol tcp \
+          --port 443 \
+          --cidr ${RUNNER_IP}/32
 
     # Having the wait for reloadat this point allows some of the wasted waiting time to occur during build cleanup phase
     # and setup phase of this job.
@@ -519,6 +529,15 @@ jobs:
         path: |
             .
             !testing/newman.key
+            
+    - name: Remove runner IP from security group
+      if: always()
+      run: |
+        aws ec2 revoke-security-group-ingress \
+          --group-id ${{ vars.AWS_SECURITY_GROUP_ID }} \
+          --protocol tcp \
+          --port 443 \
+          --cidr ${RUNNER_IP}/32
 
   push-to-aphl:
     # Remember to put verify back
