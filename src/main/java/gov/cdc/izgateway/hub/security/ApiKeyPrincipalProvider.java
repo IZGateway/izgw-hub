@@ -107,6 +107,10 @@ public class ApiKeyPrincipalProvider {
 
         // Step 4: Resolve signing secret by kid
         String kid = signedJwt.getHeader().getKeyID();
+        if (kid == null || kid.isBlank()) {
+            log.warn("JWT rejected: missing kid header");
+            return null;
+        }
         byte[] secretBytes = resolveSecret(kid);
         if (secretBytes == null) {
             return null;
