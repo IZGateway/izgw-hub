@@ -40,7 +40,8 @@ class AuthenticationEnforcementFilterTest {
 
         boolean skipped = filter.shouldNotFilter(request);
 
-        assert skipped : "Health check endpoint must bypass auth filter to allow ALB health checks";
+        org.junit.jupiter.api.Assertions.assertTrue(skipped,
+                "Health check endpoint must bypass auth filter to allow ALB health checks");
     }
 
     @Test
