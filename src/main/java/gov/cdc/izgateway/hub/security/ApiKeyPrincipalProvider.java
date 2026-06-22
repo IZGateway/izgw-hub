@@ -167,8 +167,12 @@ public class ApiKeyPrincipalProvider {
 
         if (credentialOpt.isPresent() && "active".equals(credentialOpt.get().getStatus())) {
             String sub = claims.getSubject();
-            @SuppressWarnings("unchecked")
-            List<String> roles = (List<String>) claims.getClaim("roles");
+            List<String> roles;
+            try {
+                roles = claims.getStringListClaim("roles");
+            } catch (ParseException e) {
+                roles = Collections.emptyList();
+            }
             String dns = (String) claims.getClaim("dns");
 
             ApiKeyPrincipal principal = new ApiKeyPrincipal(
