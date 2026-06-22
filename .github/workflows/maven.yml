@@ -533,11 +533,15 @@ jobs:
     - name: Remove runner IP from security group
       if: always()
       run: |
+        if [ -z "$RUNNER_IP" ]; then
+          echo "RUNNER_IP not set; skipping security-group revoke"
+          exit 0
+        fi
         aws ec2 revoke-security-group-ingress \
           --group-id ${{ vars.AWS_SECURITY_GROUP_ID }} \
           --protocol tcp \
           --port 443 \
-          --cidr ${RUNNER_IP}/32
+          --cidr ${RUNNER_IP}/32 || true
 
   push-to-aphl:
     # Remember to put verify back
