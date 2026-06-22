@@ -29,7 +29,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class ApiKeyPrincipalProviderTest {
+class ApiKeyPrincipalProviderTests {
 
     private static final String TEST_SECRET = "izg-test-secret-igdd-2705-do-not-use-in-production";
     private static final String TEST_ISSUER = "http://localhost:3000";
