@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.util.Collection;
+import java.util.TreeSet;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -19,7 +20,7 @@ public class ApiKeyPrincipal extends IzgPrincipal {
         setJti(jtiValue);
         setDns(dnsValue);
         setIssuer(issuerValue);
-        getRoles().addAll(jwtRoles);
+        setRoles(new TreeSet<>(jwtRoles));
     }
 
     @Override
