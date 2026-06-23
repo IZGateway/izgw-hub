@@ -188,7 +188,8 @@ jobs:
       env:
         COMMON_PASS: ${{ secrets.COMMON_PASS }}
         ELASTIC_API_KEY: ${{ secrets.ELASTIC_API_KEY }}
-        AMAZON_DYNAMODB_TABLE: izgateway-devalb 
+        AMAZON_DYNAMODB_TABLE: izgateway-devalb
+        JWT_ISSUER: https://dev.console.izgateway.org
       run: |
         env && mvn -B clean package install site -Dbuildno=${{github.run_number}} \
             -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn \
