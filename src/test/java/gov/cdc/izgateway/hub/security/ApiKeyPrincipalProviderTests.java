@@ -55,17 +55,24 @@ class ApiKeyPrincipalProviderTests {
     }
 
     private String buildToken(String alg, String issuer, String jti, String env, Date exp) throws Exception {
+        return buildToken(alg, issuer, jti, env, exp, null);
+    }
+
+    private String buildToken(String alg, String issuer, String jti, String env, Date exp, Date nbf) throws Exception {
         JWSAlgorithm jwsAlg = "HS256".equals(alg) ? JWSAlgorithm.HS256 : JWSAlgorithm.RS256;
         JWSHeader header = new JWSHeader.Builder(jwsAlg).keyID(TEST_KID).build();
-        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+        JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder()
                 .issuer(issuer)
                 .subject("TEST_ORG")
                 .jwtID(jti)
                 .expirationTime(exp != null ? exp : Date.from(Instant.now().plus(Duration.ofDays(365))))
                 .claim("env", env)
                 .claim("dns", "test.example.gov")
-                .claim("roles", List.of("ads", "soap"))
-                .build();
+                .claim("roles", List.of("ads", "soap"));
+        if (nbf != null) {
+            claimsBuilder.notBeforeTime(nbf);
+        }
+        JWTClaimsSet claims = claimsBuilder.build();
         if (!"HS256".equals(alg)) {
             return "eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJvdGhlciJ9.signature";
         }
@@ -172,6 +179,35 @@ class ApiKeyPrincipalProviderTests {
         when(jwtTokenExtractor.extractToken(request)).thenReturn(token2);
         IzgPrincipal principal2 = provider.getPrincipal(request);
         assertThat(principal2).isNull();
+        verify(credentialRepository, times(1)).findByEnvAndJti(anyString(), anyString());
+    }
+
+    @Test
+    void notYetValidToken_returnsNull() throws Exception {
+        Date future = Date.from(Instant.now().plus(Duration.ofMinutes(10)));
+        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV, null, future);
+        when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
+
+        IzgPrincipal principal = provider.getPrincipal(request);
+
+        assertThat(principal).isNull();
+        verifyNoInteractions(credentialRepository);
+    }
+
+    @Test
+    void absentCredential_cachedBriefly_noDuplicateDynamoCall() throws Exception {
+        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV, null);
+        when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
+        when(credentialRepository.findByEnvAndJti(TEST_ENV, TEST_JTI)).thenReturn(Optional.empty());
+
+        IzgPrincipal first = provider.getPrincipal(request);
+        assertThat(first).isNull();
+
+        // Second call with same jti — absent cache should prevent a second DynamoDB hit
+        when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
+        IzgPrincipal second = provider.getPrincipal(request);
+        assertThat(second).isNull();
+
         verify(credentialRepository, times(1)).findByEnvAndJti(anyString(), anyString());
     }
 

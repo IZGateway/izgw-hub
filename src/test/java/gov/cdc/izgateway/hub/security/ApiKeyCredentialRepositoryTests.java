@@ -41,10 +41,19 @@ class ApiKeyCredentialRepositoryTests {
 
     @Test
     void sortKeyFormat_isCorrect() {
-        // Validates the sort key contract: env + "#" + jti
-        String env = "Production";
-        String jti = "018f4e2a-5678-7abc-8def-000000000002";
-        String expectedSortKey = "Production#018f4e2a-5678-7abc-8def-000000000002";
-        assertThat(env + "#" + jti).isEqualTo(expectedSortKey);
+        ApiKeyCredential cred = new ApiKeyCredential();
+        cred.setEnv("Production");
+        cred.setJti("018f4e2a-5678-7abc-8def-000000000002");
+
+        assertThat(cred.getPrimaryId()).isEqualTo("Production#018f4e2a-5678-7abc-8def-000000000002");
+    }
+
+    @Test
+    void sortKeyFormat_worksForNonProductionEnvironments() {
+        ApiKeyCredential cred = new ApiKeyCredential();
+        cred.setEnv("Onboarding");
+        cred.setJti("018f4e2a-5678-7abc-8def-000000000003");
+
+        assertThat(cred.getPrimaryId()).isEqualTo("Onboarding#018f4e2a-5678-7abc-8def-000000000003");
     }
 }
