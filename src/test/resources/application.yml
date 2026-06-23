@@ -1,0 +1,3 @@
+jwt:
+  issuer: http://localhost:3000
+  test-secret: izg-test-secret-igdd-2705-do-not-use-in-production
