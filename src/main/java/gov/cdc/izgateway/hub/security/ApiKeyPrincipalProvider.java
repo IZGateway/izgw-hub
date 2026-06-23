@@ -39,9 +39,13 @@ public class ApiKeyPrincipalProvider {
     private final JwtTokenExtractor jwtTokenExtractor;
     private final SecretsManagerClient secretsManagerClient;
 
+    private static final Duration NEGATIVE_SECRET_CACHE_TTL = Duration.ofSeconds(60);
+
     private final Cache<String, String> secretCache;
+    private final Cache<String, Boolean> negativeSecretCache;
     private final Cache<String, ApiKeyPrincipal> credentialCache;
     private final Cache<String, Boolean> revokedCache;
+    private final Cache<String, Boolean> absentCache;
 
     @Autowired
     public ApiKeyPrincipalProvider(
@@ -59,12 +63,20 @@ public class ApiKeyPrincipalProvider {
                 .expireAfterWrite(config.getSecretCacheTtl())
                 .build();
 
+        this.negativeSecretCache = Caffeine.newBuilder()
+                .expireAfterWrite(NEGATIVE_SECRET_CACHE_TTL)
+                .build();
+
         this.credentialCache = Caffeine.newBuilder()
                 .expireAfterWrite(config.getCredentialCacheTtl())
                 .build();
 
         this.revokedCache = Caffeine.newBuilder()
                 .expireAfterWrite(MAX_TOKEN_LIFETIME)
+                .build();
+
+        this.absentCache = Caffeine.newBuilder()
+                .expireAfterWrite(config.getCredentialCacheTtl())
                 .build();
     }
 
@@ -130,8 +142,14 @@ public class ApiKeyPrincipalProvider {
         // Step 6: Validate claims against verified payload
         JWTClaimsSet claims = unverifiedClaims;
         Date expiry = claims.getExpirationTime();
-        if (expiry == null || expiry.toInstant().isBefore(Instant.now().minusSeconds(CLOCK_SKEW_SECONDS))) {
+        if (expiry == null || expiry.toInstant().plusSeconds(CLOCK_SKEW_SECONDS).isBefore(Instant.now())) {
             log.warn("JWT rejected: expired exp={}", expiry);
+            return null;
+        }
+
+        Date notBefore = claims.getNotBeforeTime();
+        if (notBefore != null && notBefore.toInstant().isAfter(Instant.now().plusSeconds(CLOCK_SKEW_SECONDS))) {
+            log.warn("JWT rejected: not yet valid nbf={}", notBefore);
             return null;
         }
 
@@ -150,6 +168,11 @@ public class ApiKeyPrincipalProvider {
 
         if (revokedCache.getIfPresent(jti) != null) {
             log.warn("JWT rejected: jti={} is in REVOKED cache", jti);
+            return null;
+        }
+
+        if (absentCache.getIfPresent(jti) != null) {
+            log.debug("JWT rejected: jti={} is in ABSENT cache", jti);
             return null;
         }
 
@@ -187,9 +210,15 @@ public class ApiKeyPrincipalProvider {
             return principal;
         }
 
-        // Revoked, expired, or absent — add to revoked cache with max-token-lifetime TTL
+        if (credentialOpt.isEmpty()) {
+            absentCache.put(jti, Boolean.TRUE);
+            log.warn("JWT rejected: jti={} not found in DynamoDB", jti);
+            return null;
+        }
+
+        // Credential found but not active — cache for full token lifetime
         revokedCache.put(jti, Boolean.TRUE);
-        log.warn("JWT rejected: jti={} is revoked or absent, cached in REVOKED cache", jti);
+        log.warn("JWT rejected: jti={} has status={}, cached in REVOKED cache", jti, credentialOpt.get().getStatus());
         return null;
     }
 
@@ -201,6 +230,11 @@ public class ApiKeyPrincipalProvider {
         String cached = secretCache.getIfPresent(kid);
         if (cached != null) {
             return cached.getBytes(StandardCharsets.UTF_8);
+        }
+
+        if (negativeSecretCache.getIfPresent(kid) != null) {
+            log.debug("Secrets Manager: kid={} in negative cache, skipping lookup", kid);
+            return null;
         }
 
         if (secretsManagerClient == null) {
@@ -215,7 +249,8 @@ public class ApiKeyPrincipalProvider {
             secretCache.put(kid, secretValue);
             return secretValue.getBytes(StandardCharsets.UTF_8);
         } catch (ResourceNotFoundException e) {
-            log.warn("Secrets Manager: no version found for kid={}", kid);
+            log.warn("Secrets Manager: no version found for kid={}, caching negative result", kid);
+            negativeSecretCache.put(kid, Boolean.TRUE);
             return null;
         } catch (Exception e) {
             log.error("Secrets Manager lookup failed for kid={}: {}", kid, e.getMessage());
@@ -225,6 +260,7 @@ public class ApiKeyPrincipalProvider {
 
     public void evictCredential(String jti) {
         credentialCache.invalidate(jti);
+        absentCache.invalidate(jti);
         revokedCache.put(jti, Boolean.TRUE);
         log.info("Evicted credential cache entries for jti={}", jti);
     }

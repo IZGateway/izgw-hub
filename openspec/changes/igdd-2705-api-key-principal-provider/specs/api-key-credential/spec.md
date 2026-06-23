@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: ApiKeyCredential entity structure
-`ApiKeyCredential` SHALL be a DynamoDB entity following Hub's single-table design. It SHALL extend `DynamoDbAudit` and be annotated with `@DynamoDbBean`. Its sort key SHALL be `ApiKeyCredential#{env}#{jti}`, where `env` is the environment name and `jti` is the UUID token identifier.
+`ApiKeyCredential` SHALL be a DynamoDB entity following Hub's single-table design. It SHALL extend `DynamoDbAudit` and be annotated with `@DynamoDbBean`. Its sort key SHALL be `{env}#{jti}`, where `env` is the environment name and `jti` is the UUID token identifier.
 
 Required fields:
 - `jti` — String; the JWT `jti` claim; unique credential identifier
@@ -14,11 +14,11 @@ Required fields:
 - `revokedBy` — String (nullable); identity of the revoking operator
 
 #### Scenario: Entity persisted by Config Console is readable by Hub
-- **WHEN** Config Console writes an `ApiKeyCredential` record with `status = active` using sort key `ApiKeyCredential#Production#<jti>`
+- **WHEN** Config Console writes an `ApiKeyCredential` record with `status = active` using sort key `Production#<jti>`
 - **THEN** Hub's repository can read that record by `env = Production` and `jti = <jti>` and deserialize it without error
 
 ### Requirement: ApiKeyCredential sort key format
-The `sortKey` SHALL be formatted as `ApiKeyCredential#{env}#{jti}` where `{env}` is the runtime environment string and `{jti}` is the credential's UUID. This format is consistent with Hub's single-table design and allows Hub to scope lookups to the current environment by prefix.
+The `sortKey` SHALL be formatted as `{env}#{jti}` where `{env}` is the runtime environment string and `{jti}` is the credential's UUID. This format is consistent with Hub's single-table design and allows Hub to scope lookups to the current environment by prefix.
 
 #### Scenario: Sort key for Production environment
 - **WHEN** an `ApiKeyCredential` is created for `env = Production` and `jti = 018f4e2a-5678-7abc-8def-000000000002`
@@ -32,7 +32,7 @@ The `sortKey` SHALL be formatted as `ApiKeyCredential#{env}#{jti}` where `{env}`
 - **THEN** reading it back from DynamoDB returns an `Instant` equal to `2025-06-04T00:00:00Z` (no precision loss, no null)
 
 ### Requirement: ApiKeyCredentialRepository lookup by env and jti
-`ApiKeyCredentialRepository` SHALL provide a `findByEnvAndJti(String env, String jti)` method that returns `Optional<ApiKeyCredential>`. The method SHALL construct the sort key as `ApiKeyCredential#{env}#{jti}` and perform a DynamoDB `GetItem` using the `DynamoDbEnhancedClient`. An empty `Optional` SHALL be returned if no record exists.
+`ApiKeyCredentialRepository` SHALL provide a `findByEnvAndJti(String env, String jti)` method that returns `Optional<ApiKeyCredential>`. The method SHALL construct the sort key as `{env}#{jti}` and perform a DynamoDB `GetItem` using the `DynamoDbEnhancedClient`. An empty `Optional` SHALL be returned if no record exists.
 
 #### Scenario: Active credential lookup
 - **WHEN** `findByEnvAndJti("Production", "<jti>")` is called and a matching active record exists

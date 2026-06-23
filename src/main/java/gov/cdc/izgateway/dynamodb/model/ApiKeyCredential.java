@@ -20,6 +20,8 @@ public class ApiKeyCredential extends DynamoDbAudit implements DynamoDbEntity {
     private String env;
     private String status;
     private String jurisdictionId;
+    // Serialized as ISO-8601 UTC strings (e.g. 2025-06-04T00:00:00Z) by the AWS SDK Enhanced Client's
+    // default InstantAsStringAttributeConverter. Distinct from the Date fields in DynamoDbAudit.
     private Instant issuedAt;
     private Instant expiresAt;
     private Instant revokedAt;
