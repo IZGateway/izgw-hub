@@ -47,11 +47,15 @@ class ApplicationTests {
 		}
 		@Bean @Primary
 		IDestinationService destinationService() {
-			return java.util.Collections::emptyList;
+			IDestinationService mock = Mockito.mock(IDestinationService.class);
+			Mockito.when(mock.getAllDestinations()).thenReturn(java.util.Collections.emptyList());
+			return mock;
 		}
 		@Bean @Primary
 		IMessageHeaderService messageHeaderService() {
-			return java.util.Collections::emptyList;
+			IMessageHeaderService mock = Mockito.mock(IMessageHeaderService.class);
+			Mockito.when(mock.getAllMessageHeaders()).thenReturn(java.util.Collections.emptyList());
+			return mock;
 		}
 	}
 
