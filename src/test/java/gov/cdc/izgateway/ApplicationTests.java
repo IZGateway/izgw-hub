@@ -11,11 +11,14 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.opentest4j.AssertionFailedError;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletResponse;
 import com.fasterxml.jackson.core.JsonFactory;
@@ -24,6 +27,8 @@ import gov.cdc.izgateway.logging.MemoryAppender;
 import gov.cdc.izgateway.logging.event.Health;
 import gov.cdc.izgateway.logging.event.LogEvent;
 import gov.cdc.izgateway.security.TrustManagerProvider;
+import gov.cdc.izgateway.service.IDestinationService;
+import gov.cdc.izgateway.service.IMessageHeaderService;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -32,9 +37,25 @@ import lombok.extern.slf4j.Slf4j;
 	useMainMethod = SpringBootTest.UseMainMethod.ALWAYS
 )
 @ComponentScan("gov.cdc.izgateway")
-@MockBean(TrustManagerProvider.class)
 class ApplicationTests {
-	static JsonFactory jf = new JsonFactory(); 
+
+	@TestConfiguration
+	static class MockInfrastructureConfig {
+		@Bean @Primary
+		TrustManagerProvider trustManagerProvider() {
+			return Mockito.mock(TrustManagerProvider.class);
+		}
+		@Bean @Primary
+		IDestinationService destinationService() {
+			return java.util.Collections::emptyList;
+		}
+		@Bean @Primary
+		IMessageHeaderService messageHeaderService() {
+			return java.util.Collections::emptyList;
+		}
+	}
+
+	static JsonFactory jf = new JsonFactory();
 	@Autowired(required = true)
 	AppController appController;
 	@Autowired(required = true)
