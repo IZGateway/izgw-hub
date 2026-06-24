@@ -26,9 +26,14 @@ Hub currently authenticates callers exclusively via mTLS client certificates (mT
 
 `JwtTokenExtractor` from core is still reused for Bearer token extraction.
 
-### D2 — Two separate Caffeine caches, not one
+### D2 — Four separate Caffeine caches
 - `secretCache`: keyed by `kid` (Secrets Manager version ID), value = `SecretString`, TTL = configurable (`jwt.secret-cache-ttl`, default 1 hour). Eliminates repeated SM calls for the same key version.
-- `credentialCache`: keyed by `jti`, value = `ApiKeyPrincipal` OR `Boolean.TRUE` (REVOKED sentinel), TTL = 5 min for active / max token lifetime for revoked. Single cache with two value types would require sentinel objects or optionals; two caches with clear semantics are simpler.
+- `negativeSecretCache`: keyed by `kid`, value = `Boolean.TRUE`, TTL = 60 seconds. Prevents a flood of JWTs with invalid `kid` values from each triggering a Secrets Manager call; an unknown `kid` is retried at most once per minute.
+- `credentialCache`: keyed by `jti`, value = `ApiKeyPrincipal`, TTL = configurable (`jwt.credential-cache-ttl`, default 5 minutes). Active credentials only.
+- `revokedCache`: keyed by `jti`, value = `Boolean.TRUE`, TTL = 366 days (max possible token lifetime). Used for credentials explicitly revoked or found inactive in DynamoDB. Long TTL ensures a revoked token cannot slip through even after a re-authentication attempt.
+- `absentCache`: keyed by `jti`, value = `Boolean.TRUE`, TTL = `credentialCacheTtl` (5 minutes). Used when DynamoDB has no record for the `jti`. Shorter TTL than `revokedCache` to allow a credential record to be created after a cold-cache miss without permanently locking out the caller.
+
+The original design described a single `credentialCache` with a `Boolean.TRUE` REVOKED sentinel for all non-active cases. During implementation this was split into four caches to give absent and revoked cases different TTLs and to keep negative SM results separate from credential state.
 
 ### D3 — `ApiKeyPrincipal` carries `dns`, `jti`, and `jurisdictionId` from JWT claims
 `jurisdictionId` and `roles` come from JWT claims (`sub` and `roles`) — not from DynamoDB. DynamoDB is checked only for `status` (active/revoked/absent). `dns` is carried for audit logging. `jti` is carried so the principal can be targeted for revocation without re-parsing the token.

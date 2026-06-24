@@ -100,7 +100,7 @@ When the credential cache misses, Hub SHALL read the `ApiKeyCredential` record a
 
 #### Scenario: Absent credential record
 - **WHEN** DynamoDB has no `ApiKeyCredential` record for `env#jti`
-- **THEN** a REVOKED sentinel is cached and `null` is returned
+- **THEN** the `jti` is cached in the absent cache (5-minute TTL) and `null` is returned. A shorter TTL is used (vs. the 366-day revoked TTL) to allow a credential record to be created after a cold-cache miss without permanent lockout.
 
 ### Requirement: Revocation propagation via refresh endpoint
 When Hub's `/rest/refresh` endpoint is called (by Config Console after revoking a `jti`), Hub SHALL:

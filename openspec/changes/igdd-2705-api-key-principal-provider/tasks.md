@@ -15,14 +15,14 @@
 
 ## 4. ApiKeyPrincipalProvider
 
-- [x] 4.1 Create `ApiKeyPrincipalProvider.java` in `gov.cdc.izgateway.hub.security` — `@Component`; inject `JwtConfig`, `ApiKeyCredentialRepository`, `JwtTokenExtractor` (from core); initialize two Caffeine caches: `secretCache` (by `kid`, TTL = `jwt.secret-cache-ttl`) and `credentialCache` (by `jti`, value = `ApiKeyPrincipal` or `Boolean.TRUE` sentinel, variable TTL)
-- [x] 4.2 Implement `getProvider(HttpServletRequest)` — step 1: extract Bearer token via `JwtTokenExtractor`; return `null` on absent/non-Bearer header; step 2: parse JWT header only (use `com.nimbusds.jwt.SignedJWT.parse()`) to extract `kid`, `alg`, `iss`; return `null` if `alg != HS256` or `iss` doesn't match `jwt.issuer`
+- [x] 4.1 Create `ApiKeyPrincipalProvider.java` in `gov.cdc.izgateway.hub.security` — `@Component`; inject `JwtConfig`, `ApiKeyCredentialRepository`, `JwtTokenExtractor` (from core); initialize four Caffeine caches: `secretCache` (by `kid`), `negativeSecretCache` (failed SM lookups, 60s), `credentialCache` (active principals, 5m), `revokedCache` (revoked/inactive, 366d), `absentCache` (not found in DynamoDB, 5m)
+- [x] 4.2 Implement `getPrincipal(HttpServletRequest)` — step 1: extract Bearer token via `JwtTokenExtractor`; return `null` on absent/non-Bearer header; step 2: parse JWT header only (use `com.nimbusds.jwt.SignedJWT.parse()`) to extract `kid`, `alg`, `iss`; return `null` if `alg != HS256`, `kid` is blank, or `iss` doesn't match `jwt.issuer`
 - [x] 4.3 Implement secret resolution — check `secretCache` by `kid`; on miss, call `SecretsManagerClient.getSecretValue(req -> req.secretId(config.secretsManagerSecretName()).versionId(kid))`; if `jwt.test-secret` is set, skip SM and use that value for all kids; cache the secret; return `null` if SM throws `ResourceNotFoundException`
 - [x] 4.4 Implement HS256 signature verification — create `MACVerifier(secretBytes)` from `com.nimbusds.jose`; call `signedJwt.verify(verifier)`; return `null` on failure
 - [x] 4.5 Implement claims validation — after successful verification, extract payload claims; validate: (a) `exp` not passed (allow 30s clock skew), (b) `env` matches Hub environment, (c) `iss` matches `jwt.issuer`; return `null` on any failure
 - [x] 4.6 Implement credential cache lookup — check `credentialCache` by `jti`; on hit, return cached `ApiKeyPrincipal` (or `null` if value is `Boolean.TRUE` REVOKED sentinel); on miss, call `apiKeyCredentialRepository.findByEnvAndJti(env, jti)`
-- [x] 4.7 Implement DynamoDB status handling — if `status == active`: construct `ApiKeyPrincipal` from JWT claims (`sub`, `roles`, `dns`, `jti`), store in `credentialCache` with `jwt.credential-cache-ttl`, return principal; if `status == revoked`/`expired` or absent: store `Boolean.TRUE` sentinel in `credentialCache` with TTL = 1 year, return `null`
-- [x] 4.8 Implement revocation eviction method `evictCredential(String jti)` — evict `jti` from `credentialCache`, then immediately insert `Boolean.TRUE` sentinel with 1-year TTL
+- [x] 4.7 Implement DynamoDB status handling — if `status == active`: construct `ApiKeyPrincipal`, store in `credentialCache` (5m TTL), return principal; if absent: store in `absentCache` (5m TTL), return `null`; if `status != active`: store in `revokedCache` (366d TTL), return `null`
+- [x] 4.8 Implement revocation eviction method `evictCredential(String jti)` — evict `jti` from `credentialCache` and `absentCache`, insert into `revokedCache` with 366d TTL
 
 ## 5. Authentication Enforcement Filter
 
@@ -30,7 +30,7 @@
 
 ## 6. HubPrincipalService Integration
 
-- [x] 6.1 Inject `ApiKeyPrincipalProvider` into `HubPrincipalService`; update `getPrincipal(HttpServletRequest)` to try `apiKeyPrincipalProvider.getProvider(request)` first; only fall back to `CertificatePrincipalProvider` if that returns `null`; return `UnauthenticatedPrincipal` if both return `null`
+- [x] 6.1 Inject `ApiKeyPrincipalProvider` into `HubPrincipalService`; update `getPrincipal(HttpServletRequest)` to try `apiKeyPrincipalProvider.getPrincipal(request)` first; only fall back to `CertificatePrincipalProvider` if that returns `null`; return `UnauthenticatedPrincipal` if both return `null`
 
 ## 7. Revocation Propagation
 
@@ -42,6 +42,10 @@
 
 - [x] 8.1 Create `application-local-jwt.yml` — sets `server.ssl.client-auth=want`, `jwt.issuer=http://localhost:3000`, `jwt.test-secret=izg-test-secret-igdd-2705-do-not-use-in-production`, `jwt.secrets-manager-secret-name=` (empty, unused when test-secret set)
 - [x] 8.2 Create `test-tokens.md` in the change directory — document the test JWT (kid, secret, jti, full token string, expiry) and the `curl` command to exercise the local endpoint; note the token is for local dev only
+
+## 10. Bug Fix — AccessControlService Role Check
+
+- [x] 10.1 Fix `AccessControlService.isUserInRole()` to fall back to checking `ApiKeyPrincipal.getRoles()` when the DynamoDB access control table has no entry for the principal. Without this fix, API key callers always received 401 on protected endpoints because `AccessControlValve` identifies users by `principal.getName()` (the `jti` UUID), which has no entry in the cert-based access control table.
 
 ## 9. Tests
 

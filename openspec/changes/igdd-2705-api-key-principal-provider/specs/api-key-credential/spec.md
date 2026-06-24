@@ -22,7 +22,7 @@ The `sortKey` SHALL be formatted as `{env}#{jti}` where `{env}` is the runtime e
 
 #### Scenario: Sort key for Production environment
 - **WHEN** an `ApiKeyCredential` is created for `env = Production` and `jti = 018f4e2a-5678-7abc-8def-000000000002`
-- **THEN** its `sortKey` value is `ApiKeyCredential#Production#018f4e2a-5678-7abc-8def-000000000002`
+- **THEN** its `sortKey` value is `Production#018f4e2a-5678-7abc-8def-000000000002`
 
 ### Requirement: Instant date serialization
 `issuedAt` and `expiresAt` fields of type `Instant` SHALL be serialized to DynamoDB as ISO-8601 strings with UTC `Z` suffix (e.g., `2025-06-04T00:00:00Z`) using `InstantAsStringAttributeConverter`. This is distinct from the `Date` fields inherited from `DynamoDbAudit` (which use a custom `DateConverter` with millisecond format `yyyy-MM-dd'T'HH:mm:ss.SSSXX`). Both formats must coexist without conflict.
