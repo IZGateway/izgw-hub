@@ -43,6 +43,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import gov.cdc.izgateway.common.BadRequestException;
 import gov.cdc.izgateway.common.ResourceNotFoundException;
+import gov.cdc.izgateway.hub.security.ApiKeyPrincipalProvider;
 import gov.cdc.izgateway.db.RefreshQueueService.RefreshRequest;
 import gov.cdc.izgateway.dynamodb.model.Destination;
 import gov.cdc.izgateway.dynamodb.model.MessageHeader;
@@ -134,24 +135,29 @@ public class DbController {
 	}
 	private final IHostRepository hostService;
 	private final DbControllerConfiguration configuration;
+	private final ApiKeyPrincipalProvider apiKeyPrincipalProvider;
 	/** Cached region for THIS host */
-	private final RefreshQueueService refreshQueueService = new RefreshQueueService(REGION, this);
+	private final RefreshQueueService refreshQueueService;
 
 	/**
 	 * Construct a new DBController class.
-	 * 
+	 *
 	 * @param hostService	The service use to access running hosts
 	 * @param config	The configuration providing access to db services
 	 * @param registry	The access control registry managing these APIs
+	 * @param apiKeyPrincipalProvider  The API key principal provider for credential cache eviction
 	 */
 	@Autowired
 	public DbController(
 		IHostRepository hostService,
 		DbControllerConfiguration config,
-		AccessControlRegistry registry
+		AccessControlRegistry registry,
+		ApiKeyPrincipalProvider apiKeyPrincipalProvider
 	) {
 		this.hostService = hostService;
-		this.configuration = config; 
+		this.configuration = config;
+		this.apiKeyPrincipalProvider = apiKeyPrincipalProvider;
+		this.refreshQueueService = new RefreshQueueService(REGION, this, apiKeyPrincipalProvider);
 		registry.register(this);
 	}
 	
@@ -326,9 +332,14 @@ public class DbController {
       @Parameter(description = "If true or local, refresh all accessible instances, otherwise refresh only the current instance.", required = false)
       @RequestParam(name = "all", defaultValue = "false") String all,
       @Parameter(description = "If true, reset circuit breakers as well.", required = false)
-      @RequestParam(name = "reset", defaultValue = "false") boolean reset
+      @RequestParam(name = "reset", defaultValue = "false") boolean reset,
+      @Parameter(description = "If provided, evict this specific API key jti from the credential cache on all instances.", required = false)
+      @RequestParam(name = "jti", required = false) String jti
 	) {
       HostMap results = new HostMap();
+      if (jti != null) {
+          apiKeyPrincipalProvider.evictCredential(jti);
+      }
       refresh();
       String me = SystemUtils.getHostname();
       String eventId = MDC.get(EventId.EVENTID_KEY);
@@ -344,7 +355,7 @@ public class DbController {
             if (hostName.equalsIgnoreCase(me) && hostRegion.equals(REGION)) {
 			   continue;  // Yeah, we already did that one
 			}
-            RefreshRequest request = new RefreshRequest(reset, eventId, me, REGION);
+            RefreshRequest request = new RefreshRequest(reset, eventId, me, REGION, jti);
             refreshQueueService.sendRefreshMessage(request, results, hostName, hostRegion);
          }
          refreshQueueService.awaitRefreshResponses(eventId, results);
@@ -561,7 +572,7 @@ public class DbController {
 
 		configuration.getDestinationService().saveAndFlush(dest);
 		// Refresh other services.
-		getRefreshed("true", false);
+		getRefreshed("true", false, null);
 		return getConfigById(id);
 	}
 
@@ -600,7 +611,7 @@ public class DbController {
 		dest.setMaintEnd(null);
 		configuration.getDestinationService().saveAndFlush(dest);
 		// Refresh other services.
-		getRefreshed("true", false);
+		getRefreshed("true", false, null);
 		return getConfigById(id);
 	}
 
