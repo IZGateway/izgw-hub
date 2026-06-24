@@ -17,6 +17,7 @@ import gov.cdc.izgateway.hub.repository.IAllowedUserRepository;
 import gov.cdc.izgateway.hub.repository.IDenyListRecordRepository;
 import gov.cdc.izgateway.hub.repository.IFileTypeRepository;
 import gov.cdc.izgateway.hub.repository.RepositoryFactory;
+import gov.cdc.izgateway.hub.security.ApiKeyPrincipal;
 import gov.cdc.izgateway.logging.RequestContext;
 import gov.cdc.izgateway.logging.markers.Markers2;
 import gov.cdc.izgateway.model.IFileType;
@@ -141,9 +142,18 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
     
     @Override
 	public boolean isUserInRole(String user, String role) {
-		return currentModelHelper.isUserInRole(user, role);
+		if (currentModelHelper.isUserInRole(user, role)) {
+			return true;
+		}
+		// For API key (JWT) principals, roles are carried in the token itself rather than
+		// the DynamoDB access control table. Fall back to the principal's role set.
+		var principal = RequestContext.getPrincipal();
+		if (principal instanceof ApiKeyPrincipal apiKeyPrincipal) {
+			return apiKeyPrincipal.getRoles().contains(role);
+		}
+		return false;
     }
-    
+
 	@Override
 	public boolean isUserInGroup(String user, String group) {
 		return currentModelHelper.isUserInGroup(user, group);
