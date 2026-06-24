@@ -195,6 +195,14 @@ jwt:
   credential-cache-ttl: 5m
   # jwt.test-secret is for local development only — never set in deployed environments
 
+# Grace-period revocation scheduled job (IGDD-2711). Disabled by default; enable per
+# environment once the Config Console renewal contract (graceExpiresAt) is in place.
+apikey:
+  grace-revocation:
+    enabled: ${APIKEY_GRACE_REVOCATION_ENABLED:false}
+    interval: 1h
+    initial-delay: 5m
+
 soap:
   faults:
     DestinationConnectionFault:
