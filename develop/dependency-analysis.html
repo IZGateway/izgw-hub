@@ -90,7 +90,7 @@
 <tr class="b">
 <td style="text-align: left;">ch.qos.logback</td>
 <td>logback-classic</td>
-<td>1.5.35</td>
+<td>1.5.34</td>
 <td>compile</td>
 <td>-</td>
 <td>jar</td>
@@ -98,7 +98,7 @@
 <tr class="a">
 <td style="text-align: left;">software.amazon.awssdk</td>
 <td>dynamodb-enhanced</td>
-<td>2.46.17</td>
+<td>2.46.12</td>
 <td>compile</td>
 <td>-</td>
 <td>jar</td>
@@ -106,7 +106,7 @@
 <tr class="b">
 <td style="text-align: left;">software.amazon.awssdk</td>
 <td>sqs</td>
-<td>2.46.17</td>
+<td>2.46.12</td>
 <td>compile</td>
 <td>-</td>
 <td>jar</td>
@@ -274,7 +274,7 @@
 <tr class="a">
 <td style="text-align: left;">org.apache.tomcat.embed</td>
 <td>tomcat-embed-core</td>
-<td>10.1.56</td>
+<td>10.1.55</td>
 <td>compile</td>
 <td>-</td>
 <td>jar</td>
@@ -296,9 +296,25 @@
 <td>jar</td>
 <td>false</td></tr>
 <tr class="b">
+<td style="text-align: left;">software.amazon.awssdk</td>
+<td>secretsmanager</td>
+<td>2.46.12</td>
+<td>compile</td>
+<td>-</td>
+<td>jar</td>
+<td>false</td></tr>
+<tr class="a">
 <td style="text-align: left;">com.opencsv</td>
 <td>opencsv</td>
 <td>5.12.0</td>
+<td>compile</td>
+<td>-</td>
+<td>jar</td>
+<td>false</td></tr>
+<tr class="b">
+<td style="text-align: left;">com.github.ben-manes.caffeine</td>
+<td>caffeine</td>
+<td>3.2.4</td>
 <td>compile</td>
 <td>-</td>
 <td>jar</td>
@@ -314,10 +330,26 @@
 <th>Type</th>
 <th>Optional</th></tr>
 <tr class="b">
+<td style="text-align: left;">software.amazon.awssdk</td>
+<td>aws-core</td>
+<td>2.46.12</td>
+<td>compile</td>
+<td>-</td>
+<td>jar</td>
+<td>false</td></tr>
+<tr class="a">
 <td style="text-align: left;">org.springframework.boot</td>
 <td>spring-boot</td>
 <td>3.5.15</td>
 <td>compile</td>
+<td>-</td>
+<td>jar</td>
+<td>false</td></tr>
+<tr class="b">
+<td style="text-align: left;">org.assertj</td>
+<td>assertj-core</td>
+<td>3.27.7</td>
+<td>test</td>
 <td>-</td>
 <td>jar</td>
 <td>false</td></tr>
@@ -338,6 +370,30 @@
 <td>jar</td>
 <td>false</td></tr>
 <tr class="a">
+<td style="text-align: left;">org.mockito</td>
+<td>mockito-junit-jupiter</td>
+<td>5.17.0</td>
+<td>test</td>
+<td>-</td>
+<td>jar</td>
+<td>false</td></tr>
+<tr class="b">
+<td style="text-align: left;">software.amazon.awssdk</td>
+<td>regions</td>
+<td>2.46.12</td>
+<td>compile</td>
+<td>-</td>
+<td>jar</td>
+<td>false</td></tr>
+<tr class="a">
+<td style="text-align: left;">com.nimbusds</td>
+<td>nimbus-jose-jwt</td>
+<td>10.9.1</td>
+<td>compile</td>
+<td>-</td>
+<td>jar</td>
+<td>false</td></tr>
+<tr class="b">
 <td style="text-align: left;">org.springframework</td>
 <td>spring-beans</td>
 <td>6.2.19</td>
@@ -345,7 +401,7 @@
 <td>-</td>
 <td>jar</td>
 <td>false</td></tr>
-<tr class="b">
+<tr class="a">
 <td style="text-align: left;">org.springframework</td>
 <td>spring-test</td>
 <td>6.2.19</td>
@@ -353,7 +409,7 @@
 <td>-</td>
 <td>jar</td>
 <td>false</td></tr>
-<tr class="a">
+<tr class="b">
 <td style="text-align: left;">org.springframework</td>
 <td>spring-context</td>
 <td>6.2.19</td>
@@ -361,7 +417,7 @@
 <td>-</td>
 <td>jar</td>
 <td>false</td></tr>
-<tr class="b">
+<tr class="a">
 <td style="text-align: left;">org.springframework</td>
 <td>spring-core</td>
 <td>6.2.19</td>
@@ -369,7 +425,7 @@
 <td>-</td>
 <td>jar</td>
 <td>false</td></tr>
-<tr class="a">
+<tr class="b">
 <td style="text-align: left;">org.springframework.boot</td>
 <td>spring-boot-autoconfigure</td>
 <td>3.5.15</td>
@@ -377,7 +433,7 @@
 <td>-</td>
 <td>jar</td>
 <td>false</td></tr>
-<tr class="b">
+<tr class="a">
 <td style="text-align: left;">jakarta.activation</td>
 <td>jakarta.activation-api</td>
 <td>2.1.4</td>
@@ -385,10 +441,18 @@
 <td>-</td>
 <td>jar</td>
 <td>false</td></tr>
-<tr class="a">
+<tr class="b">
 <td style="text-align: left;">org.apache.tomcat</td>
 <td>tomcat-annotations-api</td>
 <td>10.1.55</td>
+<td>compile</td>
+<td>-</td>
+<td>jar</td>
+<td>false</td></tr>
+<tr class="a">
+<td style="text-align: left;">software.amazon.awssdk</td>
+<td>dynamodb</td>
+<td>2.46.12</td>
 <td>compile</td>
 <td>-</td>
 <td>jar</td>
@@ -410,26 +474,10 @@
 <td>jar</td>
 <td>false</td></tr>
 <tr class="b">
-<td style="text-align: left;">software.amazon.awssdk</td>
-<td>utils</td>
-<td>2.46.17</td>
-<td>compile</td>
-<td>-</td>
-<td>jar</td>
-<td>false</td></tr>
-<tr class="a">
 <td style="text-align: left;">org.junit.jupiter</td>
 <td>junit-jupiter-params</td>
 <td>5.12.2</td>
 <td>test</td>
-<td>-</td>
-<td>jar</td>
-<td>false</td></tr>
-<tr class="b">
-<td style="text-align: left;">software.amazon.awssdk</td>
-<td>dynamodb</td>
-<td>2.46.17</td>
-<td>compile</td>
 <td>-</td>
 <td>jar</td>
 <td>false</td></tr>
@@ -443,21 +491,13 @@
 <td>false</td></tr>
 <tr class="b">
 <td style="text-align: left;">software.amazon.awssdk</td>
-<td>aws-core</td>
-<td>2.46.17</td>
+<td>utils</td>
+<td>2.46.12</td>
 <td>compile</td>
 <td>-</td>
 <td>jar</td>
 <td>false</td></tr>
 <tr class="a">
-<td style="text-align: left;">software.amazon.awssdk</td>
-<td>regions</td>
-<td>2.46.17</td>
-<td>compile</td>
-<td>-</td>
-<td>jar</td>
-<td>false</td></tr>
-<tr class="b">
 <td style="text-align: left;">org.mockito</td>
 <td>mockito-core</td>
 <td>5.23.0</td>
@@ -465,7 +505,7 @@
 <td>-</td>
 <td>jar</td>
 <td>false</td></tr>
-<tr class="a">
+<tr class="b">
 <td style="text-align: left;">io.swagger.core.v3</td>
 <td>swagger-annotations-jakarta</td>
 <td>2.2.47</td>
@@ -473,7 +513,7 @@
 <td>-</td>
 <td>jar</td>
 <td>false</td></tr>
-<tr class="b">
+<tr class="a">
 <td style="text-align: left;">jakarta.validation</td>
 <td>jakarta.validation-api</td>
 <td>3.1.1</td>
@@ -502,7 +542,7 @@
 <tr class="a">
 <td style="text-align: left;">ch.qos.logback</td>
 <td>logback-core</td>
-<td>1.5.35</td>
+<td>1.5.34</td>
 <td>compile</td>
 <td>-</td>
 <td>jar</td>
@@ -662,7 +702,7 @@
 <tr class="a">
 <td style="text-align: left;">org.apache.tomcat.embed</td>
 <td>tomcat-embed-el</td>
-<td>10.1.56</td>
+<td>10.1.55</td>
 <td>compile</td>
 <td>-</td>
 <td>jar</td>
@@ -670,7 +710,7 @@
 <tr class="b">
 <td style="text-align: left;">org.apache.tomcat.embed</td>
 <td>tomcat-embed-websocket</td>
-<td>10.1.56</td>
+<td>10.1.55</td>
 <td>compile</td>
 <td>-</td>
 <td>jar</td>
@@ -767,14 +807,6 @@
 <td style="text-align: left;">com.github.seancfoley</td>
 <td>ipaddress</td>
 <td>5.6.2</td>
-<td>compile</td>
-<td>-</td>
-<td>jar</td>
-<td>false</td></tr>
-<tr class="a">
-<td style="text-align: left;">software.amazon.awssdk</td>
-<td>secretsmanager</td>
-<td>2.46.17</td>
 <td>compile</td>
 <td>-</td>
 <td>jar</td>
