@@ -12,11 +12,11 @@ class ApiKeyPrincipalTest {
 
     private static final String SUB = "TEST_ORG";
     private static final String JTI = "0d0fa1d2-3c5d-4e2a-9a5c-1f7b4d2e9c10";
-    private static final String DNS = "test.example.gov";
+    private static final String UPN = "test.example.gov";
     private static final String ISSUER = "http://localhost:3000";
 
     private ApiKeyPrincipal principal(List<String> roles) {
-        return new ApiKeyPrincipal(SUB, JTI, roles, DNS, ISSUER);
+        return new ApiKeyPrincipal(SUB, JTI, roles, UPN, ISSUER);
     }
 
     @Test
@@ -32,8 +32,8 @@ class ApiKeyPrincipalTest {
     }
 
     @Test
-    void jtiIsCarriedAsName() {
-        assertThat(principal(List.of()).getName()).isEqualTo(JTI);
+    void upnIsCarriedAsName() {
+        assertThat(principal(List.of()).getName()).isEqualTo(UPN);
     }
 
     @Test
@@ -42,8 +42,8 @@ class ApiKeyPrincipalTest {
     }
 
     @Test
-    void dnsFieldIsSet() {
-        assertThat(principal(List.of()).getDns()).isEqualTo(DNS);
+    void upnFieldIsSet() {
+        assertThat(principal(List.of()).getUpn()).isEqualTo(UPN);
     }
 
     @Test
@@ -72,7 +72,7 @@ class ApiKeyPrincipalTest {
 
     @Test
     void nullSubjectIsTolerated() {
-        ApiKeyPrincipal p = new ApiKeyPrincipal(null, JTI, List.of("ads"), DNS, ISSUER);
+        ApiKeyPrincipal p = new ApiKeyPrincipal(null, JTI, List.of("ads"), UPN, ISSUER);
 
         assertThat(p.getOrganization()).isNull();
     }

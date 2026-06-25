@@ -196,17 +196,21 @@ public class ApiKeyPrincipalProvider {
             } catch (ParseException e) {
                 roles = Collections.emptyList();
             }
-            String dns = (String) claims.getClaim("dns");
+            String upn = (String) claims.getClaim("upn");
+            if (upn == null || upn.isBlank()) {
+                log.warn("JWT rejected: missing or blank upn claim for jti={}", jti);
+                return null;
+            }
 
             ApiKeyPrincipal principal = new ApiKeyPrincipal(
                     sub,
                     jti,
                     roles != null ? roles : Collections.emptyList(),
-                    dns,
+                    upn,
                     config.getIssuer()
             );
             credentialCache.put(jti, principal);
-            log.debug("Authenticated ApiKeyPrincipal jti={} org={}", jti, sub);
+            log.debug("Authenticated ApiKeyPrincipal jti={} org={} upn={}", jti, sub, upn);
             return principal;
         }
 

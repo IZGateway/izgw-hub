@@ -35,10 +35,17 @@ Hub currently authenticates callers exclusively via mTLS client certificates (mT
 
 The original design described a single `credentialCache` with a `Boolean.TRUE` REVOKED sentinel for all non-active cases. During implementation this was split into four caches to give absent and revoked cases different TTLs and to keep negative SM results separate from credential state.
 
-### D3 — `ApiKeyPrincipal` carries `dns`, `jti`, and `jurisdictionId` from JWT claims
-`jurisdictionId` and `roles` come from JWT claims (`sub` and `roles`) — not from DynamoDB. DynamoDB is checked only for `status` (active/revoked/absent). `dns` is carried for audit logging. `jti` is carried so the principal can be targeted for revocation without re-parsing the token.
+### D3 — `ApiKeyPrincipal` carries `upn`, `jti`, and `jurisdictionId` from JWT claims
+`jurisdictionId` (from `sub`) and `roles` come from JWT claims — not from DynamoDB. DynamoDB is checked only for `status` (active/revoked/absent). `upn` (User Principal Name — the DNS domain validated at issuance) is the **stable sender identity**: it is set as `IzgPrincipal.name` and flows into `SourceInfo.commonName`, making it directly equivalent to the CN extracted from an mTLS certificate. `jti` is carried so the principal can be targeted for revocation without re-parsing the token and is exposed via `getSerialNumberHex()` only.
 
-`ApiKeyPrincipal` extends `IzgPrincipal` directly (as `CertificatePrincipal` does), not via `JWTPrincipal`, because it needs the extra `dns` and `jti` fields and its claim-extraction logic differs.
+The `sub` claim carries the jurisdictionId as a **string representation of an integer** (e.g., `"42"`), consistent with the legacy IZG jurisdiction identifier scheme. It is stored as a `String` throughout — no numeric parsing is performed — and is used for informational/audit purposes only. Authorization decisions use `upn`, not `sub`.
+
+`ApiKeyPrincipal` extends `IzgPrincipal` directly (as `CertificatePrincipal` does), not via `JWTPrincipal`, because it needs the extra `upn` and `jti` fields and its claim-extraction logic differs.
+
+### D8 — `upn` as the authorization identity, not `jti`
+`IzgPrincipal.getName()` is the identity used by `AccessControlService.checkAccessToDestination()`, the `AllowedUser` per-destination lookup, the deny list, and the positive access cache. For mTLS callers this is the certificate CN (a stable DNS hostname). For JWT callers it must be an equivalent stable identifier — `upn` — not `jti`, which is an ephemeral per-token UUID that changes on every issuance and can never match a static `AllowedUser` pattern.
+
+`ApiKeyPrincipal` therefore sets `name = upn` and retains `jti` only on `getSerialNumberHex()` for revocation targeting. `organization` is set to `sub` (a numeric string jurisdiction ID, e.g., `"42"`). This alignment means `AllowedUser` entries written for mTLS clients (CN patterns like `immunize.example.gov` or `*.example.gov`) will match JWT clients presenting the same DNS domain in their `upn` claim without any changes to the access control table.
 
 ### D4 — `AuthenticationEnforcementFilter` for `client-auth=want`
 When Hub is configured with `server.ssl.client-auth=want` (required to accept JWT-only callers who present no TLS cert), an anonymous TLS connection reaches the app and `HubPrincipalService` returns `UnauthenticatedPrincipal`. `AccessControlValve` in `want` mode would log but not block the request. `AuthenticationEnforcementFilter` (order `HIGHEST_PRECEDENCE`) intercepts before business logic and returns 401 immediately for any `UnauthenticatedPrincipal`. In production with `client-auth=need`, the filter is present but harmless — anonymous connections are blocked at TLS.

@@ -85,14 +85,29 @@ Hub SHALL maintain an in-memory credential cache keyed by `jti`. On a cache hit,
 - **WHEN** the `jti` is not in the credential cache
 - **THEN** Hub reads the `ApiKeyCredential` record from DynamoDB by sort key `env#jti`
 
+### Requirement: `upn` claim validation
+After signature and standard claims verification, Hub SHALL extract the `upn` claim from the verified JWT payload. If `upn` is absent or blank, Hub SHALL log a warning and return `null`, rejecting the token. A non-blank `upn` is required for the principal to be usable in `AllowedUser` authorization lookups.
+
+#### Scenario: Missing upn claim
+- **WHEN** a JWT payload contains no `upn` claim
+- **THEN** `ApiKeyPrincipalProvider` logs a warning and returns `null`
+
+#### Scenario: Blank upn claim
+- **WHEN** a JWT payload contains `"upn": ""`
+- **THEN** `ApiKeyPrincipalProvider` logs a warning and returns `null`
+
+#### Scenario: Valid upn claim
+- **WHEN** a JWT payload contains `"upn": "immunize.example.gov"`
+- **THEN** validation proceeds to the credential cache lookup step
+
 ### Requirement: DynamoDB credential status check
 When the credential cache misses, Hub SHALL read the `ApiKeyCredential` record and act on its `status`:
-- **active**: construct an `ApiKeyPrincipal` from JWT claims (`sub` → `jurisdictionId`, `roles` → roles, `dns` → dns, `jti` → jti), store in credential cache with `jwt.credential-cache-ttl` (default 5 minutes), and return the principal.
+- **active**: construct an `ApiKeyPrincipal` from JWT claims (`upn` → `name` (IzgPrincipal.getName()), `sub` → `organization` (a numeric string jurisdiction ID, e.g., `"42"`), `roles` → roles, `jti` → jti), store in credential cache with `jwt.credential-cache-ttl` (default 5 minutes), and return the principal.
 - **revoked**, **expired**, or record absent: store a REVOKED sentinel in credential cache with TTL equal to the maximum possible token lifetime (1 year), and return `null`.
 
 #### Scenario: Active credential
 - **WHEN** DynamoDB returns `status = active` for the `jti`
-- **THEN** an `ApiKeyPrincipal` is constructed from JWT claims and cached with 5-minute TTL, then returned
+- **THEN** an `ApiKeyPrincipal` is constructed from JWT claims with `name = upn` and cached with 5-minute TTL, then returned
 
 #### Scenario: Revoked credential
 - **WHEN** DynamoDB returns `status = revoked` for the `jti`

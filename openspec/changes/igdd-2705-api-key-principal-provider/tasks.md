@@ -6,7 +6,7 @@
 
 ## 2. ApiKeyPrincipal
 
-- [x] 2.1 Create `ApiKeyPrincipal.java` in `gov.cdc.izgateway.hub.security` — extends `IzgPrincipal`; fields: `jti` (String), `dns` (String); constructor takes JWT claims (`sub` → `organization`, `jti` → `name`, `roles` → roles, `dns` → dns); implement `getSerialNumberHex()` to return `jti`
+- [x] 2.1 Create `ApiKeyPrincipal.java` in `gov.cdc.izgateway.hub.security` — extends `IzgPrincipal`; fields: `jti` (String), `upn` (String); constructor takes JWT claims (`upn` → `name` (IzgPrincipal.getName()), `sub` → `organization`, `jti` → jti, `roles` → roles); implement `getSerialNumberHex()` to return `jti`
 
 ## 3. JWT Configuration
 
@@ -45,11 +45,11 @@
 
 ## 10. Bug Fix — AccessControlService Role Check
 
-- [x] 10.1 Fix `AccessControlService.isUserInRole()` to fall back to checking `ApiKeyPrincipal.getRoles()` when the DynamoDB access control table has no entry for the principal. Without this fix, API key callers always received 401 on protected endpoints because `AccessControlValve` identifies users by `principal.getName()` (the `jti` UUID), which has no entry in the cert-based access control table.
+- [x] 10.1 Fix `AccessControlService.isUserInRole()` to fall back to checking `ApiKeyPrincipal.getRoles()` when the DynamoDB access control table has no entry for the principal. Without this fix, API key callers always received 401 on protected endpoints because `AccessControlValve` identifies users by `principal.getName()` (the `upn` value), which has no entry in the cert-based access control table.
 
 ## 9. Tests
 
-- [x] 9.1 Unit test `ApiKeyPrincipalProvider` — happy path: valid HS256 JWT, active credential in cache → returns `ApiKeyPrincipal` with correct jurisdictionId, roles, dns, jti
+- [x] 9.1 Unit test `ApiKeyPrincipalProvider` — happy path: valid HS256 JWT, active credential in cache → returns `ApiKeyPrincipal` with correct jurisdictionId, roles, upn, jti
 - [x] 9.2 Unit test — wrong algorithm (RS256 JWT) → returns `null`, no SM call
 - [x] 9.3 Unit test — wrong issuer → returns `null`, no SM call
 - [x] 9.4 Unit test — expired `exp` claim → returns `null`
@@ -59,3 +59,11 @@
 - [x] 9.8 Unit test — `evictCredential` inserts REVOKED sentinel and subsequent lookup returns `null`
 - [x] 9.9 Unit test `ApiKeyCredentialRepository` — `findByEnvAndJti` constructs correct sort key and returns `Optional.empty()` on miss
 - [x] 9.10 Verify `AuthenticationEnforcementFilter` returns 401 for `UnauthenticatedPrincipal` and passes through for authenticated principal
+
+## 11. UPN Claim — Authorization Identity Fix
+
+- [x] 11.1 Update `ApiKeyPrincipal.java` — rename field `dns` → `upn`; change constructor to accept `upnValue` parameter; set `name = upnValue` (replaces `name = jtiValue`); `jti` remains on `getSerialNumberHex()` only; update Lombok-generated accessors accordingly
+- [x] 11.2 Update `ApiKeyPrincipalProvider.lookupAndCacheCredential()` — extract `upn` claim (`claims.getClaim("upn")`) instead of `dns`; if `upn` is null or blank, log a warning and return `null`; pass `upn` as the name argument to the `ApiKeyPrincipal` constructor
+- [x] 11.3 Update unit tests in `ApiKeyPrincipalProviderTest` — replace `dns` with `upn` in all JWT builder helpers and assertion checks; add test: missing `upn` claim → returns `null`; add test: blank `upn` claim → returns `null`; update happy-path assertion to verify `principal.getName()` equals the `upn` value (not the `jti`)
+- [x] 11.4 Update unit tests in `ApiKeyPrincipalTest` — replace `dns` constructor argument with `upn`; assert `getName()` returns the `upn` value
+- [x] 11.5 Update `test-tokens.md` — replace `dns` claim with `upn` in the example JWT payload; regenerate the example token string signed with the test secret

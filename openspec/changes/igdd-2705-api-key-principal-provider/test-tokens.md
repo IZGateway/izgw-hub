@@ -21,17 +21,14 @@ This sets `server.ssl.client-auth=want`, `jwt.issuer=http://localhost:3000`, and
 | Kid | `00000000-0000-0000-0000-000000000001` |
 | Algorithm | HS256 |
 | Issuer | `http://localhost:3000` |
-| Subject (jurisdictionId) | `TEST` |
+| Subject (jurisdictionId) | `"42"` (numeric string — matches legacy IZG jurisdiction ID scheme) |
 | JTI | `018f4e2a-5678-7abc-8def-000000000002` |
 | Environment | `Development` |
-| DNS | `test.example.gov` |
+| UPN | `test.example.gov` |
 | Roles | `ads`, `soap` |
 | Expires | 2038-01-19 (far future — dev only) |
 
-**Token:**
-```
-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IjAwMDAwMDAwLTAwMDAtMDAwMC0wMDAwLTAwMDAwMDAwMDAwMSJ9.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjMwMDAiLCJzdWIiOiJURVNUIiwianRpIjoiMDE4ZjRlMmEtNTY3OC03YWJjLThkZWYtMDAwMDAwMDAwMDAyIiwiaWF0IjoxNzQ4OTA4ODAwLCJleHAiOjIxNDU5MTY4MDAsImRucyI6InRlc3QuZXhhbXBsZS5nb3YiLCJyb2xlcyI6WyJhZHMiLCJzb2FwIl0sImVudiI6IkRldmVsb3BtZW50In0.L5gEEAVFytlmZbLHNLq2vwRBjHzRtZ9qHr5TsXzKI4w
-```
+**Token:** regenerate using the Node.js snippet below (`dns` claim replaced by `upn`; the previous token is no longer valid).
 
 ## Example curl
 
@@ -44,7 +41,7 @@ Before using this token, create the matching `ApiKeyCredential` record in your l
   "jti": "018f4e2a-5678-7abc-8def-000000000002",
   "env": "Development",
   "status": "active",
-  "jurisdictionId": "TEST",
+  "jurisdictionId": "42",
   "issuedAt": "2025-06-04T00:00:00Z",
   "expiresAt": "2038-01-19T00:00:00Z"
 }
@@ -53,8 +50,18 @@ Before using this token, create the matching `ApiKeyCredential` record in your l
 Then call the Hub REST endpoint:
 
 ```bash
+TOKEN=$(node -e "
+const jwt = require('jsonwebtoken');
+console.log(jwt.sign(
+  { iss:'http://localhost:3000', sub:'42', jti:'018f4e2a-5678-7abc-8def-000000000002',
+    iat:Math.floor(Date.now()/1000), exp:Math.floor(Date.now()/1000)+(365*24*3600),
+    upn:'test.example.gov', roles:['ads','soap'], env:'Development' },
+  'izg-test-secret-igdd-2705-do-not-use-in-production',
+  { algorithm:'HS256', header:{ kid:'00000000-0000-0000-0000-000000000001' } }
+));
+")
 curl -k https://localhost:8443/rest/health \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IjAwMDAwMDAwLTAwMDAtMDAwMC0wMDAwLTAwMDAwMDAwMDAwMSJ9.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjMwMDAiLCJzdWIiOiJURVNUIiwianRpIjoiMDE4ZjRlMmEtNTY3OC03YWJjLThkZWYtMDAwMDAwMDAwMDAyIiwiaWF0IjoxNzQ4OTA4ODAwLCJleHAiOjIxNDU5MTY4MDAsImRucyI6InRlc3QuZXhhbXBsZS5nb3YiLCJyb2xlcyI6WyJhZHMiLCJzb2FwIl0sImVudiI6IkRldmVsb3BtZW50In0.L5gEEAVFytlmZbLHNLq2vwRBjHzRtZ9qHr5TsXzKI4w"
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 ## Generating a New Test Token
@@ -66,11 +73,11 @@ const jwt = require('jsonwebtoken');
 const token = jwt.sign(
   {
     iss: 'http://localhost:3000',
-    sub: 'TEST',
+    sub: '42',
     jti: crypto.randomUUID(),
     iat: Math.floor(Date.now() / 1000),
     exp: Math.floor(Date.now() / 1000) + (365 * 24 * 3600),
-    dns: 'test.example.gov',
+    upn: 'test.example.gov',
     roles: ['ads', 'soap'],
     env: 'Development'
   },

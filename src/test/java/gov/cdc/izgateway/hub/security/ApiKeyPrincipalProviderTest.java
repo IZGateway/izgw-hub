@@ -54,18 +54,26 @@ class ApiKeyPrincipalProviderTest {
         provider = new ApiKeyPrincipalProvider(config, credentialRepository, jwtTokenExtractor, null);
     }
 
+    private static final String TEST_UPN = "test.example.gov";
+
     private String buildToken(String alg, String issuer, String jti, String env, Date exp) throws Exception {
+        return buildToken(alg, issuer, jti, env, exp, TEST_UPN);
+    }
+
+    private String buildToken(String alg, String issuer, String jti, String env, Date exp, String upn) throws Exception {
         JWSAlgorithm jwsAlg = "HS256".equals(alg) ? JWSAlgorithm.HS256 : JWSAlgorithm.RS256;
         JWSHeader header = new JWSHeader.Builder(jwsAlg).keyID(TEST_KID).build();
-        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+        JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder()
                 .issuer(issuer)
                 .subject("TEST_ORG")
                 .jwtID(jti)
                 .expirationTime(exp != null ? exp : Date.from(Instant.now().plus(Duration.ofDays(365))))
                 .claim("env", env)
-                .claim("dns", "test.example.gov")
-                .claim("roles", List.of("ads", "soap"))
-                .build();
+                .claim("roles", List.of("ads", "soap"));
+        if (upn != null) {
+            claimsBuilder.claim("upn", upn);
+        }
+        JWTClaimsSet claims = claimsBuilder.build();
         if (!"HS256".equals(alg)) {
             return "eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJvdGhlciJ9.signature";
         }
@@ -87,9 +95,10 @@ class ApiKeyPrincipalProviderTest {
 
         assertThat(principal).isInstanceOf(ApiKeyPrincipal.class);
         ApiKeyPrincipal apiKey = (ApiKeyPrincipal) principal;
+        assertThat(apiKey.getName()).isEqualTo(TEST_UPN);
+        assertThat(apiKey.getUpn()).isEqualTo(TEST_UPN);
         assertThat(apiKey.getJti()).isEqualTo(TEST_JTI);
         assertThat(apiKey.getOrganization()).isEqualTo("TEST_ORG");
-        assertThat(apiKey.getDns()).isEqualTo("test.example.gov");
         assertThat(apiKey.getRoles()).contains("ads", "soap");
     }
 
@@ -173,6 +182,30 @@ class ApiKeyPrincipalProviderTest {
         IzgPrincipal principal2 = provider.getPrincipal(request);
         assertThat(principal2).isNull();
         verify(credentialRepository, times(1)).findByEnvAndJti(anyString(), anyString());
+    }
+
+    @Test
+    void missingUpnClaim_returnsNull() throws Exception {
+        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV, null, null);
+        when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
+
+        ApiKeyCredential cred = new ApiKeyCredential();
+        cred.setStatus("active");
+        when(credentialRepository.findByEnvAndJti(TEST_ENV, TEST_JTI)).thenReturn(Optional.of(cred));
+
+        assertThat(provider.getPrincipal(request)).isNull();
+    }
+
+    @Test
+    void blankUpnClaim_returnsNull() throws Exception {
+        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV, null, "");
+        when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
+
+        ApiKeyCredential cred = new ApiKeyCredential();
+        cred.setStatus("active");
+        when(credentialRepository.findByEnvAndJti(TEST_ENV, TEST_JTI)).thenReturn(Optional.of(cred));
+
+        assertThat(provider.getPrincipal(request)).isNull();
     }
 
     @Test

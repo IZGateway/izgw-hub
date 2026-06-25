@@ -7,7 +7,7 @@ Required fields:
 - `jti` — String; the JWT `jti` claim; unique credential identifier
 - `env` — String; the environment name (e.g., `Production`, `Onboarding`)
 - `status` — String; one of `active`, `revoked`, `expired`
-- `jurisdictionId` — String; the jurisdiction the credential was issued to (from JWT `sub`)
+- `jurisdictionId` — String; the jurisdiction the credential was issued to (from JWT `sub`); stored as a string representation of an integer to match the legacy IZG jurisdiction identifier scheme (e.g., `"42"`)
 - `issuedAt` — `Instant`; when the credential was issued (serialized via `InstantAsStringAttributeConverter`)
 - `expiresAt` — `Instant`; when the credential expires (serialized via `InstantAsStringAttributeConverter`)
 - `revokedAt` — `Instant` (nullable); when the credential was revoked
