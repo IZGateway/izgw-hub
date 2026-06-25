@@ -18,7 +18,7 @@ jobs:
     # This step should only be done on PUSH to main
     if: github.ref == 'refs/heads/testmain' || github.ref == 'refs/heads/main'
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       # Necessary to enable push to protected branch
       with:
         ssh-key: ${{secrets.ACTIONS_KEY}}
