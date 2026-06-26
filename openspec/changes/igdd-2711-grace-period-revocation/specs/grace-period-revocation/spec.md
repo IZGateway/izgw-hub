@@ -27,12 +27,12 @@ When the job revokes a superseded credential it SHALL emit an `API_KEY_REVOKED` 
 - **WHEN** the job revokes a credential with `jti = K1`, `jurisdictionId = MA`, `supersededBy = K2`
 - **THEN** an `API_KEY_REVOKED` event is emitted with `keyId = K1`, `jurisdictionId = MA`, `revokedBy = system:grace-revocation`, `supersededBy = K2`, and a timestamp, and no token or secret material
 
-### Requirement: Cross-instance cache eviction on revocation
-After revoking a credential in DynamoDB, the job SHALL propagate the revocation to every Hub instance's credential cache using the existing refresh mechanism (`RefreshQueueService` carrying the revoked `jti`, the same path used by Config Console's manual revoke), and SHALL evict the credential from the local cache. This ensures no Hub instance can re-validate the revoked key from a warm cache.
+### Requirement: Local cache eviction on revocation
+After revoking a credential in DynamoDB, the job SHALL evict the credential from the acting instance's credential cache so that instance stops serving it immediately. The job SHALL NOT broadcast the eviction to other instances: grace revocation is non-urgent, and other instances converge when their credential-cache entries expire (≤ `jwt.credential-cache-ttl`) and re-validate against DynamoDB. Immediate fleet-wide eviction is the concern of Config Console's manual revoke path (IGDD-2707), not this scheduled sweep.
 
-#### Scenario: Revoked key is evicted everywhere
+#### Scenario: Revoked key is evicted on the acting instance
 - **WHEN** the job revokes a credential with `jti = K1`
-- **THEN** a refresh carrying `jti = K1` is published so that every Hub instance evicts `K1` from its credential cache, and the running instance evicts `K1` locally
+- **THEN** the acting instance evicts `K1` from its credential cache, and other instances cease to serve `K1` within the credential-cache TTL when they re-validate against DynamoDB
 
 ### Requirement: Operational visibility — per-run counts
 Each execution of the job SHALL log, at a level visible in CloudWatch, the number of candidate keys evaluated and the number revoked in that run.

@@ -24,20 +24,15 @@ import java.util.List;
  * old one with {@code supersededBy} and {@code graceExpiresAt}, leaving it {@code active} so both
  * keys authenticate during the grace window. Once {@code graceExpiresAt} passes, the old key must
  * be revoked so renewed keys do not accumulate as indefinitely-valid credentials. This job performs
- * that sweep inside Hub, reusing the credential repository, audit logger, and the existing
- * cross-instance cache-eviction path built for IGDD-2705.</p>
+ * that sweep inside Hub, reusing the credential repository and audit logger built for IGDD-2705.</p>
  *
  * <p>The job is gated on {@code apikey.grace-revocation.enabled} (off by default) so it can be
- * enabled per environment and stays inert until the DynamoDB grace-field contract with Config
- * Console is confirmed. {@link EnableScheduling} is declared here so Spring's scheduling
+ * enabled per environment. {@link EnableScheduling} is declared here so Spring's scheduling
  * infrastructure is only activated when this bean is present.</p>
  *
- * <p><b>Skeleton status:</b> the revocation cycle is wired end-to-end, but two pieces are stubbed
- * pending dependencies and are marked with {@code TODO}: (1) candidate selection in
- * {@link ApiKeyCredentialRepository#findGraceRevocationCandidates(String)} (needs the
- * {@code graceExpiresAt} field from IGDD-2707; currently returns empty, so the cycle is a no-op);
- * (2) the multi-instance single-runner guard ({@link #isDesignatedRunner()}); and (3) cross-instance
- * eviction broadcast (currently evicts locally only).</p>
+ * <p>One piece remains stubbed pending a decision and is marked {@code TODO}: the multi-instance
+ * single-runner guard ({@link #isDesignatedRunner()}, design D5). Cross-instance cache propagation is
+ * intentionally not broadcast (it is out of scope for grace revocation — see {@link #evictLocalCache(String)}).</p>
  */
 @Component
 @Slf4j
@@ -88,7 +83,7 @@ public class GracePeriodRevocationScheduler {
 
     /**
      * Execute one revocation cycle: find superseded credentials whose grace period has expired in
-     * this environment, revoke each, emit an audit event, and propagate cache eviction. Logs the
+     * this environment, revoke each, emit an audit event, and evict the local cache. Logs the
      * number of credentials evaluated and revoked for operational visibility (AC #4).
      */
     void runRevocationCycle() {
@@ -121,8 +116,7 @@ public class GracePeriodRevocationScheduler {
 
     /**
      * Revoke a single superseded credential: transition it to {@code revoked} in DynamoDB, emit the
-     * {@code API_KEY_REVOKED} audit event, and propagate cache eviction so no instance can
-     * re-validate it from a warm cache.
+     * {@code API_KEY_REVOKED} audit event, and evict it from this instance's local cache.
      *
      * @param credential the active, grace-expired credential to revoke
      */
@@ -134,33 +128,31 @@ public class GracePeriodRevocationScheduler {
         credential.setRevokedBy(ApiKeyAuditLogger.SYSTEM_GRACE_REVOCATION);
         credentialRepository.store(credential);
 
-        // TODO(IGDD-2711, task 1.1): pass credential.getSupersededBy() once that field is added to
-        // ApiKeyCredential (written by Config Console on renewal, IGDD-2707).
         auditLogger.apiKeyRevoked(
                 jti,
                 credential.getJurisdictionId(),
                 ApiKeyAuditLogger.SYSTEM_GRACE_REVOCATION,
-                null
+                credential.getSupersededBy()
         );
 
-        propagateEviction(jti);
+        evictLocalCache(jti);
     }
 
     /**
-     * Propagate revocation to every Hub instance's credential cache.
+     * Evict the revoked credential from this instance's local cache so it stops serving the key
+     * immediately.
      *
-     * <p><b>Skeleton:</b> currently evicts only the local instance. The full implementation must
-     * broadcast a {@code RefreshRequest} carrying the {@code jti} through {@code RefreshQueueService}
-     * (the same SQS path Config Console's manual revoke triggers via {@code /rest/refresh}) so every
-     * instance evicts the credential. {@code RefreshQueueService} is currently constructed privately
-     * inside {@code DbController}, and {@code DbController.getRefreshed(...)} is guarded by
-     * {@code @RolesAllowed}, so a non-HTTP broadcast entry point is needed before this can be wired
-     * from a scheduler thread.</p>
+     * <p>Cross-instance broadcast is intentionally <em>not</em> performed here. Grace-period revocation
+     * is non-urgent (the key has been winding down for the whole grace window), and every other instance
+     * re-validates against DynamoDB when its credential-cache entry expires ({@code jwt.credential-cache-ttl},
+     * default 5 minutes), at which point the now-{@code revoked} status takes effect — so the revocation
+     * converges across the fleet within the cache TTL without any broadcast. Immediate all-instance
+     * propagation is the concern of Config Console's manual revoke (IGDD-2707) via {@code /rest/refresh},
+     * not of this scheduled sweep. See design D6.</p>
      *
-     * @param jti the revoked credential identifier to evict
+     * @param jti the revoked credential identifier to evict locally
      */
-    private void propagateEviction(String jti) {
-        // TODO(IGDD-2711, task 3.6): broadcast jti eviction to all instances via RefreshQueueService.
+    private void evictLocalCache(String jti) {
         apiKeyPrincipalProvider.evictCredential(jti);
     }
 
