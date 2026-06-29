@@ -17,7 +17,7 @@
 
 - [x] 3.1 Enable Spring scheduling (`@EnableScheduling` on `GracePeriodRevocationScheduler`, gated by `@ConditionalOnProperty`).
 - [x] 3.2 Create `GracePeriodRevocationScheduler` — injects repository, audit logger, principal provider; `@Scheduled` `scheduledRun` wraps `runRevocationCycle` with MDC eventId and ERROR-on-failure logging.
-- [ ] 3.3 Single-runner guard for multi-instance safety (design D5). **STUBBED**: `isDesignatedRunner()` returns `true` (TODO) — only remaining code stub.
+- [x] 3.3 Single-runner guard for multi-instance safety (design D5). Host-ordering election: lowest hostname among `IHostRepository.getHostsAndRegion()` (∪ self) runs; empty/unconfigured registry → self runs. Pure logic extracted to a static helper and unit-tested.
 - [x] 3.4 Cycle: query candidates → set `status="revoked"`, `revokedAt=now`, `revokedBy="system:grace-revocation"`, `store()`; skip non-active (idempotency); accumulate counts.
 - [x] 3.5 Emit `API_KEY_REVOKED` per revoked key, passing `supersededBy`.
 - [x] 3.6 Cache eviction — **RIGHT-SIZED (out of scope for cross-instance):** the acting instance evicts locally via `evictCredential(jti)`; other instances converge within the credential-cache TTL (≤5 min). Immediate fleet-wide broadcast is intentionally not built — it is the manual-revoke path's concern (IGDD-2707) and the grace ACs don't require it (design D6).
@@ -42,11 +42,12 @@
 - [x] 6.5 Scheduler — idempotent skip of already-revoked. (`nonActiveCandidate_isSkipped`, `multipleCandidates_revokesOnlyActiveOnes`)
 - [x] 6.6 Scheduler — per-run counts logged.
 - [x] 6.7 `API_KEY_REVOKED` field correctness — verified via the scheduler's `verify(auditLogger).apiKeyRevoked(...)` interaction (matches the 2704 convention of verifying logger calls; `apiKeyRevoked` has no token parameter, so no secret can leak).
-- [ ] 6.8 Single-runner guard test — blocked on task 3.3.
+- [x] 6.8 Single-runner guard — `notDesignatedRunner_skipsCycleEntirely` (instance defers when a lower host is registered) + four `election_*` tests on the pure helper.
 
-**Build status:** `mvn test-compile` clean; `GracePeriodRevocationSchedulerTests` = 4 run, 0 failures.
+**Build status:** `mvn test-compile` clean; `GracePeriodRevocationSchedulerTests` = 9 run, 0 failures.
 
 ## Remaining before merge
 
-- 3.3 single-runner guard; section 5 monitoring/runbook; integration tests 6.1/6.2.
+- Section 5 monitoring/runbook (AC #3) — CloudWatch alarm + ops runbook; likely live in the infra/terraform repo (Evan investigating).
+- Integration tests 6.1/6.2 (finder filter + entity round-trip) — need a DynamoDB harness.
 - End-to-end verification waits on IGDD-2707 building the renewal write-path (CC must write lowercase `graceExpiresAt`/`supersededBy`).

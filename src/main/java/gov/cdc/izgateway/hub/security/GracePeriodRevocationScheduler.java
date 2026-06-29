@@ -4,6 +4,7 @@ import gov.cdc.izgateway.dynamodb.model.ApiKeyCredential;
 import gov.cdc.izgateway.dynamodb.repository.ApiKeyCredentialRepository;
 import gov.cdc.izgateway.logging.event.EventId;
 import gov.cdc.izgateway.logging.markers.Markers2;
+import gov.cdc.izgateway.repository.IHostRepository;
 import gov.cdc.izgateway.utils.SystemUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
@@ -14,7 +15,9 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
+import java.util.TreeSet;
 
 /**
  * Scheduled job that revokes superseded API-key credentials after their grace period expires
@@ -30,9 +33,9 @@ import java.util.List;
  * enabled per environment. {@link EnableScheduling} is declared here so Spring's scheduling
  * infrastructure is only activated when this bean is present.</p>
  *
- * <p>One piece remains stubbed pending a decision and is marked {@code TODO}: the multi-instance
- * single-runner guard ({@link #isDesignatedRunner()}, design D5). Cross-instance cache propagation is
- * intentionally not broadcast (it is out of scope for grace revocation — see {@link #evictLocalCache(String)}).</p>
+ * <p>In a multi-instance deployment a single instance performs the cycle, elected by host-ordering
+ * (see {@link #isDesignatedRunner()}, design D5). Cross-instance cache propagation is intentionally not
+ * broadcast (out of scope for grace revocation — see {@link #evictLocalCache(String)}).</p>
  */
 @Component
 @Slf4j
@@ -43,16 +46,19 @@ public class GracePeriodRevocationScheduler {
     private final ApiKeyCredentialRepository credentialRepository;
     private final ApiKeyAuditLogger auditLogger;
     private final ApiKeyPrincipalProvider apiKeyPrincipalProvider;
+    private final IHostRepository hostRepository;
 
     @Autowired
     public GracePeriodRevocationScheduler(
             ApiKeyCredentialRepository credentialRepository,
             ApiKeyAuditLogger auditLogger,
-            ApiKeyPrincipalProvider apiKeyPrincipalProvider
+            ApiKeyPrincipalProvider apiKeyPrincipalProvider,
+            IHostRepository hostRepository
     ) {
         this.credentialRepository = credentialRepository;
         this.auditLogger = auditLogger;
         this.apiKeyPrincipalProvider = apiKeyPrincipalProvider;
+        this.hostRepository = hostRepository;
     }
 
     /**
@@ -158,17 +164,32 @@ public class GracePeriodRevocationScheduler {
 
     /**
      * Determine whether this instance should perform the revocation cycle, so that in a multi-instance
-     * deployment a single instance acts per cycle (avoiding duplicate writes and audit/eviction noise).
+     * deployment a single instance acts per cycle (avoiding duplicate writes and audit noise).
      *
-     * <p><b>Skeleton:</b> always returns {@code true}. The implementation should reuse the
-     * host-ordering approach in {@code StatusCheckScheduler} or a conditional DynamoDB write-lock
-     * (change task 3.3, design D5). Revocation is idempotent, so a missing guard affects noise, not
-     * correctness.</p>
+     * <p>Election is by host-ordering (design D5), consistent with {@code StatusCheckScheduler}: each
+     * instance independently picks the lowest hostname among the currently-registered running instances
+     * (from {@link IHostRepository#getHostsAndRegion()}) and runs only if that is itself. If the host
+     * registry is empty/unconfigured (e.g. local/dev), this instance includes itself and therefore runs.
+     * Because revocation is idempotent, transient registry disagreement between instances is harmless (a
+     * key revoked twice is a no-op; a cycle skipped by all instances is retried next interval).</p>
      *
      * @return {@code true} if this instance should run the cycle
      */
     private boolean isDesignatedRunner() {
-        // TODO(IGDD-2711, task 3.3): implement single-runner guard for multi-instance deployments.
-        return true;
+        return isDesignatedRunner(SystemUtils.getHostname(), hostRepository.getHostsAndRegion().keySet());
+    }
+
+    /**
+     * Pure election logic, extracted for testability: the designated runner is the lowest hostname
+     * (natural order) among {@code runningHosts} together with {@code me}.
+     *
+     * @param me           this instance's hostname
+     * @param runningHosts the hostnames of currently-registered running instances (may be empty)
+     * @return {@code true} if {@code me} is the elected runner
+     */
+    static boolean isDesignatedRunner(String me, Collection<String> runningHosts) {
+        TreeSet<String> hosts = new TreeSet<>(runningHosts);
+        hosts.add(me);
+        return me.equals(hosts.first());
     }
 }
