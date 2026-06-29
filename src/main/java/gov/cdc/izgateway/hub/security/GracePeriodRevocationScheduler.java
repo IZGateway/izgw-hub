@@ -76,8 +76,10 @@ public class GracePeriodRevocationScheduler {
         try {
             runRevocationCycle();
         } catch (Exception e) {  // NOSONAR — a scheduled job must never let a failure escape its thread
-            // Logged at ERROR so a CloudWatch log-based alarm can detect job failure (AC #3).
-            log.error(Markers2.append(e), "Grace-period revocation cycle failed: {}", e.getMessage());
+            // Structured eventType so a CloudWatch Logs metric filter can match on the JSON field
+            // ({ $.eventType = "GRACE_REVOCATION_FAILED" }) rather than a brittle message substring (AC #3).
+            log.error(Markers2.append("eventType", "GRACE_REVOCATION_FAILED").and(Markers2.append(e)),
+                    "Grace-period revocation cycle failed: {}", e.getMessage());
         } finally {
             if (previousEventId != null) {
                 MDC.put(EventId.EVENTID_KEY, previousEventId);
