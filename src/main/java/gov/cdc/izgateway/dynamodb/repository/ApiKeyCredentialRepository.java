@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -34,8 +35,20 @@ public class ApiKeyCredentialRepository extends DynamoDbRepository<ApiKeyCredent
      * @return the credentials whose grace period has expired; never {@code null}
      */
     public List<ApiKeyCredential> findGraceRevocationCandidates(String env) {
-        Instant now = Instant.now();
-        return findByType(env + "#").stream()
+        return selectGraceCandidates(findByType(env + "#"), Instant.now());
+    }
+
+    /**
+     * Pure selection predicate, extracted for testability: from {@code candidates}, return those that
+     * are {@code active}, have a non-null {@code graceExpiresAt}, and whose {@code graceExpiresAt} is at
+     * or before {@code now}. (A grace expiry exactly equal to {@code now} is included.)
+     *
+     * @param candidates the records to filter (e.g. all credentials in an environment)
+     * @param now        the reference instant to compare {@code graceExpiresAt} against
+     * @return the subset eligible for grace-period revocation
+     */
+    static List<ApiKeyCredential> selectGraceCandidates(Collection<ApiKeyCredential> candidates, Instant now) {
+        return candidates.stream()
                 .filter(c -> "active".equals(c.getStatus()))
                 .filter(c -> c.getGraceExpiresAt() != null)
                 .filter(c -> !c.getGraceExpiresAt().isAfter(now))

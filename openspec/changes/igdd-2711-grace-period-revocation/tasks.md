@@ -29,25 +29,28 @@
 - [x] 4.2 `application.yml` stub with `APIKEY_GRACE_REVOCATION_ENABLED` override.
 - [x] 4.3 Gate the scheduler on `apikey.grace-revocation.enabled` (`@ConditionalOnProperty`, disabled unless explicitly `true`).
 
-## 5. Monitoring and Runbook (AC #3) — remaining
+## 5. Monitoring and Runbook (AC #3)
 
-- [ ] 5.1 CloudWatch log-based alarm for job failure (logged error and/or missing completion record). Coordinate with the infra/terraform repo if alarms live there.
-- [ ] 5.2 Operations runbook entry: detection + manual remediation (revoke expired-grace keys via Config Console `DELETE /api/apikeys/:jti`).
+- [x] 5.0 Make logs alarm-friendly — success record `eventType=GRACE_REVOCATION_RUN` (with counts) + failure `eventType=GRACE_REVOCATION_FAILED`, both structured so either CloudWatch metric filters or Elastic watchers can key on `$.eventType`.
+- [ ] 5.1 Define the alert in the monitoring system. **Pending team decision** (Paul → Bill/Keith/Austin): CloudWatch Logs metric-filter alarm vs. a monitored Elastic log event. Two conditions: failure (`GRACE_REVOCATION_FAILED >= 1`) and missed-run (`GRACE_REVOCATION_RUN < 1` over interval+buffer). CloudWatch alarms here are Terraform-managed (`izgateway-*-terraform-*`) — would be authored in the infra repo and wired to the existing SNS topic.
+- [x] 5.2 Operations runbook drafted (`runbook.md`) — detection (platform-agnostic) + manual remediation via Config Console `DELETE /api/apikeys/:jti`. Relocate to canonical ops-docs location when finalized.
 
 ## 6. Tests
 
-- [ ] 6.1 Repository finder — selects `active` + past `graceExpiresAt`; excludes future/`null` `graceExpiresAt` and non-`active`. **Deferred to integration** (needs a DynamoDB / enhanced-client harness; the filter logic is straightforward and exercised indirectly via the scheduler tests).
-- [ ] 6.2 Entity round-trip — `graceExpiresAt`/`supersededBy` serialize/deserialize without precision loss; legacy null record. **Deferred to integration** (DynamoDB harness).
+- [x] 6.1 Repository finder selection logic — `selectGraceCandidates` extracted as a pure method and unit-tested (`ApiKeyCredentialRepositoryTests`, 6 cases: past/now/future/null grace, non-active, mixed list). The `findByType` DynamoDB query is a thin base-class delegation, covered by integration testing.
+- [ ] 6.2 Entity round-trip — `graceExpiresAt`/`supersededBy` serialize/deserialize without precision loss; legacy null record. **Deferred to integration** — genuinely needs a real DynamoDB table (no DynamoDB Local/Testcontainers harness in this repo); will be covered by the IGDD-2707 end-to-end validation.
 - [x] 6.3 Scheduler — grace passed → `revoked` with `revokedAt`/`revokedBy=system:grace-revocation`, audit emitted with `supersededBy`, local cache evicted. (`activeCandidate_isRevokedAuditedAndEvicted`)
 - [x] 6.5 Scheduler — idempotent skip of already-revoked. (`nonActiveCandidate_isSkipped`, `multipleCandidates_revokesOnlyActiveOnes`)
 - [x] 6.6 Scheduler — per-run counts logged.
 - [x] 6.7 `API_KEY_REVOKED` field correctness — verified via the scheduler's `verify(auditLogger).apiKeyRevoked(...)` interaction (matches the 2704 convention of verifying logger calls; `apiKeyRevoked` has no token parameter, so no secret can leak).
 - [x] 6.8 Single-runner guard — `notDesignatedRunner_skipsCycleEntirely` (instance defers when a lower host is registered) + four `election_*` tests on the pure helper.
 
-**Build status:** `mvn test-compile` clean; `GracePeriodRevocationSchedulerTests` = 9 run, 0 failures.
+**Build status:** `mvn test-compile` clean; scheduler + repository selection tests = 15 run, 0 failures.
 
 ## Remaining before merge
 
-- Section 5 monitoring/runbook (AC #3) — CloudWatch alarm + ops runbook; likely live in the infra/terraform repo (Evan investigating).
-- Integration tests 6.1/6.2 (finder filter + entity round-trip) — need a DynamoDB harness.
-- End-to-end verification waits on IGDD-2707 building the renewal write-path (CC must write lowercase `graceExpiresAt`/`supersededBy`).
+- **5.1 alert definition** — pending the CloudWatch-vs-Elastic decision; then authored in the infra/Terraform repo (Hub-side log signals already in place).
+- **6.2 entity round-trip** integration test — needs a real DynamoDB table; folds into the IGDD-2707 end-to-end validation.
+- **End-to-end** verification waits on IGDD-2707 building the renewal write-path (CC must write lowercase `graceExpiresAt`/`supersededBy`).
+
+All Hub-side code and unit-testable logic for IGDD-2711 is complete; the runbook is drafted. What remains is the monitoring-platform decision + its infra wiring, and DynamoDB-dependent verification.
