@@ -9,6 +9,7 @@ gov.cdc.izgateway.dynamodb.repository
 gov.cdc.izgateway.elastic
 gov.cdc.izgateway.hub
 gov.cdc.izgateway.hub.repository
+gov.cdc.izgateway.hub.security
 gov.cdc.izgateway.hub.service
 gov.cdc.izgateway.hub.service.accesscontrol
 gov.cdc.izgateway.soap.mock
