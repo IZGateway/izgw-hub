@@ -35,7 +35,8 @@ class ApiKeyPrincipalProviderTest {
     private static final String TEST_ISSUER = "http://localhost:3000";
     private static final String TEST_JTI = "018f4e2a-5678-7abc-8def-000000000002";
     private static final String TEST_KID = "00000000-0000-0000-0000-000000000001";
-    private static final String TEST_ENV = SystemUtils.getDestTypeAsString();
+    private static final int    TEST_ENV_ID  = SystemUtils.getDestType();
+    private static final String TEST_ENV_STR = String.valueOf(TEST_ENV_ID);
 
     @Mock private ApiKeyCredentialRepository credentialRepository;
     @Mock private JwtTokenExtractor jwtTokenExtractor;
@@ -56,11 +57,11 @@ class ApiKeyPrincipalProviderTest {
 
     private static final String TEST_UPN = "test.example.gov";
 
-    private String buildToken(String alg, String issuer, String jti, String env, Date exp) throws Exception {
-        return buildToken(alg, issuer, jti, env, exp, TEST_UPN);
+    private String buildToken(String alg, String issuer, String jti, int envId, Date exp) throws Exception {
+        return buildToken(alg, issuer, jti, envId, exp, TEST_UPN);
     }
 
-    private String buildToken(String alg, String issuer, String jti, String env, Date exp, String upn) throws Exception {
+    private String buildToken(String alg, String issuer, String jti, int envId, Date exp, String upn) throws Exception {
         JWSAlgorithm jwsAlg = "HS256".equals(alg) ? JWSAlgorithm.HS256 : JWSAlgorithm.RS256;
         JWSHeader header = new JWSHeader.Builder(jwsAlg).keyID(TEST_KID).build();
         JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder()
@@ -68,7 +69,7 @@ class ApiKeyPrincipalProviderTest {
                 .subject("TEST_ORG")
                 .jwtID(jti)
                 .expirationTime(exp != null ? exp : Date.from(Instant.now().plus(Duration.ofDays(365))))
-                .claim("env", env)
+                .claim("env", envId)
                 .claim("roles", List.of("ads", "soap"));
         if (upn != null) {
             claimsBuilder.claim("upn", upn);
@@ -84,12 +85,12 @@ class ApiKeyPrincipalProviderTest {
 
     @Test
     void happyPath_validJwtActiveCredential_returnsApiKeyPrincipal() throws Exception {
-        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV, null);
+        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV_ID, null);
         when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
 
         ApiKeyCredential cred = new ApiKeyCredential();
         cred.setStatus("active");
-        when(credentialRepository.findByEnvAndJti(TEST_ENV, TEST_JTI)).thenReturn(Optional.of(cred));
+        when(credentialRepository.findByEnvAndJti(TEST_ENV_STR, TEST_JTI)).thenReturn(Optional.of(cred));
 
         IzgPrincipal principal = provider.getPrincipal(request);
 
@@ -115,7 +116,7 @@ class ApiKeyPrincipalProviderTest {
 
     @Test
     void wrongIssuer_returnsNull_noSmCall() throws Exception {
-        String token = buildToken("HS256", "https://other.example.com", TEST_JTI, TEST_ENV, null);
+        String token = buildToken("HS256", "https://other.example.com", TEST_JTI, TEST_ENV_ID, null);
         when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
 
         IzgPrincipal principal = provider.getPrincipal(request);
@@ -127,7 +128,7 @@ class ApiKeyPrincipalProviderTest {
     @Test
     void expiredToken_returnsNull() throws Exception {
         Date past = Date.from(Instant.now().minus(Duration.ofHours(1)));
-        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV, past);
+        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV_ID, past);
         when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
 
         IzgPrincipal principal = provider.getPrincipal(request);
@@ -137,21 +138,18 @@ class ApiKeyPrincipalProviderTest {
 
     @Test
     void wrongEnv_returnsNull() throws Exception {
-        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, "Production", null);
+        int wrongEnvId = TEST_ENV_ID == 1 ? 2 : 1; // any numeric ID that differs from the current env
+        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, wrongEnvId, null);
         when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
 
         IzgPrincipal principal = provider.getPrincipal(request);
 
-        // Only fails if current env != Production; in dev/test environments this will be null
-        // because TEST_ENV != "Production"
-        if (!"Production".equals(TEST_ENV)) {
-            assertThat(principal).isNull();
-        }
+        assertThat(principal).isNull();
     }
 
     @Test
     void revokedSentinelInCache_returnsNull_noDynamoDbCall() throws Exception {
-        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV, null);
+        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV_ID, null);
         when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
 
         // Pre-populate revoked sentinel
@@ -165,19 +163,19 @@ class ApiKeyPrincipalProviderTest {
 
     @Test
     void dynamoDbRevokedStatus_returnsNull_insertsSentinel() throws Exception {
-        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV, null);
+        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV_ID, null);
         when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
 
         ApiKeyCredential cred = new ApiKeyCredential();
         cred.setStatus("revoked");
-        when(credentialRepository.findByEnvAndJti(TEST_ENV, TEST_JTI)).thenReturn(Optional.of(cred));
+        when(credentialRepository.findByEnvAndJti(TEST_ENV_STR, TEST_JTI)).thenReturn(Optional.of(cred));
 
         IzgPrincipal principal = provider.getPrincipal(request);
 
         assertThat(principal).isNull();
 
         // Subsequent request must hit sentinel (no DynamoDB call)
-        String token2 = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV, null);
+        String token2 = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV_ID, null);
         when(jwtTokenExtractor.extractToken(request)).thenReturn(token2);
         IzgPrincipal principal2 = provider.getPrincipal(request);
         assertThat(principal2).isNull();
@@ -186,34 +184,34 @@ class ApiKeyPrincipalProviderTest {
 
     @Test
     void missingUpnClaim_returnsNull() throws Exception {
-        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV, null, null);
+        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV_ID, null, null);
         when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
 
         ApiKeyCredential cred = new ApiKeyCredential();
         cred.setStatus("active");
-        when(credentialRepository.findByEnvAndJti(TEST_ENV, TEST_JTI)).thenReturn(Optional.of(cred));
+        when(credentialRepository.findByEnvAndJti(TEST_ENV_STR, TEST_JTI)).thenReturn(Optional.of(cred));
 
         assertThat(provider.getPrincipal(request)).isNull();
     }
 
     @Test
     void blankUpnClaim_returnsNull() throws Exception {
-        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV, null, "");
+        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV_ID, null, "");
         when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
 
         ApiKeyCredential cred = new ApiKeyCredential();
         cred.setStatus("active");
-        when(credentialRepository.findByEnvAndJti(TEST_ENV, TEST_JTI)).thenReturn(Optional.of(cred));
+        when(credentialRepository.findByEnvAndJti(TEST_ENV_STR, TEST_JTI)).thenReturn(Optional.of(cred));
 
         assertThat(provider.getPrincipal(request)).isNull();
     }
 
     @Test
     void evictCredential_insertsRevokedSentinel_subsequentLookupReturnsNull() throws Exception {
-        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV, null);
+        String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, TEST_ENV_ID, null);
         ApiKeyCredential cred = new ApiKeyCredential();
         cred.setStatus("active");
-        when(credentialRepository.findByEnvAndJti(TEST_ENV, TEST_JTI)).thenReturn(Optional.of(cred));
+        when(credentialRepository.findByEnvAndJti(TEST_ENV_STR, TEST_JTI)).thenReturn(Optional.of(cred));
 
         // First call — populates active cache
         when(jwtTokenExtractor.extractToken(request)).thenReturn(token);

@@ -18,11 +18,15 @@ Required fields:
 - **THEN** Hub's repository can read that record by `env = Production` and `jti = <jti>` and deserialize it without error
 
 ### Requirement: ApiKeyCredential sort key format
-The `sortKey` SHALL be formatted as `{env}#{jti}` where `{env}` is the runtime environment string and `{jti}` is the credential's UUID. This format is consistent with Hub's single-table design and allows Hub to scope lookups to the current environment by prefix.
+The `sortKey` SHALL be formatted as `{env}#{jti}` where `{env}` is the **numeric environment ID as a string** (e.g., `"1"` for Production, `"5"` for Development) and `{jti}` is the credential's UUID. Using the numeric ID provides referential integrity with other tables that key on the numeric environment identifier.
 
 #### Scenario: Sort key for Production environment
-- **WHEN** an `ApiKeyCredential` is created for `env = Production` and `jti = 018f4e2a-5678-7abc-8def-000000000002`
-- **THEN** its `sortKey` value is `Production#018f4e2a-5678-7abc-8def-000000000002`
+- **WHEN** an `ApiKeyCredential` is created for `env = 1` (Production) and `jti = 018f4e2a-5678-7abc-8def-000000000002`
+- **THEN** its `sortKey` value is `1#018f4e2a-5678-7abc-8def-000000000002`
+
+#### Scenario: Sort key for Development environment
+- **WHEN** an `ApiKeyCredential` is created for `env = 5` (Development) and `jti = 018f4e2a-5678-7abc-8def-000000000002`
+- **THEN** its `sortKey` value is `5#018f4e2a-5678-7abc-8def-000000000002`
 
 ### Requirement: Instant date serialization
 `issuedAt` and `expiresAt` fields of type `Instant` SHALL be serialized to DynamoDB as ISO-8601 strings with UTC `Z` suffix (e.g., `2025-06-04T00:00:00Z`) using `InstantAsStringAttributeConverter`. This is distinct from the `Date` fields inherited from `DynamoDbAudit` (which use a custom `DateConverter` with millisecond format `yyyy-MM-dd'T'HH:mm:ss.SSSXX`). Both formats must coexist without conflict.

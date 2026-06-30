@@ -55,7 +55,7 @@ Hub SHALL verify the JWT's HMAC-SHA256 signature against the secret retrieved fo
 ### Requirement: Claims validation
 After successful signature verification, Hub SHALL validate the following claims in order. Any failure SHALL cause the provider to return `null`:
 1. `exp` has not passed (with a configurable clock skew tolerance, default 30 seconds)
-2. `env` matches Hub's own environment name
+2. `env` is present, is a numeric integer, and its value matches `SystemUtils.getDestType()` (e.g., `5` for Development, `1` for Production). A missing or non-numeric `env` claim SHALL be rejected.
 3. `iss` matches the configured `jwt.issuer` (re-validated against the decoded payload)
 
 #### Scenario: Expired token
@@ -63,11 +63,15 @@ After successful signature verification, Hub SHALL validate the following claims
 - **THEN** `ApiKeyPrincipalProvider` returns `null`
 
 #### Scenario: Wrong environment
-- **WHEN** the JWT `env` claim does not match Hub's configured environment name
+- **WHEN** the JWT `env` claim (numeric) does not match Hub's `SystemUtils.getDestType()` value
+- **THEN** `ApiKeyPrincipalProvider` returns `null`
+
+#### Scenario: Non-numeric environment
+- **WHEN** the JWT `env` claim is absent or is a string (e.g., `"Development"`)
 - **THEN** `ApiKeyPrincipalProvider` returns `null`
 
 #### Scenario: Valid claims
-- **WHEN** `exp` is in the future, `env` matches, and `iss` matches
+- **WHEN** `exp` is in the future, `env` is numeric and matches, and `iss` matches
 - **THEN** credential cache lookup proceeds
 
 ### Requirement: Credential cache lookup by `jti`

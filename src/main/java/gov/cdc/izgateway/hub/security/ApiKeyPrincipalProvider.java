@@ -153,11 +153,17 @@ public class ApiKeyPrincipalProvider {
             return null;
         }
 
-        String env = (String) claims.getClaim("env");
-        if (!SystemUtils.getDestTypeAsString().equals(env)) {
-            log.warn("JWT rejected: env mismatch token env={}, hub env={}", env, SystemUtils.getDestTypeAsString());
+        Object envClaim = claims.getClaim("env");
+        if (!(envClaim instanceof Number)) {
+            log.warn("JWT rejected: env claim missing or not numeric: {}", envClaim);
             return null;
         }
+        int envInt = ((Number) envClaim).intValue();
+        if (SystemUtils.getDestType() != envInt) {
+            log.warn("JWT rejected: env mismatch token env={}, hub env={}", envInt, SystemUtils.getDestType());
+            return null;
+        }
+        String env = String.valueOf(envInt);
 
         // Step 7: Credential cache lookup by jti
         String jti = claims.getJWTID();

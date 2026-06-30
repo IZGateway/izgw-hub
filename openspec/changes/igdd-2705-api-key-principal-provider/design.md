@@ -53,6 +53,13 @@ When Hub is configured with `server.ssl.client-auth=want` (required to accept JW
 ### D5 — Revocation propagates `jti` via existing SQS refresh mechanism
 `DbController`'s `/rest/refresh?all=true` endpoint and `RefreshQueueService` already propagate refresh events to all Hub instances via SQS. Config Console calls this endpoint after marking a `jti` revoked. Hub's `ApiKeyPrincipalProvider` subscribes to the refresh event, evicts the `jti` from `credentialCache`, and inserts a REVOKED sentinel with TTL = max token lifetime — ensuring no subsequent cache miss can re-validate the revoked credential. No new SQS topic or SNS resource is needed.
 
+### D7 — `env` claim is a numeric integer, not a string
+The JWT `env` claim carries the environment as a numeric ID matching `SystemUtils.getDestType()` (1=Production, 2=Testing, 3=Onboarding, 4=Staging, 5=Development) rather than the human-readable string name (e.g., `"Development"`). Hub parses the claim as a `Number` and compares it to `SystemUtils.getDestType()` directly. A missing or non-numeric `env` claim is rejected.
+
+The numeric form is required for referential integrity with other IZG database tables that key on the numeric environment identifier. The string-name form used in the original ADR examples was an implicit choice that was not evaluated against the data model; this decision supersedes it. Config Console must emit the numeric ID when signing JWTs.
+
+The `env` string passed internally to `ApiKeyCredentialRepository.findByEnvAndJti()` is `String.valueOf(envInt)` (e.g., `"5"`), so DynamoDB sort keys take the form `5#<jti>` rather than `Development#<jti>`.
+
 ### D6 — `jwt.test-secret` property bypasses Secrets Manager for local dev
 When `jwt.test-secret` is set, `ApiKeyPrincipalProvider` uses that secret for all `kid` values instead of calling Secrets Manager. This allows local testing without AWS credentials. The property must not be set in non-local profiles.
 
