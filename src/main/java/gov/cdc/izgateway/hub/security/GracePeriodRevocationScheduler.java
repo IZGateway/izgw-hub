@@ -91,8 +91,12 @@ public class GracePeriodRevocationScheduler {
 
     /**
      * Execute one revocation cycle: find superseded credentials whose grace period has expired in
-     * this environment, revoke each, emit an audit event, and evict the local cache. Logs the
-     * number of credentials evaluated and revoked for operational visibility (AC #4).
+     * this environment, revoke each, emit an audit event, and evict the local cache. Emits a
+     * {@code GRACE_REVOCATION_STARTED} log at the beginning and a {@code GRACE_REVOCATION_RUN} log on
+     * successful completion (with the number of credentials evaluated and revoked); a failure is
+     * logged as {@code GRACE_REVOCATION_FAILED} by {@link #scheduledRun()}. These three events let
+     * operations see that a run started and whether it succeeded or failed (AC #4; alarms may be
+     * layered on these log events later).
      */
     void runRevocationCycle() {
         if (!isDesignatedRunner()) {
@@ -101,6 +105,9 @@ public class GracePeriodRevocationScheduler {
         }
 
         String env = SystemUtils.getDestTypeAsString();
+        log.info(Markers2.append("eventType", "GRACE_REVOCATION_STARTED", "environment", env),
+                "Grace-period revocation cycle started");
+
         List<ApiKeyCredential> candidates = credentialRepository.findGraceRevocationCandidates(env);
 
         int evaluated = candidates.size();
@@ -119,7 +126,7 @@ public class GracePeriodRevocationScheduler {
                 "environment", env,
                 "evaluated", evaluated,
                 "revoked", revoked
-        ), "Grace-period revocation cycle complete: evaluated={}, revoked={}", evaluated, revoked);
+        ), "Grace-period revocation cycle succeeded: evaluated={}, revoked={}", evaluated, revoked);
     }
 
     /**

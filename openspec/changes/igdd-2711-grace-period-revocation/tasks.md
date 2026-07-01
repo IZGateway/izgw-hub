@@ -31,9 +31,9 @@
 
 ## 5. Monitoring and Runbook (AC #3)
 
-- [x] 5.0 Make logs alarm-friendly — success record `eventType=GRACE_REVOCATION_RUN` (with counts) + failure `eventType=GRACE_REVOCATION_FAILED`, both structured so either CloudWatch metric filters or Elastic watchers can key on `$.eventType`.
-- [ ] 5.1 Define the alert in the monitoring system. **Pending team decision** (Paul → Bill/Keith/Austin): CloudWatch Logs metric-filter alarm vs. a monitored Elastic log event. Two conditions: failure (`GRACE_REVOCATION_FAILED >= 1`) and missed-run (`GRACE_REVOCATION_RUN < 1` over interval+buffer). CloudWatch alarms here are Terraform-managed (`izgateway-*-terraform-*`) — would be authored in the infra repo and wired to the existing SNS topic.
-- [x] 5.2 Operations runbook drafted (`runbook.md`) — detection (platform-agnostic) + manual remediation via Config Console `DELETE /api/apikeys/:jti`. Relocate to canonical ops-docs location when finalized.
+- [x] 5.0 Emit the started/succeeded/failed log trio — `GRACE_REVOCATION_STARTED` (cycle start), `GRACE_REVOCATION_RUN` (success, with evaluated/revoked counts), `GRACE_REVOCATION_FAILED` (error), all structured on `$.eventType`.
+- [x] 5.1 Alert setup — **decided (2026-07-01, Paul): log messages only for now; automated alarms deferred.** APHL manages the AWS environment/CloudWatch, so alarms (if added later) are handed to APHL against these log events. Platform chosen for the future = CloudWatch. The alarm spec + a ready Terraform draft are preserved (runbook "Alert conditions" section; the draft `grace_revocation_alarms.tf` was removed from the working tree — regenerate from the spec when revisited).
+- [x] 5.2 Operations runbook drafted (`runbook.md`) — log signals, (future) alert conditions, and manual remediation via Config Console `DELETE /api/apikeys/:jti`. Relocate to canonical ops-docs location when finalized.
 
 ## 6. Tests
 
@@ -49,8 +49,7 @@
 
 ## Remaining before merge
 
-- **5.1 alert definition** — pending the CloudWatch-vs-Elastic decision; then authored in the infra/Terraform repo (Hub-side log signals already in place).
 - **6.2 entity round-trip** integration test — needs a real DynamoDB table; folds into the IGDD-2707 end-to-end validation.
-- **End-to-end** verification waits on IGDD-2707 building the renewal write-path (CC must write lowercase `graceExpiresAt`/`supersededBy`).
+- **End-to-end** verification waits on IGDD-2707's renewal write-path landing on `origin` with the agreed contract — as of 2026-07-01 that branch still writes `status='superseded'` (should be left `active`) and persists `supersededByJti` (Hub reads `supersededBy`). Once fixed + merged, re-verify and adjust only if the contract changed.
 
-All Hub-side code and unit-testable logic for IGDD-2711 is complete; the runbook is drafted. What remains is the monitoring-platform decision + its infra wiring, and DynamoDB-dependent verification.
+Alerting is intentionally out of scope for now (Paul, 2026-07-01): the job emits started/succeeded/failed log messages; automated CloudWatch alarms are deferred to APHL as future work (spec in `runbook.md`). All Hub-side code, logging, and unit-testable logic for IGDD-2711 is complete.

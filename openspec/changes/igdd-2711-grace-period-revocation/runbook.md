@@ -4,9 +4,13 @@ Operations runbook for the scheduled job that revokes superseded API keys after 
 period expires. Satisfies IGDD-2711 AC #3 (failure detection + manual remediation).
 
 > **Note:** This is a draft artifact kept with the change. Relocate to the team's canonical
-> runbook location (Confluence / ops docs) when finalized. The detection section is written to
-> support either CloudWatch or Elastic-based monitoring — the platform choice is pending a dev-team
-> decision (Bill / Keith / Austin), but the Hub-side log signals are the same for both.
+> runbook location (Confluence / ops docs) when finalized.
+>
+> **Monitoring decision (2026-07-01, Paul):** for now the job emits **log messages only** — a
+> started/succeeded/failed trio (below). Automated alarms are deferred; APHL manages the AWS
+> environment (including CloudWatch), so if/when alarms are added they'd be handed to APHL against
+> these same log events. The "Alert conditions" section below is retained as the spec for that future
+> work. (CloudWatch was the chosen platform over Elastic.)
 
 ## What the job does
 
@@ -16,16 +20,18 @@ cycle it finds credentials that are `active` with a `graceExpiresAt` in the past
 `revoked` in DynamoDB, emits an `API_KEY_REVOKED` audit event, and evicts the key from the local
 credential cache. A single instance runs per cycle (host-ordering election). Revocation is idempotent.
 
-## Log signals (the basis for alerting)
+## Log signals
 
-Both are structured JSON events on the Hub log stream, keyed by `eventType`:
+Structured JSON events on the Hub log stream, keyed by `eventType`. The trio lets operations see
+that a run **started** and whether it **succeeded** or **failed**:
 
 | Event | When | Level | Key fields |
 |---|---|---|---|
-| `GRACE_REVOCATION_RUN` | every successful cycle (even if 0 revoked) | INFO | `environment`, `evaluated`, `revoked` |
+| `GRACE_REVOCATION_STARTED` | at the start of a cycle (on the instance that runs it) | INFO | `environment` |
+| `GRACE_REVOCATION_RUN` | cycle completed successfully (even if 0 revoked) | INFO | `environment`, `evaluated`, `revoked` |
 | `GRACE_REVOCATION_FAILED` | a cycle threw an unhandled exception | ERROR | exception detail |
 
-## Alert conditions
+## Alert conditions (deferred — spec for future CloudWatch alarms)
 
 1. **Job failure** — one or more `GRACE_REVOCATION_FAILED` events in a period.
    - CloudWatch: Logs metric filter `{ $.eventType = "GRACE_REVOCATION_FAILED" }` → alarm `>= 1`.
