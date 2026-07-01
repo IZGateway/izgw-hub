@@ -47,6 +47,11 @@
 
 - [x] 10.1 Fix `AccessControlService.isUserInRole()` to fall back to checking `ApiKeyPrincipal.getRoles()` when the DynamoDB access control table has no entry for the principal. Without this fix, API key callers always received 401 on protected endpoints because `AccessControlValve` identifies users by `principal.getName()` (the `upn` value), which has no entry in the cert-based access control table.
 
+## 12. OCSP Revocation for Header Certificate Path (izgw-core)
+
+- [x] 12.1 Update `TrustManagerProvider` (izgw-core) — promote `trustStore` from local variable to `@Getter` field; add `findIssuerCert(X509Certificate leaf)` method that walks trust store aliases matching leaf cert's issuer DN against candidate subject DNs; returns null if no match found
+- [x] 12.2 Update `CertificatePrincipalProviderImpl` (izgw-core) — store `TrustManagerProvider` reference in constructor; add `checkRevocation(X509Certificate)` that resolves issuer via `findIssuerCert`, calls `RevocationChecker.getInstance().check()`, and throws `CertificateException` on `REVOKED`; restructure header cert path in `getCertificate()` to call `checkRevocation` after `validator.isValid()`; attribute-based cert path (direct Tomcat TLS) is unchanged
+
 ## 9. Tests
 
 - [x] 9.1 Unit test `ApiKeyPrincipalProvider` — happy path: valid HS256 JWT, active credential in cache → returns `ApiKeyPrincipal` with correct jurisdictionId, roles, upn, jti

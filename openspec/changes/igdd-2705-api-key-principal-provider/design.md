@@ -14,10 +14,12 @@ Hub currently authenticates callers exclusively via mTLS client certificates (mT
 - Support JWT-only clients (no TLS cert) via `client-auth=want` + `AuthenticationEnforcementFilter`
 
 **Non-Goals:**
-- Changes to `izgw-core` or `izgw-transform` (Hub-isolated change)
+- Changes to `izgw-transform` (Hub-isolated change)
 - `ApiKeyDomain` entity — Config Console's concern; Hub has no read/write to domain authorization records
 - JWT issuance — Hub validates only; Config Console issues
 - Egress IP binding (deferred, OQ2 in ADR)
+
+> **Note:** Changes to `izgw-core` were initially out of scope. Task 12 adds OCSP revocation for the ALB header cert path, which required changes to `TrustManagerProvider` and `CertificatePrincipalProviderImpl` in `izgw-core`.
 
 ## Decisions
 
@@ -62,6 +64,22 @@ The `env` string passed internally to `ApiKeyCredentialRepository.findByEnvAndJt
 
 ### D6 — `jwt.test-secret` property bypasses Secrets Manager for local dev
 When `jwt.test-secret` is set, `ApiKeyPrincipalProvider` uses that secret for all `kid` values instead of calling Secrets Manager. This allows local testing without AWS credentials. The property must not be set in non-local profiles.
+
+### D9 — OCSP revocation for the ALB header cert path
+
+When the ALB terminates mTLS and forwards the client certificate via the `x-amzn-mtls-clientcert-leaf` header, Tomcat never performs a TLS handshake with the client. The existing `RevocationTrustManager` + `RevocationChecker` pipeline is wired into Tomcat's SSL connector and therefore only runs for direct TLS connections, not for the header cert path. Without an explicit OCSP call after parsing the header cert, a revoked cert passes all application-level checks.
+
+The fix extends `CertificatePrincipalProviderImpl` (izgw-core) to call `RevocationChecker.check()` after the existing validity and chain-of-trust checks. The issuer cert required by `RevocationChecker` is resolved from the trust store via a new `TrustManagerProvider.findIssuerCert()` lookup. The existing DynamoDB-cached OCSP infrastructure is reused unchanged.
+
+**Fail-open cases (cert is accepted, warning logged):**
+- `RevocationChecker.getInstance()` returns null (no bean configured — test environments)
+- Issuer cert not found in trust store (cannot perform OCSP without issuer)
+- OCSP responder unreachable (already handled by `RevocationChecker` — returns UNKNOWN)
+- DynamoDB unavailable (already handled by `RevocationChecker` — returns without blocking)
+
+**Fail-closed case:** OCSP responder returns `REVOKED` → `CertPathValidatorException` → `CertificateException` → `getCertificate()` returns null → `UnauthenticatedPrincipal` → 401 (when `AuthenticationEnforcementFilter` is active) or access-control check.
+
+The attribute-based cert path (direct Tomcat TLS, no ALB) is unchanged — `getCertificateFromAttribute()` returns early before `checkRevocation()` is called.
 
 ## Risks / Trade-offs
 

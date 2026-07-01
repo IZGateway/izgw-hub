@@ -136,6 +136,33 @@ The refresh event SHALL propagate to all Hub instances via the existing SQS inte
 - **WHEN** a request arrives with a revoked JWT after the refresh has propagated
 - **THEN** the credential cache returns the REVOKED sentinel and Hub returns 401 without a DynamoDB call
 
+### Requirement: OCSP revocation check for ALB-forwarded client certificates
+When a client certificate is received via the ALB header (not from a direct Tomcat TLS handshake), Hub SHALL perform an OCSP revocation check after the existing validity-period and chain-of-trust checks. The OCSP check SHALL use the existing `RevocationChecker` infrastructure, which caches results in DynamoDB with a 24-hour TTL and reads the OCSP responder URL from the certificate's AIA extension.
+
+The issuer certificate required by `RevocationChecker` SHALL be resolved from the server trust store by matching the leaf certificate's issuer DN against trust store entry subject DNs. If the issuer certificate is not found in the trust store, the OCSP check SHALL be skipped and a warning logged; the certificate SHALL be accepted (fail-open for uncheckable issuers).
+
+The attribute-based certificate path (direct Tomcat TLS with `server.ssl.client-auth=need`) is unaffected — that path returns early before OCSP is invoked.
+
+#### Scenario: Valid, non-revoked certificate via ALB header
+- **WHEN** a request arrives with an `x-amzn-mtls-clientcert-leaf` header containing a valid, non-revoked certificate whose issuer is in the trust store
+- **THEN** OCSP check passes (or returns from DynamoDB cache), `CertificatePrincipalProvider` returns the principal, and the request proceeds normally
+
+#### Scenario: Revoked certificate via ALB header
+- **WHEN** a request arrives with a certificate that OCSP confirms as revoked
+- **THEN** `CertificatePrincipalProvider` returns null, the request resolves to `UnauthenticatedPrincipal`, and the caller receives 401 (when `AuthenticationEnforcementFilter` is active)
+
+#### Scenario: Issuer cert not in trust store
+- **WHEN** a certificate is received whose issuing CA is not present in the server trust store
+- **THEN** OCSP check is skipped, a warning is logged, and the certificate is accepted (chain-of-trust check already rejected it if the CA is truly untrusted)
+
+#### Scenario: OCSP responder unreachable
+- **WHEN** the OCSP responder URL in the certificate is unreachable
+- **THEN** `RevocationChecker` returns UNKNOWN status, no exception is thrown, and the certificate is accepted
+
+#### Scenario: OCSP result is cached in DynamoDB
+- **WHEN** a certificate has been OCSP-checked within the last 24 hours and the result is cached as GOOD in DynamoDB
+- **THEN** no outbound OCSP request is made; the cached result is used and the certificate is accepted immediately
+
 ### Requirement: Fallback to CertificatePrincipalProvider
 When `ApiKeyPrincipalProvider` returns `null` (non-API-key request, wrong issuer, invalid token, revoked credential), Hub SHALL fall back to `CertificatePrincipalProvider`. mTLS certificate callers MUST continue to work unchanged.
 
