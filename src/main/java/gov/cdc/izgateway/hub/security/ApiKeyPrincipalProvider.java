@@ -194,7 +194,7 @@ public class ApiKeyPrincipalProvider {
     private IzgPrincipal lookupAndCacheCredential(JWTClaimsSet claims, String env, String jti) {
         var credentialOpt = credentialRepository.findByEnvAndJti(env, jti);
 
-        if (credentialOpt.isPresent() && "active".equals(credentialOpt.get().getStatus())) {
+        if (credentialOpt.isPresent() && isUsableStatus(credentialOpt.get().getStatus())) {
             String sub = claims.getSubject();
             List<String> roles;
             try {
@@ -226,10 +226,14 @@ public class ApiKeyPrincipalProvider {
             return null;
         }
 
-        // Credential found but not active — cache for full token lifetime
+        // Credential found but not in a usable state (e.g. validated, expired, revoked) — cache for full token lifetime
         revokedCache.put(jti, Boolean.TRUE);
-        log.warn("JWT rejected: jti={} has status={}, cached in REVOKED cache", jti, credentialOpt.get().getStatus());
+        log.warn("JWT rejected: jti={} has non-usable status={}, cached in REVOKED cache", jti, credentialOpt.get().getStatus());
         return null;
+    }
+
+    private static boolean isUsableStatus(String status) {
+        return "active".equals(status) || "grace_period".equals(status);
     }
 
     private byte[] resolveSecret(String kid) {
