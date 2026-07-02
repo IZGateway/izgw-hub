@@ -1,15 +1,17 @@
 package gov.cdc.izgateway.hub.security;
 
-import gov.cdc.izgateway.utils.SystemUtils;
 import jakarta.annotation.PostConstruct;
 import lombok.Data;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.ServiceConfigurationError;
 
 @Configuration
@@ -21,8 +23,13 @@ public class JwtConfig {
     private String secretsManagerSecretName;
     private Duration secretCacheTtl = Duration.ofHours(1);
     private Duration credentialCacheTtl = Duration.ofMinutes(5);
-    /** Local dev only — bypasses Secrets Manager. Must not be set in non-local profiles. */
+    /** Local dev only — bypasses Secrets Manager. Must not be set in any deployed (non-local) profile. */
     private String testSecret;
+
+    // Not a config property — injected by Spring. @Data generates a setter but @ConfigurationProperties
+    // will not bind to it because there is no "spring-environment" property key.
+    @Autowired
+    private Environment springEnvironment;
 
     @PostConstruct
     void validateConfig() {
@@ -30,10 +37,14 @@ public class JwtConfig {
             throw new ServiceConfigurationError(
                     "jwt.issuer must be configured — set the JWT_ISSUER environment variable");
         }
-        if (testSecret != null && !testSecret.isBlank()
-                && "Production".equals(SystemUtils.getDestTypeAsString())) {
-            throw new ServiceConfigurationError(
-                    "jwt.test-secret must not be set in Production — remove JWT_TEST_SECRET from the task definition");
+        if (testSecret != null && !testSecret.isBlank()) {
+            boolean hasLocalProfile = Arrays.stream(springEnvironment.getActiveProfiles())
+                    .anyMatch(p -> p.startsWith("local"));
+            if (!hasLocalProfile) {
+                throw new ServiceConfigurationError(
+                        "jwt.test-secret must not be set outside of a local Spring profile — " +
+                        "remove JWT_TEST_SECRET from the deployed task definition");
+            }
         }
     }
 
