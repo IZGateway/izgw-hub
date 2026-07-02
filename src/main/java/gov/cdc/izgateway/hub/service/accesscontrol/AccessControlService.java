@@ -211,6 +211,13 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
         s.add(method + " " + path);
     }
     
+    // Note: the positive-decision cache is keyed by user identity (cert CN or JWT upn), not by
+    // individual token. For JWT callers this means a later lower-role token for the same upn can
+    // bypass role evaluation via this cache until refresh() clears it (~300s). This is intentional:
+    // it matches the existing cert-auth behavior (CN cached, not individual cert) and revocation
+    // still works — revoked tokens are rejected at authentication before reaching this method.
+    // A token pair with different role sets for the same upn is an unusual configuration.
+    // Follow-up: if per-token role isolation is needed, include jti or role-set hash in the cache key.
     private boolean wasUserPreviouslyAdmitted(String user, String method, String path) {
     	Set<String> s = cachedControlDecisions.get(user);
     	return s != null && s.contains(method + " " + path);

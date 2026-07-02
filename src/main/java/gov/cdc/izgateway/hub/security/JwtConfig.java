@@ -3,7 +3,7 @@ package gov.cdc.izgateway.hub.security;
 import gov.cdc.izgateway.utils.SystemUtils;
 import jakarta.annotation.PostConstruct;
 import lombok.Data;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -38,12 +38,16 @@ public class JwtConfig {
     }
 
     /**
-     * Provide a SecretsManagerClient bean when jwt.test-secret is not set.
-     * When test-secret is present, SM is not needed and this bean is skipped to
-     * avoid credential lookup failures in local environments.
+     * Provide a SecretsManagerClient bean only when jwt.test-secret is absent or blank.
+     * When test-secret is present (local dev), SM is not needed; skipping this bean avoids
+     * AWS credential resolution failures in local environments.
+     *
+     * Note: the previous @ConditionalOnProperty(havingValue="") was a no-op — Spring treats
+     * an empty havingValue as "match any non-false value", so the bean was always created.
+     * @ConditionalOnExpression correctly evaluates the actual property value at refresh time.
      */
     @Bean
-    @ConditionalOnProperty(name = "jwt.test-secret", havingValue = "", matchIfMissing = true)
+    @ConditionalOnExpression("'${jwt.test-secret:}'.isEmpty()")
     public SecretsManagerClient secretsManagerClient() {
         return SecretsManagerClient.create();
     }
