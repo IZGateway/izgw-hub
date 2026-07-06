@@ -1,6 +1,7 @@
 package gov.cdc.izgateway.db;
 
 import org.apache.commons.lang3.SystemUtils;
+import gov.cdc.izgateway.hub.security.ApiKeyPrincipalProvider;
 import gov.cdc.izgateway.logging.markers.Markers2;
 import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.regions.Region;
@@ -30,6 +31,7 @@ public class RefreshQueueService {
     private static final List<String> createdQueues = new java.util.ArrayList<>();
 	private static final String region = Objects.toString(System.getenv("AWS_REGION"), "unknown");
     private final DbController dbController;
+    private final ApiKeyPrincipalProvider apiKeyPrincipalProvider;
     private static MessageAttributeValue newStringAttribute(String value) {
     	return MessageAttributeValue.builder().stringValue(value).dataType("String").build();
     }
@@ -54,16 +56,16 @@ public class RefreshQueueService {
      * @param senderHost	The host sending the request
      * @param senderRegion	The region of the host sending the request
      */
-    public record RefreshRequest(boolean reset, String eventId, String senderHost, String senderRegion) {
+    public record RefreshRequest(boolean reset, String eventId, String senderHost, String senderRegion, String jti) {
     	public static String MESSAGE = "RefreshRequest";
         @Override
         public String toString() {
             return String.format(
-                "{\"reset\":%b,\"eventId\":\"%s\",\"senderHost\":\"%s\",\"senderRegion\":\"%s\"}",
-                reset, Objects.toString(eventId, ""), Objects.toString(senderHost, ""), Objects.toString(senderRegion, "")
+                "{\"reset\":%b,\"eventId\":\"%s\",\"senderHost\":\"%s\",\"senderRegion\":\"%s\",\"jti\":\"%s\"}",
+                reset, Objects.toString(eventId, ""), Objects.toString(senderHost, ""), Objects.toString(senderRegion, ""), Objects.toString(jti, "")
             );
         }
-        
+
         /**
          * Create a RefreshRequest from an SQS message.
          * @param msg	The SQS message
@@ -74,9 +76,10 @@ public class RefreshQueueService {
 			String eventId = getAttribute(msg, "eventId");
 			String senderHost = getAttribute(msg, "senderHost");
 			String senderRegion = getAttribute(msg, "senderRegion");
-			return new RefreshRequest(reset, eventId, senderHost, senderRegion);
+			String jti = getAttribute(msg, "jti");
+			return new RefreshRequest(reset, eventId, senderHost, senderRegion, jti);
 		}
-        
+
         /**
          * @return A map of the attributes of the refresh request for use in SQS message attributes
          */
@@ -86,11 +89,14 @@ public class RefreshQueueService {
 			map.put("eventId", newStringAttribute(eventId));
 			map.put("senderHost", newStringAttribute(senderHost));
 			map.put("senderRegion", newStringAttribute(senderRegion));
+			if (jti != null) {
+				map.put("jti", newStringAttribute(jti));
+			}
 			return map;
         }
-        
+
         /**
-         * @param queueUrl 
+         * @param queueUrl
          * @return A SendMessageRequest with the attributes of this refresh request
          */
         public SendMessageRequest toSendMessageRequest(String queueUrl) {
@@ -152,8 +158,9 @@ public class RefreshQueueService {
         }
     }
     
-    RefreshQueueService(String region, DbController dbController) {
+    RefreshQueueService(String region, DbController dbController, ApiKeyPrincipalProvider apiKeyPrincipalProvider) {
 		this.dbController = dbController;
+		this.apiKeyPrincipalProvider = apiKeyPrincipalProvider;
 		createRefreshQueues();
 		// Add a shutdown hook to delete the created queues
         Runtime.getRuntime().addShutdownHook(new Thread(RefreshQueueService::deleteQueues, "SQS-Queue-ShutdownHook"));
@@ -351,6 +358,9 @@ public class RefreshQueueService {
 
 	private void handleRefreshRequest(SqsClient sqsClient, String queueUrl, RefreshRequest request) {
 		log.info(Markers2.append("refreshRequest", request), "Refresh Request", request.toString());
+		if (request.jti() != null && apiKeyPrincipalProvider != null) {
+			apiKeyPrincipalProvider.evictCredential(request.jti());
+		}
 		dbController.refresh();
 		if (request.reset()) {
 		    dbController.resetEndpoint(SystemUtils.getHostName(), request.eventId());

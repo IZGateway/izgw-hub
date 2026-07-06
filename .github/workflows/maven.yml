@@ -188,7 +188,8 @@ jobs:
       env:
         COMMON_PASS: ${{ secrets.COMMON_PASS }}
         ELASTIC_API_KEY: ${{ secrets.ELASTIC_API_KEY }}
-        AMAZON_DYNAMODB_TABLE: izgateway-devalb 
+        AMAZON_DYNAMODB_TABLE: izgateway-devalb
+        JWT_ISSUER: https://dev.console.izgateway.org
       run: |
         env && mvn -B clean package install site -Dbuildno=${{github.run_number}} \
             -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn \
@@ -405,14 +406,17 @@ jobs:
 
     - name: Add runner IP to security group
       run: |
-        RUNNER_IP=$(curl -sf https://checkip.amazonaws.com)
+        RUNNER_IP=$(curl -sf https://checkip.amazonaws.com || true)
+        if [ -z "$RUNNER_IP" ]; then
+          echo "Failed to determine runner public IP" >&2
+          exit 1
+        fi
         echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_ENV
         aws ec2 authorize-security-group-ingress \
           --group-id ${{ vars.AWS_SECURITY_GROUP_ID }} \
           --protocol tcp \
           --port 443 \
-          --cidr ${RUNNER_IP}/32
-
+          --cidr ${RUNNER_IP}/32 || true
     # Having the wait for reloadat this point allows some of the wasted waiting time to occur during build cleanup phase
     # and setup phase of this job.
     - name: Wait for reload of task to complete
@@ -530,11 +534,15 @@ jobs:
     - name: Remove runner IP from security group
       if: always()
       run: |
+        if [ -z "$RUNNER_IP" ]; then
+          echo "RUNNER_IP not set; skipping security-group revoke"
+          exit 0
+        fi
         aws ec2 revoke-security-group-ingress \
           --group-id ${{ vars.AWS_SECURITY_GROUP_ID }} \
           --protocol tcp \
           --port 443 \
-          --cidr ${RUNNER_IP}/32
+          --cidr ${RUNNER_IP}/32 || true
 
   push-to-aphl:
     # Remember to put verify back
