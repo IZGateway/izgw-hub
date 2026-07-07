@@ -1,3 +1,26 @@
+# IZ Gateway Release 2.14.0
+
+- chore(deps): bump actions/cache from 5 to 6
+([#164](https://github.com/IZGateway/izgw-hub/pull/164))
+- Added bearer token to all calls.
+([#167](https://github.com/IZGateway/izgw-hub/pull/167))
+- IGDD-2705 - Adding OpenSpec and code changes to remove roles from the JWT.
+([#166](https://github.com/IZGateway/izgw-hub/pull/166))
+- IGDD-2705 JWT API Key
+([#163](https://github.com/IZGateway/izgw-hub/pull/163))
+- Adding runner IP to the maven.yml workflow.
+([#165](https://github.com/IZGateway/izgw-hub/pull/165))
+- chore: Bump izgw-bom to latest snapshot 1.11.0
+([#162](https://github.com/IZGateway/izgw-hub/pull/162))
+- chore(deps): bump actions/checkout from 6 to 7
+([#159](https://github.com/IZGateway/izgw-hub/pull/159))
+- ci: pin Docker actions to commit SHAs for supply-chain security
+([#155](https://github.com/IZGateway/izgw-hub/pull/155))
+- chore: Bump izgw-bom to latest 1.9.0 snapshot
+([#147](https://github.com/IZGateway/izgw-hub/pull/147))
+- ci: upgrade GitHub Actions to Node.js 24 and add Dependabot config
+([#151](https://github.com/IZGateway/izgw-hub/pull/151))
+
 # IZ Gateway Release 2.13.5
 
 - Update dependency versions and update Base Docker Image

@@ -6,7 +6,7 @@
 	<parent>
         <groupId>gov.cdc.izgw</groupId>
         <artifactId>izgw-bom</artifactId>
-        <version>1.11.0-SNAPSHOT</version>
+        <version>1.11.0</version>
         <relativePath />
 	</parent>
 	<artifactId>izgw-hub</artifactId>
@@ -95,7 +95,7 @@
         <dependency>
             <groupId>gov.cdc.izgw</groupId>
             <artifactId>izgw-core</artifactId>
-            <version>3.2.0-SNAPSHOT</version>
+            <version>3.2.0</version>
             <exclusions>
                 <!-- izgw-core includes both webflux-ui and webmvc-ui; hub is a Tomcat/MVC app.
                      Having webflux-ui on the classpath triggers SpringDoc WebFlux auto-config,
