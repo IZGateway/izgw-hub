@@ -1,19 +1,19 @@
 ## ADDED Requirements
 
 ### Requirement: Scheduled grace-period revocation sweep
-Hub SHALL run a scheduled, in-process job that periodically revokes superseded API-key credentials whose grace period has expired. On each cycle the job SHALL query for candidates (`status == active`, non-null `graceExpiresAt`, `graceExpiresAt <= now`, current environment) and, for each candidate, transition it to revoked.
+Hub SHALL run a scheduled, in-process job that periodically revokes superseded API-key credentials whose grace period has expired. On each cycle the job SHALL query for candidates (`status == grace_period`, non-null `graceExpiresAt`, `graceExpiresAt <= now`, current environment) and, for each candidate, transition it to `revoked`.
 
 The run interval SHALL be configurable (`apikey.grace-revocation.*`), and the job SHALL be guarded so that, in a multi-instance Hub deployment, a single instance performs revocation per cycle.
 
 #### Scenario: Grace period has passed
-- **GIVEN** a key has been renewed and its `graceExpiresAt` timestamp has passed
+- **GIVEN** a renewed key in `status = grace_period` whose `graceExpiresAt` timestamp has passed
 - **WHEN** the scheduled job runs
-- **THEN** the superseded key's `status` is set to `revoked` in DynamoDB, `revokedAt` is set to the current time, `revokedBy` is set to `system:grace-revocation`, and a revocation audit event is emitted
+- **THEN** the key's `status` is set to `revoked` in DynamoDB, `revokedAt` is set to the current time, `revokedBy` is set to `system:grace-revocation`, and a revocation audit event is emitted
 
 #### Scenario: Grace period has not passed
-- **GIVEN** a key has been renewed but its `graceExpiresAt` has not yet passed
+- **GIVEN** a renewed key in `status = grace_period` whose `graceExpiresAt` has not yet passed
 - **WHEN** the scheduled job runs
-- **THEN** the key is not revoked and remains `active`
+- **THEN** the key is not revoked and remains `grace_period` (and continues to authenticate)
 
 #### Scenario: Idempotent re-run
 - **GIVEN** a key was already revoked by a previous cycle

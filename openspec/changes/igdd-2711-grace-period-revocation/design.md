@@ -1,6 +1,6 @@
 ## Context
 
-API-key renewal is owned by Config Console (IGDD-2707). On `POST /api/apikeys/:jti/renew`, Config Console issues a new JWT/credential and updates the **old** `ApiKeyCredential`, setting `supersededBy = <new jti>` and `graceExpiresAt` (a configurable grace period). The old key's `status` stays `active` during the grace window so both old and new keys authenticate while the caller migrates. Once `graceExpiresAt` passes, the old key must be revoked.
+API-key renewal is owned by Config Console (IGDD-2707). On `POST /api/apikeys/:jti/renew`, Config Console issues a new JWT/credential and updates the **old** `ApiKeyCredential`, setting `status = grace_period`, `supersededBy = <new jti>`, and `graceExpiresAt` (a configurable grace period). The old key stays usable (`grace_period` authenticates alongside `active`) during the grace window so both old and new keys work while the caller migrates. Once `graceExpiresAt` passes, the old key must be revoked.
 
 IGDD-2705 already built the validation machinery this job reuses:
 - `ApiKeyPrincipalProvider.evictCredential(String jti)` — evicts a `jti` from the in-memory credential cache (forcing re-validation against DynamoDB).
@@ -11,7 +11,7 @@ The `ApiKeyCredential` record uses `entityType = "ApiKeyCredential"` with sort k
 ## Goals / Non-Goals
 
 **Goals:**
-- Automatically transition superseded keys (`graceExpiresAt <= now`) from `active` to `revoked`.
+- Automatically transition superseded keys (`grace_period` with `graceExpiresAt <= now`) to `revoked`.
 - Emit a revocation audit event per revoked key and log per-run counts for operational visibility.
 - Evict the revoked key from the acting instance's cache; rely on the credential-cache TTL for fleet-wide convergence.
 - Run safely in a multi-instance deployment (no duplicate revocation storms).
@@ -33,8 +33,8 @@ Hub is a long-running Spring Boot service that already hosts scheduled work (`St
 ### D2 — Add `graceExpiresAt` + `supersededBy` to Hub's `ApiKeyCredential`
 The DynamoDB table is shared: Config Console writes these attributes, Hub reads them. Hub's `@DynamoDbBean` must declare them (`graceExpiresAt` serializes as an ISO-8601 string like `issuedAt`/`expiresAt`) or the sweep cannot see them. Both are nullable; records predating renewal have `null` and are never selected. Status literals are the lowercase set `active` / `revoked` / `expired` (see D8).
 
-### D3 — Candidate selection: `status == active && graceExpiresAt != null && graceExpiresAt <= now`
-A superseded-but-still-valid key stays `active` with a non-null `graceExpiresAt` (per IGDD-2707; there is no distinct grace status — see D8). The sweep selects exactly the `active` keys whose grace has elapsed. A normal active key has `graceExpiresAt == null` and is never selected. `supersededBy` is not part of the selection predicate (a non-null `graceExpiresAt` already implies supersession) but is carried into the audit event for traceability. Already-`revoked`/`expired` keys are skipped (idempotent: re-running the job revokes nothing new).
+### D3 — Candidate selection: `status == grace_period && graceExpiresAt != null && graceExpiresAt <= now`
+On renewal Config Console moves the superseded (old) key to status `grace_period` with a non-null `graceExpiresAt` (per IGDD-2707); it keeps authenticating alongside the new key (auth accepts `active` **and** `grace_period` — see D8) until that instant passes. The sweep selects exactly the `grace_period` keys whose grace has elapsed and transitions them to `revoked`. Normal `active` keys have no `graceExpiresAt` and are never selected. `supersededBy` is not part of the selection predicate but is carried into the audit event for traceability. Already-`revoked` keys are skipped (idempotent: re-running the job revokes nothing new).
 
 ### D4 — Query strategy: environment-scoped prefix query, GSI deferred
 The candidate finder uses the base repository's `findByType(env + "#")` (sort-key prefix query within the `ApiKeyCredential` entity type) then filters in memory on `status`/`graceExpiresAt`. At expected key volumes (one credential per jurisdiction-domain, low hundreds) this is adequate and avoids new index cost; a GSI on `status`+`graceExpiresAt` is the future escape hatch. The finder lives on `ApiKeyCredentialRepository` so the strategy is swappable without touching the scheduler.
@@ -50,11 +50,12 @@ It does **not** broadcast the eviction to other instances. The acceptance criter
 ### D7 — Failure detection and runbook (AC #3)
 Each run logs a structured completion record with counts; failures are logged at ERROR. A CloudWatch log-based alarm fires when either (a) an error is logged by the job, or (b) no successful-completion record is seen within an expected window (missed run). The operations runbook documents the manual remediation: confirm Hub health, and if needed run the manual revoke through Config Console (`DELETE /api/apikeys/:jti`) for any key whose `graceExpiresAt` has passed.
 
-### D8 — Status model: lowercase `active` / `revoked` / `expired`, no distinct grace status (resolved 2026-06-25)
-The authoritative source is Keith's **IGDD-2703 design record (ADR)**, which specifies **lowercase** status literals; the IGDD-2705 OpenSpec work followed it (`status` — one of `active`, `revoked`, `expired`). Paul confirmed the team standardizes on lowercase to avoid mixed case. There is **no `'Grace Period'` status**; grace is a `graceExpiresAt` timestamp on an otherwise-`active` key. Consequences:
-- This job uses lowercase literals in its predicate (D3) and write (D6).
-- **IGDD-2705's auth path needs no change** — its existing `"active".equals(getStatus())` already matches the ADR. (An earlier review note suggesting a casing fix is withdrawn; the discrepancy is on the Config Console side, not Hub.)
-- **Config Console conforms**: it stores lowercase `active`/`revoked` in DynamoDB and capitalizes only for display in its UI layer (Palak), and drops the `'Grace Period'` status value its current branch defines.
+### D8 — Status model: lowercase `active` / `grace_period` / `revoked` / `expired` (updated 2026-07-01)
+Status literals are lowercase (per Keith's IGDD-2703 ADR). The model gained a distinct **`grace_period`** status for a renewed key during its grace window (IGDD-2705 commit `82750a99c` "Adding support for 'grace_period' status in addition to 'active'"). This supersedes the earlier "no grace status; key stays active" position. Consequences:
+- **Auth (IGDD-2705)** treats a credential as usable when `status` is `active` **or** `grace_period` (`ApiKeyPrincipalProvider.isUsableStatus`), so a renewed old key keeps authenticating during grace.
+- **This job (2711)** selects `grace_period` keys past `graceExpiresAt` (D3) and transitions them to `revoked`.
+- **Config Console (IGDD-2707)** must write `status = "grace_period"` on the old key at renewal. Its current branch still writes `"superseded"` (a value nothing recognizes) — that is a remaining CC fix; the target is `grace_period`, not `active` and not `superseded`.
+- Environment is a numeric string (e.g. `"5"`), used both in the JWT `env` claim and the `{env}#{jti}` sort key (IGDD-2705 commit `0287b796e`).
 
 ## Risks / Trade-offs
 

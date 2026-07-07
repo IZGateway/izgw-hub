@@ -6,7 +6,7 @@
 Required fields:
 - `jti` — String; the JWT `jti` claim; unique credential identifier
 - `env` — String; the environment name (e.g., `Production`, `Onboarding`)
-- `status` — String; one of `active`, `revoked`, `expired`
+- `status` — String; one of `active`, `grace_period`, `revoked`, `expired` (a renewed key sits in `grace_period` during its grace window and still authenticates)
 - `jurisdictionId` — String; the jurisdiction the credential was issued to (from JWT `sub`)
 - `issuedAt` — `Instant`; when the credential was issued (serialized via `InstantAsStringAttributeConverter`)
 - `expiresAt` — `Instant`; when the credential expires (serialized via `InstantAsStringAttributeConverter`)
@@ -22,7 +22,7 @@ Required fields:
 - **THEN** Hub's repository can read that record by `env = Production` and `jti = <jti>` and deserialize it without error
 
 #### Scenario: Superseded credential carries grace fields
-- **WHEN** Config Console renews a credential and writes the old record with `status = active`, `supersededBy = <new-jti>`, and `graceExpiresAt = 2026-07-01T00:00:00Z`
+- **WHEN** Config Console renews a credential and writes the old record with `status = grace_period`, `supersededBy = <new-jti>`, and `graceExpiresAt = 2026-07-01T00:00:00Z`
 - **THEN** Hub's repository reads the record back with `graceExpiresAt` equal to `2026-07-01T00:00:00Z` and `supersededBy` equal to `<new-jti>` (no precision loss, no null)
 
 #### Scenario: Legacy record without grace fields
@@ -32,18 +32,18 @@ Required fields:
 ## ADDED Requirements
 
 ### Requirement: ApiKeyCredentialRepository finder for grace-revocation candidates
-`ApiKeyCredentialRepository` SHALL provide a method that returns the `ApiKeyCredential` records eligible for automated grace-period revocation in the current environment: those with `status == active`, a non-null `graceExpiresAt`, and `graceExpiresAt <= now`. The query SHALL be scoped to the current environment (the `ApiKeyCredential#{env}#` sort-key prefix). Records with a `null` `graceExpiresAt`, or whose `graceExpiresAt` is in the future, or whose `status` is not `active`, SHALL NOT be returned.
+`ApiKeyCredentialRepository` SHALL provide a method that returns the `ApiKeyCredential` records eligible for automated grace-period revocation in the current environment: those with `status == grace_period`, a non-null `graceExpiresAt`, and `graceExpiresAt <= now`. The query SHALL be scoped to the current environment (the `{env}#` sort-key prefix). Records with a `null` `graceExpiresAt`, or whose `graceExpiresAt` is in the future, or whose `status` is not `grace_period` (e.g. a normal `active` key), SHALL NOT be returned.
 
 #### Scenario: Expired-grace superseded key is selected
-- **WHEN** the finder runs and a record exists with `status = active`, `graceExpiresAt = <one hour ago>`, in the current environment
+- **WHEN** the finder runs and a record exists with `status = grace_period`, `graceExpiresAt = <one hour ago>`, in the current environment
 - **THEN** that record is included in the returned candidates
 
 #### Scenario: Grace not yet expired is excluded
-- **WHEN** the finder runs and a record exists with `status = active`, `graceExpiresAt = <one hour from now>`
+- **WHEN** the finder runs and a record exists with `status = grace_period`, `graceExpiresAt = <one hour from now>`
 - **THEN** that record is NOT included in the returned candidates
 
-#### Scenario: Non-superseded active key is excluded
-- **WHEN** the finder runs and a record exists with `status = active` and `graceExpiresAt = null`
+#### Scenario: Normal active key is excluded
+- **WHEN** the finder runs and a record exists with `status = active` (and no grace period)
 - **THEN** that record is NOT included in the returned candidates
 
 #### Scenario: Already-revoked key is excluded
