@@ -11,11 +11,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
- * The Hub implementation of the PrincipalService. This implementation gets the principal from 
- * the certificate in the request.
- * 
- * @author Audacious Inquiry
+ * The Hub implementation of PrincipalService. Resolves the caller identity by trying JWT (API key)
+ * auth first, then falling back to TLS client certificate, then UnauthenticatedPrincipal.
  *
+ * @author Audacious Inquiry
  */
 @Service
 @Slf4j
@@ -43,7 +42,7 @@ public class HubPrincipalService implements PrincipalService {
     @Override
     public IzgPrincipal getPrincipal(HttpServletRequest request) {
         if (request != null) {
-            IzgPrincipal principal = apiKeyPrincipalProvider.getProvider(request);
+            IzgPrincipal principal = apiKeyPrincipalProvider.getPrincipal(request);
             if (principal != null) {
                 return principal;
             }

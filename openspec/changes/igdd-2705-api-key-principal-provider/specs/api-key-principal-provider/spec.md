@@ -55,7 +55,7 @@ Hub SHALL verify the JWT's HMAC-SHA256 signature against the secret retrieved fo
 ### Requirement: Claims validation
 After successful signature verification, Hub SHALL validate the following claims in order. Any failure SHALL cause the provider to return `null`:
 1. `exp` has not passed (with a configurable clock skew tolerance, default 30 seconds)
-2. `env` matches Hub's own environment name
+2. `env` is present, is a numeric integer, and its value matches `SystemUtils.getDestType()` (e.g., `5` for Development, `1` for Production). A missing or non-numeric `env` claim SHALL be rejected.
 3. `iss` matches the configured `jwt.issuer` (re-validated against the decoded payload)
 
 #### Scenario: Expired token
@@ -63,11 +63,15 @@ After successful signature verification, Hub SHALL validate the following claims
 - **THEN** `ApiKeyPrincipalProvider` returns `null`
 
 #### Scenario: Wrong environment
-- **WHEN** the JWT `env` claim does not match Hub's configured environment name
+- **WHEN** the JWT `env` claim (numeric) does not match Hub's `SystemUtils.getDestType()` value
+- **THEN** `ApiKeyPrincipalProvider` returns `null`
+
+#### Scenario: Non-numeric environment
+- **WHEN** the JWT `env` claim is absent or is a string (e.g., `"Development"`)
 - **THEN** `ApiKeyPrincipalProvider` returns `null`
 
 #### Scenario: Valid claims
-- **WHEN** `exp` is in the future, `env` matches, and `iss` matches
+- **WHEN** `exp` is in the future, `env` is numeric and matches, and `iss` matches
 - **THEN** credential cache lookup proceeds
 
 ### Requirement: Credential cache lookup by `jti`
@@ -85,14 +89,29 @@ Hub SHALL maintain an in-memory credential cache keyed by `jti`. On a cache hit,
 - **WHEN** the `jti` is not in the credential cache
 - **THEN** Hub reads the `ApiKeyCredential` record from DynamoDB by sort key `env#jti`
 
+### Requirement: `upn` claim validation
+After signature and standard claims verification, Hub SHALL extract the `upn` claim from the verified JWT payload. If `upn` is absent or blank, Hub SHALL log a warning and return `null`, rejecting the token. A non-blank `upn` is required for the principal to be usable in `AllowedUser` authorization lookups.
+
+#### Scenario: Missing upn claim
+- **WHEN** a JWT payload contains no `upn` claim
+- **THEN** `ApiKeyPrincipalProvider` logs a warning and returns `null`
+
+#### Scenario: Blank upn claim
+- **WHEN** a JWT payload contains `"upn": ""`
+- **THEN** `ApiKeyPrincipalProvider` logs a warning and returns `null`
+
+#### Scenario: Valid upn claim
+- **WHEN** a JWT payload contains `"upn": "immunize.example.gov"`
+- **THEN** validation proceeds to the credential cache lookup step
+
 ### Requirement: DynamoDB credential status check
 When the credential cache misses, Hub SHALL read the `ApiKeyCredential` record and act on its `status`:
-- **active**: construct an `ApiKeyPrincipal` from JWT claims (`sub` → `jurisdictionId`, `roles` → roles, `dns` → dns, `jti` → jti), store in credential cache with `jwt.credential-cache-ttl` (default 5 minutes), and return the principal.
+- **active**: construct an `ApiKeyPrincipal` from JWT claims (`upn` → `name` (IzgPrincipal.getName()), `sub` → `organization` (a numeric string jurisdiction ID, e.g., `"42"`), `roles` → roles, `jti` → jti), store in credential cache with `jwt.credential-cache-ttl` (default 5 minutes), and return the principal.
 - **revoked**, **expired**, or record absent: store a REVOKED sentinel in credential cache with TTL equal to the maximum possible token lifetime (1 year), and return `null`.
 
 #### Scenario: Active credential
 - **WHEN** DynamoDB returns `status = active` for the `jti`
-- **THEN** an `ApiKeyPrincipal` is constructed from JWT claims and cached with 5-minute TTL, then returned
+- **THEN** an `ApiKeyPrincipal` is constructed from JWT claims with `name = upn` and cached with 5-minute TTL, then returned
 
 #### Scenario: Revoked credential
 - **WHEN** DynamoDB returns `status = revoked` for the `jti`
@@ -100,7 +119,7 @@ When the credential cache misses, Hub SHALL read the `ApiKeyCredential` record a
 
 #### Scenario: Absent credential record
 - **WHEN** DynamoDB has no `ApiKeyCredential` record for `env#jti`
-- **THEN** a REVOKED sentinel is cached and `null` is returned
+- **THEN** the `jti` is cached in the absent cache (5-minute TTL) and `null` is returned. A shorter TTL is used (vs. the 366-day revoked TTL) to allow a credential record to be created after a cold-cache miss without permanent lockout.
 
 ### Requirement: Revocation propagation via refresh endpoint
 When Hub's `/rest/refresh` endpoint is called (by Config Console after revoking a `jti`), Hub SHALL:
@@ -116,6 +135,33 @@ The refresh event SHALL propagate to all Hub instances via the existing SQS inte
 #### Scenario: Subsequent request after revocation propagation
 - **WHEN** a request arrives with a revoked JWT after the refresh has propagated
 - **THEN** the credential cache returns the REVOKED sentinel and Hub returns 401 without a DynamoDB call
+
+### Requirement: OCSP revocation check for ALB-forwarded client certificates
+When a client certificate is received via the ALB header (not from a direct Tomcat TLS handshake), Hub SHALL perform an OCSP revocation check after the existing validity-period and chain-of-trust checks. The OCSP check SHALL use the existing `RevocationChecker` infrastructure, which caches results in DynamoDB with a 24-hour TTL and reads the OCSP responder URL from the certificate's AIA extension.
+
+The issuer certificate required by `RevocationChecker` SHALL be resolved from the server trust store by matching the leaf certificate's issuer DN against trust store entry subject DNs. If the issuer certificate is not found in the trust store, the OCSP check SHALL be skipped and a warning logged; the certificate SHALL be accepted (fail-open for uncheckable issuers).
+
+The attribute-based certificate path (direct Tomcat TLS with `server.ssl.client-auth=need`) is unaffected — that path returns early before OCSP is invoked.
+
+#### Scenario: Valid, non-revoked certificate via ALB header
+- **WHEN** a request arrives with an `x-amzn-mtls-clientcert-leaf` header containing a valid, non-revoked certificate whose issuer is in the trust store
+- **THEN** OCSP check passes (or returns from DynamoDB cache), `CertificatePrincipalProvider` returns the principal, and the request proceeds normally
+
+#### Scenario: Revoked certificate via ALB header
+- **WHEN** a request arrives with a certificate that OCSP confirms as revoked
+- **THEN** `CertificatePrincipalProvider` returns null, the request resolves to `UnauthenticatedPrincipal`, and the caller receives 401 (when `AuthenticationEnforcementFilter` is active)
+
+#### Scenario: Issuer cert not in trust store
+- **WHEN** a certificate is received whose issuing CA is not present in the server trust store
+- **THEN** OCSP check is skipped, a warning is logged, and the certificate is accepted (chain-of-trust check already rejected it if the CA is truly untrusted)
+
+#### Scenario: OCSP responder unreachable
+- **WHEN** the OCSP responder URL in the certificate is unreachable
+- **THEN** `RevocationChecker` returns UNKNOWN status, no exception is thrown, and the certificate is accepted
+
+#### Scenario: OCSP result is cached in DynamoDB
+- **WHEN** a certificate has been OCSP-checked within the last 24 hours and the result is cached as GOOD in DynamoDB
+- **THEN** no outbound OCSP request is made; the cached result is used and the certificate is accepted immediately
 
 ### Requirement: Fallback to CertificatePrincipalProvider
 When `ApiKeyPrincipalProvider` returns `null` (non-API-key request, wrong issuer, invalid token, revoked credential), Hub SHALL fall back to `CertificatePrincipalProvider`. mTLS certificate callers MUST continue to work unchanged.

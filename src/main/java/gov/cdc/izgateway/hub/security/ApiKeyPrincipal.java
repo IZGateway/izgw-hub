@@ -4,22 +4,19 @@ import gov.cdc.izgateway.security.IzgPrincipal;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
-import java.util.Collection;
-
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class ApiKeyPrincipal extends IzgPrincipal {
 
     private String jti;
-    private String dns;
+    private String upn;
 
-    public ApiKeyPrincipal(String sub, String jtiValue, Collection<String> jwtRoles, String dnsValue, String issuerValue) {
-        setName(jtiValue);
+    public ApiKeyPrincipal(String sub, String jtiValue, String upnValue, String issuerValue) {
+        setName(upnValue);
         setOrganization(sub);
         setJti(jtiValue);
-        setDns(dnsValue);
+        setUpn(upnValue);
         setIssuer(issuerValue);
-        getRoles().addAll(jwtRoles);
     }
 
     @Override
