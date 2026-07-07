@@ -45,7 +45,7 @@ class AuthenticationEnforcementFilterTest {
 
     @Test
     void authenticatedPrincipal_continuesFilterChain() throws Exception {
-        ApiKeyPrincipal principal = new ApiKeyPrincipal("ORG", "jti-123", java.util.List.of("ads"), "dns.example.gov", "http://issuer");
+        ApiKeyPrincipal principal = new ApiKeyPrincipal("ORG", "jti-123", "dns.example.gov", "http://issuer");
         when(principalService.getPrincipal(request)).thenReturn(principal);
 
         filter.doFilterInternal(request, response, filterChain);

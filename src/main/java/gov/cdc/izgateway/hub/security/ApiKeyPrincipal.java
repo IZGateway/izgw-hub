@@ -4,9 +4,6 @@ import gov.cdc.izgateway.security.IzgPrincipal;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
-import java.util.Collection;
-import java.util.TreeSet;
-
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class ApiKeyPrincipal extends IzgPrincipal {
@@ -14,13 +11,12 @@ public class ApiKeyPrincipal extends IzgPrincipal {
     private String jti;
     private String upn;
 
-    public ApiKeyPrincipal(String sub, String jtiValue, Collection<String> jwtRoles, String upnValue, String issuerValue) {
+    public ApiKeyPrincipal(String sub, String jtiValue, String upnValue, String issuerValue) {
         setName(upnValue);
         setOrganization(sub);
         setJti(jtiValue);
         setUpn(upnValue);
         setIssuer(issuerValue);
-        setRoles(new TreeSet<>(jwtRoles));
     }
 
     @Override

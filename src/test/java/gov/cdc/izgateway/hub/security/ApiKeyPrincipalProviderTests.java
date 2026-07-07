@@ -21,7 +21,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -69,8 +68,7 @@ class ApiKeyPrincipalProviderTest {
                 .subject("TEST_ORG")
                 .jwtID(jti)
                 .expirationTime(exp != null ? exp : Date.from(Instant.now().plus(Duration.ofDays(365))))
-                .claim("env", envId)
-                .claim("roles", List.of("ads", "soap"));
+                .claim("env", envId);
         if (upn != null) {
             claimsBuilder.claim("upn", upn);
         }
@@ -100,7 +98,7 @@ class ApiKeyPrincipalProviderTest {
         assertThat(apiKey.getUpn()).isEqualTo(TEST_UPN);
         assertThat(apiKey.getJti()).isEqualTo(TEST_JTI);
         assertThat(apiKey.getOrganization()).isEqualTo("TEST_ORG");
-        assertThat(apiKey.getRoles()).contains("ads", "soap");
+        assertThat(apiKey.getRoles()).isEmpty();
     }
 
     @Test

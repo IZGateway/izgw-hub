@@ -23,9 +23,7 @@ import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Collections;
 import java.util.Date;
-import java.util.List;
 
 @Component
 @Slf4j
@@ -196,12 +194,6 @@ public class ApiKeyPrincipalProvider {
 
         if (credentialOpt.isPresent() && isUsableStatus(credentialOpt.get().getStatus())) {
             String sub = claims.getSubject();
-            List<String> roles;
-            try {
-                roles = claims.getStringListClaim("roles");
-            } catch (ParseException e) {
-                roles = Collections.emptyList();
-            }
             String upn = (String) claims.getClaim("upn");
             if (upn == null || upn.isBlank()) {
                 log.warn("JWT rejected: missing or blank upn claim for jti={}", jti);
@@ -211,7 +203,6 @@ public class ApiKeyPrincipalProvider {
             ApiKeyPrincipal principal = new ApiKeyPrincipal(
                     sub,
                     jti,
-                    roles != null ? roles : Collections.emptyList(),
                     upn,
                     config.getIssuer()
             );
