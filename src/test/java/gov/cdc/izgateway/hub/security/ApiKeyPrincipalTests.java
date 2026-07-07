@@ -4,7 +4,6 @@ import gov.cdc.izgateway.security.IzgPrincipal;
 import org.junit.jupiter.api.Test;
 
 import java.security.Principal;
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -15,64 +14,55 @@ class ApiKeyPrincipalTest {
     private static final String UPN = "test.example.gov";
     private static final String ISSUER = "http://localhost:3000";
 
-    private ApiKeyPrincipal principal(List<String> roles) {
-        return new ApiKeyPrincipal(SUB, JTI, roles, UPN, ISSUER);
+    private ApiKeyPrincipal principal() {
+        return new ApiKeyPrincipal(SUB, JTI, UPN, ISSUER);
     }
 
     @Test
-    void rolesAreReturnedInTheFormatAccessControlValveExpects() {
-        ApiKeyPrincipal p = principal(List.of("ads", "soap"));
-
-        assertThat(p.getRoles()).containsExactlyInAnyOrder("ads", "soap");
+    void rolesAreAlwaysEmpty() {
+        assertThat(principal().getRoles()).isEmpty();
     }
 
     @Test
     void subjectIsExposedAsOrganization() {
-        assertThat(principal(List.of()).getOrganization()).isEqualTo(SUB);
+        assertThat(principal().getOrganization()).isEqualTo(SUB);
     }
 
     @Test
     void upnIsCarriedAsName() {
-        assertThat(principal(List.of()).getName()).isEqualTo(UPN);
+        assertThat(principal().getName()).isEqualTo(UPN);
     }
 
     @Test
     void jtiFieldIsSet() {
-        assertThat(principal(List.of()).getJti()).isEqualTo(JTI);
+        assertThat(principal().getJti()).isEqualTo(JTI);
     }
 
     @Test
     void upnFieldIsSet() {
-        assertThat(principal(List.of()).getUpn()).isEqualTo(UPN);
+        assertThat(principal().getUpn()).isEqualTo(UPN);
     }
 
     @Test
     void issuerFieldIsSet() {
-        assertThat(principal(List.of()).getIssuer()).isEqualTo(ISSUER);
+        assertThat(principal().getIssuer()).isEqualTo(ISSUER);
     }
 
     @Test
     void isInstanceOfIzgPrincipalAndJavaPrincipal() {
-        ApiKeyPrincipal p = principal(List.of("ads"));
-
-        assertThat(p).isInstanceOf(IzgPrincipal.class);
-        assertThat(p).isInstanceOf(Principal.class);
+        assertThat(principal()).isInstanceOf(IzgPrincipal.class);
+        assertThat(principal()).isInstanceOf(Principal.class);
     }
 
     @Test
     void serialNumberHexReturnsJti() {
         // ApiKeyPrincipal uses jti as the serial number equivalent (differs from cert-backed principals)
-        assertThat(principal(List.of()).getSerialNumberHex()).isEqualTo(JTI);
-    }
-
-    @Test
-    void emptyRolesYieldsEmptySet() {
-        assertThat(principal(List.of()).getRoles()).isEmpty();
+        assertThat(principal().getSerialNumberHex()).isEqualTo(JTI);
     }
 
     @Test
     void nullSubjectIsTolerated() {
-        ApiKeyPrincipal p = new ApiKeyPrincipal(null, JTI, List.of("ads"), UPN, ISSUER);
+        ApiKeyPrincipal p = new ApiKeyPrincipal(null, JTI, UPN, ISSUER);
 
         assertThat(p.getOrganization()).isNull();
     }

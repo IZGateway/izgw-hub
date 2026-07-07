@@ -17,7 +17,6 @@ import gov.cdc.izgateway.hub.repository.IAllowedUserRepository;
 import gov.cdc.izgateway.hub.repository.IDenyListRecordRepository;
 import gov.cdc.izgateway.hub.repository.IFileTypeRepository;
 import gov.cdc.izgateway.hub.repository.RepositoryFactory;
-import gov.cdc.izgateway.hub.security.ApiKeyPrincipal;
 import gov.cdc.izgateway.logging.RequestContext;
 import gov.cdc.izgateway.logging.markers.Markers2;
 import gov.cdc.izgateway.model.IFileType;
@@ -33,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.ServiceConfigurationError;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -142,16 +142,7 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
     
     @Override
 	public boolean isUserInRole(String user, String role) {
-		if (currentModelHelper.isUserInRole(user, role)) {
-			return true;
-		}
-		// For API key (JWT) principals, roles are carried in the token itself rather than
-		// the DynamoDB access control table. Fall back to the principal's role set.
-		var principal = RequestContext.getPrincipal();
-		if (principal instanceof ApiKeyPrincipal apiKeyPrincipal) {
-			return apiKeyPrincipal.getRoles().contains(role);
-		}
-		return false;
+		return currentModelHelper.isUserInRole(user, role);
     }
 
 	@Override
@@ -188,6 +179,8 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 		if (wasUserPreviouslyAdmitted(user, method, path)) {
 			return true;
 		}
+		log.debug("Access check: user={} roles={}", user,
+				Roles.values().stream().filter(r -> isUserInRole(user, r)).collect(Collectors.toSet()));
     	for (String role: roles) {
     		if (isUserInRole(user, role)) {
     			saveAdmittedUser(user, method, path);
