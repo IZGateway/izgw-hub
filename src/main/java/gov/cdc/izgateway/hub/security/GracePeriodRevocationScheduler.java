@@ -113,8 +113,9 @@ public class GracePeriodRevocationScheduler {
         int evaluated = candidates.size();
         int revoked = 0;
         for (ApiKeyCredential credential : candidates) {
-            // Idempotency guard: never re-revoke a credential that is no longer active.
-            if (!"active".equals(credential.getStatus())) {
+            // Idempotency guard: only revoke a credential still in its grace period (skip anything
+            // already revoked/changed since the query).
+            if (!"grace_period".equals(credential.getStatus())) {
                 continue;
             }
             revokeCredential(credential);

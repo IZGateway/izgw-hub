@@ -27,46 +27,49 @@ class ApiKeyCredentialRepositoryTests {
     }
 
     @Test
-    void includesActiveWithPastGraceExpiry() {
-        ApiKeyCredential c = cred("active", NOW.minus(1, ChronoUnit.HOURS));
+    void includesGracePeriodWithPastGraceExpiry() {
+        ApiKeyCredential c = cred("grace_period", NOW.minus(1, ChronoUnit.HOURS));
         assertThat(ApiKeyCredentialRepository.selectGraceCandidates(List.of(c), NOW)).containsExactly(c);
     }
 
     @Test
-    void includesActiveWithGraceExpiryExactlyNow() {
-        ApiKeyCredential c = cred("active", NOW);
+    void includesGracePeriodWithGraceExpiryExactlyNow() {
+        ApiKeyCredential c = cred("grace_period", NOW);
         assertThat(ApiKeyCredentialRepository.selectGraceCandidates(List.of(c), NOW)).containsExactly(c);
     }
 
     @Test
-    void excludesActiveWithFutureGraceExpiry() {
-        ApiKeyCredential c = cred("active", NOW.plus(1, ChronoUnit.HOURS));
+    void excludesGracePeriodWithFutureGraceExpiry() {
+        ApiKeyCredential c = cred("grace_period", NOW.plus(1, ChronoUnit.HOURS));
         assertThat(ApiKeyCredentialRepository.selectGraceCandidates(List.of(c), NOW)).isEmpty();
     }
 
     @Test
-    void excludesActiveWithoutGraceExpiry() {
-        ApiKeyCredential c = cred("active", null);
+    void excludesGracePeriodWithoutGraceExpiry() {
+        ApiKeyCredential c = cred("grace_period", null);
         assertThat(ApiKeyCredentialRepository.selectGraceCandidates(List.of(c), NOW)).isEmpty();
     }
 
     @Test
-    void excludesNonActiveEvenWithPastGraceExpiry() {
+    void excludesActiveEvenWithPastGraceExpiry() {
+        // A normal active key is never a revocation candidate — only grace_period keys are.
+        ApiKeyCredential active = cred("active", NOW.minus(1, ChronoUnit.HOURS));
         ApiKeyCredential revoked = cred("revoked", NOW.minus(1, ChronoUnit.HOURS));
         ApiKeyCredential expired = cred("expired", NOW.minus(1, ChronoUnit.HOURS));
-        assertThat(ApiKeyCredentialRepository.selectGraceCandidates(List.of(revoked, expired), NOW)).isEmpty();
+        assertThat(ApiKeyCredentialRepository.selectGraceCandidates(List.of(active, revoked, expired), NOW)).isEmpty();
     }
 
     @Test
     void selectsOnlyEligibleFromMixedList() {
-        ApiKeyCredential eligible1 = cred("active", NOW.minus(10, ChronoUnit.MINUTES));
-        ApiKeyCredential future = cred("active", NOW.plus(10, ChronoUnit.MINUTES));
-        ApiKeyCredential noGrace = cred("active", null);
+        ApiKeyCredential eligible1 = cred("grace_period", NOW.minus(10, ChronoUnit.MINUTES));
+        ApiKeyCredential future = cred("grace_period", NOW.plus(10, ChronoUnit.MINUTES));
+        ApiKeyCredential noGrace = cred("grace_period", null);
+        ApiKeyCredential activeKey = cred("active", NOW.minus(10, ChronoUnit.MINUTES));
         ApiKeyCredential revoked = cred("revoked", NOW.minus(10, ChronoUnit.MINUTES));
-        ApiKeyCredential eligible2 = cred("active", NOW.minus(1, ChronoUnit.DAYS));
+        ApiKeyCredential eligible2 = cred("grace_period", NOW.minus(1, ChronoUnit.DAYS));
 
         assertThat(ApiKeyCredentialRepository.selectGraceCandidates(
-                List.of(eligible1, future, noGrace, revoked, eligible2), NOW))
+                List.of(eligible1, future, noGrace, activeKey, revoked, eligible2), NOW))
                 .containsExactly(eligible1, eligible2);
     }
 }

@@ -26,6 +26,14 @@ public class ApiKeyCredential extends DynamoDbAudit implements DynamoDbEntity {
     private Instant expiresAt;
     private Instant revokedAt;
     private String revokedBy;
+    // Written by Config Console on renewal (IGDD-2707) onto the superseded (old) credential, which is
+    // moved to status "grace_period"; read by Hub's grace-period revocation job (IGDD-2711).
+    // graceExpiresAt is the instant after which the grace-period credential becomes eligible for
+    // automated revocation; supersededBy is the jti of the renewed credential that replaced it. Both
+    // are null on credentials that have never been renewed. graceExpiresAt serializes as an ISO-8601
+    // UTC string like the other Instants.
+    private Instant graceExpiresAt;
+    private String supersededBy;
 
     @Override
     public String getPrimaryId() {
