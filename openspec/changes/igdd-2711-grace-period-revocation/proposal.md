@@ -7,7 +7,7 @@ This change adds a scheduled job inside Hub that revokes superseded API keys aft
 ## What Changes
 
 - **Modified**: `ApiKeyCredential` entity — add `graceExpiresAt` (`Instant`, nullable) and `supersededBy` (`String`, nullable). These are written by Config Console's renew route (IGDD-2707) and read by Hub. Hub's `@DynamoDbBean` must map them so the sweep can act on them.
-- **Modified**: `ApiKeyCredentialRepository` — add a finder that returns credentials eligible for grace-period revocation (`status == active && graceExpiresAt != null && graceExpiresAt <= now`), scoped to the current environment.
+- **Modified**: `ApiKeyCredentialRepository` — add a finder that returns credentials eligible for grace-period revocation (`status == grace_period && graceExpiresAt != null && graceExpiresAt <= now`), scoped to the current environment.
 - **Modified**: `ApiKeyAuditLogger` — add an `API_KEY_REVOKED` audit event for grace-period revocation (`revokedBy = "system:grace-revocation"`), consistent with Config Console's manual-revoke event of the same type.
 - **New**: `GracePeriodRevocationScheduler` — an in-process scheduled job that periodically queries for expired-grace superseded keys, revokes each in DynamoDB, emits the audit event, evicts the local cache, and logs per-run counts (evaluated / revoked). Gated on `apikey.grace-revocation.enabled` (off by default); a single-runner guard for multi-instance safety is a remaining task.
 - **Modified**: configuration — add `apikey.grace-revocation.*` properties (enabled flag, run interval) and enable Spring scheduling.

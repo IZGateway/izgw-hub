@@ -49,6 +49,7 @@ import org.springframework.boot.web.servlet.ServletContextInitializer;
 import org.springframework.context.ApplicationContextException;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.security.config.Customizer;
@@ -109,6 +110,7 @@ import lombok.extern.slf4j.Slf4j;
         )
 )
 @SpringBootApplication
+@EnableScheduling
 public class Application implements WebMvcConfigurer {
 	private static final Map<String, byte[]> staticPages = new TreeMap<>();
 	private static final String BUILD_FILE = "build.txt";

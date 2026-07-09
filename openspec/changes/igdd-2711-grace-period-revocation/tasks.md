@@ -6,8 +6,8 @@
 ## 1. Entity and Repository
 
 - [x] 1.1 Add `graceExpiresAt` (`Instant`, nullable) and `supersededBy` (`String`, nullable) to `ApiKeyCredential` (serialized as ISO-8601 like `issuedAt`/`expiresAt`).
-- [x] 1.2 Add `findGraceRevocationCandidates(env)` to `ApiKeyCredentialRepository` — env-prefixed `findByType(env + "#")` + in-memory filter `status == "active" && graceExpiresAt != null && graceExpiresAt <= now`.
-- [x] 1.3 Use `SystemUtils.getDestTypeAsString()` for the environment prefix, consistent with `ApiKeyPrincipalProvider`.
+- [x] 1.2 Add `findGraceRevocationCandidates(env)` to `ApiKeyCredentialRepository` — env-prefixed `findByType(env + "#")` (env = numeric string via `String.valueOf(SystemUtils.getDestType())`) + in-memory filter `status == "grace_period" && graceExpiresAt != null && graceExpiresAt <= now`.
+- [x] 1.3 Derive the environment prefix as the **numeric** string `String.valueOf(SystemUtils.getDestType())` (e.g. `"5"`) — matching how `ApiKeyPrincipalProvider` builds `env` (`String.valueOf(envInt)`) and how records are sort-keyed. (`getDestTypeAsString()` returns the human-readable name and would match nothing.)
 
 ## 2. Audit event
 

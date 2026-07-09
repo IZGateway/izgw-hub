@@ -13,7 +13,10 @@ import java.util.Optional;
 public class ApiKeyCredentialRepository extends DynamoDbRepository<ApiKeyCredential> {
 
     /** Status of a renewed (superseded) credential during its grace window; still authenticates. */
-    static final String STATUS_GRACE_PERIOD = "grace_period";
+    public static final String STATUS_GRACE_PERIOD = "grace_period";
+
+    /** Terminal status set when a credential is revoked. */
+    public static final String STATUS_REVOKED = "revoked";
 
     public ApiKeyCredentialRepository(@Autowired DynamoDbEnhancedClient client, String tableName) {
         super(ApiKeyCredential.class, client, tableName);

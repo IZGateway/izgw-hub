@@ -10,7 +10,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -23,15 +22,15 @@ import java.util.TreeSet;
  * Scheduled job that revokes superseded API-key credentials after their grace period expires
  * (IGDD-2711, User Story 10).
  *
- * <p>When Config Console renews an API key (IGDD-2707) it issues a new credential and stamps the
- * old one with {@code supersededBy} and {@code graceExpiresAt}, leaving it {@code active} so both
- * keys authenticate during the grace window. Once {@code graceExpiresAt} passes, the old key must
- * be revoked so renewed keys do not accumulate as indefinitely-valid credentials. This job performs
- * that sweep inside Hub, reusing the credential repository and audit logger built for IGDD-2705.</p>
+ * <p>When Config Console renews an API key (IGDD-2707) it issues a new credential and moves the old
+ * one to status {@code grace_period} with a {@code graceExpiresAt}; it keeps authenticating alongside
+ * the new key during the grace window. Once {@code graceExpiresAt} passes, the old key must be revoked
+ * so renewed keys do not accumulate as indefinitely-valid credentials. This job performs that sweep
+ * inside Hub, reusing the credential repository and audit logger.</p>
  *
- * <p>The job is gated on {@code apikey.grace-revocation.enabled} (off by default) so it can be
- * enabled per environment. {@link EnableScheduling} is declared here so Spring's scheduling
- * infrastructure is only activated when this bean is present.</p>
+ * <p>The job is gated on {@code apikey.grace-revocation.enabled} (off by default) so it can be enabled
+ * per environment. Spring's scheduling infrastructure is enabled globally by {@code @EnableScheduling}
+ * on the application class, independent of this bean's conditional.</p>
  *
  * <p>In a multi-instance deployment a single instance performs the cycle, elected by host-ordering
  * (see {@link #isDesignatedRunner()}, design D5). Cross-instance cache propagation is intentionally not
@@ -39,7 +38,6 @@ import java.util.TreeSet;
  */
 @Component
 @Slf4j
-@EnableScheduling
 @ConditionalOnProperty(prefix = "apikey.grace-revocation", name = "enabled", havingValue = "true")
 public class GracePeriodRevocationScheduler {
 
@@ -104,7 +102,9 @@ public class GracePeriodRevocationScheduler {
             return;
         }
 
-        String env = SystemUtils.getDestTypeAsString();
+        // Records are keyed by the numeric environment (e.g. "5"), matching ApiKeyPrincipalProvider's
+        // String.valueOf(envInt) and the {env}#{jti} sort key — NOT the human-readable dest-type name.
+        String env = String.valueOf(SystemUtils.getDestType());
         log.info(Markers2.append("eventType", "GRACE_REVOCATION_STARTED", "environment", env),
                 "Grace-period revocation cycle started");
 
@@ -115,7 +115,7 @@ public class GracePeriodRevocationScheduler {
         for (ApiKeyCredential credential : candidates) {
             // Idempotency guard: only revoke a credential still in its grace period (skip anything
             // already revoked/changed since the query).
-            if (!"grace_period".equals(credential.getStatus())) {
+            if (!ApiKeyCredentialRepository.STATUS_GRACE_PERIOD.equals(credential.getStatus())) {
                 continue;
             }
             revokeCredential(credential);
@@ -139,7 +139,7 @@ public class GracePeriodRevocationScheduler {
     private void revokeCredential(ApiKeyCredential credential) {
         String jti = credential.getJti();
 
-        credential.setStatus("revoked");
+        credential.setStatus(ApiKeyCredentialRepository.STATUS_REVOKED);
         credential.setRevokedAt(Instant.now());
         credential.setRevokedBy(ApiKeyAuditLogger.SYSTEM_GRACE_REVOCATION);
         credentialRepository.store(credential);
