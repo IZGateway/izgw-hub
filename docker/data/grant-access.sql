@@ -1,1 +1,0 @@
-GRANT ALL PRIVILEGES ON phiz.* TO 'remoteHub'@'%' WITH GRANT OPTION;
