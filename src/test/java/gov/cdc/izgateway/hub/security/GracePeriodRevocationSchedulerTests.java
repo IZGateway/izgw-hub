@@ -1,0 +1,160 @@
+package gov.cdc.izgateway.hub.security;
+
+import gov.cdc.izgateway.dynamodb.model.ApiKeyCredential;
+import gov.cdc.izgateway.dynamodb.repository.ApiKeyCredentialRepository;
+import gov.cdc.izgateway.repository.IHostRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.List;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+
+/**
+ * Unit tests for {@link GracePeriodRevocationScheduler}. The repository finder and host registry are
+ * mocked so these tests exercise the revocation cycle independently of DynamoDB and the live fleet.
+ * The single-runner election is verified directly against the pure static helper.
+ */
+@ExtendWith(MockitoExtension.class)
+class GracePeriodRevocationSchedulerTests {
+
+    private static final String JTI = "018f4e2a-5678-7abc-8def-000000000099";
+    private static final String NEW_JTI = "018f4e2a-5678-7abc-8def-0000000000aa";
+    private static final String JURISDICTION = "MA";
+
+    @Mock private ApiKeyCredentialRepository credentialRepository;
+    @Mock private ApiKeyAuditLogger auditLogger;
+    @Mock private ApiKeyPrincipalProvider apiKeyPrincipalProvider;
+    @Mock private IHostRepository hostRepository;
+
+    private GracePeriodRevocationScheduler scheduler;
+
+    @BeforeEach
+    void setUp() {
+        scheduler = new GracePeriodRevocationScheduler(
+                credentialRepository, auditLogger, apiKeyPrincipalProvider, hostRepository);
+    }
+
+    private ApiKeyCredential credential(String jti, String status, String supersededBy) {
+        ApiKeyCredential c = new ApiKeyCredential();
+        c.setJti(jti);
+        c.setStatus(status);
+        c.setJurisdictionId(JURISDICTION);
+        c.setSupersededBy(supersededBy);
+        return c;
+    }
+
+    /** Empty host registry → this instance is the sole/elected runner, so the cycle proceeds. */
+    private void soleRunner() {
+        when(hostRepository.getHostsAndRegion()).thenReturn(Map.of());
+    }
+
+    @Test
+    void gracePeriodCandidate_isRevokedAuditedAndEvicted() {
+        soleRunner();
+        ApiKeyCredential graceKey = credential(JTI, "grace_period", NEW_JTI);
+        when(credentialRepository.findGraceRevocationCandidates(anyString())).thenReturn(List.of(graceKey));
+
+        scheduler.runRevocationCycle();
+
+        // Status transition persisted with system actor and a revocation timestamp.
+        assertThat(graceKey.getStatus()).isEqualTo("revoked");
+        assertThat(graceKey.getRevokedBy()).isEqualTo(ApiKeyAuditLogger.SYSTEM_GRACE_REVOCATION);
+        assertThat(graceKey.getRevokedAt()).isNotNull();
+        verify(credentialRepository).store(graceKey);
+
+        // Audit event carries the superseding jti.
+        verify(auditLogger).apiKeyRevoked(eq(JTI), eq(JURISDICTION), eq(ApiKeyAuditLogger.SYSTEM_GRACE_REVOCATION), eq(NEW_JTI));
+
+        // Local cache eviction performed.
+        verify(apiKeyPrincipalProvider).evictCredential(JTI);
+    }
+
+    @Test
+    void nonGracePeriodCandidate_isSkipped() {
+        soleRunner();
+        ApiKeyCredential alreadyRevoked = credential(JTI, "revoked", NEW_JTI);
+        when(credentialRepository.findGraceRevocationCandidates(anyString())).thenReturn(List.of(alreadyRevoked));
+
+        scheduler.runRevocationCycle();
+
+        verify(credentialRepository, never()).store(any());
+        verifyNoInteractions(auditLogger, apiKeyPrincipalProvider);
+    }
+
+    @Test
+    void noCandidates_performsNoRevocations() {
+        soleRunner();
+        when(credentialRepository.findGraceRevocationCandidates(anyString())).thenReturn(List.of());
+
+        scheduler.runRevocationCycle();
+
+        verify(credentialRepository, never()).store(any());
+        verifyNoInteractions(auditLogger, apiKeyPrincipalProvider);
+    }
+
+    @Test
+    void multipleCandidates_revokesOnlyGracePeriodOnes() {
+        soleRunner();
+        ApiKeyCredential grace1 = credential("jti-grace-1", "grace_period", "new-1");
+        ApiKeyCredential revokedAlready = credential("jti-revoked", "revoked", "new-x");
+        ApiKeyCredential grace2 = credential("jti-grace-2", "grace_period", "new-2");
+        when(credentialRepository.findGraceRevocationCandidates(anyString()))
+                .thenReturn(List.of(grace1, revokedAlready, grace2));
+
+        scheduler.runRevocationCycle();
+
+        verify(credentialRepository).store(grace1);
+        verify(credentialRepository).store(grace2);
+        verify(credentialRepository, never()).store(revokedAlready);
+        verify(auditLogger).apiKeyRevoked(eq("jti-grace-1"), anyString(), anyString(), eq("new-1"));
+        verify(auditLogger).apiKeyRevoked(eq("jti-grace-2"), anyString(), anyString(), eq("new-2"));
+        verify(apiKeyPrincipalProvider).evictCredential("jti-grace-1");
+        verify(apiKeyPrincipalProvider).evictCredential("jti-grace-2");
+    }
+
+    @Test
+    void notDesignatedRunner_skipsCycleEntirely() {
+        // A host that sorts below any realistic hostname is the elected runner, so this instance defers.
+        when(hostRepository.getHostsAndRegion()).thenReturn(Map.of("-lowest-host", "us-east-1"));
+
+        scheduler.runRevocationCycle();
+
+        verify(credentialRepository, never()).findGraceRevocationCandidates(anyString());
+        verify(credentialRepository, never()).store(any());
+        verifyNoInteractions(auditLogger, apiKeyPrincipalProvider);
+    }
+
+    // --- election logic (pure) ---
+
+    @Test
+    void election_emptyRegistry_selfRuns() {
+        assertThat(GracePeriodRevocationScheduler.isDesignatedRunner("hostB", List.of())).isTrue();
+    }
+
+    @Test
+    void election_lowestHostRuns() {
+        assertThat(GracePeriodRevocationScheduler.isDesignatedRunner("hostA", List.of("hostA", "hostB", "hostC"))).isTrue();
+    }
+
+    @Test
+    void election_nonLowestHostDefers() {
+        assertThat(GracePeriodRevocationScheduler.isDesignatedRunner("hostB", List.of("hostA", "hostB", "hostC"))).isFalse();
+    }
+
+    @Test
+    void election_selfNotInRegistryButLowest_runs() {
+        assertThat(GracePeriodRevocationScheduler.isDesignatedRunner("aaa", List.of("zzz"))).isTrue();
+    }
+}
