@@ -1,8 +1,8 @@
-gov.cdc.izgateway.mock.perf
-gov.cdc.izgateway.mock.data
 gov.cdc.izgateway.dynamodb.repository
-gov.cdc.izgateway
-gov.cdc.izgateway.hub.service.accesscontrol
-gov.cdc.izgateway.hub.security
 gov.cdc.izgateway.ads
 gov.cdc.izgateway.ads.util
+gov.cdc.izgateway.hub.service.accesscontrol
+gov.cdc.izgateway.hub.security
+gov.cdc.izgateway
+gov.cdc.izgateway.mock.perf
+gov.cdc.izgateway.mock.data
