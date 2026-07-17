@@ -218,7 +218,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -365,7 +365,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -446,7 +446,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {},
@@ -534,7 +534,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {},
@@ -622,7 +622,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {},
@@ -1267,7 +1267,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -1450,7 +1450,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -1944,7 +1944,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -2038,7 +2038,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript"
 									}
@@ -2148,7 +2148,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -2940,7 +2940,7 @@
 											"listen": "prerequest",
 											"script": {
 												"exec": [
-													"await utils.setup(pm);"
+													"utils.setup(pm);"
 												],
 												"type": "text/javascript",
 												"packages": {}
@@ -3032,7 +3032,7 @@
 											"listen": "prerequest",
 											"script": {
 												"exec": [
-													"await utils.setup(pm);"
+													"utils.setup(pm);"
 												],
 												"type": "text/javascript"
 											}
@@ -3111,7 +3111,7 @@
 											"listen": "prerequest",
 											"script": {
 												"exec": [
-													"await utils.setup(pm);"
+													"utils.setup(pm);"
 												],
 												"type": "text/javascript",
 												"packages": {}
@@ -4311,7 +4311,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -4483,7 +4483,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -4566,7 +4566,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -4654,7 +4654,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -4742,7 +4742,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -4825,7 +4825,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -4908,7 +4908,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -4991,7 +4991,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -5078,7 +5078,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -5158,7 +5158,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -5573,7 +5573,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -5657,7 +5657,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -5746,7 +5746,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -5876,7 +5876,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -5979,7 +5979,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -6167,7 +6167,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -6292,7 +6292,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -7050,7 +7050,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -7151,7 +7151,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -7234,7 +7234,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -7317,7 +7317,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -7418,7 +7418,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -10281,7 +10281,7 @@
 											"listen": "prerequest",
 											"script": {
 												"exec": [
-													"await utils.setup(pm);"
+													"utils.setup(pm);"
 												],
 												"type": "text/javascript",
 												"packages": {}
@@ -10398,7 +10398,7 @@
 											"listen": "prerequest",
 											"script": {
 												"exec": [
-													"await utils.setup(pm);"
+													"utils.setup(pm);"
 												],
 												"type": "text/javascript",
 												"packages": {}
@@ -10545,7 +10545,7 @@
 											"listen": "prerequest",
 											"script": {
 												"exec": [
-													"await utils.setup(pm);"
+													"utils.setup(pm);"
 												],
 												"type": "text/javascript",
 												"packages": {}
@@ -10810,7 +10810,7 @@
 											"listen": "prerequest",
 											"script": {
 												"exec": [
-													"await utils.setup(pm);"
+													"utils.setup(pm);"
 												],
 												"type": "text/javascript",
 												"packages": {},
@@ -10936,7 +10936,7 @@
 											"listen": "prerequest",
 											"script": {
 												"exec": [
-													"await utils.setup(pm);"
+													"utils.setup(pm);"
 												],
 												"type": "text/javascript",
 												"packages": {},
@@ -11056,7 +11056,7 @@
 											"listen": "prerequest",
 											"script": {
 												"exec": [
-													"await utils.setup(pm);"
+													"utils.setup(pm);"
 												],
 												"type": "text/javascript",
 												"packages": {}
@@ -11179,7 +11179,7 @@
 											"listen": "prerequest",
 											"script": {
 												"exec": [
-													"await utils.setup(pm);"
+													"utils.setup(pm);"
 												],
 												"type": "text/javascript",
 												"packages": {}
@@ -11301,7 +11301,7 @@
 											"listen": "prerequest",
 											"script": {
 												"exec": [
-													"await utils.setup(pm);"
+													"utils.setup(pm);"
 												],
 												"type": "text/javascript",
 												"packages": {}
@@ -11419,7 +11419,7 @@
 											"listen": "prerequest",
 											"script": {
 												"exec": [
-													"await utils.setup(pm);"
+													"utils.setup(pm);"
 												],
 												"type": "text/javascript",
 												"packages": {},
@@ -11543,7 +11543,7 @@
 											"listen": "prerequest",
 											"script": {
 												"exec": [
-													"await utils.setup(pm);"
+													"utils.setup(pm);"
 												],
 												"type": "text/javascript",
 												"packages": {}
@@ -11666,7 +11666,7 @@
 											"listen": "prerequest",
 											"script": {
 												"exec": [
-													"await utils.setup(pm);"
+													"utils.setup(pm);"
 												],
 												"type": "text/javascript",
 												"packages": {},
@@ -11786,7 +11786,7 @@
 											"listen": "prerequest",
 											"script": {
 												"exec": [
-													"await utils.setup(pm);"
+													"utils.setup(pm);"
 												],
 												"type": "text/javascript",
 												"packages": {}
@@ -11910,7 +11910,7 @@
 											"listen": "prerequest",
 											"script": {
 												"exec": [
-													"await utils.setup(pm);"
+													"utils.setup(pm);"
 												],
 												"type": "text/javascript",
 												"packages": {}
@@ -12025,7 +12025,7 @@
 											"listen": "prerequest",
 											"script": {
 												"exec": [
-													"await utils.setup(pm);"
+													"utils.setup(pm);"
 												],
 												"type": "text/javascript",
 												"packages": {}
@@ -12147,7 +12147,7 @@
 											"listen": "prerequest",
 											"script": {
 												"exec": [
-													"await utils.setup(pm);"
+													"utils.setup(pm);"
 												],
 												"type": "text/javascript",
 												"packages": {}
@@ -13797,7 +13797,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -13920,7 +13920,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -14036,7 +14036,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -14152,7 +14152,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -14268,7 +14268,7 @@
 									"listen": "prerequest",
 									"script": {
 										"exec": [
-											"await utils.setup(pm);"
+											"utils.setup(pm);"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -14922,7 +14922,7 @@
 							"listen": "prerequest",
 							"script": {
 								"exec": [
-									"await utils.setup(pm);"
+									"utils.setup(pm);"
 								],
 								"type": "text/javascript",
 								"packages": {}
@@ -14982,7 +14982,7 @@
 							"listen": "prerequest",
 							"script": {
 								"exec": [
-									"await utils.setup(pm);"
+									"utils.setup(pm);"
 								],
 								"type": "text/javascript",
 								"packages": {}
