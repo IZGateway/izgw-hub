@@ -1,10 +1,12 @@
 package gov.cdc.izgateway.dynamodb.repository;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
+import gov.cdc.izgateway.common.AggregateException;
 import gov.cdc.izgateway.dynamodb.model.EndpointStatus;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.model.IEndpointStatus;
@@ -86,9 +88,31 @@ public class EndpointStatusRepository extends DynamoDbRepository<EndpointStatus>
 	@Override
 	public void resetCircuitBreakers() {
 		List<EndpointStatus> statuses = this.findAll();
+		List<RuntimeException> errors = new ArrayList<>();
 		for (EndpointStatus status : statuses) {
+			if (status.isCircuitBreakerThrown()) {
+				status.setStatus(IEndpointStatus.CONNECTED);
+				try {
+					this.saveAndFlush(status);
+				} catch (RuntimeException e) {
+					errors.add(e);
+				}
+			}
+		}
+		AggregateException.throwIfAny(errors, "resetting circuit breakers");
+	}
+
+	@Override
+	public EndpointStatus resetCircuitBreakerById(String id) {
+		EndpointStatus status = this.findById(id);
+		if (status == null) {
+			return null;
+		}
+		if (status.isCircuitBreakerThrown()) {
+			status.setStatus(IEndpointStatus.CONNECTED);
 			this.saveAndFlush(status);
 		}
+		return status;
 	}
 
 	@Override

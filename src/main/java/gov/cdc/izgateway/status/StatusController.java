@@ -180,7 +180,8 @@ public class StatusController {
 		return checkerService.updateDestinationStatus(d);
 	}
 	
-	@GetMapping("/reset")
+	@PostMapping("/reset")
+	@RolesAllowed(Roles.ADMIN)
 	@Operation(summary = "Reset the circuit breakers on this host",
 			description = "Reset the circuit breaker for all destinations on this host")
 	@ApiResponse(responseCode = "200", description = "Success", 
@@ -192,5 +193,24 @@ public class StatusController {
 		Map<String, IEndpointStatus> l2 = new TreeMap<>();
 		endpointStatusService.findAll().forEach(s -> l2.put(s.getDestId(), s));
 		return l2;
+	}
+
+	@PostMapping("/reset/{id}")
+	@Operation(summary = "Reset the circuit breaker for a single destination",
+			description = "Reset the circuit breaker for the specified destination on this host")
+	@ApiResponse(responseCode = "200", description = "Success",
+		content = @Content(mediaType = "application/json",
+			schema = @Schema(implementation = EndpointStatus.class))
+	)
+	@RolesAllowed(Roles.ADMIN)
+	public IEndpointStatus resetCircuitBreakerById(@PathVariable String id) {
+		if (destinationService.findByDestId(id) == null) {
+			throw new ResourceNotFoundException(String.format("Destination %s not found", id));
+		}
+		IEndpointStatus status = endpointStatusService.resetCircuitBreakerById(id);
+		if (status == null) {
+			throw new ResourceNotFoundException(String.format("No status found for destination %s", id));
+		}
+		return status;
 	}
 }
