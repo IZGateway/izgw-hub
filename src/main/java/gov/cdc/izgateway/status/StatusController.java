@@ -181,6 +181,7 @@ public class StatusController {
 	}
 	
 	@PostMapping("/reset")
+	@RolesAllowed(Roles.ADMIN)
 	@Operation(summary = "Reset the circuit breakers on this host",
 			description = "Reset the circuit breaker for all destinations on this host")
 	@ApiResponse(responseCode = "200", description = "Success", 
