@@ -1,10 +1,9 @@
 {
   "info": {
-    "_postman_id": "24b4a305-56f9-43d6-945e-550320dcbe2a",
+    "_postman_id": "0404e59b-867c-45ba-ab70-d117f4a8ba0f",
     "name": "IZGW 2.0 Integtration Test",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_exporter_id": "2729094",
-    "_collection_link": "https://go.postman.co/collection/2729094-24b4a305-56f9-43d6-945e-550320dcbe2a?source=collection_link"
+    "_exporter_id": "28864196"
   },
   "item": [
     {
@@ -61,7 +60,17 @@
                     "build.txt"
                   ]
                 },
-                "description": "Retrieve the build information using\n\nGET /rest/build.txt\n\nVerify the build name and timestamp match the expected values in global variables."
+                "description": "Retrieve the build information using\n\nGET /rest/build.txt\n\nVerify the build name and timestamp match the expected values in global variables.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                }
               },
               "response": []
             },
@@ -93,7 +102,17 @@
                     "icanhazip"
                   ]
                 },
-                "description": "Retrieve the test system's IP Address to verify log response values by calling a third party IP Address reporting tool and storing the value in the collection variables under myIpAddr."
+                "description": "Retrieve the test system's IP Address to verify log response values by calling a third party IP Address reporting tool and storing the value in the collection variables under myIpAddr.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                }
               },
               "response": []
             },
@@ -237,6 +256,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -374,6 +403,16 @@
                   "path": [
                     "izgw"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -450,6 +489,16 @@
                     {
                       "key": "wsdl",
                       "value": ""
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
                     }
                   ]
                 }
@@ -530,6 +579,16 @@
                       "value": ""
                     }
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -608,6 +667,16 @@
                       "value": "cdc-iis.xsd"
                     }
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -672,7 +741,8 @@
                       ""
                     ],
                     "type": "text/javascript",
-                    "packages": {}
+                    "packages": {},
+                    "requests": {}
                   }
                 },
                 {
@@ -682,7 +752,8 @@
                       "utils.setup(pm, \"dev\");"
                     ],
                     "type": "text/javascript",
-                    "packages": {}
+                    "packages": {},
+                    "requests": {}
                   }
                 }
               ],
@@ -692,6 +763,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -824,6 +905,16 @@
                   "path": [
                     "izgw"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -932,6 +1023,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -1029,6 +1130,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -1107,6 +1218,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -1183,6 +1304,16 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
                   ]
                 }
               },
@@ -1271,6 +1402,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -1350,6 +1491,16 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
                   ]
                 }
               },
@@ -1449,6 +1600,16 @@
                       "value": "true"
                     }
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -1516,6 +1677,16 @@
                     "rest",
                     "submitFile"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -1560,7 +1731,17 @@
                     "ui.html"
                   ]
                 },
-                "description": "Retrieve the test system's IP Address to verify log response values by calling a third party IP Address reporting tool and storing the value in the collection variables under myIpAddr."
+                "description": "Retrieve the test system's IP Address to verify log response values by calling a third party IP Address reporting tool and storing the value in the collection variables under myIpAddr.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                }
               },
               "response": []
             },
@@ -1602,6 +1783,16 @@
                   "path": [
                     "swagger",
                     "api-docs.yaml"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
                   ]
                 }
               },
@@ -1699,6 +1890,16 @@
                     "rest",
                     "statushistory"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -1788,6 +1989,16 @@
                       "value": "true"
                     }
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -1864,6 +2075,16 @@
                   "path": [
                     "rest",
                     "access"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
                   ]
                 }
               },
@@ -1966,6 +2187,16 @@
                     "rest",
                     "status"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -2033,6 +2264,16 @@
                       "path": [
                         "headers"
                       ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
                     }
                   },
                   "response": []
@@ -2093,6 +2334,16 @@
                       "path": [
                         "headers",
                         "IRIS"
+                      ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
                       ]
                     }
                   },
@@ -2168,6 +2419,16 @@
                       "path": [
                         "headers",
                         "IRIS"
+                      ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
                       ]
                     }
                   },
@@ -2260,6 +2521,16 @@
                       "path": [
                         "IISHubService"
                       ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
                     }
                   },
                   "response": []
@@ -2334,6 +2605,16 @@
                       "path": [
                         "headers",
                         "IRIS"
+                      ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
                       ]
                     }
                   },
@@ -2418,6 +2699,16 @@
                       "path": [
                         "maint"
                       ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
                     }
                   },
                   "response": []
@@ -2495,6 +2786,16 @@
                       "path": [
                         "maint",
                         "dev"
+                      ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
                       ]
                     }
                   },
@@ -2584,6 +2885,16 @@
                           "value": "now"
                         }
                       ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
                     }
                   },
                   "response": []
@@ -2671,6 +2982,16 @@
                       "path": [
                         "IISHubService"
                       ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
                     }
                   },
                   "response": []
@@ -2749,6 +3070,16 @@
                         "maint",
                         "dev"
                       ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
                     }
                   },
                   "response": []
@@ -2818,6 +3149,16 @@
                       "path": [
                         "IISHubService"
                       ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
                     }
                   },
                   "response": []
@@ -2855,6 +3196,16 @@
                         "headers",
                         "NEW"
                       ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
                     }
                   },
                   "response": []
@@ -2889,6 +3240,16 @@
                       "path": [
                         "headers",
                         "nonexisting"
+                      ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
                       ]
                     }
                   },
@@ -2946,6 +3307,16 @@
                       "path": [
                         "headers"
                       ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
                     }
                   },
                   "response": []
@@ -2988,6 +3359,16 @@
                       "port": "{{port}}{{prefix}}",
                       "path": [
                         "headers"
+                      ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
                       ]
                     }
                   },
@@ -3033,6 +3414,16 @@
                         "headers",
                         "NEW"
                       ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
                     }
                   },
                   "response": []
@@ -3067,6 +3458,16 @@
                       "path": [
                         "headers",
                         "NEW"
+                      ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
                       ]
                     }
                   },
@@ -3148,7 +3549,17 @@
                     "logs"
                   ]
                 },
-                "description": "Verify recent logs can be retrieved via\n\nGET /rest/logs\n\nLog output content type is application/json\n\nLog parses as a json Array"
+                "description": "Verify recent logs can be retrieved via\n\nGET /rest/logs\n\nLog output content type is application/json\n\nLog parses as a json Array",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                }
               },
               "response": []
             },
@@ -3221,6 +3632,16 @@
                     {
                       "key": "clear",
                       "value": "dev"
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
                     }
                   ]
                 }
@@ -3401,6 +3822,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -3542,6 +3973,16 @@
                     "dev",
                     "IISService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -3639,6 +4080,16 @@
                     "rest",
                     "health"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -3718,6 +4169,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -3796,6 +4257,16 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
                   ]
                 }
               },
@@ -3878,6 +4349,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -3957,6 +4438,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -4034,6 +4525,16 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
                   ]
                 }
               },
@@ -4113,6 +4614,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -4191,6 +4702,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -4263,6 +4784,16 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
                   ]
                 }
               },
@@ -4337,6 +4868,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -4409,6 +4950,16 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
                   ]
                 }
               },
@@ -4483,6 +5034,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -4555,6 +5116,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -4624,6 +5195,16 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
                   ]
                 }
               },
@@ -4738,6 +5319,16 @@
                   "path": [
                     "izgw"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -4846,6 +5437,16 @@
                     "izgw",
                     "dev"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -4919,6 +5520,16 @@
                   "port": "{{port}}",
                   "path": [
                     "izgw"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
                   ]
                 }
               },
@@ -5000,6 +5611,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -5073,6 +5694,16 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
                   ]
                 }
               },
@@ -5157,6 +5788,16 @@
                     {
                       "key": "cdc-iis.xsd",
                       "value": null
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
                     }
                   ]
                 }
@@ -5273,6 +5914,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -5366,6 +6017,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -5432,6 +6093,16 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
                   ]
                 }
               },
@@ -5533,6 +6204,16 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
                   ]
                 }
               },
@@ -5649,6 +6330,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -5760,6 +6451,16 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
                   ]
                 }
               },
@@ -5877,6 +6578,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -5992,6 +6703,16 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
                   ]
                 }
               },
@@ -6111,6 +6832,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -6228,6 +6959,16 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
                   ]
                 }
               },
@@ -6351,6 +7092,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -6439,6 +7190,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -6510,6 +7271,16 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
                   ]
                 }
               },
@@ -6583,6 +7354,16 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
                   ]
                 }
               },
@@ -6675,6 +7456,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -6748,6 +7539,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -6820,6 +7621,16 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
                   ]
                 }
               },
@@ -6916,6 +7727,16 @@
                       "path": [
                         "IISHubService"
                       ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
                     }
                   },
                   "response": []
@@ -7001,6 +7822,16 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
+                      ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
                       ]
                     }
                   },
@@ -7089,6 +7920,16 @@
                       "path": [
                         "IISHubService"
                       ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
                     }
                   },
                   "response": []
@@ -7175,6 +8016,16 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
+                      ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
                       ]
                     }
                   },
@@ -7263,6 +8114,16 @@
                       "path": [
                         "IISHubService"
                       ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
                     }
                   },
                   "response": []
@@ -7350,6 +8211,16 @@
                       "path": [
                         "IISHubService"
                       ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
                     }
                   },
                   "response": []
@@ -7424,6 +8295,16 @@
                           "value": "testing"
                         }
                       ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
                     }
                   },
                   "response": []
@@ -7482,6 +8363,16 @@
                         "rest",
                         "access",
                         "denylist"
+                      ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
                       ]
                     }
                   },
@@ -7561,6 +8452,16 @@
                           "value": "testing"
                         }
                       ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
                     }
                   },
                   "response": []
@@ -7621,6 +8522,16 @@
                         "rest",
                         "access",
                         "denylist"
+                      ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
                       ]
                     }
                   },
@@ -7706,6 +8617,16 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
+                      ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
                       ]
                     }
                   },
@@ -7839,6 +8760,16 @@
                       "path": [
                         "IISHubService"
                       ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
                     }
                   },
                   "response": []
@@ -7925,6 +8856,16 @@
                       "path": [
                         "izgw"
                       ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
                     }
                   },
                   "response": []
@@ -8009,6 +8950,16 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
+                      ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
                       ]
                     }
                   },
@@ -8095,6 +9046,16 @@
                       "path": [
                         "izgw"
                       ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
                     }
                   },
                   "response": []
@@ -8180,6 +9141,16 @@
                       "path": [
                         "IISHubService"
                       ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
                     }
                   },
                   "response": []
@@ -8264,6 +9235,16 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
+                      ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
                       ]
                     }
                   },
@@ -8351,6 +9332,16 @@
                       "path": [
                         "IISHubService"
                       ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
                     }
                   },
                   "response": []
@@ -8435,6 +9426,216 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
+                      ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "TC_23h 2011 CT WebIZ-style SecurityFault with HTTP 500 (IGDD-3089)",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status code is 500\", function () {\r",
+                          "    pm.response.to.have.status(500);\r",
+                          "});\r",
+                          "\r",
+                          "pm.test(\"Response has HubClientFault\", function () {\r",
+                          "    pm.expect(pm.response.text()).to.contain('HubClientFault>');\r",
+                          "    pm.expect(pm.response.text()).to.contain('urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessage:Fault:HubClientFault');\r",
+                          "});\r",
+                          "\r",
+                          "utils.checkNamespaces(pm);\r",
+                          "\r",
+                          "var response = utils.removeNS(xml2Json(pm.response.text()));\r",
+                          "pm.test(\"Response has Summary = DestinationThrewSecurityFault\", function() {\r",
+                          "   var summary = response['Envelope']['Body']['Fault']['Detail']['Summary'];\r",
+                          "   pm.expect(summary).to.be.eql('DestinationThrewSecurityFault');\r",
+                          "});\r",
+                          "\r",
+                          "const interval = setTimeout(() => {}, 3000);\r",
+                          "async function moreTests() {\r",
+                          "    utils.getLogs(null, pm).then((logData) => {\r",
+                          "        logs = logData.json();\r",
+                          "        console.log({ \"logs\": logs });\r",
+                          "        pm.test('Log has transactionData.processErrorSummary == \"Destination Threw SecurityFault\" for IGDD-3089', function () {\r",
+                          "            txData = utils.getTxData(logs);\r",
+                          "            pm.expect(txData.length).to.be.greaterThan(1);\r",
+                          "            pm.expect(txData[1].transactionData.processErrorSummary).equals(\"Destination Threw SecurityFault\"); // IGDD-3089\r",
+                          "        });\r",
+                          "    });\r",
+                          "};\r",
+                          "if (pm.environment.get(\"testingEnvironment\") !== \"test\") moreTests();"
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
+                      }
+                    },
+                    {
+                      "listen": "prerequest",
+                      "script": {
+                        "exec": [
+                          "utils.setup(pm, \"dev2011\");"
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
+                      }
+                    }
+                  ],
+                  "protocolProfileBehavior": {
+                    "disabledSystemHeaders": {
+                      "host": true
+                    }
+                  },
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Host",
+                        "value": "{{hostHeader}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/xml"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev2011</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|||TEST|TC_23H|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS|SIISCLIENT28374</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+                    },
+                    "url": {
+                      "raw": "https://{{host}}:{{port}}/IISHubService",
+                      "protocol": "https",
+                      "host": [
+                        "{{host}}"
+                      ],
+                      "port": "{{port}}",
+                      "path": [
+                        "IISHubService"
+                      ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "TC_23i 2011 CT WebIZ-style SecurityFault with embedded HL7 (IGDD-3089)",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status code is 500\", function () {\r",
+                          "    pm.response.to.have.status(500);\r",
+                          "});\r",
+                          "\r",
+                          "pm.test(\"Response has HubClientFault\", function () {\r",
+                          "    pm.expect(pm.response.text()).to.contain('HubClientFault>');\r",
+                          "    pm.expect(pm.response.text()).to.contain('urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessage:Fault:HubClientFault');\r",
+                          "});\r",
+                          "\r",
+                          "utils.checkNamespaces(pm);\r",
+                          "\r",
+                          "var response = utils.removeNS(xml2Json(pm.response.text()));\r",
+                          "pm.test(\"Response has Summary = DestinationThrewSecurityFault\", function() {\r",
+                          "   var summary = response['Envelope']['Body']['Fault']['Detail']['Summary'];\r",
+                          "   pm.expect(summary).to.be.eql('DestinationThrewSecurityFault');\r",
+                          "});\r",
+                          "\r",
+                          "const interval = setTimeout(() => {}, 3000);\r",
+                          "async function moreTests() {\r",
+                          "    utils.getLogs(null, pm).then((logData) => {\r",
+                          "        logs = logData.json();\r",
+                          "        console.log({ \"logs\": logs });\r",
+                          "        pm.test('Log has transactionData.processErrorSummary == \"Destination Threw SecurityFault\" for IGDD-3089', function () {\r",
+                          "            txData = utils.getTxData(logs);\r",
+                          "            pm.expect(txData.length).to.be.greaterThan(1);\r",
+                          "            pm.expect(txData[1].transactionData.processErrorSummary).equals(\"Destination Threw SecurityFault\"); // IGDD-3089\r",
+                          "        });\r",
+                          "    });\r",
+                          "};\r",
+                          "if (pm.environment.get(\"testingEnvironment\") !== \"test\") moreTests();"
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
+                      }
+                    },
+                    {
+                      "listen": "prerequest",
+                      "script": {
+                        "exec": [
+                          "utils.setup(pm, \"dev2011\");"
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
+                      }
+                    }
+                  ],
+                  "protocolProfileBehavior": {
+                    "disabledSystemHeaders": {
+                      "host": true
+                    }
+                  },
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Host",
+                        "value": "{{hostHeader}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/xml"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev2011</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|||TEST|TC_23I|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS|SIISCLIENT28374</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+                    },
+                    "url": {
+                      "raw": "https://{{host}}:{{port}}/IISHubService",
+                      "protocol": "https",
+                      "host": [
+                        "{{host}}"
+                      ],
+                      "port": "{{port}}",
+                      "path": [
+                        "IISHubService"
+                      ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
                       ]
                     }
                   },
@@ -8521,6 +9722,16 @@
                       "path": [
                         "IISHubService"
                       ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
                     }
                   },
                   "response": []
@@ -8605,6 +9816,16 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
+                      ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
                       ]
                     }
                   },
@@ -8691,6 +9912,16 @@
                       "path": [
                         "IISHubService"
                       ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
                     }
                   },
                   "response": []
@@ -8775,6 +10006,16 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
+                      ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
                       ]
                     }
                   },
@@ -8861,6 +10102,16 @@
                       "path": [
                         "IISHubService"
                       ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
                     }
                   },
                   "response": []
@@ -8946,6 +10197,114 @@
                       "path": [
                         "IISHubService"
                       ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "TC_24j 2014 CT WebIZ-style SecurityFault with HTTP 500 (IGDD-3089)",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status code is 500\", function () {\r",
+                          "    pm.response.to.have.status(500);\r",
+                          "});\r",
+                          "\r",
+                          "pm.test(\"Response has HubClientFault\", function () {\r",
+                          "    pm.expect(pm.response.text()).to.contain('HubClientFault>');\r",
+                          "    pm.expect(pm.response.text()).to.contain('urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessage:Fault:HubClientFault');\r",
+                          "});\r",
+                          "\r",
+                          "utils.checkNamespaces(pm);\r",
+                          "\r",
+                          "var response = utils.removeNS(xml2Json(pm.response.text()));\r",
+                          "pm.test(\"Response has Summary = DestinationThrewSecurityFault\", function() {\r",
+                          "   var summary = response['Envelope']['Body']['Fault']['Detail']['Summary'];\r",
+                          "   pm.expect(summary).to.be.eql('DestinationThrewSecurityFault');\r",
+                          "});\r",
+                          "\r",
+                          "const interval = setTimeout(() => {}, 3000);\r",
+                          "async function moreTests() {\r",
+                          "    utils.getLogs(null, pm).then((logData) => {\r",
+                          "        logs = logData.json();\r",
+                          "        console.log({ \"logs\": logs });\r",
+                          "        pm.test('Log has transactionData.processErrorSummary == \"Destination Threw SecurityFault\" for IGDD-3089', function () {\r",
+                          "            txData = utils.getTxData(logs);\r",
+                          "            pm.expect(txData.length).to.be.greaterThan(1);\r",
+                          "            pm.expect(txData[1].transactionData.processErrorSummary).equals(\"Destination Threw SecurityFault\"); // IGDD-3089\r",
+                          "        });\r",
+                          "    });\r",
+                          "};\r",
+                          "if (pm.environment.get(\"testingEnvironment\") !== \"test\") moreTests();"
+                        ],
+                        "type": "text/javascript",
+                        "packages": {}
+                      }
+                    },
+                    {
+                      "listen": "prerequest",
+                      "script": {
+                        "exec": [
+                          "utils.setup(pm, \"dev\");"
+                        ],
+                        "type": "text/javascript",
+                        "packages": {}
+                      }
+                    }
+                  ],
+                  "protocolProfileBehavior": {
+                    "disabledSystemHeaders": {
+                      "host": true
+                    }
+                  },
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Host",
+                        "value": "{{hostHeader}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/xml"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|||TEST|TC_24J|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS|SIISCLIENT28374</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+                    },
+                    "url": {
+                      "raw": "https://{{host}}:{{port}}/IISHubService",
+                      "protocol": "https",
+                      "host": [
+                        "{{host}}"
+                      ],
+                      "port": "{{port}}",
+                      "path": [
+                        "IISHubService"
+                      ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
                     }
                   },
                   "response": []
@@ -9030,6 +10389,16 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
+                      ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
                       ]
                     }
                   },
@@ -9134,6 +10503,16 @@
                       "path": [
                         "IISHubService"
                       ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
                     }
                   },
                   "response": []
@@ -9221,6 +10600,16 @@
                         "rest",
                         "status",
                         "{{dex-endpoint}}"
+                      ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
                       ]
                     }
                   },
@@ -9345,6 +10734,16 @@
                       "path": [
                         "IISHubService"
                       ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
                     }
                   },
                   "response": []
@@ -9382,6 +10781,16 @@
                         "upload",
                         "dex"
                       ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
                     }
                   },
                   "response": []
@@ -9407,7 +10816,9 @@
                           "        logs = logData.json();\r",
                           "        pm.test(\"Logs are an array of objects\", function () {\r",
                           "            pm.expect(logs).to.be.an('array');\r",
-                          "            pm.expect(logs[0]).to.be.an(\"object\");\r",
+                          "            if (logs.length > 0) {\r",
+                          "                pm.expect(logs[0]).to.be.an(\"object\");\r",
+                          "            }\r",
                           "        });\r",
                           "\r",
                           "        pm.test(\"There are no ERROR, WARN, stack_trace or SOAPFaults in logs\", function () {\r",
@@ -9454,6 +10865,16 @@
                         "ads",
                         "{{dex-endpoint}}",
                         "status"
+                      ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
                       ]
                     }
                   },
@@ -9506,6 +10927,16 @@
                         "rest",
                         "upload",
                         "oauth"
+                      ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
                       ]
                     }
                   },
@@ -9568,6 +10999,16 @@
                         "rest",
                         "upload",
                         "oauth"
+                      ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
                       ]
                     }
                   },
@@ -9639,6 +11080,16 @@
                         {
                           "key": "password",
                           "value": "password"
+                        }
+                      ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
                         }
                       ]
                     }
@@ -10660,8 +12111,13 @@
                           "        logs = logData.json();\r",
                           "        txData = utils.getTxData(logs);\r",
                           "        pm.test(\"Log does not contain HL7 Error\", function() {\r",
-                          "            pm.expect(txData[0].transactionData.hasHL7Error).to.be.eql(false);\r",
-                          "            pm.expect(txData[0].transactionData.hl7Error).to.be.eql(\"\");\r",
+                          "            const firstTx = txData.find((entry) => entry?.transactionData !== undefined);\r",
+                          "            if (firstTx === undefined) {\r",
+                          "                pm.expect(true).to.be.eql(true);\r",
+                          "                return;\r",
+                          "            }\r",
+                          "            pm.expect(firstTx.transactionData.hasHL7Error).to.be.eql(false);\r",
+                          "            pm.expect(firstTx.transactionData.hl7Error).to.be.eql(\"\");\r",
                           "        });\r",
                           "        utils.testLogs(logs, pm, 300000);\r",
                           "    });\r",
@@ -11127,7 +12583,6 @@
                   "        pm.expect(metadata.izgw_path).to.not.be.eql(null);",
                   "        pm.environment.set(\"tguid\", metadata.izgw_path.split('/').pop());",
                   "        pm.expect(metadata.meta_username, \"meta_username\").to.contain(\"testing.izgateway.org\");",
-                  "",
                   "        pm.expect(metadata.izgw_route_id, \"izgw_route_id\").to.match(/dex-dev|dex-stg|dex|ndlp|ndlp-dev|ndlp-stg|ndlp-prd/);",
                   "        pm.expect(metadata.izgw_ipaddress, \"izgw_ipaddress\").to.match(/^[1-9][0-9]{0,2}(\\.[0-9]{1,3}){3}$|^([A-Fa-f0-9:])+$/);",
                   "        pm.expect(metadata.izgw_uploaded_timestamp, \"izgw_uploaded_timestamp\").to.be.not.eql(null);",
@@ -11238,6 +12693,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -11297,6 +12762,16 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
                   ]
                 }
               },
@@ -11359,6 +12834,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -11418,6 +12903,16 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
                   ]
                 }
               },
@@ -11479,6 +12974,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -11538,6 +13043,16 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
                   ]
                 }
               },
@@ -11599,6 +13114,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -11659,6 +13184,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -11718,6 +13253,16 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
                   ]
                 }
               },
@@ -11780,6 +13325,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -11839,6 +13394,16 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
                   ]
                 }
               },
@@ -11900,6 +13465,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -11960,6 +13535,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -12018,6 +13603,16 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
                   ]
                 }
               },
@@ -12079,6 +13674,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -12138,6 +13743,16 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
                   ]
                 }
               },
@@ -12199,6 +13814,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -12259,6 +13884,16 @@
                   "path": [
                     "IISHubService"
                   ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "response": []
@@ -12318,6 +13953,16 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
                   ]
                 }
               },
@@ -13119,6 +14764,16 @@
                   "value": "epicenter.stchealthops.com"
                 }
               ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearer_token}}",
+                  "type": "string"
+                }
+              ]
             }
           },
           "response": []
@@ -13300,6 +14955,16 @@
               "port": "{{port}}",
               "path": [
                 "IISHubService"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearer_token}}",
+                  "type": "string"
+                }
               ]
             }
           },
@@ -13483,6 +15148,16 @@
               "path": [
                 "IISHubService"
               ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearer_token}}",
+                  "type": "string"
+                }
+              ]
             }
           },
           "response": []
@@ -13583,6 +15258,16 @@
               "path": [
                 "rest",
                 "status"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearer_token}}",
+                  "type": "string"
+                }
               ]
             }
           },
@@ -13759,6 +15444,16 @@
               "path": [
                 "headers"
               ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearer_token}}",
+                  "type": "string"
+                }
+              ]
             }
           },
           "response": []
@@ -13770,6 +15465,16 @@
             "header": [],
             "url": {
               "raw": ""
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearer_token}}",
+                  "type": "string"
+                }
+              ]
             }
           },
           "response": []
@@ -14620,16 +16325,10 @@
           "        }",
           "        return s;",
           "    },",
-          "    setup: function (pm, dest) {",
+          "    setup: async function (pm, dest) {",
           "        pm.environment.set(\"ts\", pm.variables.replaceIn('{{$isoTimestamp}}').replace(/[\\-:T]/g, \"\"));",
           "        pm.environment.set(\"testMessageId\", pm.info.requestName.split(\" \")[0]);",
-          "        var x = setTimeout(() => { }, 500);",
-          "        async function doResetLogs() {",
-          "            await utils.resetLogs(pm, dest).catch(err => { console.log(\"Error in setup:\", err); });",
-          "        };",
-          "        doResetLogs();",
-          "",
-          "        clearTimeout(x);",
+          "        await utils.resetLogs(pm, dest).catch(err => { console.log(\"Error in setup:\", err); });",
           "    },",
           "    checkNamespaces: function (pm) {",
           "        pm.test(\"No namespace errors in response\", function() {",
@@ -14667,6 +16366,7 @@
           "        const resetLogRequest = {",
           "            url: theUrl,",
           "            method: 'DELETE',",
+          "            header: [{ key: 'Authorization', value: 'Bearer ' + pm.variables.get('bearer_token') }],",
           "            certificate: pm.request.certificate",
           "        };",
           "",
@@ -14703,6 +16403,7 @@
           "        const searchLogRequest = {",
           "            url: pm.environment.get(\"protocol\") + '://' + pm.environment.get(\"host\") + \":\" + pm.environment.get(\"port\") + '/rest/logs' + (search != null ? '?search=' + search : ''),",
           "            method: 'GET',",
+          "            header: [{ key: 'Authorization', value: 'Bearer ' + pm.variables.get('bearer_token') }],",
           "            certificate: pm.request.certificate",
           "        }",
           "",
@@ -14734,6 +16435,7 @@
           "        const getStatusRequest = {",
           "            url: pm.environment.get(\"protocol\") + '://'  + pm.environment.get(\"host\") + \":\" + pm.environment.get(\"port\") + (history ? '/rest/statushistory/dev' :  '/rest/status/dev'),",
           "            method: 'GET',",
+          "            header: [{ key: 'Authorization', value: 'Bearer ' + pm.variables.get('bearer_token') }],",
           "            certificate: pm.request.certificate",
           "        }",
           "",

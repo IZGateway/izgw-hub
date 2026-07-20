@@ -16,6 +16,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
+import gov.cdc.izgateway.common.AggregateException;
 import gov.cdc.izgateway.common.BadRequestException;
 import gov.cdc.izgateway.common.ResourceNotFoundException;
 import gov.cdc.izgateway.logging.RequestContext;
@@ -48,6 +49,8 @@ public class ExceptionHandling {
         errors.put("path", request.getRequestURI());
         if (ex instanceof MethodArgumentNotValidException manv) {
         	status = handleValidationException(errors, manv);
+        } else if (ex instanceof AggregateException) {
+        	status = HttpStatus.INTERNAL_SERVER_ERROR;
         } else if (ex instanceof BadRequestException) {
         	status = HttpStatus.BAD_REQUEST;  // NOSONAR, this unnecessary line is for clarity
         } else if (ex instanceof ResourceNotFoundException) {
