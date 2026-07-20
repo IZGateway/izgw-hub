@@ -4,7 +4,6 @@ import gov.cdc.izgateway.dynamodb.model.ApiKeyCredential;
 import gov.cdc.izgateway.dynamodb.repository.ApiKeyCredentialRepository;
 import gov.cdc.izgateway.logging.event.EventId;
 import gov.cdc.izgateway.logging.markers.Markers2;
-import gov.cdc.izgateway.repository.IHostRepository;
 import gov.cdc.izgateway.utils.SystemUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
@@ -14,9 +13,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
-import java.util.Collection;
 import java.util.List;
-import java.util.TreeSet;
 
 /**
  * Scheduled job that revokes superseded API-key credentials after their grace period expires
@@ -32,9 +29,13 @@ import java.util.TreeSet;
  * per environment. Spring's scheduling infrastructure is enabled globally by {@code @EnableScheduling}
  * on the application class, independent of this bean's conditional.</p>
  *
- * <p>In a multi-instance deployment a single instance performs the cycle, elected by host-ordering
- * (see {@link #isDesignatedRunner()}, design D5). Cross-instance cache propagation is intentionally not
- * broadcast (out of scope for grace revocation — see {@link #evictLocalCache(String)}).</p>
+ * <p><b>Multi-instance safety (design D5):</b> every enabled instance runs the cycle; correctness does
+ * not depend on electing a single runner. Each candidate is revoked via a <em>conditional</em> write
+ * ({@link ApiKeyCredentialRepository#revokeIfGracePeriod}) that only succeeds while the key is still
+ * {@code grace_period}, so a given key is revoked — and audited — exactly once even under concurrent
+ * runs. (An earlier host-ordering election was removed: the host registry can retain stale hosts, which
+ * could make a lone live instance defer to a ghost and never run.) Cross-instance cache propagation is
+ * intentionally not broadcast — see {@link #evictLocalCache(String)}.</p>
  */
 @Component
 @Slf4j
@@ -44,19 +45,16 @@ public class GracePeriodRevocationScheduler {
     private final ApiKeyCredentialRepository credentialRepository;
     private final ApiKeyAuditLogger auditLogger;
     private final ApiKeyPrincipalProvider apiKeyPrincipalProvider;
-    private final IHostRepository hostRepository;
 
     @Autowired
     public GracePeriodRevocationScheduler(
             ApiKeyCredentialRepository credentialRepository,
             ApiKeyAuditLogger auditLogger,
-            ApiKeyPrincipalProvider apiKeyPrincipalProvider,
-            IHostRepository hostRepository
+            ApiKeyPrincipalProvider apiKeyPrincipalProvider
     ) {
         this.credentialRepository = credentialRepository;
         this.auditLogger = auditLogger;
         this.apiKeyPrincipalProvider = apiKeyPrincipalProvider;
-        this.hostRepository = hostRepository;
     }
 
     /**
@@ -97,11 +95,6 @@ public class GracePeriodRevocationScheduler {
      * layered on these log events later).
      */
     void runRevocationCycle() {
-        if (!isDesignatedRunner()) {
-            log.debug("Skipping grace-period revocation cycle: this instance is not the designated runner");
-            return;
-        }
-
         // Records are keyed by the numeric environment (e.g. "5"), matching ApiKeyPrincipalProvider's
         // String.valueOf(envInt) and the {env}#{jti} sort key — NOT the human-readable dest-type name.
         String env = String.valueOf(SystemUtils.getDestType());
@@ -113,13 +106,9 @@ public class GracePeriodRevocationScheduler {
         int evaluated = candidates.size();
         int revoked = 0;
         for (ApiKeyCredential credential : candidates) {
-            // Idempotency guard: only revoke a credential still in its grace period (skip anything
-            // already revoked/changed since the query).
-            if (!ApiKeyCredentialRepository.STATUS_GRACE_PERIOD.equals(credential.getStatus())) {
-                continue;
+            if (revokeCredential(credential)) {
+                revoked++;
             }
-            revokeCredential(credential);
-            revoked++;
         }
 
         log.info(Markers2.append(
@@ -131,27 +120,31 @@ public class GracePeriodRevocationScheduler {
     }
 
     /**
-     * Revoke a single superseded credential: transition it to {@code revoked} in DynamoDB, emit the
-     * {@code API_KEY_REVOKED} audit event, and evict it from this instance's local cache.
+     * Revoke a single superseded credential via a conditional write (revoke only if still
+     * {@code grace_period}). On the write that actually performs the revocation, emit the
+     * {@code API_KEY_REVOKED} audit event and evict the credential from this instance's local cache.
+     * If another instance already revoked it (conditional write fails), do nothing — so the audit
+     * event fires exactly once across the fleet.
      *
-     * @param credential the active, grace-expired credential to revoke
+     * @param credential the grace-expired candidate to revoke
+     * @return {@code true} if this call performed the revocation; {@code false} otherwise
      */
-    private void revokeCredential(ApiKeyCredential credential) {
+    private boolean revokeCredential(ApiKeyCredential credential) {
+        boolean revoked = credentialRepository.revokeIfGracePeriod(
+                credential, Instant.now(), ApiKeyAuditLogger.SYSTEM_GRACE_REVOCATION);
+        if (!revoked) {
+            return false;
+        }
+
         String jti = credential.getJti();
-
-        credential.setStatus(ApiKeyCredentialRepository.STATUS_REVOKED);
-        credential.setRevokedAt(Instant.now());
-        credential.setRevokedBy(ApiKeyAuditLogger.SYSTEM_GRACE_REVOCATION);
-        credentialRepository.store(credential);
-
         auditLogger.apiKeyRevoked(
                 jti,
                 credential.getJurisdictionId(),
                 ApiKeyAuditLogger.SYSTEM_GRACE_REVOCATION,
                 credential.getSupersededBy()
         );
-
         evictLocalCache(jti);
+        return true;
     }
 
     /**
@@ -170,36 +163,5 @@ public class GracePeriodRevocationScheduler {
      */
     private void evictLocalCache(String jti) {
         apiKeyPrincipalProvider.evictCredential(jti);
-    }
-
-    /**
-     * Determine whether this instance should perform the revocation cycle, so that in a multi-instance
-     * deployment a single instance acts per cycle (avoiding duplicate writes and audit noise).
-     *
-     * <p>Election is by host-ordering (design D5), consistent with {@code StatusCheckScheduler}: each
-     * instance independently picks the lowest hostname among the currently-registered running instances
-     * (from {@link IHostRepository#getHostsAndRegion()}) and runs only if that is itself. If the host
-     * registry is empty/unconfigured (e.g. local/dev), this instance includes itself and therefore runs.
-     * Because revocation is idempotent, transient registry disagreement between instances is harmless (a
-     * key revoked twice is a no-op; a cycle skipped by all instances is retried next interval).</p>
-     *
-     * @return {@code true} if this instance should run the cycle
-     */
-    private boolean isDesignatedRunner() {
-        return isDesignatedRunner(SystemUtils.getHostname(), hostRepository.getHostsAndRegion().keySet());
-    }
-
-    /**
-     * Pure election logic, extracted for testability: the designated runner is the lowest hostname
-     * (natural order) among {@code runningHosts} together with {@code me}.
-     *
-     * @param me           this instance's hostname
-     * @param runningHosts the hostnames of currently-registered running instances (may be empty)
-     * @return {@code true} if {@code me} is the elected runner
-     */
-    static boolean isDesignatedRunner(String me, Collection<String> runningHosts) {
-        TreeSet<String> hosts = new TreeSet<>(runningHosts);
-        hosts.add(me);
-        return me.equals(hosts.first());
     }
 }
