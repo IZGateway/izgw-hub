@@ -80,3 +80,9 @@ output.elasticsearch:
   api_key: "${ELASTIC_API_KEY}" # Set ELASTIC_API_KEY in environment
   worker: 2
   allow_older_versions: true
+
+monitoring:
+  enabled: true
+  elasticsearch:
+    hosts: [ "${ELASTIC_HOST:https://audacioussearchtest.es.us-east-1.aws.found.io:9243}" ]
+    api_key: "${ELASTIC_API_KEY}"
