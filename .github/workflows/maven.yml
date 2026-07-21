@@ -193,7 +193,7 @@ jobs:
         AMAZON_DYNAMODB_TABLE: izgateway-devalb
         JWT_ISSUER: https://dev.console.izgateway.org
       run: |
-        env && mvn -B clean package install site -Dbuildno=${{github.run_number}} \
+        env && mvn -B -U clean package install site -Dbuildno=${{github.run_number}} \
             -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn \
             -DskipDependencyCheck=true \
             -Dimage.tag=${{env.IMAGE_TAG}}
