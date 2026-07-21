@@ -434,8 +434,22 @@ jobs:
           fi
 
           for region in $AWS_REGIONS; do
-            echo "Wait for ECS service stability in $region"
-            aws ecs wait services-stable --region $region --cluster izgateway-dev-izgateway-services --service izgateway-devalb-service &
+            echo "Waiting for new task to be running in $region (not waiting for old tasks to drain)"
+            (
+              for i in $(seq 1 60); do
+                RUNNING=$(aws ecs describe-services \
+                  --region $region \
+                  --cluster izgateway-dev-izgateway-services \
+                  --services izgateway-devalb-service \
+                  --query 'services[0].runningCount' --output text 2>/dev/null || echo 0)
+                if [ "${RUNNING:-0}" -ge 1 ]; then
+                  echo "[$region] New task is running ($RUNNING running tasks)"
+                  break
+                fi
+                echo "[$region] Waiting for running task... attempt $i/60"
+                sleep 10
+              done
+            ) &
           done
 
           wait
