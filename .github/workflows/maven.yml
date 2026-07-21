@@ -15,6 +15,8 @@ on:
     paths-ignore:
       - 'docs/**'
 
+  workflow_dispatch:
+
   # Schedule runs on the default branch.
   schedule:
     - cron: '0 6 * * 1-5'
