@@ -94,7 +94,7 @@ public class GracePeriodRevocationScheduler {
      * operations see that a run started and whether it succeeded or failed (AC #4; alarms may be
      * layered on these log events later).
      */
-    void runRevocationCycle() {
+    CycleResult runRevocationCycle() {
         // Records are keyed by the numeric environment (e.g. "5"), matching ApiKeyPrincipalProvider's
         // String.valueOf(envInt) and the {env}#{jti} sort key — NOT the human-readable dest-type name.
         String env = String.valueOf(SystemUtils.getDestType());
@@ -106,8 +106,14 @@ public class GracePeriodRevocationScheduler {
         int evaluated = candidates.size();
         int revoked = 0;
         for (ApiKeyCredential credential : candidates) {
-            if (revokeCredential(credential)) {
-                revoked++;
+            try {
+                if (revokeCredential(credential)) {
+                    revoked++;
+                }
+            } catch (Exception e) {  // NOSONAR — one bad credential must not abort the rest of the sweep
+                log.warn(Markers2.append("eventType", "GRACE_REVOCATION_ERROR", "keyId", credential.getJti())
+                                .and(Markers2.append(e)),
+                        "Failed to revoke credential {}: {}", credential.getJti(), e.getMessage());
             }
         }
 
@@ -117,6 +123,11 @@ public class GracePeriodRevocationScheduler {
                 "evaluated", evaluated,
                 "revoked", revoked
         ), "Grace-period revocation cycle succeeded: evaluated={}, revoked={}", evaluated, revoked);
+        return new CycleResult(evaluated, revoked);
+    }
+
+    /** Outcome of one revocation cycle: candidates evaluated and credentials actually revoked. */
+    record CycleResult(int evaluated, int revoked) {
     }
 
     /**

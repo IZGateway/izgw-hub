@@ -89,7 +89,11 @@ class ApiKeyCredentialRepositoryTests {
         assertThat(req.expressionAttributeNames()).containsEntry("#st", "status");
         assertThat(req.expressionAttributeValues().get(":grace").s()).isEqualTo("grace_period");
         assertThat(req.expressionAttributeValues().get(":revoked").s()).isEqualTo("revoked");
+        // revokedAt is the ISO-8601 'Z' Instant form; updatedOn uses the DynamoDbAudit Date form
+        // (millis + numeric +0000 offset) so it round-trips through the Enhanced Client's converter.
         assertThat(req.expressionAttributeValues().get(":ra").s()).isEqualTo("2026-07-20T15:00:00Z");
         assertThat(req.expressionAttributeValues().get(":rb").s()).isEqualTo("system:grace-revocation");
+        assertThat(req.updateExpression()).contains("updatedOn = :uo", "updatedBy = :rb");
+        assertThat(req.expressionAttributeValues().get(":uo").s()).isEqualTo("2026-07-20T15:00:00.000+0000");
     }
 }

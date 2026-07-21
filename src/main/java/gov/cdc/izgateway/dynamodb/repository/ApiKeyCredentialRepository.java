@@ -2,7 +2,6 @@ package gov.cdc.izgateway.dynamodb.repository;
 
 import gov.cdc.izgateway.dynamodb.model.ApiKeyCredential;
 import gov.cdc.izgateway.repository.DynamoDbRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
@@ -10,6 +9,8 @@ import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedExce
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -26,12 +27,20 @@ public class ApiKeyCredentialRepository extends DynamoDbRepository<ApiKeyCredent
     /** DynamoDB partition-key value (entity discriminator) for ApiKeyCredential rows. */
     private static final String ENTITY_TYPE = "ApiKeyCredential";
 
+    /**
+     * Format for the inherited {@code DynamoDbAudit} timestamps (e.g. {@code updatedOn}) — matches the
+     * Enhanced Client's date converter (millisecond precision, numeric UTC offset like {@code +0000}),
+     * distinct from the ISO-8601 {@code Z} form used by {@code Instant} fields such as {@code revokedAt}.
+     */
+    private static final DateTimeFormatter AUDIT_TIMESTAMP =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSxx").withZone(ZoneOffset.UTC);
+
     private final DynamoDbClient ddbClient;
     private final String tableName;
 
-    public ApiKeyCredentialRepository(@Autowired DynamoDbEnhancedClient client,
-                                      @Autowired DynamoDbClient ddbClient,
-                                      String tableName) {
+    // Not a Spring @Component: the DynamoDbRepositoryFactory constructs this directly, so the
+    // parameters are intentionally not @Autowired (Spring never invokes this constructor).
+    public ApiKeyCredentialRepository(DynamoDbEnhancedClient client, DynamoDbClient ddbClient, String tableName) {
         super(ApiKeyCredential.class, client, tableName);
         this.ddbClient = ddbClient;
         this.tableName = tableName;
@@ -110,14 +119,18 @@ public class ApiKeyCredentialRepository extends DynamoDbRepository<ApiKeyCredent
                 .key(Map.of(
                         "entityType", AttributeValue.fromS(ENTITY_TYPE),
                         "sortKey", AttributeValue.fromS(env + "#" + jti)))
-                .updateExpression("SET #st = :revoked, revokedAt = :ra, revokedBy = :rb")
+                // Also bump the inherited audit fields (updatedOn/updatedBy) the way saveAndFlush would,
+                // so tooling/queries keyed on updatedOn see the revocation instead of the create time.
+                .updateExpression("SET #st = :revoked, revokedAt = :ra, revokedBy = :rb, "
+                        + "updatedOn = :uo, updatedBy = :rb")
                 .conditionExpression("#st = :grace")
                 .expressionAttributeNames(Map.of("#st", "status"))
                 .expressionAttributeValues(Map.of(
                         ":revoked", AttributeValue.fromS(STATUS_REVOKED),
                         ":grace", AttributeValue.fromS(STATUS_GRACE_PERIOD),
                         ":ra", AttributeValue.fromS(revokedAt.toString()),
-                        ":rb", AttributeValue.fromS(revokedBy)))
+                        ":rb", AttributeValue.fromS(revokedBy),
+                        ":uo", AttributeValue.fromS(AUDIT_TIMESTAMP.format(revokedAt))))
                 .build();
     }
 

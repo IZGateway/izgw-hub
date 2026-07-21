@@ -11,6 +11,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.Instant;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -57,12 +58,16 @@ class GracePeriodRevocationSchedulerTests {
         when(credentialRepository.revokeIfGracePeriod(eq(graceKey), any(Instant.class),
                 eq(ApiKeyAuditLogger.SYSTEM_GRACE_REVOCATION))).thenReturn(true);
 
-        scheduler.runRevocationCycle();
+        GracePeriodRevocationScheduler.CycleResult result = scheduler.runRevocationCycle();
 
+        assertThat(result.evaluated()).isEqualTo(1);
+        assertThat(result.revoked()).isEqualTo(1);
         // Audit event carries the superseding jti; local cache evicted.
         verify(auditLogger).apiKeyRevoked(eq(JTI), eq(JURISDICTION),
                 eq(ApiKeyAuditLogger.SYSTEM_GRACE_REVOCATION), eq(NEW_JTI));
         verify(apiKeyPrincipalProvider).evictCredential(JTI);
+        // Revocation goes through the conditional write only — never the plain store() put.
+        verify(credentialRepository, never()).store(any());
     }
 
     @Test
@@ -72,17 +77,22 @@ class GracePeriodRevocationSchedulerTests {
         when(credentialRepository.findGraceRevocationCandidates(anyString())).thenReturn(List.of(graceKey));
         when(credentialRepository.revokeIfGracePeriod(any(), any(), any())).thenReturn(false);
 
-        scheduler.runRevocationCycle();
+        GracePeriodRevocationScheduler.CycleResult result = scheduler.runRevocationCycle();
 
+        assertThat(result.evaluated()).isEqualTo(1);
+        assertThat(result.revoked()).isZero();
         verifyNoInteractions(auditLogger, apiKeyPrincipalProvider);
+        verify(credentialRepository, never()).store(any());
     }
 
     @Test
     void noCandidates_performsNoRevocations() {
         when(credentialRepository.findGraceRevocationCandidates(anyString())).thenReturn(List.of());
 
-        scheduler.runRevocationCycle();
+        GracePeriodRevocationScheduler.CycleResult result = scheduler.runRevocationCycle();
 
+        assertThat(result.evaluated()).isZero();
+        assertThat(result.revoked()).isZero();
         verify(credentialRepository, never()).revokeIfGracePeriod(any(), any(), any());
         verifyNoInteractions(auditLogger, apiKeyPrincipalProvider);
     }
@@ -98,8 +108,11 @@ class GracePeriodRevocationSchedulerTests {
         when(credentialRepository.revokeIfGracePeriod(eq(lost), any(), any())).thenReturn(false);
         when(credentialRepository.revokeIfGracePeriod(eq(won2), any(), any())).thenReturn(true);
 
-        scheduler.runRevocationCycle();
+        GracePeriodRevocationScheduler.CycleResult result = scheduler.runRevocationCycle();
 
+        // 3 evaluated; only the 2 that won the conditional write are counted as revoked.
+        assertThat(result.evaluated()).isEqualTo(3);
+        assertThat(result.revoked()).isEqualTo(2);
         verify(auditLogger).apiKeyRevoked(eq("jti-won-1"), anyString(), anyString(), eq("new-1"));
         verify(auditLogger).apiKeyRevoked(eq("jti-won-2"), anyString(), anyString(), eq("new-2"));
         verify(auditLogger, never()).apiKeyRevoked(eq("jti-lost"), anyString(), anyString(), anyString());
