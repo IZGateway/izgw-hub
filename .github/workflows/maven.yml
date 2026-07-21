@@ -443,7 +443,6 @@ jobs:
             echo "[$region] Primary deployment ID: $DEPLOYMENT_ID"
             TASKS=$(aws ecs list-tasks --region $region \
               --cluster izgateway-dev-izgateway-services \
-              --service-name izgateway-devalb-service \
               --started-by $DEPLOYMENT_ID \
               --query 'taskArns' --output text)
             echo "[$region] Waiting on new tasks: $TASKS"
