@@ -434,12 +434,19 @@ jobs:
           fi
 
           for region in $AWS_REGIONS; do
-            echo "Waiting for tasks to be running in $region (not waiting for old tasks to drain)"
+            echo "Waiting for new deployment tasks to be running in $region"
+            DEPLOYMENT_ID=$(aws ecs describe-services --region $region \
+              --cluster izgateway-dev-izgateway-services \
+              --services izgateway-devalb-service \
+              --query 'services[0].deployments[?status==`PRIMARY`].id' \
+              --output text)
+            echo "[$region] Primary deployment ID: $DEPLOYMENT_ID"
             TASKS=$(aws ecs list-tasks --region $region \
               --cluster izgateway-dev-izgateway-services \
               --service-name izgateway-devalb-service \
+              --started-by $DEPLOYMENT_ID \
               --query 'taskArns' --output text)
-            echo "[$region] Waiting on tasks: $TASKS"
+            echo "[$region] Waiting on new tasks: $TASKS"
             aws ecs wait tasks-running --region $region \
               --cluster izgateway-dev-izgateway-services \
               --tasks $TASKS &
