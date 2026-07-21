@@ -80,7 +80,7 @@ class ApplicationTests {
 			}
 			
 			
-			Health h = (Health) event.getProperties().get("health");
+			Health h = event.getHealth();
 			if (h != null) {
 				health = h;		// Health was reported.
 				if (!h.isHealthy()) {
