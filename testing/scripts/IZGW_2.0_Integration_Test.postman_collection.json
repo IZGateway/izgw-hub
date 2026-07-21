@@ -9735,6 +9735,99 @@
                   "response": []
                 },
                 {
+                  "name": "TC_23k 2011 CT WebIZ-style SecurityFault with MLLP 0x0B/0x1C control chars (IGDD-3089)",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Status code is 500\", function () {\r",
+                          "    pm.response.to.have.status(500);\r",
+                          "});\r",
+                          "\r",
+                          "pm.test(\"Response has HubClientFault\", function () {\r",
+                          "    pm.expect(pm.response.text()).to.contain('HubClientFault>');\r",
+                          "    pm.expect(pm.response.text()).to.contain('urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessage:Fault:HubClientFault');\r",
+                          "});\r",
+                          "\r",
+                          "utils.checkNamespaces(pm);\r",
+                          "\r",
+                          "const interval = setTimeout(() => {}, 3000);\r",
+                          "async function moreTests() {\r",
+                          "    utils.getLogs(null, pm).then((logData) => {\r",
+                          "        logs = logData.json();\r",
+                          "        console.log({ \"logs\": logs });\r",
+                          "        pm.test('Log has transactionData entry (IGDD-3089: MLLP control chars 0x0B/0x1C)', function () {\r",
+                          "            txData = utils.getTxData(logs);\r",
+                          "            pm.expect(txData.length).to.be.greaterThan(1);\r",
+                          "        });\r",
+                          "    });\r",
+                          "};\r",
+                          "if (pm.environment.get(\"testingEnvironment\") !== \"test\") moreTests();"
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
+                      }
+                    },
+                    {
+                      "listen": "prerequest",
+                      "script": {
+                        "exec": [
+                          "utils.setup(pm, \"dev2011\");"
+                        ],
+                        "type": "text/javascript",
+                        "packages": {},
+                        "requests": {}
+                      }
+                    }
+                  ],
+                  "protocolProfileBehavior": {
+                    "disabledSystemHeaders": {
+                      "host": true
+                    }
+                  },
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Host",
+                        "value": "{{hostHeader}}"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/xml"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev2011</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|||TEST|TC_23K|20210402091512.000-0100||QBP^Q11^QBP_Q11|20210330093013AZQ231|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS|SIISCLIENT28374</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+                    },
+                    "url": {
+                      "raw": "https://{{host}}:{{port}}/IISHubService",
+                      "protocol": "https",
+                      "host": [
+                        "{{host}}"
+                      ],
+                      "port": "{{port}}",
+                      "path": [
+                        "IISHubService"
+                      ]
+                    },
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
                   "name": "TC_24a 2014 Security Fault Testing",
                   "event": [
                     {
