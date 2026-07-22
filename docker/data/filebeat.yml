@@ -81,8 +81,7 @@ output.elasticsearch:
   worker: 2
   allow_older_versions: true
 
-monitoring:
+http:
   enabled: true
-  elasticsearch:
-    hosts: [ "${ELASTIC_HOST:https://audacioussearchtest.es.us-east-1.aws.found.io:9243}" ]
-    api_key: "${ELASTIC_API_KEY}"
+  host: localhost
+  port: 5066
