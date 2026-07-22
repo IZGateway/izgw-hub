@@ -202,7 +202,7 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
 	@Bean
 	public ApiKeyCredentialRepository apiKeyCredentialRepository() {
 		if (akcr == null) {
-			akcr = new ApiKeyCredentialRepository(client, this.tableName);
+			akcr = new ApiKeyCredentialRepository(client, ddbClient, this.tableName);
 		}
 		return akcr;
 	}
