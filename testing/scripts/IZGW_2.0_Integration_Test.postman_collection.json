@@ -6252,7 +6252,7 @@
                       "",
                       "if(pm.environment.get(\"testingEnvironment\") !== \"test\") {",
                       "    const interval = setTimeout(() => {}, 3000);",
-                      "    utils.getLogs(null, pm).then((logData) => {"
+                      "    utils.getLogs(null, pm).then((logData) => {",
                       "        try {",
                       "            logs = logData.json();",
                       "        } catch (err) {",
