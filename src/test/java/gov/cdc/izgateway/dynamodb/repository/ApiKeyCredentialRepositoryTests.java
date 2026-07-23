@@ -2,6 +2,7 @@ package gov.cdc.izgateway.dynamodb.repository;
 
 import gov.cdc.izgateway.dynamodb.model.ApiKeyCredential;
 import org.junit.jupiter.api.Test;
+import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -11,9 +12,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Unit tests for the grace-revocation selection predicate
- * ({@link ApiKeyCredentialRepository#selectGraceCandidates}). The DynamoDB query itself
- * ({@code findByType}) is a thin base-class delegation and is covered by integration testing;
- * these tests pin the selection logic deterministically.
+ * ({@link ApiKeyCredentialRepository#selectGraceCandidates}) and the conditional revoke-request
+ * builder ({@link ApiKeyCredentialRepository#buildGraceRevokeRequest}). The DynamoDB calls
+ * themselves are thin delegations covered by integration testing; these tests pin the pure logic.
  */
 class ApiKeyCredentialRepositoryTests {
 
@@ -71,5 +72,28 @@ class ApiKeyCredentialRepositoryTests {
         assertThat(ApiKeyCredentialRepository.selectGraceCandidates(
                 List.of(eligible1, future, noGrace, activeKey, revoked, eligible2), NOW))
                 .containsExactly(eligible1, eligible2);
+    }
+
+    @Test
+    void buildGraceRevokeRequest_targetsCorrectKeyWithGracePeriodCondition() {
+        Instant revokedAt = Instant.parse("2026-07-20T15:00:00Z");
+        UpdateItemRequest req = ApiKeyCredentialRepository.buildGraceRevokeRequest(
+                "izgateway-dev-test", "5", "jti-abc", revokedAt, "system:grace-revocation");
+
+        assertThat(req.tableName()).isEqualTo("izgateway-dev-test");
+        // Targets the exact item: partition entityType=ApiKeyCredential, sort key {env}#{jti}.
+        assertThat(req.key().get("entityType").s()).isEqualTo("ApiKeyCredential");
+        assertThat(req.key().get("sortKey").s()).isEqualTo("5#jti-abc");
+        // Only writes when still grace_period → exactly-once revoke across concurrent instances.
+        assertThat(req.conditionExpression()).isEqualTo("#st = :grace");
+        assertThat(req.expressionAttributeNames()).containsEntry("#st", "status");
+        assertThat(req.expressionAttributeValues().get(":grace").s()).isEqualTo("grace_period");
+        assertThat(req.expressionAttributeValues().get(":revoked").s()).isEqualTo("revoked");
+        // revokedAt is the ISO-8601 'Z' Instant form; updatedOn uses the DynamoDbAudit Date form
+        // (millis + numeric +0000 offset) so it round-trips through the Enhanced Client's converter.
+        assertThat(req.expressionAttributeValues().get(":ra").s()).isEqualTo("2026-07-20T15:00:00Z");
+        assertThat(req.expressionAttributeValues().get(":rb").s()).isEqualTo("system:grace-revocation");
+        assertThat(req.updateExpression()).contains("updatedOn = :uo", "updatedBy = :rb");
+        assertThat(req.expressionAttributeValues().get(":uo").s()).isEqualTo("2026-07-20T15:00:00.000+0000");
     }
 }

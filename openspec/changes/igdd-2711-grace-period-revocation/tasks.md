@@ -17,8 +17,8 @@
 
 - [x] 3.1 Enable Spring scheduling (`@EnableScheduling` on `GracePeriodRevocationScheduler`, gated by `@ConditionalOnProperty`).
 - [x] 3.2 Create `GracePeriodRevocationScheduler` — injects repository, audit logger, principal provider; `@Scheduled` `scheduledRun` wraps `runRevocationCycle` with MDC eventId and ERROR-on-failure logging.
-- [x] 3.3 Single-runner guard for multi-instance safety (design D5). Host-ordering election: lowest hostname among `IHostRepository.getHostsAndRegion()` (∪ self) runs; empty/unconfigured registry → self runs. Pure logic extracted to a static helper and unit-tested.
-- [x] 3.4 Cycle: query candidates → set `status="revoked"`, `revokedAt=now`, `revokedBy="system:grace-revocation"`, `store()`; skip non-active (idempotency); accumulate counts.
+- [x] 3.3 Multi-instance safety (design D5). **Revised 2026-07-20:** the host-ordering election was removed (the Elastic host registry retains stale hosts → a lone live instance could defer to a ghost and never run). Replaced with a conditional DynamoDB write (`revokeIfGracePeriod`: revoke only while `status == grace_period`) so each key is revoked+audited exactly once across instances, with no runner election.
+- [x] 3.4 Cycle: query candidates → for each, conditionally revoke via `revokeIfGracePeriod` (sets `status=revoked`, `revokedAt`, `revokedBy=system:grace-revocation` iff still grace_period); count only the writes that won.
 - [x] 3.5 Emit `API_KEY_REVOKED` per revoked key, passing `supersededBy`.
 - [x] 3.6 Cache eviction — **RIGHT-SIZED (out of scope for cross-instance):** the acting instance evicts locally via `evictCredential(jti)`; other instances converge within the credential-cache TTL (≤5 min). Immediate fleet-wide broadcast is intentionally not built — it is the manual-revoke path's concern (IGDD-2707) and the grace ACs don't require it (design D6).
 - [x] 3.7 Log per-run counts (`GRACE_REVOCATION_RUN`, evaluated/revoked) at INFO (AC #4).
@@ -37,15 +37,15 @@
 
 ## 6. Tests
 
-- [x] 6.1 Repository finder selection logic — `selectGraceCandidates` extracted as a pure method and unit-tested (`ApiKeyCredentialRepositoryTests`, 6 cases: past/now/future/null grace, non-active, mixed list). The `findByType` DynamoDB query is a thin base-class delegation, covered by integration testing.
+- [x] 6.1 Repository logic — `selectGraceCandidates` (6 cases: past/now/future/null grace, non-grace, mixed) + `buildGraceRevokeRequest` (asserts the conditional UpdateItem: key `{env}#{jti}`, condition `status = grace_period`, revoked/timestamp/actor values) unit-tested in `ApiKeyCredentialRepositoryTests`. The DynamoDB calls (`findByType`, `updateItem`) are thin delegations covered by integration/dev testing.
 - [ ] 6.2 Entity round-trip — `graceExpiresAt`/`supersededBy` serialize/deserialize without precision loss; legacy null record. **Deferred to integration** — genuinely needs a real DynamoDB table (no DynamoDB Local/Testcontainers harness in this repo); will be covered by the IGDD-2707 end-to-end validation.
-- [x] 6.3 Scheduler — grace passed → `revoked` with `revokedAt`/`revokedBy=system:grace-revocation`, audit emitted with `supersededBy`, local cache evicted. (`activeCandidate_isRevokedAuditedAndEvicted`)
+- [x] 6.3 Scheduler — winning conditional write → audit emitted with `supersededBy` + local cache evicted (`wonConditionalWrite_isAuditedAndEvicted`); losing write (another instance won) → no audit/evict (`lostConditionalWrite_noAuditNoEvict`); mixed batch audits only the winners.
 - [x] 6.5 Scheduler — idempotent skip of already-revoked. (`nonActiveCandidate_isSkipped`, `multipleCandidates_revokesOnlyActiveOnes`)
 - [x] 6.6 Scheduler — per-run counts logged.
 - [x] 6.7 `API_KEY_REVOKED` field correctness — verified via the scheduler's `verify(auditLogger).apiKeyRevoked(...)` interaction (matches the 2704 convention of verifying logger calls; `apiKeyRevoked` has no token parameter, so no secret can leak).
-- [x] 6.8 Single-runner guard — `notDesignatedRunner_skipsCycleEntirely` (instance defers when a lower host is registered) + four `election_*` tests on the pure helper.
+- [x] 6.8 Multi-instance exactly-once — covered by the win/lose scheduler tests (6.3) + the `buildGraceRevokeRequest` condition test (6.1). (The removed host-election tests no longer apply.)
 
-**Build status:** `mvn test-compile` clean; scheduler + repository selection tests = 15 run, 0 failures.
+**Build status:** `mvn test-compile` clean; scheduler + repository tests = 11 run, 0 failures.
 
 ## Remaining before merge
 
