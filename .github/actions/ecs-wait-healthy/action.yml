@@ -1,0 +1,74 @@
+name: 'ECS Wait Healthy'
+description: 'Wait for ECS tasks to be running and healthy in the ALB'
+
+inputs:
+  cluster:
+    description: 'ECS cluster name'
+    required: true
+  service:
+    description: 'ECS service name'
+    required: true
+  regions:
+    description: 'Space-separated list of AWS regions'
+    default: 'us-east-1'
+  deployment_ids:
+    description: 'Space-separated region=deployment_id pairs (from ecs-deploy output)'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - shell: bash
+      run: |
+        REGIONS="${{ inputs.regions }}"
+        if [ -z "$REGIONS" ]; then REGIONS="us-east-1"; fi
+
+        # Phase 1: wait for all tasks to reach RUNNING state (parallel across regions)
+        declare -A REGION_TASKS
+        for region in $REGIONS; do
+          DEPLOYMENT_ID=$(echo "${{ inputs.deployment_ids }}" | tr ' ' '\n' | grep "^${region}=" | cut -d= -f2)
+          echo "[$region] Primary deployment ID: $DEPLOYMENT_ID"
+          TASKS=$(aws ecs list-tasks --region $region \
+            --cluster ${{ inputs.cluster }} \
+            --started-by $DEPLOYMENT_ID \
+            --query 'taskArns' --output text)
+          echo "[$region] Tasks: $TASKS"
+          if [ -z "$TASKS" ]; then
+            echo "[$region] ERROR: No tasks found for deployment $DEPLOYMENT_ID"
+            exit 1
+          fi
+          REGION_TASKS[$region]="$TASKS"
+          aws ecs wait tasks-running --region $region \
+            --cluster ${{ inputs.cluster }} \
+            --tasks $TASKS &
+        done
+        wait
+        echo "All tasks running. Waiting for ALB health checks..."
+
+        # Phase 2: wait for each task to register and pass ALB health checks.
+        # Task ARNs are already known (no race); describe-tasks on a specific ARN
+        # is deterministic once the task is in RUNNING state.
+        for region in $REGIONS; do
+          TASKS="${REGION_TASKS[$region]}"
+          TG_ARN=$(aws ecs describe-services --region $region \
+            --cluster ${{ inputs.cluster }} \
+            --services ${{ inputs.service }} \
+            --query 'services[0].loadBalancers[0].targetGroupArn' --output text)
+          TG_PORT=$(aws ecs describe-services --region $region \
+            --cluster ${{ inputs.cluster }} \
+            --services ${{ inputs.service }} \
+            --query 'services[0].loadBalancers[0].containerPort' --output text)
+          for TASK_ARN in $TASKS; do
+            TASK_IP=$(aws ecs describe-tasks --region $region \
+              --cluster ${{ inputs.cluster }} \
+              --tasks $TASK_ARN \
+              --query 'tasks[0].attachments[0].details[?name==`privateIPv4Address`].value' \
+              --output text)
+            echo "[$region] Waiting for $TASK_IP:$TG_PORT to be healthy in ALB"
+            aws elbv2 wait target-in-service --region $region \
+              --target-group-arn $TG_ARN \
+              --targets Id=$TASK_IP,Port=$TG_PORT &
+          done
+        done
+        wait
+        echo "All tasks healthy in ALB."

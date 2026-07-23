@@ -33,7 +33,7 @@ jobs:
     outputs:
       image_tag: ${{ steps.output_image_tag.outputs.image_tag }}
       version_only_tag: ${{ steps.output_version_only_tag.outputs.version_only_tag }}
-      deployment_ids: ${{ steps.output_deployment_ids.outputs.deployment_ids }}
+      deployment_ids: ${{ steps.ecs-deploy.outputs.deployment_ids }}
 
     steps:
 
@@ -314,31 +314,13 @@ jobs:
     # ECS_DESIRED_COUNT can be set in GitHub Settings -> Secrets and variables -> Actions -> Variables -> Repository Variables
     # This is used to know how many container instances to start. Default is 1 if not set
     - name: Update ECS service to force new deployment of latest image
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: transformation-service
-        AWS_REGIONS: ${{ vars.AWS_REGIONS }}
-        ECS_DESIRED_COUNT: ${{ vars.ECS_DESIRED_COUNT }}
-      run: |
-        
-        if [ -z "$AWS_REGIONS" ]; then
-          echo "AWS_REGIONS not set, defaulting to us-east-1"
-          AWS_REGIONS="us-east-1"
-        fi
-        
-        if [ -z "$ECS_DESIRED_COUNT" ]; then
-          echo "ECS_DESIRED_COUNT not set, defaulting to 1"
-          ECS_DESIRED_COUNT="1"
-        fi
-        
-        DEPLOYMENT_IDS_VALUE=""
-        for region in $AWS_REGIONS; do
-          echo "Update ECS services in $region (starting $ECS_DESIRED_COUNT containers)"
-          DEPLOYMENT_ID=$(aws ecs update-service --region $region --cluster izgateway-dev-izgateway-services --service izgateway-devalb-service --force-new-deployment --enable-execute-command --desired-count $ECS_DESIRED_COUNT | jq -r '.service.deployments[] | select(.status=="PRIMARY") | .id')
-          echo "[$region] Deployment ID: $DEPLOYMENT_ID"
-          DEPLOYMENT_IDS_VALUE="${DEPLOYMENT_IDS_VALUE}${region}=${DEPLOYMENT_ID} "
-        done
-        echo "DEPLOYMENT_IDS_VALUE=${DEPLOYMENT_IDS_VALUE}" >> $GITHUB_ENV
+      id: ecs-deploy
+      uses: ./.github/actions/ecs-deploy
+      with:
+        cluster: izgateway-dev-izgateway-services
+        service: izgateway-devalb-service
+        regions: ${{ vars.AWS_REGIONS }}
+        desired_count: ${{ vars.ECS_DESIRED_COUNT }}
 
     - name: Upload build environment as artifact for failed build
       uses: actions/upload-artifact@v7
@@ -361,11 +343,6 @@ jobs:
     - name: Output the version only image tag
       id: output_version_only_tag
       run: echo "version_only_tag=${{env.VERSION_ONLY_TAG}}" >> "$GITHUB_OUTPUT"
-
-    - name: Output deployment IDs for verify job
-      id: output_deployment_ids
-      run: |
-        echo "deployment_ids=${DEPLOYMENT_IDS_VALUE}" >> "$GITHUB_OUTPUT"
 
   verify:
     needs: build
@@ -427,75 +404,15 @@ jobs:
           --protocol tcp \
           --port 443 \
           --cidr ${RUNNER_IP}/32 || true
-    # Having the wait for reloadat this point allows some of the wasted waiting time to occur during build cleanup phase
+    # Having the wait for reload at this point allows some of the wasted waiting time to occur during build cleanup phase
     # and setup phase of this job.
     - name: Wait for reload of task to complete
-      env:
-        DEPLOYMENT_IDS: ${{ needs.build.outputs.deployment_ids }}
-        AWS_REGIONS: ${{ vars.AWS_REGIONS }}
-        ECS_DESIRED_COUNT: ${{ vars.ECS_DESIRED_COUNT }}
-      run: |
-          if [ -z "$AWS_REGIONS" ]; then
-            echo "AWS_REGIONS not set, defaulting to us-east-1"
-            AWS_REGIONS="us-east-1"
-          fi
-    
-          if [ -z "$ECS_DESIRED_COUNT" ]; then
-            echo "ECS_DESIRED_COUNT not set, defaulting to 1"
-            ECS_DESIRED_COUNT="1"
-          fi
-
-          declare -A REGION_TASKS
-          for region in $AWS_REGIONS; do
-            # Parse deployment ID for this region from build job output (format: "region=id region=id ...")
-            DEPLOYMENT_ID=$(echo "$DEPLOYMENT_IDS" | tr ' ' '\n' | grep "^${region}=" | cut -d= -f2)
-            echo "[$region] Primary deployment ID: $DEPLOYMENT_ID"
-            TASKS=$(aws ecs list-tasks --region $region \
-              --cluster izgateway-dev-izgateway-services \
-              --started-by $DEPLOYMENT_ID \
-              --query 'taskArns' --output text)
-            echo "[$region] Waiting on new tasks: $TASKS"
-            if [ -z "$TASKS" ]; then
-              echo "[$region] ERROR: No tasks found for deployment $DEPLOYMENT_ID — cannot wait"
-              exit 1
-            fi
-            REGION_TASKS[$region]="$TASKS"
-            aws ecs wait tasks-running --region $region \
-              --cluster izgateway-dev-izgateway-services \
-              --tasks $TASKS &
-          done
-
-          wait
-          echo "All tasks running. Waiting for ALB health checks..."
-
-          # Now wait for each task to be registered and healthy in the ALB.
-          # No race: task ARNs came from list-tasks --started-by above; describe-tasks
-          # on a known ARN is deterministic once the task is in RUNNING state.
-          for region in $AWS_REGIONS; do
-            TASKS="${REGION_TASKS[$region]}"
-            TG_ARN=$(aws ecs describe-services --region $region \
-              --cluster izgateway-dev-izgateway-services \
-              --services izgateway-devalb-service \
-              --query 'services[0].loadBalancers[0].targetGroupArn' --output text)
-            TG_PORT=$(aws ecs describe-services --region $region \
-              --cluster izgateway-dev-izgateway-services \
-              --services izgateway-devalb-service \
-              --query 'services[0].loadBalancers[0].containerPort' --output text)
-            for TASK_ARN in $TASKS; do
-              TASK_IP=$(aws ecs describe-tasks --region $region \
-                --cluster izgateway-dev-izgateway-services \
-                --tasks $TASK_ARN \
-                --query 'tasks[0].attachments[0].details[?name==`privateIPv4Address`].value' \
-                --output text)
-              echo "[$region] Waiting for $TASK_IP:$TG_PORT to be healthy in ALB"
-              aws elbv2 wait target-in-service --region $region \
-                --target-group-arn $TG_ARN \
-                --targets Id=$TASK_IP,Port=$TG_PORT &
-            done
-          done
-
-          wait
-          echo "All tasks healthy in ALB."
+      uses: ./.github/actions/ecs-wait-healthy
+      with:
+        cluster: izgateway-dev-izgateway-services
+        service: izgateway-devalb-service
+        regions: ${{ vars.AWS_REGIONS }}
+        deployment_ids: ${{ needs.build.outputs.deployment_ids }}
           
     # Verify Filebeats is operating properly
     # Get the first service instance and check CloudWatch logs for indication that it connected
