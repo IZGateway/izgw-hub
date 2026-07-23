@@ -40,9 +40,8 @@ runs:
           REGION_TASKS[$region]="$TASKS"
           aws ecs wait tasks-running --region $region \
             --cluster ${{ inputs.cluster }} \
-            --tasks $TASKS &
+            --tasks $TASKS
         done
-        wait
         echo "All tasks running. Waiting for ALB health checks..."
 
         # Phase 2: wait for each task to register and pass ALB health checks.
