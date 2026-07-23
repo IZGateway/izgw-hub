@@ -6251,7 +6251,8 @@
                       "});",
                       "",
                       "if(pm.environment.get(\"testingEnvironment\") !== \"test\") {",
-                      "    utils.getLogs(null, pm).then((logData) => {",
+                      "    const interval = setTimeout(() => {}, 3000);",
+                      "    utils.getLogs(null, pm).then((logData) => {"
                       "        try {",
                       "            logs = logData.json();",
                       "        } catch (err) {",
