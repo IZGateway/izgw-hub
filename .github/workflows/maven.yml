@@ -33,6 +33,7 @@ jobs:
     outputs:
       image_tag: ${{ steps.output_image_tag.outputs.image_tag }}
       version_only_tag: ${{ steps.output_version_only_tag.outputs.version_only_tag }}
+      deployment_ids: ${{ steps.output_deployment_ids.outputs.deployment_ids }}
 
     steps:
 
@@ -332,7 +333,9 @@ jobs:
         
         for region in $AWS_REGIONS; do
           echo "Update ECS services in $region (starting $ECS_DESIRED_COUNT containers)"
-          aws ecs update-service --region $region --cluster izgateway-dev-izgateway-services --service izgateway-devalb-service --force-new-deployment --enable-execute-command --desired-count $ECS_DESIRED_COUNT | jq ".service.deployments[].id" &
+          DEPLOYMENT_ID=$(aws ecs update-service --region $region --cluster izgateway-dev-izgateway-services --service izgateway-devalb-service --force-new-deployment --enable-execute-command --desired-count $ECS_DESIRED_COUNT | jq -r '.service.deployments[] | select(.status=="PRIMARY") | .id')
+          echo "[$region] Deployment ID: $DEPLOYMENT_ID"
+          echo "${region}=${DEPLOYMENT_ID}" >> $GITHUB_ENV
         done
         
         wait
@@ -358,6 +361,19 @@ jobs:
     - name: Output the version only image tag
       id: output_version_only_tag
       run: echo "version_only_tag=${{env.VERSION_ONLY_TAG}}" >> "$GITHUB_OUTPUT"
+
+    - name: Output deployment IDs for verify job
+      id: output_deployment_ids
+      env:
+        AWS_REGIONS: ${{ vars.AWS_REGIONS }}
+      run: |
+        if [ -z "$AWS_REGIONS" ]; then AWS_REGIONS="us-east-1"; fi
+        IDS=""
+        for region in $AWS_REGIONS; do
+          eval "ID=\${$region}"
+          IDS="${IDS}${region}=${ID} "
+        done
+        echo "deployment_ids=${IDS}" >> "$GITHUB_OUTPUT"
 
   verify:
     needs: build
@@ -422,6 +438,10 @@ jobs:
     # Having the wait for reloadat this point allows some of the wasted waiting time to occur during build cleanup phase
     # and setup phase of this job.
     - name: Wait for reload of task to complete
+      env:
+        DEPLOYMENT_IDS: ${{ needs.build.outputs.deployment_ids }}
+        AWS_REGIONS: ${{ vars.AWS_REGIONS }}
+        ECS_DESIRED_COUNT: ${{ vars.ECS_DESIRED_COUNT }}
       run: |
           if [ -z "$AWS_REGIONS" ]; then
             echo "AWS_REGIONS not set, defaulting to us-east-1"
@@ -434,12 +454,8 @@ jobs:
           fi
 
           for region in $AWS_REGIONS; do
-            echo "Waiting for new deployment tasks to be running in $region"
-            DEPLOYMENT_ID=$(aws ecs describe-services --region $region \
-              --cluster izgateway-dev-izgateway-services \
-              --services izgateway-devalb-service \
-              --query 'services[0].deployments[?status==`PRIMARY`].id' \
-              --output text)
+            # Parse deployment ID for this region from build job output (format: "region=id region=id ...")
+            DEPLOYMENT_ID=$(echo "$DEPLOYMENT_IDS" | tr ' ' '\n' | grep "^${region}=" | cut -d= -f2)
             echo "[$region] Primary deployment ID: $DEPLOYMENT_ID"
             TASKS=$(aws ecs list-tasks --region $region \
               --cluster izgateway-dev-izgateway-services \
