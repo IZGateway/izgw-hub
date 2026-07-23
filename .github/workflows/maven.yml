@@ -331,14 +331,14 @@ jobs:
           ECS_DESIRED_COUNT="1"
         fi
         
+        DEPLOYMENT_IDS_VALUE=""
         for region in $AWS_REGIONS; do
           echo "Update ECS services in $region (starting $ECS_DESIRED_COUNT containers)"
           DEPLOYMENT_ID=$(aws ecs update-service --region $region --cluster izgateway-dev-izgateway-services --service izgateway-devalb-service --force-new-deployment --enable-execute-command --desired-count $ECS_DESIRED_COUNT | jq -r '.service.deployments[] | select(.status=="PRIMARY") | .id')
           echo "[$region] Deployment ID: $DEPLOYMENT_ID"
-          echo "${region}=${DEPLOYMENT_ID}" >> $GITHUB_ENV
+          DEPLOYMENT_IDS_VALUE="${DEPLOYMENT_IDS_VALUE}${region}=${DEPLOYMENT_ID} "
         done
-        
-        wait
+        echo "DEPLOYMENT_IDS_VALUE=${DEPLOYMENT_IDS_VALUE}" >> $GITHUB_ENV
 
     - name: Upload build environment as artifact for failed build
       uses: actions/upload-artifact@v7
@@ -364,16 +364,8 @@ jobs:
 
     - name: Output deployment IDs for verify job
       id: output_deployment_ids
-      env:
-        AWS_REGIONS: ${{ vars.AWS_REGIONS }}
       run: |
-        if [ -z "$AWS_REGIONS" ]; then AWS_REGIONS="us-east-1"; fi
-        IDS=""
-        for region in $AWS_REGIONS; do
-          eval "ID=\${$region}"
-          IDS="${IDS}${region}=${ID} "
-        done
-        echo "deployment_ids=${IDS}" >> "$GITHUB_OUTPUT"
+        echo "deployment_ids=${DEPLOYMENT_IDS_VALUE}" >> "$GITHUB_OUTPUT"
 
   verify:
     needs: build
@@ -462,6 +454,10 @@ jobs:
               --started-by $DEPLOYMENT_ID \
               --query 'taskArns' --output text)
             echo "[$region] Waiting on new tasks: $TASKS"
+            if [ -z "$TASKS" ]; then
+              echo "[$region] ERROR: No tasks found for deployment $DEPLOYMENT_ID — cannot wait"
+              exit 1
+            fi
             aws ecs wait tasks-running --region $region \
               --cluster izgateway-dev-izgateway-services \
               --tasks $TASKS &
