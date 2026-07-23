@@ -6264,6 +6264,7 @@
                       "        txData = utils.getTxData(logs);",
                       "        for (entry of txData) {",
                       "            if (entry.transactionData.serviceType != \"Gateway\") { continue; }",
+                      "            if (entry.eventId < 2) continue; // Skip internal calls",
                       "            pm.test(\"transactionData.destination.id is not null\", function () {",
                       "                pm.expect(entry.transactionData.destination.id).to.not.be.eql(null);",
                       "            });",
