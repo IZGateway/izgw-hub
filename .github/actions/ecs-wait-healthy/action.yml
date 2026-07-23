@@ -66,8 +66,7 @@ runs:
             echo "[$region] Waiting for $TASK_IP:$TG_PORT to be healthy in ALB"
             aws elbv2 wait target-in-service --region $region \
               --target-group-arn $TG_ARN \
-              --targets Id=$TASK_IP,Port=$TG_PORT &
+              --targets Id=$TASK_IP,Port=$TG_PORT
           done
         done
-        wait
         echo "All tasks healthy in ALB."
