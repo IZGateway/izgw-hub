@@ -1,6 +1,15 @@
 path.data: /usr/share/metricbeat/data
 #============================= Metricbeat Modules =============================
 metricbeat.modules:
+  - module: beat
+    metricsets:
+      - stats
+      - state
+    period: 10s
+    hosts:
+      - "http://localhost:5066"
+    xpack.enabled: true
+
   - module: system
     metricsets:
       - cpu             # CPU usage

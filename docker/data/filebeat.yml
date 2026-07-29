@@ -80,3 +80,8 @@ output.elasticsearch:
   api_key: "${ELASTIC_API_KEY}" # Set ELASTIC_API_KEY in environment
   worker: 2
   allow_older_versions: true
+
+http:
+  enabled: true
+  host: localhost
+  port: 5066

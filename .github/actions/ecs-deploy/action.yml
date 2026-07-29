@@ -1,0 +1,48 @@
+name: 'ECS Deploy'
+description: 'Force a new ECS deployment and return deployment IDs per region'
+
+inputs:
+  cluster:
+    description: 'ECS cluster name'
+    required: true
+  service:
+    description: 'ECS service name'
+    required: true
+  regions:
+    description: 'Space-separated list of AWS regions'
+    default: 'us-east-1'
+  desired_count:
+    description: 'Desired number of running tasks'
+    default: '1'
+
+outputs:
+  deployment_ids:
+    description: 'Space-separated region=deployment_id pairs'
+    value: ${{ steps.deploy.outputs.deployment_ids }}
+
+runs:
+  using: 'composite'
+  steps:
+    - id: deploy
+      shell: bash
+      run: |
+        REGIONS="${{ inputs.regions }}"
+        if [ -z "$REGIONS" ]; then REGIONS="us-east-1"; fi
+        DESIRED="${{ inputs.desired_count }}"
+        if [ -z "$DESIRED" ]; then DESIRED="1"; fi
+
+        IDS=""
+        for region in $REGIONS; do
+          echo "[$region] Updating ${{ inputs.service }} (desired: $DESIRED)"
+          DEPLOYMENT_ID=$(aws ecs update-service \
+            --region $region \
+            --cluster ${{ inputs.cluster }} \
+            --service ${{ inputs.service }} \
+            --force-new-deployment \
+            --enable-execute-command \
+            --desired-count $DESIRED \
+            | jq -r '.service.deployments[] | select(.status=="PRIMARY") | .id')
+          echo "[$region] Deployment ID: $DEPLOYMENT_ID"
+          IDS="${IDS}${region}=${DEPLOYMENT_ID} "
+        done
+        echo "deployment_ids=${IDS}" >> "$GITHUB_OUTPUT"
