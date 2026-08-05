@@ -6,13 +6,13 @@
 	<parent>
         <groupId>gov.cdc.izgw</groupId>
         <artifactId>izgw-bom</artifactId>
-        <version>1.11.0-SNAPSHOT</version>
+        <version>1.13.0</version>
         <relativePath />
 	</parent>
 	<artifactId>izgw-hub</artifactId>
 	<packaging>jar</packaging>
-	<version>2.14.0-IZGW-SNAPSHOT</version>
-	<name>IZ Gateway Hub 2.14.0</name>
+	<version>2.15.0-IZGW-SNAPSHOT</version>
+	<name>IZ Gateway Hub 2.15.0</name>
 	<description>IZ Gateway Hub</description>
 	<properties>
 		<maven.build.timestamp.format>yyyyMMddHHmm</maven.build.timestamp.format>
@@ -95,7 +95,7 @@
         <dependency>
             <groupId>gov.cdc.izgw</groupId>
             <artifactId>izgw-core</artifactId>
-            <version>3.3.1-SNAPSHOT</version>
+            <version>3.4.0</version>
             <exclusions>
                 <!-- izgw-core includes both webflux-ui and webmvc-ui; hub is a Tomcat/MVC app.
                      Having webflux-ui on the classpath triggers SpringDoc WebFlux auto-config,
