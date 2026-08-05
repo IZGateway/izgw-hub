@@ -1,3 +1,18 @@
+# IZ Gateway Release 2.15.0
+
+- IGDD-3056 — Ready to Ship — Fix TransactionData logging for WSDL GET requests (shared with Xform Service)
+- IGDD-3101 — Ready to Ship — Remove Aurora RDS artifacts from izgw-hub Docker image
+- Update dependency versions and update Base Docker Image
+
+# IZ Gateway Release 2.14.0
+
+- IGDD-2705 — Implement ApiKeyPrincipalProvider in Hub. Adds HS256 JWT-based API key authentication to Hub with secret caching, DynamoDB credential lookup, and revocation propagation via SQS.
+- Update dependency versions and update Base Docker Image
+
+# IZ Gateway Release 2.13.6
+
+- Update Base Docker Image
+
 # IZ Gateway Release 2.13.5
 
 - Update dependency versions and update Base Docker Image
