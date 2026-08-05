@@ -55,12 +55,10 @@ When Hub is configured with `server.ssl.client-auth=want` (required to accept JW
 ### D5 — Revocation propagates `jti` via existing SQS refresh mechanism
 `DbController`'s `/rest/refresh?all=true` endpoint and `RefreshQueueService` already propagate refresh events to all Hub instances via SQS. Config Console calls this endpoint after marking a `jti` revoked. Hub's `ApiKeyPrincipalProvider` subscribes to the refresh event, evicts the `jti` from `credentialCache`, and inserts a REVOKED sentinel with TTL = max token lifetime — ensuring no subsequent cache miss can re-validate the revoked credential. No new SQS topic or SNS resource is needed.
 
-### D7 — `env` claim is a numeric integer, not a string
-The JWT `env` claim carries the environment as a numeric ID matching `SystemUtils.getDestType()` (1=Production, 2=Testing, 3=Onboarding, 4=Staging, 5=Development) rather than the human-readable string name (e.g., `"Development"`). Hub parses the claim as a `Number` and compares it to `SystemUtils.getDestType()` directly. A missing or non-numeric `env` claim is rejected.
+### D7 — Environment authorization is a server-side `environments` list, not a JWT claim
+The environment(s) a credential is valid in are stored on the `ApiKeyCredential` record as a server-side `environments` list — numeric IDs from the IZG `Environment` enumeration (1=PRODUCTION, 2=TEST, 3=ONBOARD, 4=STAGE, 5=DEV, 6=UNKNOWN) — and are **not** carried in the JWT. At routing time Hub looks the credential up by `jti` and validates that its own environment (`SystemUtils.getDestType()`) is contained in the credential's `environments` list; a request whose target environment is absent from the list is rejected (`null` → 401). Standard sender credentials contain exactly one environment ID; admin/operational credentials MAY contain several.
 
-The numeric form is required for referential integrity with other IZG database tables that key on the numeric environment identifier. The string-name form used in the original ADR examples was an implicit choice that was not evaluated against the data model; this decision supersedes it. Config Console must emit the numeric ID when signing JWTs.
-
-The `env` string passed internally to `ApiKeyCredentialRepository.findByEnvAndJti()` is `String.valueOf(envInt)` (e.g., `"5"`), so DynamoDB sort keys take the form `5#<jti>` rather than `Development#<jti>`.
+Keeping the permitted environments server-side (rather than in the token) lets the set change under access-control review without reissuing the credential — the same rationale that keeps `useTypes` off the token. Because the environment is not part of the credential's identity, the DynamoDB sort key is simply `{jti}` with no environment prefix; `ApiKeyCredentialRepository.findByJti(jti)` reads the record directly by `jti`.
 
 ### D6 — `jwt.test-secret` property bypasses Secrets Manager for local dev
 When `jwt.test-secret` is set, `ApiKeyPrincipalProvider` uses that secret for all `kid` values instead of calling Secrets Manager. This allows local testing without AWS credentials. The property must not be set in non-local profiles.

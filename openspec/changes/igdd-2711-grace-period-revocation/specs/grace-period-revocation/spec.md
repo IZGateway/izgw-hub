@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Scheduled grace-period revocation sweep
-Hub SHALL run a scheduled, in-process job that periodically revokes superseded API-key credentials whose grace period has expired. On each cycle the job SHALL query for candidates (`status == grace_period`, non-null `graceExpiresAt`, `graceExpiresAt <= now`, current environment) and, for each candidate, transition it to `revoked`.
+Hub SHALL run a scheduled, in-process job that periodically revokes superseded API-key credentials whose grace period has expired. On each cycle the job SHALL query for candidates (`status == grace_period`, non-null `graceExpiresAt`, `graceExpiresAt <= now`) across all `ApiKeyCredential` records and, for each candidate, transition it to `revoked`.
 
 The run interval SHALL be configurable (`apikey.grace-revocation.*`), and the job SHALL be guarded so that, in a multi-instance Hub deployment, a single instance performs revocation per cycle.
 

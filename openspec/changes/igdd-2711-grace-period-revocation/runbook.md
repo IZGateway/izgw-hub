@@ -16,9 +16,11 @@ period expires. Satisfies IGDD-2711 AC #3 (failure detection + manual remediatio
 
 `GracePeriodRevocationScheduler` runs inside Hub on a fixed interval
 (`apikey.grace-revocation.interval`, default 1h; gated by `apikey.grace-revocation.enabled`). Each
-cycle it finds credentials that are `active` with a `graceExpiresAt` in the past, sets them to
+cycle it finds credentials that are `grace_period` with a `graceExpiresAt` in the past, sets them to
 `revoked` in DynamoDB, emits an `API_KEY_REVOKED` audit event, and evicts the key from the local
-credential cache. A single instance runs per cycle (host-ordering election). Revocation is idempotent.
+credential cache. Every enabled instance runs each cycle; a conditional DynamoDB write
+(`revokeIfGracePeriod`, which revokes only while `status = grace_period`) ensures each key is revoked
+and audited exactly once across the fleet. Revocation is idempotent.
 
 ## Log signals
 
@@ -55,15 +57,15 @@ grace period:
    cause a missed run. Restarting/restoring Hub lets the next scheduled cycle catch up automatically
    (the job is idempotent and processes all expired-grace keys each run).
 2. **If Hub cannot be restored promptly, revoke manually via Config Console** — for each affected key
-   (status `active` with `graceExpiresAt` in the past), call:
+   (status `grace_period` with `graceExpiresAt` in the past), call:
    ```
    DELETE /api/apikeys/{jti}
    ```
    Config Console sets the credential to `revoked` and propagates cache eviction to all Hub instances
    via `/rest/refresh`. This is the same end state the job would have produced.
-3. **Identify affected keys** — query the `ApiKeyCredential` records for the environment where
-   `status = active` and `graceExpiresAt < now` (e.g. via the Config Console key list or a DynamoDB
-   query on `entityType = ApiKeyCredential`, sort key prefix `{env}#`).
+3. **Identify affected keys** — query the `ApiKeyCredential` records where
+   `status = grace_period` and `graceExpiresAt < now` (e.g. via the Config Console key list or a DynamoDB
+   query on `entityType = ApiKeyCredential`).
 4. **Verify** — confirm the keys now show `revoked` and that an `API_KEY_REVOKED` audit event was
    recorded for each.
 
