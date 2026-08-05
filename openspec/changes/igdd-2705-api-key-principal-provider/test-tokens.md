@@ -23,7 +23,7 @@ This sets `server.ssl.client-auth=want`, `jwt.issuer=http://localhost:3000`, and
 | Issuer | `http://localhost:3000` |
 | Subject (jurisdictionId) | `"42"` (numeric string — matches legacy IZG jurisdiction ID scheme) |
 | JTI | `018f4e2a-5678-7abc-8def-000000000002` |
-| Environment | `5` (Development) |
+| Environments (server-side on the DynamoDB record — NOT a JWT claim) | `[5]` (Development) |
 | UPN | `test.example.gov` |
 | Roles | `ads`, `soap` |
 | Expires | 2038-01-19 (far future — dev only) |
@@ -37,9 +37,9 @@ Before using this token, create the matching `ApiKeyCredential` record in your l
 ```json
 {
   "entityType": "ApiKeyCredential",
-  "sortKey": "5#018f4e2a-5678-7abc-8def-000000000002",
+  "sortKey": "018f4e2a-5678-7abc-8def-000000000002",
   "jti": "018f4e2a-5678-7abc-8def-000000000002",
-  "env": "5",
+  "environments": [5],
   "status": "active",
   "jurisdictionId": "42",
   "issuedAt": "2025-06-04T00:00:00Z",
@@ -55,7 +55,7 @@ const jwt = require('jsonwebtoken');
 console.log(jwt.sign(
   { iss:'http://localhost:3000', sub:'42', jti:'018f4e2a-5678-7abc-8def-000000000002',
     iat:Math.floor(Date.now()/1000), exp:Math.floor(Date.now()/1000)+(365*24*3600),
-    upn:'test.example.gov', roles:['ads','soap'], env:5 },
+    upn:'test.example.gov', roles:['ads','soap'] },
   'izg-test-secret-igdd-2705-do-not-use-in-production',
   { algorithm:'HS256', header:{ kid:'00000000-0000-0000-0000-000000000001' } }
 ));
@@ -78,9 +78,7 @@ const token = jwt.sign(
     iat: Math.floor(Date.now() / 1000),
     exp: Math.floor(Date.now() / 1000) + (365 * 24 * 3600),
     upn: 'test.example.gov',
-    env: 5,
-    roles: ['ads', 'soap'],
-    env: 5
+    roles: ['ads', 'soap']
   },
   'izg-test-secret-igdd-2705-do-not-use-in-production',
   { algorithm: 'HS256', header: { kid: '00000000-0000-0000-0000-000000000001' } }
