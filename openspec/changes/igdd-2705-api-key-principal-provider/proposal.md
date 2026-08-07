@@ -23,6 +23,19 @@ IZ Gateway Hub currently authenticates callers exclusively via mTLS client certi
 
 ### Modified Capabilities
 
+### Out of Scope — use-type enforcement
+
+This change reconciles only the `environments` half of the IGDD-3140 authorization model.
+The second half — enforcing `credential.useTypes ∩ destination Jurisdiction.allowedUseTypes ≠ ∅`
+at routing time, with an empty `allowedUseTypes` meaning deny-all, and rejection surfacing as a
+new `izgw-core` `SecurityFault` — is **not specified or implemented here**. It requires a
+`useTypes` field on `ApiKeyCredential`, an `allowedUseTypes` field on `Jurisdiction`, and a new
+core fault type, none of which this change touches.
+
+Tracked under **IGDD-3257** (*IZG Hub: Enhancement to API-key authentication with useTypes*).
+See `design.md` § D10 for the model, the rationale for keeping `useTypes` server-side, and the
+interim exposure while 3257 is outstanding.
+
 ## Impact
 
 - **`HubPrincipalService`** — auth chain updated; JWT-only clients now supported with `client-auth=want`
