@@ -45,7 +45,15 @@
 
 ## 10. Bug Fix — AccessControlService Role Check
 
-- [x] 10.1 Fix `AccessControlService.isUserInRole()` to fall back to checking `ApiKeyPrincipal.getRoles()` when the DynamoDB access control table has no entry for the principal. Without this fix, API key callers always received 401 on protected endpoints because `AccessControlValve` identifies users by `principal.getName()` (the `upn` value), which has no entry in the cert-based access control table.
+> **SUPERSEDED — do not implement.** The `jwt-upn-authorization` change reversed this task:
+> the JWT-claim roles fallback was removed from `AccessControlService.isUserInRole()`, and
+> `ApiKeyPrincipal` no longer carries roles at all. Role assignments come solely from the
+> DynamoDB AccessGroup table, keyed on `principal.getName()` (the `upn` for JWT clients, the
+> CN for cert clients) — the same lookup used for mTLS callers. The 401 problem described
+> below is instead resolved by provisioning the credential's UPN into an AccessGroup.
+> Retained for history; see `openspec/changes/jwt-upn-authorization/`.
+
+- [x] ~~10.1 Fix `AccessControlService.isUserInRole()` to fall back to checking `ApiKeyPrincipal.getRoles()` when the DynamoDB access control table has no entry for the principal. Without this fix, API key callers always received 401 on protected endpoints because `AccessControlValve` identifies users by `principal.getName()` (the `upn` value), which has no entry in the cert-based access control table.~~
 
 ## 12. OCSP Revocation for Header Certificate Path (izgw-core)
 

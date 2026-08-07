@@ -25,8 +25,16 @@ This sets `server.ssl.client-auth=want`, `jwt.issuer=http://localhost:3000`, and
 | JTI | `018f4e2a-5678-7abc-8def-000000000002` |
 | Environments (server-side on the DynamoDB record — NOT a JWT claim) | `[5]` (Development) |
 | UPN | `test.example.gov` |
-| Roles | `ads`, `soap` |
+| Roles | `ads`, `soap` — **inert, see note below** |
 | Expires | 2038-01-19 (far future — dev only) |
+
+> **The `roles` claim is ignored by the Hub.** The `jwt-upn-authorization` change removed
+> JWT-claim roles: `ApiKeyPrincipal` carries no roles, and `AccessControlValve` resolves
+> roles from the DynamoDB AccessGroup table keyed on `principal.getName()` (the `upn`).
+> The claim is left in the snippets below only because it is present in previously issued
+> tokens; new tokens need not include it. To exercise a protected endpoint, provision
+> `test.example.gov` into an AccessGroup carrying the roles you need (`soap` for the SOAP
+> endpoints; `users` plus an `ads`-prefixed group for ADS/DEX).
 
 **Token:** regenerate using the Node.js snippet below (`dns` claim replaced by `upn`; the previous token is no longer valid).
 
