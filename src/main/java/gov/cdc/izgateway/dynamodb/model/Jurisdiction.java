@@ -10,6 +10,8 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 
+import java.util.Set;
+
 /**
  * An entity to get jurisdiction information
  * 
@@ -50,6 +52,12 @@ public class Jurisdiction extends DynamoDbAudit implements DynamoDbEntity, IJuri
 		this.jurisdictionId = that.getJurisdictionId();
 		this.name = that.getName();
 		this.prefix = that.getPrefix();
+		// allowedUseTypes is not on IJurisdiction (it is a DynamoDB-only attribute), so it can only be
+		// copied when the source is itself a Jurisdiction. Without this a copy would silently drop the
+		// jurisdiction's use-type policy, which is deny-all when empty (IGDD-3257).
+		if (that instanceof Jurisdiction j) {
+			this.allowedUseTypes = j.getAllowedUseTypes();
+		}
 	}
 
     @Schema(description="The identifier of the jurisdiction.")
@@ -69,7 +77,12 @@ public class Jurisdiction extends DynamoDbAudit implements DynamoDbEntity, IJuri
     
     @Schema(description="The vendor for the jurisdiction.")
     private String vendor;
-    
+
+    @Schema(description="The use-types (PATIENT, PROVIDER, PUBLIC_HEALTH) this jurisdiction accepts from "
+    		+ "API-key senders. Intersected at routing time with the calling credential's useTypes; an empty "
+    		+ "or absent set denies all API-key senders (IGDD-3257). Does not affect mTLS certificate callers.")
+    private Set<String> allowedUseTypes;
+
 	@Override
 	public String getPrimaryId() {
 		return  Integer.toString(jurisdictionId);

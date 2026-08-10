@@ -69,10 +69,10 @@ class GracePeriodRevocationSchedulerTests {
     }
 
     @Test
-    void wonConditionalWrite_revokedOutcome_isAuditedAndEvicted() {
-        ApiKeyCredential graceKey = revokedCandidate(JTI, NEW_JTI);
-        when(credentialRepository.findGraceRevocationCandidates(anyString())).thenReturn(List.of(graceKey));
-        when(credentialRepository.terminateIfGracePeriod(eq(graceKey), any(Instant.class),
+    void wonConditionalWrite_isAuditedAndEvicted() {
+        ApiKeyCredential graceKey = credential(JTI, NEW_JTI);
+        when(credentialRepository.findGraceRevocationCandidates()).thenReturn(List.of(graceKey));
+        when(credentialRepository.revokeIfGracePeriod(eq(graceKey), any(Instant.class),
                 eq(ApiKeyAuditLogger.SYSTEM_GRACE_REVOCATION))).thenReturn(true);
 
         GracePeriodRevocationScheduler.CycleResult result = scheduler.runRevocationCycle();
@@ -110,10 +110,10 @@ class GracePeriodRevocationSchedulerTests {
 
     @Test
     void lostConditionalWrite_noAuditNoEvict() {
-        // Another instance already terminated it: the conditional write fails → no audit, no eviction.
-        ApiKeyCredential graceKey = revokedCandidate(JTI, NEW_JTI);
-        when(credentialRepository.findGraceRevocationCandidates(anyString())).thenReturn(List.of(graceKey));
-        when(credentialRepository.terminateIfGracePeriod(any(), any(), any())).thenReturn(false);
+        // Another instance already revoked it: the conditional write fails → no audit, no eviction.
+        ApiKeyCredential graceKey = credential(JTI, NEW_JTI);
+        when(credentialRepository.findGraceRevocationCandidates()).thenReturn(List.of(graceKey));
+        when(credentialRepository.revokeIfGracePeriod(any(), any(), any())).thenReturn(false);
 
         GracePeriodRevocationScheduler.CycleResult result = scheduler.runRevocationCycle();
 
@@ -126,7 +126,7 @@ class GracePeriodRevocationSchedulerTests {
 
     @Test
     void noCandidates_performsNoRevocations() {
-        when(credentialRepository.findGraceRevocationCandidates(anyString())).thenReturn(List.of());
+        when(credentialRepository.findGraceRevocationCandidates()).thenReturn(List.of());
 
         GracePeriodRevocationScheduler.CycleResult result = scheduler.runRevocationCycle();
 
@@ -138,15 +138,15 @@ class GracePeriodRevocationSchedulerTests {
     }
 
     @Test
-    void multipleCandidates_auditsOnlyTheOnesWonWithCorrectOutcome() {
-        ApiKeyCredential wonRevoked = revokedCandidate("jti-won-revoked", "new-1");
-        ApiKeyCredential lost = revokedCandidate("jti-lost", "new-x");
-        ApiKeyCredential wonExpired = expiredCandidate("jti-won-expired", "new-2");
-        when(credentialRepository.findGraceRevocationCandidates(anyString()))
-                .thenReturn(List.of(wonRevoked, lost, wonExpired));
-        when(credentialRepository.terminateIfGracePeriod(eq(wonRevoked), any(), any())).thenReturn(true);
-        when(credentialRepository.terminateIfGracePeriod(eq(lost), any(), any())).thenReturn(false);
-        when(credentialRepository.terminateIfGracePeriod(eq(wonExpired), any(), any())).thenReturn(true);
+    void multipleCandidates_auditsOnlyTheOnesWon() {
+        ApiKeyCredential won1 = credential("jti-won-1", "new-1");
+        ApiKeyCredential lost = credential("jti-lost", "new-x");
+        ApiKeyCredential won2 = credential("jti-won-2", "new-2");
+        when(credentialRepository.findGraceRevocationCandidates())
+                .thenReturn(List.of(won1, lost, won2));
+        when(credentialRepository.revokeIfGracePeriod(eq(won1), any(), any())).thenReturn(true);
+        when(credentialRepository.revokeIfGracePeriod(eq(lost), any(), any())).thenReturn(false);
+        when(credentialRepository.revokeIfGracePeriod(eq(won2), any(), any())).thenReturn(true);
 
         GracePeriodRevocationScheduler.CycleResult result = scheduler.runRevocationCycle();
 

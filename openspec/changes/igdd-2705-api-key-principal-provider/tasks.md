@@ -1,7 +1,7 @@
 ## 1. DynamoDB Entity and Repository
 
-- [ ] 1.1 Create `ApiKeyCredential.java` in `gov.cdc.izgateway.dynamodb.model` — `@DynamoDbBean` extending `DynamoDbAudit`; fields: `jti`, `environments` (List of numeric env IDs), `status`, `jurisdictionId`, `issuedAt` (`Instant`), `expiresAt` (`Instant`), `revokedAt` (`Instant`, nullable), `revokedBy` (String, nullable); sort key `{jti}`
-- [ ] 1.2 Create `ApiKeyCredentialRepository.java` in `gov.cdc.izgateway.dynamodb.repository` — extends `DynamoDbRepository<ApiKeyCredential>`; implement `findByJti(String jti)` returning `Optional<ApiKeyCredential>` via `DynamoDbEnhancedClient` GetItem on sort key `{jti}`
+- [x] 1.1 Create `ApiKeyCredential.java` in `gov.cdc.izgateway.dynamodb.model` — `@DynamoDbBean` extending `DynamoDbAudit`; fields: `jti`, `environments` (List of numeric env IDs), `status`, `jurisdictionId`, `issuedAt` (`Instant`), `expiresAt` (`Instant`), `revokedAt` (`Instant`, nullable), `revokedBy` (String, nullable); sort key `{jti}`
+- [x] 1.2 Create `ApiKeyCredentialRepository.java` in `gov.cdc.izgateway.dynamodb.repository` — extends `DynamoDbRepository<ApiKeyCredential>`; implement `findByJti(String jti)` returning `Optional<ApiKeyCredential>` via `DynamoDbEnhancedClient` GetItem on sort key `{jti}`
 - [x] 1.3 Register `ApiKeyCredential` in `DynamoDbRepositoryFactory` so it is included in table scanning and repository wiring
 
 ## 2. ApiKeyPrincipal
@@ -19,9 +19,9 @@
 - [x] 4.2 Implement `getPrincipal(HttpServletRequest)` — step 1: extract Bearer token via `JwtTokenExtractor`; return `null` on absent/non-Bearer header; step 2: parse JWT header only (use `com.nimbusds.jwt.SignedJWT.parse()`) to extract `kid`, `alg`, `iss`; return `null` if `alg != HS256`, `kid` is blank, or `iss` doesn't match `jwt.issuer`
 - [x] 4.3 Implement secret resolution — check `secretCache` by `kid`; on miss, call `SecretsManagerClient.getSecretValue(req -> req.secretId(config.secretsManagerSecretName()).versionId(kid))`; if `jwt.test-secret` is set, skip SM and use that value for all kids; cache the secret; return `null` if SM throws `ResourceNotFoundException`
 - [x] 4.4 Implement HS256 signature verification — create `MACVerifier(secretBytes)` from `com.nimbusds.jose`; call `signedJwt.verify(verifier)`; return `null` on failure
-- [ ] 4.5 Implement claims validation — after successful verification, extract payload claims; validate: (a) `exp` not passed (allow 30s clock skew), (b) `iss` matches `jwt.issuer`; return `null` on any failure. (Environment is NOT a claim — it is checked against the credential's server-side `environments` list after lookup, task 4.7.)
-- [ ] 4.6 Implement credential cache lookup — check `credentialCache` by `jti`; on hit, return cached `ApiKeyPrincipal` (or `null` if value is `Boolean.TRUE` REVOKED sentinel); on miss, call `apiKeyCredentialRepository.findByJti(jti)`
-- [ ] 4.7 Implement DynamoDB status handling — if `status == active` AND the request's target environment (`SystemUtils.getDestType()`) is in the credential's `environments` list: construct `ApiKeyPrincipal`, store in `credentialCache` (5m TTL), return principal; if the record is absent, or the credential is `active` but the target environment is NOT in `environments`: store in `absentCache` (5m TTL — short TTL so an `environments` update takes effect promptly), return `null`; if `status != active` (revoked): store in `revokedCache` (366d TTL), return `null`
+- [x] 4.5 Implement claims validation — after successful verification, extract payload claims; validate: (a) `exp` not passed (allow 30s clock skew), (b) `iss` matches `jwt.issuer`; return `null` on any failure. (Environment is NOT a claim — it is checked against the credential's server-side `environments` list after lookup, task 4.7.)
+- [x] 4.6 Implement credential cache lookup — check `credentialCache` by `jti`; on hit, return cached `ApiKeyPrincipal` (or `null` if value is `Boolean.TRUE` REVOKED sentinel); on miss, call `apiKeyCredentialRepository.findByJti(jti)`
+- [x] 4.7 Implement DynamoDB status handling — if `status == active` AND the request's target environment (`SystemUtils.getDestType()`) is in the credential's `environments` list: construct `ApiKeyPrincipal`, store in `credentialCache` (5m TTL), return principal; if the record is absent, or the credential is `active` but the target environment is NOT in `environments`: store in `absentCache` (5m TTL — short TTL so an `environments` update takes effect promptly), return `null`; if `status != active` (revoked): store in `revokedCache` (366d TTL), return `null`
 - [x] 4.8 Implement revocation eviction method `evictCredential(String jti)` — evict `jti` from `credentialCache` and `absentCache`, insert into `revokedCache` with 366d TTL
 
 ## 5. Authentication Enforcement Filter
@@ -66,11 +66,11 @@
 - [x] 9.2 Unit test — wrong algorithm (RS256 JWT) → returns `null`, no SM call
 - [x] 9.3 Unit test — wrong issuer → returns `null`, no SM call
 - [x] 9.4 Unit test — expired `exp` claim → returns `null`
-- [ ] 9.5 Unit test — request target environment not in credential's `environments` list → returns `null`
+- [x] 9.5 Unit test — request target environment not in credential's `environments` list → returns `null`
 - [x] 9.6 Unit test — REVOKED sentinel in credential cache → returns `null`, no DynamoDB call
 - [x] 9.7 Unit test — DynamoDB returns revoked status → returns `null`, inserts REVOKED sentinel
 - [x] 9.8 Unit test — `evictCredential` inserts REVOKED sentinel and subsequent lookup returns `null`
-- [ ] 9.9 Unit test `ApiKeyCredentialRepository` — `findByJti` constructs sort key `{jti}` and returns `Optional.empty()` on miss
+- [x] 9.9 Unit test `ApiKeyCredentialRepository` — `findByJti` constructs sort key `{jti}` and returns `Optional.empty()` on miss
 - [x] 9.10 Verify `AuthenticationEnforcementFilter` returns 401 for `UnauthenticatedPrincipal` and passes through for authenticated principal
 
 ## 11. UPN Claim — Authorization Identity Fix

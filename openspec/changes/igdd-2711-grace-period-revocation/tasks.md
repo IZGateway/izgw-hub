@@ -6,8 +6,8 @@
 ## 1. Entity and Repository
 
 - [x] 1.1 Add `graceExpiresAt` (`Instant`, nullable) and `supersededBy` (`String`, nullable) to `ApiKeyCredential` (serialized as ISO-8601 like `issuedAt`/`expiresAt`).
-- [ ] 1.2 Add `findGraceRevocationCandidates()` to `ApiKeyCredentialRepository` — scan all credential records via `findByType("ApiKeyCredential")` (the sort key is `{jti}`, so there is no environment prefix to scope on) + in-memory filter `status == "grace_period" && graceExpiresAt != null && graceExpiresAt <= now`.
-- [ ] 1.3 Remove the old environment-prefix derivation (`String.valueOf(SystemUtils.getDestType())`) — the `ApiKeyCredential` sort key is `{jti}` alone and a credential's permitted environments are a server-side `environments` list, so the sweep is environment-agnostic and evaluates every credential record.
+- [x] 1.2 Add `findGraceRevocationCandidates()` to `ApiKeyCredentialRepository` — scan all credential records via `findAll()` (partition = `entityType`; the sort key is `{jti}`, so there is no environment prefix to scope on) + in-memory filter `status == "grace_period" && graceExpiresAt != null && graceExpiresAt <= now`.
+- [x] 1.3 Remove the old environment-prefix derivation (`String.valueOf(SystemUtils.getDestType())`) — the `ApiKeyCredential` sort key is `{jti}` alone and a credential's permitted environments are a server-side `environments` list, so the sweep is environment-agnostic and evaluates every credential record.
 
 ## 2. Audit event
 
@@ -37,7 +37,7 @@
 
 ## 6. Tests
 
-- [ ] 6.1 Repository logic — `selectGraceCandidates` (6 cases: past/now/future/null grace, non-grace, mixed) + `buildGraceRevokeRequest` (asserts the conditional UpdateItem: key `{jti}`, condition `status = grace_period`, revoked/timestamp/actor values) unit-tested in `ApiKeyCredentialRepositoryTests`. The DynamoDB calls (`findByType`, `updateItem`) are thin delegations covered by integration/dev testing.
+- [x] 6.1 Repository logic — `selectGraceCandidates` (6 cases: past/now/future/null grace, non-grace, mixed) + `buildGraceRevokeRequest` (asserts the conditional UpdateItem: key `{jti}`, condition `status = grace_period`, revoked/timestamp/actor values) unit-tested in `ApiKeyCredentialRepositoryTests`. The DynamoDB calls (`findByType`, `updateItem`) are thin delegations covered by integration/dev testing.
 - [ ] 6.2 Entity round-trip — `graceExpiresAt`/`supersededBy` serialize/deserialize without precision loss; legacy null record. **Deferred to integration** — genuinely needs a real DynamoDB table (no DynamoDB Local/Testcontainers harness in this repo); will be covered by the IGDD-2707 end-to-end validation.
 - [x] 6.3 Scheduler — winning conditional write → audit emitted with `supersededBy` + local cache evicted (`wonConditionalWrite_isAuditedAndEvicted`); losing write (another instance won) → no audit/evict (`lostConditionalWrite_noAuditNoEvict`); mixed batch audits only the winners.
 - [x] 6.5 Scheduler — idempotent skip of already-revoked. (`nonActiveCandidate_isSkipped`, `multipleCandidates_revokesOnlyActiveOnes`)

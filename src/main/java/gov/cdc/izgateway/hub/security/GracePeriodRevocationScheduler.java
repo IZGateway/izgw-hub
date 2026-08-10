@@ -4,7 +4,6 @@ import gov.cdc.izgateway.dynamodb.model.ApiKeyCredential;
 import gov.cdc.izgateway.dynamodb.repository.ApiKeyCredentialRepository;
 import gov.cdc.izgateway.logging.event.EventId;
 import gov.cdc.izgateway.logging.markers.Markers2;
-import gov.cdc.izgateway.utils.SystemUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -99,13 +98,13 @@ public class GracePeriodRevocationScheduler {
      * may be layered on these log events later).
      */
     CycleResult runRevocationCycle() {
-        // Records are keyed by the numeric environment (e.g. "5"), matching ApiKeyPrincipalProvider's
-        // String.valueOf(envInt) and the {env}#{jti} sort key — NOT the human-readable dest-type name.
-        String env = String.valueOf(SystemUtils.getDestType());
-        log.info(Markers2.append("eventType", "GRACE_REVOCATION_STARTED", "environment", env),
+        // The credential sort key is {jti} with no environment prefix (IGDD-3140), so the sweep is
+        // environment-agnostic: it evaluates every ApiKeyCredential record. A key's permitted
+        // environments are a server-side `environments` list, not part of the key.
+        log.info(Markers2.append("eventType", "GRACE_REVOCATION_STARTED"),
                 "Grace-period revocation cycle started");
 
-        List<ApiKeyCredential> candidates = credentialRepository.findGraceRevocationCandidates(env);
+        List<ApiKeyCredential> candidates = credentialRepository.findGraceRevocationCandidates();
 
         int evaluated = candidates.size();
         int expired = 0;
@@ -127,7 +126,6 @@ public class GracePeriodRevocationScheduler {
 
         log.info(Markers2.append(
                 "eventType", "GRACE_REVOCATION_RUN",
-                "environment", env,
                 "evaluated", evaluated,
                 "expired", expired,
                 "revoked", revoked

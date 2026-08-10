@@ -3,6 +3,7 @@ package gov.cdc.izgateway.hub.service.accesscontrol;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestMethod;
 
@@ -11,6 +12,7 @@ import gov.cdc.izgateway.dynamodb.model.AccessGroup;
 import gov.cdc.izgateway.dynamodb.model.AllowedUser;
 import gov.cdc.izgateway.dynamodb.model.DenyListRecord;
 import gov.cdc.izgateway.dynamodb.model.FileType;
+import gov.cdc.izgateway.dynamodb.model.Jurisdiction;
 import gov.cdc.izgateway.hub.repository.IAccessControlRepository;
 import gov.cdc.izgateway.hub.repository.IAccessGroupRepository;
 import gov.cdc.izgateway.hub.repository.IAllowedUserRepository;
@@ -19,10 +21,16 @@ import gov.cdc.izgateway.hub.repository.IFileTypeRepository;
 import gov.cdc.izgateway.hub.repository.RepositoryFactory;
 import gov.cdc.izgateway.logging.RequestContext;
 import gov.cdc.izgateway.logging.markers.Markers2;
+import gov.cdc.izgateway.hub.security.ApiKeyPrincipal;
+import gov.cdc.izgateway.hub.security.UseType;
+import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.model.IFileType;
+import gov.cdc.izgateway.model.IJurisdiction;
 import gov.cdc.izgateway.security.Roles;
 import gov.cdc.izgateway.service.IAccessControlRegistry;
 import gov.cdc.izgateway.service.IAccessControlService;
+import gov.cdc.izgateway.service.IDestinationService;
+import gov.cdc.izgateway.service.IJurisdictionService;
 import gov.cdc.izgateway.soap.fault.SecurityFault;
 import lombok.extern.slf4j.Slf4j;
 import lombok.Getter;
@@ -59,10 +67,23 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
     
 	private final IAccessControlRegistry registry;
     private final AccessControlMigrator migrator;
+    /** Resolves a destId to its destination so the destination's jurisdiction can be read (IGDD-3257). */
+    private final IDestinationService destinationService;
+    /** Supplies the destination jurisdiction's allowedUseTypes (IGDD-3257). */
+    private final IJurisdictionService jurisdictionService;
 
     @Getter
     @Value("${hub.access-control.action:warn}")
     protected String accessControlAction;
+
+    /**
+     * Action taken when an API-key credential's useTypes do not intersect the destination jurisdiction's
+     * allowedUseTypes: {@code deny} rejects the message, anything else logs a warning and allows it.
+     * Defaults to {@code warn} — see {@link #checkUseTypeAccessToDestination(String)} for why.
+     */
+    @Getter
+    @Value("${hub.access-control.use-type-action:warn}")
+    protected String useTypeAction;
 
     private OldModelHelper oldModelHelper; 
     private NewModelHelper newModelHelper;
@@ -93,9 +114,14 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
      * @param factory The repository factory to use
      * @param registry	The registry for managing access control to methods
      * @param migrator The access control migrator
+     * @param destinationService	Resolves destIds for the use-type check; injected lazily so access
+     * 		control does not participate in destination-service startup ordering
+     * @param jurisdictionService	Supplies destination jurisdictions for the use-type check; injected lazily
+     * 		for the same reason
      */
     @Autowired
-    public AccessControlService(RepositoryFactory factory, IAccessControlRegistry registry, AccessControlMigrator migrator) {
+    public AccessControlService(RepositoryFactory factory, IAccessControlRegistry registry, AccessControlMigrator migrator,
+    		@Lazy IDestinationService destinationService, @Lazy IJurisdictionService jurisdictionService) {
         this.accessControlRepository = factory.accessControlRepository();
         this.registry = registry;
         this.accessGroupRepository = factory.accessGroupRepository();
@@ -103,6 +129,8 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
         this.denyListRecordRepository = factory.denyListRecordRepository();
         this.fileTypeRepository = factory.fileTypeRepository();
         this.migrator = migrator;
+        this.destinationService = destinationService;
+        this.jurisdictionService = jurisdictionService;
     }
     
 	/**
@@ -295,9 +323,80 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
         		// Log a warning but allow the message to be sent
 				log.warn(Markers2.append(fault), "Access control violation warning: {}", fault.getMessage());
 				return;
-			} 
+			}
         	RequestContext.getTransactionData().setProcessError(fault);
         	throw fault;
         }
+        checkUseTypeAccessToDestination(destId);
+	}
+
+	/**
+	 * Enforce the use-type rule of IGDD-3140 / IGDD-3257: the calling credential's {@code useTypes} MUST
+	 * intersect the <b>destination</b> jurisdiction's {@code allowedUseTypes}.
+	 *
+	 * <p>This applies only to API-key (JWT) callers, because {@code useTypes} is a property of an
+	 * {@code ApiKeyCredential}; mTLS certificate callers have no credential record and are unaffected.
+	 * Note this is a deliberately different question from role authorization — roles come solely from the
+	 * DynamoDB AccessGroup table for both caller types (see the {@code jwt-upn-authorization} change);
+	 * use-types are credential-scoped data-sharing policy and exist only on the API-key path.</p>
+	 *
+	 * <p>The check is per-destination, not per-credential: a sender's credential is bound to its own
+	 * jurisdiction but may transmit to many destinations, so the same credential can be authorized for one
+	 * destination and denied by the next.</p>
+	 *
+	 * <p>Governed by {@code hub.access-control.use-type-action}, which mirrors
+	 * {@code hub.access-control.action}: {@code deny} rejects with a {@link SecurityFault};
+	 * anything else (the default {@code warn}) logs the violation and allows the message. The default is
+	 * {@code warn} because an empty {@code allowedUseTypes} denies all API-key senders, so the rule cannot
+	 * be enforced safely until jurisdiction and credential use-type data has been seeded (IGDD-3258).</p>
+	 *
+	 * @param destId	The destination being addressed
+	 * @throws SecurityFault	If the intersection is empty and the configured action is {@code deny}
+	 */
+	private void checkUseTypeAccessToDestination(String destId) throws SecurityFault {
+		if (!(RequestContext.getPrincipal() instanceof ApiKeyPrincipal apiKey)) {
+			return;
+		}
+
+		IDestination dest = destinationService.findByDestId(destId);
+		if (dest == null) {
+			// Unknown destination — reported as UnknownDestinationFault by the caller; nothing to check.
+			return;
+		}
+
+		IJurisdiction jurisdiction = jurisdictionService.getJurisdiction(dest.getJurisdictionId());
+		Set<String> allowedUseTypes = jurisdiction instanceof Jurisdiction j ? j.getAllowedUseTypes() : null;
+
+		SecurityFault fault = useTypeViolation(apiKey, destId, allowedUseTypes);
+		if (fault == null) {
+			return;
+		}
+		if (!useTypeAction.equalsIgnoreCase("deny")) {
+			log.warn(Markers2.append(fault), "Use type access control violation warning: {}", fault.getMessage());
+			return;
+		}
+		RequestContext.getTransactionData().setProcessError(fault);
+		throw fault;
+	}
+
+	/**
+	 * Pure decision function, extracted for testability: return the fault describing a use-type violation,
+	 * or {@code null} when the credential's useTypes intersect the destination jurisdiction's
+	 * allowedUseTypes.
+	 *
+	 * @param apiKey			The calling API-key principal
+	 * @param destId			The destination being addressed
+	 * @param allowedUseTypes	The destination jurisdiction's allowedUseTypes; may be {@code null} or empty,
+	 * 							both of which deny
+	 * @return the fault to warn on or throw, or {@code null} if access is permitted
+	 */
+	static SecurityFault useTypeViolation(ApiKeyPrincipal apiKey, String destId, Set<String> allowedUseTypes) {
+		if (UseType.intersects(apiKey.getUseTypes(), allowedUseTypes)) {
+			return null;
+		}
+		return SecurityFault.generalSecurity("Use Type Not Allowed",
+				String.format("Credential %s (useTypes=%s) for %s is not permitted to send to %s (allowedUseTypes=%s)",
+						apiKey.getJti(), apiKey.getUseTypes(), apiKey.getUpn(), destId, allowedUseTypes),
+				null);
 	}
 }
