@@ -95,7 +95,7 @@
         <dependency>
             <groupId>gov.cdc.izgw</groupId>
             <artifactId>izgw-core</artifactId>
-            <version>3.5.0-IGDD-3254_Upgrade_to_bcfips_213-SNAPSHOT</version>
+            <version>3.5.1-SNAPSHOT</version>
             <exclusions>
                 <!-- izgw-core includes both webflux-ui and webmvc-ui; hub is a Tomcat/MVC app.
                      Having webflux-ui on the classpath triggers SpringDoc WebFlux auto-config,
