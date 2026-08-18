@@ -76,10 +76,10 @@ class ApiKeyCredentialRepositoryTests {
     }
 
     @Test
-    void buildGraceRevokeRequest_targetsCorrectKeyWithGracePeriodCondition() {
-        Instant revokedAt = Instant.parse("2026-07-20T15:00:00Z");
-        UpdateItemRequest req = ApiKeyCredentialRepository.buildGraceRevokeRequest(
-                "izgateway-dev-test", "jti-abc", revokedAt, "system:grace-revocation");
+    void buildGraceTerminationRequest_revokedBranch_targetsCorrectKeyWithGracePeriodCondition() {
+        Instant terminatedAt = Instant.parse("2026-07-20T15:00:00Z");
+        UpdateItemRequest req = ApiKeyCredentialRepository.buildGraceTerminationRequest(
+                "izgateway-dev-test", "jti-abc", "revoked", terminatedAt, "system:grace-revocation");
 
         assertThat(req.tableName()).isEqualTo("izgateway-dev-test");
         // Targets the exact item: partition entityType=ApiKeyCredential, sort key {jti} (no env prefix).
@@ -105,7 +105,7 @@ class ApiKeyCredentialRepositoryTests {
     void buildGraceTerminationRequest_expiredBranch_writesExpiredFieldsOnly() {
         Instant terminatedAt = Instant.parse("2026-07-20T15:00:00Z");
         UpdateItemRequest req = ApiKeyCredentialRepository.buildGraceTerminationRequest(
-                "izgateway-dev-test", "5", "jti-abc", "expired", terminatedAt, "system:grace-expiration");
+                "izgateway-dev-test", "jti-abc", "expired", terminatedAt, "system:grace-expiration");
 
         assertThat(req.expressionAttributeValues().get(":terminal").s()).isEqualTo("expired");
         assertThat(req.updateExpression()).contains("expiredAt = :ta", "expiredBy = :tb")

@@ -131,8 +131,8 @@ public class ApiKeyCredentialRepository extends DynamoDbRepository<ApiKeyCredent
     public boolean terminateIfGracePeriod(ApiKeyCredential credential, Instant terminatedAt, String terminatedBy) {
         String terminalStatus = resolveTerminalStatus(credential);
         try {
-            ddbClient.updateItem(buildGraceRevokeRequest(
-                    tableName, credential.getJti(), revokedAt, revokedBy));
+            ddbClient.updateItem(buildGraceTerminationRequest(
+                    tableName, credential.getJti(), terminalStatus, terminatedAt, terminatedBy));
             return true;
         } catch (ConditionalCheckFailedException e) {
             return false;
@@ -147,12 +147,16 @@ public class ApiKeyCredentialRepository extends DynamoDbRepository<ApiKeyCredent
      * static so the request shape can be unit-tested without DynamoDB. ({@code status} is a DynamoDB
      * reserved word, hence the {@code #st} name placeholder.)
      */
-    static UpdateItemRequest buildGraceRevokeRequest(String tableName, String jti,
-                                                     Instant revokedAt, String revokedBy) {
+    static UpdateItemRequest buildGraceTerminationRequest(String tableName, String jti,
+            String terminalStatus, Instant terminatedAt, String terminatedBy) {
+        boolean expired = STATUS_EXPIRED.equals(terminalStatus);
+        String timestampAttr = expired ? "expiredAt" : "revokedAt";
+        String actorAttr = expired ? "expiredBy" : "revokedBy";
         return UpdateItemRequest.builder()
                 .tableName(tableName)
                 .key(Map.of(
                         "entityType", AttributeValue.fromS(ENTITY_TYPE),
+                        // Sort key is the jti alone — no environment prefix (IGDD-3140).
                         "sortKey", AttributeValue.fromS(jti)))
                 // Also bump the inherited audit fields (updatedOn/updatedBy) the way saveAndFlush would,
                 // so tooling/queries keyed on updatedOn see the termination instead of the create time.
