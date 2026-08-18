@@ -21,7 +21,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -62,7 +61,7 @@ class ApiKeyPrincipalProviderTests {
     private static ApiKeyCredential activeCredForThisEnv() {
         ApiKeyCredential cred = new ApiKeyCredential();
         cred.setStatus("active");
-        cred.setEnvironments(List.of(TEST_ENV_ID));
+        cred.setEnvironments(Set.of(TEST_ENV_ID));
         cred.setUseTypes(Set.of("PROVIDER"));
         return cred;
     }
@@ -151,11 +150,11 @@ class ApiKeyPrincipalProviderTests {
         String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, null);
         when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
 
-        // Active credential, but its `environments` list does NOT contain this Hub's target environment.
+        // Active credential, but its `environments` set does NOT contain this Hub's target environment.
         int otherEnv = TEST_ENV_ID == 1 ? 2 : 1;
         ApiKeyCredential cred = new ApiKeyCredential();
         cred.setStatus("active");
-        cred.setEnvironments(List.of(otherEnv));
+        cred.setEnvironments(Set.of(otherEnv));
         when(credentialRepository.findByJti(TEST_JTI)).thenReturn(Optional.of(cred));
 
         IzgPrincipal principal = provider.getPrincipal(request);

@@ -76,16 +76,7 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
     @Value("${hub.access-control.action:warn}")
     protected String accessControlAction;
 
-    /**
-     * Action taken when an API-key credential's useTypes do not intersect the destination jurisdiction's
-     * allowedUseTypes: {@code deny} rejects the message, anything else logs a warning and allows it.
-     * Defaults to {@code warn} — see {@link #checkUseTypeAccessToDestination(String)} for why.
-     */
-    @Getter
-    @Value("${hub.access-control.use-type-action:warn}")
-    protected String useTypeAction;
-
-    private OldModelHelper oldModelHelper; 
+    private OldModelHelper oldModelHelper;
     private NewModelHelper newModelHelper;
     private AccessControlModelHelper currentModelHelper;
 	
@@ -316,18 +307,40 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 	 */
 	@Override
 	public void checkAccessToDestination(String destId) throws SecurityFault {
-        String sender = RequestContext.getSourceInfo().getCommonName();
-        if (!canAccessDestination(sender, destId)) {
-            SecurityFault fault = SecurityFault.generalSecurity("Source Not Allowed", String.format("%s is not permitted to send messages to %s", sender, destId), null);
-        	if (!accessControlAction.equalsIgnoreCase("deny")) {
-        		// Log a warning but allow the message to be sent
-				log.warn(Markers2.append(fault), "Access control violation warning: {}", fault.getMessage());
-				return;
-			}
-        	RequestContext.getTransactionData().setProcessError(fault);
-        	throw fault;
-        }
-        checkUseTypeAccessToDestination(destId);
+		// Two independent policies, evaluated in order of precedence. They answer different questions, so
+		// the outcome of the first must not decide whether the second runs: a warn-only source violation
+		// (hub.access-control.action=warn, the default) still has to be followed by the use-type check,
+		// which has no warn mode of its own. A denied source check throws and short-circuits, because at
+		// that point the message is already rejected.
+		checkSourceAccessToDestination(destId);
+		checkUseTypeAccessToDestination(destId);
+	}
+
+	/**
+	 * Enforce the source/destination rule: the sender must be permitted to send to this destination by the
+	 * AccessGroup/AllowedUser model (or hold the ADMIN role).
+	 *
+	 * <p>Governed by {@code hub.access-control.action}: {@code deny} rejects with a {@link SecurityFault},
+	 * anything else (the default {@code warn}) logs the violation and allows the message to continue. Note
+	 * that "continue" means exactly that — the caller goes on to the use-type check; warn mode suppresses
+	 * this rule only, not the ones after it.</p>
+	 *
+	 * @param destId	The destination being addressed
+	 * @throws SecurityFault	If the sender is not permitted and the configured action is {@code deny}
+	 */
+	private void checkSourceAccessToDestination(String destId) throws SecurityFault {
+		String sender = RequestContext.getSourceInfo().getCommonName();
+		if (canAccessDestination(sender, destId)) {
+			return;
+		}
+		SecurityFault fault = SecurityFault.generalSecurity("Source Not Allowed", String.format("%s is not permitted to send messages to %s", sender, destId), null);
+		if (!accessControlAction.equalsIgnoreCase("deny")) {
+			// Log a warning but allow the message to be sent
+			log.warn(Markers2.append(fault), "Access control violation warning: {}", fault.getMessage());
+			return;
+		}
+		RequestContext.getTransactionData().setProcessError(fault);
+		throw fault;
 	}
 
 	/**
@@ -344,14 +357,20 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 	 * jurisdiction but may transmit to many destinations, so the same credential can be authorized for one
 	 * destination and denied by the next.</p>
 	 *
-	 * <p>Governed by {@code hub.access-control.use-type-action}, which mirrors
-	 * {@code hub.access-control.action}: {@code deny} rejects with a {@link SecurityFault};
-	 * anything else (the default {@code warn}) logs the violation and allows the message. The default is
-	 * {@code warn} because an empty {@code allowedUseTypes} denies all API-key senders, so the rule cannot
-	 * be enforced safely until jurisdiction and credential use-type data has been seeded (IGDD-3258).</p>
+	 * <p>There is no warn/permissive mode: a failed intersection always rejects. This differs deliberately
+	 * from {@code hub.access-control.action}, which still supports warn-only for the source/destination
+	 * check. The {@link SecurityFault} carries {@link gov.cdc.izgateway.model.RetryStrategy#CORRECT_MESSAGE},
+	 * so the REST/ADS path reports it as HTTP 400; the SOAP path reports every fault as HTTP 500 with a
+	 * SOAP Fault envelope (see {@code SoapControllerBase.handleFault} in izgw-core).</p>
+	 *
+	 * <p><b>Deployment note.</b> An absent or empty {@code allowedUseTypes} denies every API-key sender to
+	 * that jurisdiction, and no jurisdiction carries the attribute until the IGDD-3258 seeding/backfill
+	 * runs. Enforcement is therefore gated on that data landing first — this method is not the place to
+	 * soften it.</p>
 	 *
 	 * @param destId	The destination being addressed
-	 * @throws SecurityFault	If the intersection is empty and the configured action is {@code deny}
+	 * @throws SecurityFault	If the credential's useTypes do not intersect the destination
+	 * 						jurisdiction's allowedUseTypes
 	 */
 	private void checkUseTypeAccessToDestination(String destId) throws SecurityFault {
 		if (!(RequestContext.getPrincipal() instanceof ApiKeyPrincipal apiKey)) {
@@ -371,10 +390,7 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 		if (fault == null) {
 			return;
 		}
-		if (!useTypeAction.equalsIgnoreCase("deny")) {
-			log.warn(Markers2.append(fault), "Use type access control violation warning: {}", fault.getMessage());
-			return;
-		}
+		log.warn(Markers2.append(fault), "Use type access control violation: {}", fault.getMessage());
 		RequestContext.getTransactionData().setProcessError(fault);
 		throw fault;
 	}

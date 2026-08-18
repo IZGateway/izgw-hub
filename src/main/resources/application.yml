@@ -139,11 +139,11 @@ hub:
     max-retries: 3
     access-control:
         action: warn
-        # Action when an API-key credential's useTypes do not intersect the destination jurisdiction's
-        # allowedUseTypes (IGDD-3257): deny rejects the message, warn logs and allows it. Keep this at
-        # warn until jurisdiction allowedUseTypes and credential useTypes have been seeded (IGDD-3258) —
-        # an empty allowedUseTypes denies every API-key sender. mTLS callers are never affected.
-        use-type-action: ${PHIZ_WS_USE_TYPE_ACTION:warn}
+        # NOTE: `action` above governs only the source/destination (AccessGroup/AllowedUser) check.
+        # The API-key use-type check (IGDD-3257) has no warn mode — a credential whose useTypes do not
+        # intersect the destination jurisdiction's allowedUseTypes is always rejected with a SecurityFault.
+        # An absent/empty allowedUseTypes denies every API-key sender to that jurisdiction, so the
+        # IGDD-3258 seeding/backfill is a prerequisite. mTLS callers are not affected.
     status-check:
         period: 5
         testing-endpoints:

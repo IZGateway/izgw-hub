@@ -6,7 +6,6 @@ import lombok.NoArgsConstructor;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.Set;
 
 import gov.cdc.izgateway.model.DynamoDbAudit;
@@ -19,18 +18,25 @@ import gov.cdc.izgateway.model.DynamoDbEntity;
 public class ApiKeyCredential extends DynamoDbAudit implements DynamoDbEntity {
 
     private String jti;
-    // Server-side list of numeric environment IDs (values 1-6 per the IZG Environment enumeration) in
+    // Server-side set of numeric environment IDs (values 1-6 per the IZG Environment enumeration) in
     // which this credential is valid. Written by Config Console (IGDD-3140); read by Hub at routing time.
     // Environment authorization is NOT carried in the JWT — Hub looks the credential up by jti and checks
-    // that its own env (SystemUtils.getDestType()) is contained in this list. The set can change without
+    // that its own env (SystemUtils.getDestType()) is contained in this set. The set can change without
     // rewriting the sort key. Standard credentials contain exactly one ID; admin/operational credentials
     // MAY contain several.
-    private List<Integer> environments;
+    //
+    // Persisted as a DynamoDB Number Set (NS). DynamoDB cannot store an empty set, so "no environments"
+    // is represented by the attribute being absent, which deserializes to null here — null and empty are
+    // therefore equivalent and both deny. See ApiKeyPrincipalProvider#lookupAndCacheCredential.
+    private Set<Integer> environments;
     // Server-side set of use-types (PATIENT / PROVIDER / PUBLIC_HEALTH per gov.cdc.izgateway.hub.security.UseType)
     // this credential may submit. Written by Config Console (IGDD-3140), which validates the values against the
     // enumeration; read by Hub at routing time and intersected with the destination jurisdiction's
     // allowedUseTypes (IGDD-3257). Like `environments`, it is NOT carried in the JWT, so policy can change
-    // without reissuing the credential. Persisted as a DynamoDB String Set (SS).
+    // without reissuing the credential.
+    //
+    // Persisted as a DynamoDB String Set (SS). As with `environments`, an absent attribute deserializes to
+    // null, and null and empty are equivalent: a credential with no useTypes is authorized for nothing.
     private Set<String> useTypes;
     private String status;
     private String jurisdictionId;
@@ -57,7 +63,7 @@ public class ApiKeyCredential extends DynamoDbAudit implements DynamoDbEntity {
     @Override
     public String getPrimaryId() {
         // Sort key is the jti alone (no environment prefix); permitted environments are the server-side
-        // `environments` list rather than being encoded in the key (IGDD-3140).
+        // `environments` set rather than being encoded in the key (IGDD-3140).
         return jti;
     }
 }

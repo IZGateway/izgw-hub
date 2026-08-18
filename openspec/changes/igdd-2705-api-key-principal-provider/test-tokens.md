@@ -40,20 +40,43 @@ This sets `server.ssl.client-auth=want`, `jwt.issuer=http://localhost:3000`, and
 
 ## Example curl
 
-Before using this token, create the matching `ApiKeyCredential` record in your local DynamoDB:
+Before using this token, create the matching `ApiKeyCredential` record in your local DynamoDB.
+
+`environments` MUST be a **Number Set (`NS`)** and `useTypes` a **String Set (`SS`)** — these are the
+attribute types Config Console writes and the Hub bean expects (IGDD-3140). A List (`L`) will not
+deserialize. Shown in DynamoDB wire format so the types are unambiguous:
 
 ```json
 {
-  "entityType": "ApiKeyCredential",
-  "sortKey": "018f4e2a-5678-7abc-8def-000000000002",
-  "jti": "018f4e2a-5678-7abc-8def-000000000002",
-  "environments": [5],
-  "status": "active",
-  "jurisdictionId": "42",
-  "issuedAt": "2025-06-04T00:00:00Z",
-  "expiresAt": "2038-01-19T00:00:00Z"
+  "entityType":     { "S": "ApiKeyCredential" },
+  "sortKey":        { "S": "018f4e2a-5678-7abc-8def-000000000002" },
+  "jti":            { "S": "018f4e2a-5678-7abc-8def-000000000002" },
+  "environments":   { "NS": ["5"] },
+  "useTypes":       { "SS": ["PROVIDER"] },
+  "status":         { "S": "active" },
+  "jurisdictionId": { "S": "42" },
+  "issuedAt":       { "S": "2025-06-04T00:00:00Z" },
+  "expiresAt":      { "S": "2038-01-19T00:00:00Z" }
 }
 ```
+
+(`NS` values are quoted on the wire — that is DynamoDB's precision-preserving encoding for numbers,
+the same reason a scalar number is `{"N": "5"}`. The set above really does contain the number 5.)
+
+Save that as `cred.json` and load it with:
+
+```bash
+aws dynamodb put-item --endpoint-url http://localhost:8000 \
+  --table-name izgateway-dev --item file://cred.json
+```
+
+`useTypes` is only needed to exercise the routing-time use-type check (IGDD-3257): the credential's
+`useTypes` must intersect the **destination** jurisdiction's `allowedUseTypes`, so the destination's
+`Jurisdiction` record needs a matching `"allowedUseTypes": { "SS": ["PROVIDER"] }`. A mismatch is
+always rejected with a `SecurityFault` (HTTP 400 on the REST/ADS path; the SOAP path returns 500 with a
+SOAP Fault envelope) — there is no warn mode. A jurisdiction with **no** `allowedUseTypes` attribute
+denies every API-key sender, so you must add it to test the happy path; DynamoDB cannot store an empty
+set, so absence is how deny-all is expressed.
 
 Then call the Hub REST endpoint:
 

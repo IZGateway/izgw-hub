@@ -188,9 +188,13 @@ public class ApiKeyPrincipalProvider {
             ApiKeyCredential credential = credentialOpt.get();
 
             // Environment authorization: the request's target environment must be in the credential's
-            // server-side `environments` list. A mismatch is cached in the short-lived absentCache (not the
-            // 366-day revoked sentinel) so an `environments` edit takes effect within the credential TTL.
-            int targetEnv = SystemUtils.getDestType();
+            // server-side `environments` set (a DynamoDB Number Set). A mismatch is cached in the short-lived
+            // absentCache (not the 366-day revoked sentinel) so an `environments` edit takes effect within the
+            // credential TTL.
+            //
+            // DynamoDB cannot store an empty set, so an absent attribute arrives here as null; null and empty
+            // both mean "valid in no environment" and are handled by the same deny below.
+            Integer targetEnv = SystemUtils.getDestType();
             if (credential.getEnvironments() == null || !credential.getEnvironments().contains(targetEnv)) {
                 absentCache.put(jti, Boolean.TRUE);
                 log.warn("JWT rejected: jti={} not valid for target env={} (environments={})",

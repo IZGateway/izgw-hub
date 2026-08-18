@@ -1,20 +1,22 @@
 package gov.cdc.izgateway.hub.service.accesscontrol;
 
 import gov.cdc.izgateway.hub.security.ApiKeyPrincipal;
+import gov.cdc.izgateway.model.RetryStrategy;
 import gov.cdc.izgateway.soap.fault.SecurityFault;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests {@code AccessControlService.useTypeViolation} — the routing-time use-type decision for API-key
- * callers (IGDD-3257). The warn-vs-deny disposition of the returned fault is driven by
- * {@code hub.access-control.use-type-action} in the calling method.
+ * callers (IGDD-3257). A non-null return always rejects: the calling method has no warn/permissive mode,
+ * so a returned fault is always thrown.
  */
 class UseTypeAccessControlTests {
 
@@ -67,6 +69,21 @@ class UseTypeAccessControlTests {
         assertTrue(detail.contains(DEST_ID), "should name the destination: " + detail);
         assertTrue(detail.contains("PATIENT"), "should report the credential useTypes: " + detail);
         assertTrue(detail.contains("PROVIDER"), "should report the allowedUseTypes: " + detail);
+    }
+
+    @Test
+    @DisplayName("The fault reports a 4xx client error, not a server error")
+    void faultIsClientError() {
+        SecurityFault fault = AccessControlService.useTypeViolation(
+                principal(Set.of("PATIENT")), DEST_ID, Set.of("PROVIDER"));
+        assertNotNull(fault);
+        // A use-type denial is the caller's problem, so it must not surface as a 5xx. The REST/ADS path
+        // derives its status from the fault's RetryStrategy (see ExceptionHandling#handleFault), and
+        // CORRECT_MESSAGE maps to 400. Note the SOAP path hardcodes 500 for every fault in izgw-core's
+        // SoapControllerBase#handleFault — that is a separate, cross-repo concern.
+        assertEquals(RetryStrategy.CORRECT_MESSAGE, fault.getRetry());
+        assertTrue(fault.getRetry().getStatus().is4xxClientError(),
+                "expected a 4xx status, got " + fault.getRetry().getStatus());
     }
 
     @Test
