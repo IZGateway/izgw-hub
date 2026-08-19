@@ -4,6 +4,7 @@ import gov.cdc.izgateway.dynamodb.model.ApiKeyCredential;
 import gov.cdc.izgateway.dynamodb.repository.ApiKeyCredentialRepository;
 import gov.cdc.izgateway.logging.event.EventId;
 import gov.cdc.izgateway.logging.markers.Markers2;
+import gov.cdc.izgateway.utils.SystemUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -88,9 +89,12 @@ public class GracePeriodRevocationScheduler {
     }
 
     /**
-     * Execute one revocation cycle: find superseded credentials whose grace period has expired in
-     * this environment, terminate each to its correct status ({@code expired} or {@code revoked},
-     * IGDD-3167), emit the matching audit event, and evict the local cache. Emits a
+     * Execute one revocation cycle: find every superseded credential whose grace period has expired,
+     * terminate each to its correct status ({@code expired} or {@code revoked}, IGDD-3167), emit the
+     * matching audit event, and evict the local cache. The sweep is NOT scoped to this Hub's
+     * environment -- see {@link #runRevocationCycle()} for why -- so the {@code environment} and
+     * {@code serverName} fields on the log and audit events identify the instance that performed a
+     * termination, not the set of credentials considered. Emits a
      * {@code GRACE_REVOCATION_STARTED} log at the beginning and a {@code GRACE_REVOCATION_RUN} log on
      * successful completion (with the number of credentials evaluated, expired, and revoked); a
      * failure is logged as {@code GRACE_REVOCATION_FAILED} by {@link #scheduledRun()}. These three
@@ -98,10 +102,18 @@ public class GracePeriodRevocationScheduler {
      * may be layered on these log events later).
      */
     CycleResult runRevocationCycle() {
-        // The credential sort key is {jti} with no environment prefix (IGDD-3140), so the sweep is
-        // environment-agnostic: it evaluates every ApiKeyCredential record. A key's permitted
-        // environments are a server-side `environments` list, not part of the key.
-        log.info(Markers2.append("eventType", "GRACE_REVOCATION_STARTED"),
+        // The credential sort key is {jti} with no environment prefix (IGDD-3140), so there is no prefix
+        // left to scope a query by: the sweep evaluates every ApiKeyCredential record. A key's permitted
+        // environments are a server-side `environments` set, not part of the key.
+        //
+        // The DynamoDB table is shared across environments (dev and test both use izgateway-dev-test),
+        // so any enabled Hub may terminate a credential belonging to another environment. That is
+        // harmless -- grace expiry is environment-independent and the conditional write keeps it
+        // exactly-once -- but it does mean a termination cannot be attributed without recording who did
+        // it, hence `environment`/`serverName` below and on the audit events (IGDD-3257 review).
+        log.info(Markers2.append("eventType", "GRACE_REVOCATION_STARTED",
+                        "environment", SystemUtils.getDestTag(),
+                        "serverName", SystemUtils.getHostname()),
                 "Grace-period revocation cycle started");
 
         List<ApiKeyCredential> candidates = credentialRepository.findGraceRevocationCandidates();
@@ -126,6 +138,8 @@ public class GracePeriodRevocationScheduler {
 
         log.info(Markers2.append(
                 "eventType", "GRACE_REVOCATION_RUN",
+                "environment", SystemUtils.getDestTag(),
+                "serverName", SystemUtils.getHostname(),
                 "evaluated", evaluated,
                 "expired", expired,
                 "revoked", revoked
