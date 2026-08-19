@@ -79,13 +79,13 @@ class ApiKeyCredentialRepositoryTests {
     void buildGraceTerminationRequest_revokedBranch_targetsCorrectKeyWithGracePeriodCondition() {
         Instant terminatedAt = Instant.parse("2026-07-20T15:00:00Z");
         UpdateItemRequest req = ApiKeyCredentialRepository.buildGraceTerminationRequest(
-                "izgateway-dev-test", "5", "jti-abc", "revoked", terminatedAt, "system:grace-revocation");
+                "izgateway-dev-test", "jti-abc", "revoked", terminatedAt, "system:grace-revocation");
 
         assertThat(req.tableName()).isEqualTo("izgateway-dev-test");
-        // Targets the exact item: partition entityType=ApiKeyCredential, sort key {env}#{jti}.
+        // Targets the exact item: partition entityType=ApiKeyCredential, sort key {jti} (no env prefix).
         assertThat(req.key().get("entityType").s()).isEqualTo("ApiKeyCredential");
-        assertThat(req.key().get("sortKey").s()).isEqualTo("5#jti-abc");
-        // Only writes when still grace_period → exactly-once termination across concurrent instances.
+        assertThat(req.key().get("sortKey").s()).isEqualTo("jti-abc");
+        // Only writes when still grace_period → exactly-once revoke across concurrent instances.
         assertThat(req.conditionExpression()).isEqualTo("#st = :grace");
         assertThat(req.expressionAttributeNames()).containsEntry("#st", "status");
         assertThat(req.expressionAttributeValues().get(":grace").s()).isEqualTo("grace_period");
@@ -105,7 +105,7 @@ class ApiKeyCredentialRepositoryTests {
     void buildGraceTerminationRequest_expiredBranch_writesExpiredFieldsOnly() {
         Instant terminatedAt = Instant.parse("2026-07-20T15:00:00Z");
         UpdateItemRequest req = ApiKeyCredentialRepository.buildGraceTerminationRequest(
-                "izgateway-dev-test", "5", "jti-abc", "expired", terminatedAt, "system:grace-expiration");
+                "izgateway-dev-test", "jti-abc", "expired", terminatedAt, "system:grace-expiration");
 
         assertThat(req.expressionAttributeValues().get(":terminal").s()).isEqualTo("expired");
         assertThat(req.updateExpression()).contains("expiredAt = :ta", "expiredBy = :tb")

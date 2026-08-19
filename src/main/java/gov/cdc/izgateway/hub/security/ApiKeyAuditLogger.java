@@ -1,6 +1,7 @@
 package gov.cdc.izgateway.hub.security;
 
 import gov.cdc.izgateway.logging.markers.Markers2;
+import gov.cdc.izgateway.utils.SystemUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -61,7 +62,12 @@ public class ApiKeyAuditLogger {
                 "keyId", keyId,
                 "jurisdictionId", jurisdictionId,
                 "revokedBy", revokedBy,
-                "supersededBy", supersededBy
+                "supersededBy", supersededBy,
+                // Which Hub performed this. The grace-period sweep is environment-agnostic and the
+                // DynamoDB table is shared across environments, so without these the record cannot be
+                // attributed to an instance (IGDD-3257 review).
+                "environment", SystemUtils.getDestTag(),
+                "serverName", SystemUtils.getHostname()
         ).and(Markers2.append("timestamp", Instant.now().toString())),
                 "API key revoked for jurisdiction {} (keyId={}, revokedBy={})", jurisdictionId, keyId, revokedBy);
     }
@@ -85,7 +91,10 @@ public class ApiKeyAuditLogger {
                 "keyId", keyId,
                 "jurisdictionId", jurisdictionId,
                 "expiredBy", expiredBy,
-                "supersededBy", supersededBy
+                "supersededBy", supersededBy,
+                // See apiKeyRevoked: identifies the Hub instance that performed the termination.
+                "environment", SystemUtils.getDestTag(),
+                "serverName", SystemUtils.getHostname()
         ).and(Markers2.append("timestamp", Instant.now().toString())),
                 "API key expired for jurisdiction {} (keyId={}, expiredBy={})", jurisdictionId, keyId, expiredBy);
     }

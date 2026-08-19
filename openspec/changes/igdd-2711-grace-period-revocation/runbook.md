@@ -16,9 +16,26 @@ period expires. Satisfies IGDD-2711 AC #3 (failure detection + manual remediatio
 
 `GracePeriodRevocationScheduler` runs inside Hub on a fixed interval
 (`apikey.grace-revocation.interval`, default 1h; gated by `apikey.grace-revocation.enabled`). Each
-cycle it finds credentials that are `active` with a `graceExpiresAt` in the past, sets them to
-`revoked` in DynamoDB, emits an `API_KEY_REVOKED` audit event, and evicts the key from the local
-credential cache. A single instance runs per cycle (host-ordering election). Revocation is idempotent.
+cycle it finds credentials that are `grace_period` with a `graceExpiresAt` in the past, terminates each
+in DynamoDB, emits the matching audit event, and evicts the key from the local credential cache.
+
+The terminal status depends on which limit came first (IGDD-3167):
+
+| Condition | Status written | Fields written | Audit event |
+|---|---|---|---|
+| the key's own `expiresAt` is on or before `graceExpiresAt` | `expired` | `expiredAt`, `expiredBy = system:grace-expiration` | `API_KEY_EXPIRED` |
+| otherwise (including a missing `expiresAt`) | `revoked` | `revokedAt`, `revokedBy = system:grace-revocation` | `API_KEY_REVOKED` |
+
+Every enabled instance runs each cycle; a conditional DynamoDB write (`terminateIfGracePeriod`, which
+writes only while `status = grace_period`) ensures each key is terminated and audited exactly once
+across the fleet. Termination is idempotent.
+
+**The sweep is not scoped to one environment.** The credential sort key is `{jti}` with no environment
+prefix, so there is no prefix left to scope the query by, and the DynamoDB table is shared across
+environments (dev and test both use `izgateway-dev-test`). Any enabled Hub may therefore terminate a
+credential belonging to another environment. This is harmless — grace expiry is environment-independent
+and the conditional write keeps it exactly-once — but it means you must read `environment` and
+`serverName` on the events below to know which instance acted.
 
 ## Log signals
 
@@ -27,9 +44,13 @@ that a run **started** and whether it **succeeded** or **failed**:
 
 | Event | When | Level | Key fields |
 |---|---|---|---|
-| `GRACE_REVOCATION_STARTED` | at the start of a cycle (on the instance that runs it) | INFO | `environment` |
-| `GRACE_REVOCATION_RUN` | cycle completed successfully (even if 0 revoked) | INFO | `environment`, `evaluated`, `revoked` |
+| `GRACE_REVOCATION_STARTED` | at the start of a cycle (on the instance that runs it) | INFO | `environment`, `serverName` |
+| `GRACE_REVOCATION_RUN` | cycle completed successfully (even if 0 terminated) | INFO | `environment`, `serverName`, `evaluated`, `expired`, `revoked` |
 | `GRACE_REVOCATION_FAILED` | a cycle threw an unhandled exception | ERROR | exception detail |
+
+The `API_KEY_REVOKED` / `API_KEY_EXPIRED` audit events carry `environment` and `serverName` too, so a
+termination can be attributed to the Hub instance that performed it. `environment` identifies the
+**acting instance**, not the scope of the sweep.
 
 ## Alert conditions (deferred — spec for future CloudWatch alarms)
 
@@ -55,15 +76,15 @@ grace period:
    cause a missed run. Restarting/restoring Hub lets the next scheduled cycle catch up automatically
    (the job is idempotent and processes all expired-grace keys each run).
 2. **If Hub cannot be restored promptly, revoke manually via Config Console** — for each affected key
-   (status `active` with `graceExpiresAt` in the past), call:
+   (status `grace_period` with `graceExpiresAt` in the past), call:
    ```
    DELETE /api/apikeys/{jti}
    ```
    Config Console sets the credential to `revoked` and propagates cache eviction to all Hub instances
    via `/rest/refresh`. This is the same end state the job would have produced.
-3. **Identify affected keys** — query the `ApiKeyCredential` records for the environment where
-   `status = active` and `graceExpiresAt < now` (e.g. via the Config Console key list or a DynamoDB
-   query on `entityType = ApiKeyCredential`, sort key prefix `{env}#`).
+3. **Identify affected keys** — query the `ApiKeyCredential` records where
+   `status = grace_period` and `graceExpiresAt < now` (e.g. via the Config Console key list or a DynamoDB
+   query on `entityType = ApiKeyCredential`).
 4. **Verify** — confirm the keys now show `revoked` and that an `API_KEY_REVOKED` audit event was
    recorded for each.
 

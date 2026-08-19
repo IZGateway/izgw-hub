@@ -2,8 +2,8 @@
 
 ### Requirement: DynamoDB credential status check
 When the credential cache misses, Hub SHALL read the `ApiKeyCredential` record and act on its `status`:
-- **active** or **grace_period**: construct an `ApiKeyPrincipal` from JWT claims (`upn` → `name` (IzgPrincipal.getName()), `sub` → `organization` (a numeric string jurisdiction ID, e.g., `"42"`), `jti` → jti), store in credential cache with `jwt.credential-cache-ttl` (default 5 minutes), and return the principal. The `roles` field on the returned principal SHALL be empty; JWT claims SHALL NOT be used to populate roles.
-- **revoked**, **expired**, or record absent: store a REVOKED sentinel in credential cache with TTL equal to the maximum possible token lifetime (1 year), and return `null`.
+- **active** or **grace_period**: validate that the request's target environment (`SystemUtils.getDestType()`) is contained in the credential's server-side `environments` list (see IGDD-2705); if it is not, return `null`. Otherwise construct an `ApiKeyPrincipal` from JWT claims (`upn` → `name` (IzgPrincipal.getName()), `sub` → `organization` (a numeric string jurisdiction ID, e.g., `"42"`), `jti` → jti), store in credential cache with `jwt.credential-cache-ttl` (default 5 minutes), and return the principal. The `roles` field on the returned principal SHALL be empty; JWT claims SHALL NOT be used to populate roles.
+- **revoked** or record absent: store a REVOKED sentinel in credential cache with TTL equal to the maximum possible token lifetime (1 year), and return `null`.
 
 #### Scenario: Active credential
 - **WHEN** DynamoDB returns `status = active` for the `jti`
@@ -14,7 +14,7 @@ When the credential cache misses, Hub SHALL read the `ApiKeyCredential` record a
 - **THEN** a REVOKED sentinel is cached with max-token-lifetime TTL and `null` is returned, resulting in 401
 
 #### Scenario: Absent credential record
-- **WHEN** DynamoDB has no `ApiKeyCredential` record for `env#jti`
+- **WHEN** DynamoDB has no `ApiKeyCredential` record for `{jti}`
 - **THEN** the `jti` is cached in the absent cache (5-minute TTL) and `null` is returned
 
 ## ADDED Requirements

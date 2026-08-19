@@ -49,26 +49,26 @@ public class ApiKeyCredentialRepository extends DynamoDbRepository<ApiKeyCredent
         this.tableName = tableName;
     }
 
-    public Optional<ApiKeyCredential> findByEnvAndJti(String env, String jti) {
-        return Optional.ofNullable(find(env + "#" + jti));
+    public Optional<ApiKeyCredential> findByJti(String jti) {
+        return Optional.ofNullable(find(jti));
     }
 
     /**
-     * Return the credentials in the given environment eligible for automated grace-period revocation
-     * (IGDD-2711): {@code status == "grace_period"}, a non-null {@code graceExpiresAt}, and
+     * Return the credentials eligible for automated grace-period revocation (IGDD-2711):
+     * {@code status == "grace_period"}, a non-null {@code graceExpiresAt}, and
      * {@code graceExpiresAt <= now}.
      *
      * <p>On renewal, Config Console moves the superseded (old) key to {@code grace_period} with a
      * {@code graceExpiresAt} (IGDD-2707); it keeps authenticating alongside the new key until that
      * instant passes, at which point this job revokes it. Normal {@code active} keys have no
-     * {@code graceExpiresAt} and are never selected. The query is environment-scoped via the
-     * {@code {env}#} sort-key prefix, then filtered in memory (design D4).</p>
+     * {@code graceExpiresAt} and are never selected. Because the sort key is {@code {jti}} with no
+     * environment prefix (IGDD-3140), the sweep is environment-agnostic: it scans every
+     * {@code ApiKeyCredential} record (by {@code entityType}) and filters in memory (design D4).</p>
      *
-     * @param env the environment to scope the query to (sort-key prefix {@code {env}#})
      * @return the grace-period credentials whose grace period has expired; never {@code null}
      */
-    public List<ApiKeyCredential> findGraceRevocationCandidates(String env) {
-        return selectGraceCandidates(findByType(env + "#"), Instant.now());
+    public List<ApiKeyCredential> findGraceRevocationCandidates() {
+        return selectGraceCandidates(findAll(), Instant.now());
     }
 
     /**
@@ -132,7 +132,7 @@ public class ApiKeyCredentialRepository extends DynamoDbRepository<ApiKeyCredent
         String terminalStatus = resolveTerminalStatus(credential);
         try {
             ddbClient.updateItem(buildGraceTerminationRequest(
-                    tableName, credential.getEnv(), credential.getJti(), terminalStatus, terminatedAt, terminatedBy));
+                    tableName, credential.getJti(), terminalStatus, terminatedAt, terminatedBy));
             return true;
         } catch (ConditionalCheckFailedException e) {
             return false;
@@ -147,7 +147,7 @@ public class ApiKeyCredentialRepository extends DynamoDbRepository<ApiKeyCredent
      * static so the request shape can be unit-tested without DynamoDB. ({@code status} is a DynamoDB
      * reserved word, hence the {@code #st} name placeholder.)
      */
-    static UpdateItemRequest buildGraceTerminationRequest(String tableName, String env, String jti,
+    static UpdateItemRequest buildGraceTerminationRequest(String tableName, String jti,
             String terminalStatus, Instant terminatedAt, String terminatedBy) {
         boolean expired = STATUS_EXPIRED.equals(terminalStatus);
         String timestampAttr = expired ? "expiredAt" : "revokedAt";
@@ -156,7 +156,8 @@ public class ApiKeyCredentialRepository extends DynamoDbRepository<ApiKeyCredent
                 .tableName(tableName)
                 .key(Map.of(
                         "entityType", AttributeValue.fromS(ENTITY_TYPE),
-                        "sortKey", AttributeValue.fromS(env + "#" + jti)))
+                        // Sort key is the jti alone — no environment prefix (IGDD-3140).
+                        "sortKey", AttributeValue.fromS(jti)))
                 // Also bump the inherited audit fields (updatedOn/updatedBy) the way saveAndFlush would,
                 // so tooling/queries keyed on updatedOn see the termination instead of the create time.
                 .updateExpression("SET #st = :terminal, " + timestampAttr + " = :ta, " + actorAttr + " = :tb, "
