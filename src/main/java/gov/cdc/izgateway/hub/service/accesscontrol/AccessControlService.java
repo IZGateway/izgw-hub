@@ -384,6 +384,20 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 		}
 
 		IJurisdiction jurisdiction = jurisdictionService.getJurisdiction(dest.getJurisdictionId());
+		// allowedUseTypes is declared on the concrete Jurisdiction, not on IJurisdiction, so reading it
+		// needs this narrowing. That is safe today and deliberately not "fixed" by widening the interface:
+		//
+		//  - dynamodb.model.Jurisdiction is the ONLY IJurisdiction implementation in any repo (core, hub,
+		//    transform -- no JPA variant, no test doubles), and the concrete type is pinned by
+		//    RepositoryFactory#jurisdictionRepository() returning IJurisdictionRepository<Jurisdiction>,
+		//    which JurisdictionService caches directly. The narrowing therefore cannot begin to fail
+		//    without a compile-visible change to that signature.
+		//  - allowedUseTypes is slated to move off Jurisdiction entirely in a future sprint. Lifting it
+		//    onto IJurisdiction now would mean an izgw-core release to add it and another to remove it.
+		//
+		// If this ever does yield null, the failure signature is every API-key sender to this destination
+		// being denied with an ordinary "Use Type Not Allowed" fault -- indistinguishable from a genuine
+		// policy denial. Worth knowing when debugging a sudden mass denial. (akanuri9, PR #180.)
 		Set<String> allowedUseTypes = jurisdiction instanceof Jurisdiction j ? j.getAllowedUseTypes() : null;
 
 		SecurityFault fault = useTypeViolation(apiKey, destId, allowedUseTypes);
