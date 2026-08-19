@@ -37,23 +37,49 @@ Read in this order. Later entries supersede earlier ones.
   `ApiKeyCredentialRepository.findByJti(jti)`.
 - **The JWT is identity-only**: `iss`, `kid` (header), `jti`, `sub` (jurisdictionId), `upn`,
   `iat`, `exp`. There is **no `env` claim** and **no usable `roles` claim**.
-- **Environment authorization is server-side** — an `environments` list on the
-  `ApiKeyCredential` record, checked at routing time against `SystemUtils.getDestType()`.
+- **Environment authorization is server-side** — an `environments` **Number Set (`NS`)** on the
+  `ApiKeyCredential` record (`Set<Integer>` in the bean), checked against
+  `SystemUtils.getDestType()`. Note the check happens at **authentication** time, on a
+  credential-cache miss in `ApiKeyPrincipalProvider`, not at routing time: a credential that is
+  not valid for this environment is not an authenticated caller here, so it fails with a 401
+  rather than a `SecurityFault`. The Config Console specs describe this as a routing-time check;
+  that wording has not been reconciled yet.
 - **Roles do not come from the token.** Entry 3 removed JWT-claim roles entirely.
   `ApiKeyPrincipal` carries no roles; `AccessControlValve` resolves roles from the DynamoDB
   AccessGroup table keyed on `principal.getName()` — the `upn` for JWT callers, the CN for
   mTLS callers. Entry 1's delta still shows the old `roles` → principal mapping; that is
   history, superseded by entry 3.
-- **Usable statuses** are `active` and `grace_period`. `expired` is not stored — it is
-  derived on the Console side.
+- **Usable statuses** are `active` and `grace_period`. Terminal statuses are `revoked` and
+  `expired`; **both are persisted by Hub's grace-period sweep** (IGDD-3167 — `expired` with
+  `expiredAt`/`expiredBy` when the key's own `expiresAt` capped it before the grace window
+  ended). The Console additionally derives an `expired` display state from stored dates for keys
+  the sweep has not yet reached.
 
-### Known gap: use-type enforcement
+### Use-type enforcement (IGDD-3257 — implemented, no change doc)
 
-The stack does **not** cover `credential.useTypes ∩ destination Jurisdiction.allowedUseTypes`.
-That enforcement is tracked under **IGDD-3257** (*IZG Hub: Enhancement to API-key
-authentication with useTypes*), which also owns the new `izgw-core` SecurityFault. See
-`igdd-2705-api-key-principal-provider/design.md` § D10 for the model and why it is deferred.
-Related: **IGDD-3258** (DynamoDB API-key data migration & sender seeding).
+`credential.useTypes ∩ destination Jurisdiction.allowedUseTypes` **is** enforced, in
+`AccessControlService.checkUseTypeAccessToDestination`. Credential `useTypes` are carried on
+`ApiKeyPrincipal` from the by-`jti` lookup; the destination's jurisdiction supplies
+`allowedUseTypes`. It has no change document of its own — the model is described in
+`igdd-2705-api-key-principal-provider/design.md` § D10, and the deviations below are recorded
+here for now.
+
+- **API-key callers only.** `useTypes` is a property of an `ApiKeyCredential`, so mTLS
+  certificate callers are unaffected. A jurisdiction setting `allowedUseTypes` therefore
+  constrains API-key senders only.
+- **No warn mode.** A failed intersection always rejects; there is no permissive setting for this
+  rule, unlike `hub.access-control.action` for the source/destination rule.
+- **ADMIN bypasses it on the SOAP routes.** `BaseGatewayController.checkAccess` returns early when
+  `Application.isAdministrator()`, before reaching `checkAccessToDestination`, so an admin caller
+  skips both rules there. The ADS routes call `checkAccessToDestination` directly with no admin
+  guard, so admins *are* subject to the use-type rule on that path. This asymmetry is known and
+  intentionally retained.
+- **No dedicated fault code yet.** Denial reuses `SecurityFault` code 60 via `generalSecurity`;
+  the spec calls for a new `izgw-core` code. `RetryStrategy.CORRECT_MESSAGE` gives HTTP 400 on
+  the REST/ADS path; SOAP returns 500 with a Fault envelope.
+- **Deny-all until seeded.** An absent or empty `allowedUseTypes` denies every API-key sender to
+  that jurisdiction, and no jurisdiction carries the attribute until **IGDD-3258** (DynamoDB
+  API-key data migration & sender seeding) runs. That backfill is a prerequisite.
 
 ### Archiving
 
