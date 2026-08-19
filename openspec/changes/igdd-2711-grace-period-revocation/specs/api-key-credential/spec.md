@@ -5,13 +5,15 @@
 
 Required fields:
 - `jti` — String; the JWT `jti` claim; unique credential identifier
-- `environments` — List of numeric environment IDs (`number[]`); the environments in which the credential is valid. Read by Hub at routing time — NOT carried in the JWT.
-- `status` — String; one of `active`, `grace_period`, `revoked` (a renewed key sits in `grace_period` during its grace window and still authenticates)
+- `environments` — DynamoDB **Number Set (`NS`)** of environment IDs, read into `Set<Integer>`; the environments in which the credential is valid. Checked by Hub at authentication time on a credential-cache miss — NOT carried in the JWT.
+- `status` — String; one of `active`, `grace_period`, `revoked`, `expired` (a renewed key sits in `grace_period` during its grace window and still authenticates; `expired` is a terminal state written by the sweep per IGDD-3167 when the key's own `expiresAt` capped its validity before the grace window ended)
 - `jurisdictionId` — String; the jurisdiction the credential was issued to (from JWT `sub`)
 - `issuedAt` — `Instant`; when the credential was issued (serialized via `InstantAsStringAttributeConverter`)
 - `expiresAt` — `Instant`; when the credential expires (serialized via `InstantAsStringAttributeConverter`)
 - `revokedAt` — `Instant` (nullable); when the credential was revoked
 - `revokedBy` — String (nullable); identity of the revoking operator (e.g. an operator id for a manual revoke, or `system:grace-revocation` for an automated grace-period revocation)
+- `expiredAt` — `Instant` (nullable); when the credential was recorded as expired by the sweep (IGDD-3167). Written instead of `revokedAt` when the terminal status resolves to `expired`, so exactly one of the two timestamp/actor pairs is ever set.
+- `expiredBy` — String (nullable); identity recording the expiry, e.g. `system:grace-expiration` (IGDD-3167)
 - `graceExpiresAt` — `Instant` (nullable); set by Config Console at renewal on the superseded (old) credential; the instant after which a superseded credential becomes eligible for automated revocation. Serialized via `InstantAsStringAttributeConverter`.
 - `supersededBy` — String (nullable); set by Config Console at renewal on the old credential; the `jti` of the renewed credential that replaced it.
 

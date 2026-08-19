@@ -5,7 +5,7 @@
 
 Required fields:
 - `jti` — String; the JWT `jti` claim; unique credential identifier
-- `environments` — List of numeric environment IDs (`number[]`, values 1–6 per the IZG `Environment` enumeration); the environments in which the credential is valid. Standard credentials contain exactly one ID; admin/operational credentials MAY contain several. Environment authorization is a server-side property read from this list — it is NOT carried in the JWT.
+- `environments` — DynamoDB **Number Set (`NS`)** of environment IDs (values 1–6 per the IZG `Environment` enumeration), read into `Set<Integer>`; the environments in which the credential is valid. A DynamoDB List (`L`) will NOT deserialize into this property, and no DynamoDB set may be empty, so "no environments" is represented by the attribute being absent (which reads as `null`). Standard credentials contain exactly one ID; admin/operational credentials MAY contain several. Environment authorization is a server-side property read from this list — it is NOT carried in the JWT.
 - `status` — String; one of `active`, `revoked` (a renewed key also sits in `grace_period` — see IGDD-2711)
 - `jurisdictionId` — String; the jurisdiction the credential was issued to (from JWT `sub`); stored as a string representation of an integer to match the legacy IZG jurisdiction identifier scheme (e.g., `"42"`)
 - `issuedAt` — `Instant`; when the credential was issued (serialized via `InstantAsStringAttributeConverter`)
