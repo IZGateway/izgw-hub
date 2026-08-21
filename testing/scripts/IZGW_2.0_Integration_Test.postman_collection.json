@@ -2091,6 +2091,82 @@
               "response": []
             },
             {
+              "name": "TC_API_KEY_EXP Test expired API Key",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 401\", function () {\r",
+                      "    pm.response.to.have.status(401);\r",
+                      "});\r",
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "utils.setup(pm);"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "protocolProfileBehavior": {
+                "disabledSystemHeaders": {
+                  "host": true
+                }
+              },
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token_expired}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Host",
+                    "value": "{{hostHeader}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/xml"
+                  },
+                  {
+                    "key": "X-Message-ID",
+                    "value": "{{testMessageId}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{protocol}}://{{no_cert_host}}:{{port}}/rest/status/dev",
+                  "protocol": "{{protocol}}",
+                  "host": [
+                    "{{no_cert_host}}"
+                  ],
+                  "port": "{{port}}",
+                  "path": [
+                    "rest",
+                    "status",
+                    "dev"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
               "name": "TC_99 IIS Status",
               "event": [
                 {
