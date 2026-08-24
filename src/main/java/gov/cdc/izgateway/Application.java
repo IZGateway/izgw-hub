@@ -24,7 +24,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.coyote.ProtocolHandler;
-import org.apache.coyote.http11.AbstractHttp11JsseProtocol;
+import org.apache.coyote.http11.AbstractHttp11Protocol;
 import org.apache.tomcat.util.net.NioEndpoint;
 import org.bouncycastle.crypto.CryptoServicesRegistrar;
 import org.bouncycastle.crypto.EntropySourceProvider;
@@ -40,10 +40,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.web.embedded.tomcat.TomcatConnectorCustomizer;
-import org.springframework.boot.web.embedded.tomcat.TomcatContextCustomizer;
-import org.springframework.boot.web.embedded.tomcat.TomcatProtocolHandlerCustomizer;
-import org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory;
+import org.springframework.boot.tomcat.TomcatConnectorCustomizer;
+import org.springframework.boot.tomcat.TomcatContextCustomizer;
+import org.springframework.boot.tomcat.TomcatProtocolHandlerCustomizer;
+import org.springframework.boot.tomcat.servlet.TomcatServletWebServerFactory;
 import org.springframework.boot.web.server.WebServer;
 import org.springframework.boot.web.servlet.ServletContextInitializer;
 import org.springframework.context.ApplicationContextException;
@@ -143,7 +143,7 @@ public class Application implements WebMvcConfigurer {
 		abortOnNoIIS = abort;
 	}
 	
-	private static AbstractHttp11JsseProtocol<?> protocol;
+	private static AbstractHttp11Protocol<?> protocol;
 	private static boolean skipMigrations = false;
 	
 	/**
@@ -477,7 +477,7 @@ public class Application implements WebMvcConfigurer {
     public static void customizeConnector(Connector connector) {
     	if ("https".equals(connector.getScheme())) {
 	    	ProtocolHandler p = connector.getProtocolHandler();
-	    	if (p instanceof AbstractHttp11JsseProtocol<?> jsse) {
+	    	if (p instanceof AbstractHttp11Protocol<?> jsse) {
 	    		Application.protocol = jsse;
 	    		jsse.setSslImplementationName(SSLImplementation.class.getName());
 	    	}
@@ -505,9 +505,9 @@ public class Application implements WebMvcConfigurer {
 				}
 			}
 		};
-		factory.getTomcatConnectorCustomizers().addAll(connectorCustomizers.orderedStream().toList());
-		factory.getTomcatContextCustomizers().addAll(contextCustomizers.orderedStream().toList());
-		factory.getTomcatProtocolHandlerCustomizers().addAll(protocolHandlerCustomizers.orderedStream().toList());
+		factory.getConnectorCustomizers().addAll(connectorCustomizers.orderedStream().toList());
+		factory.getContextCustomizers().addAll(contextCustomizers.orderedStream().toList());
+		factory.getProtocolHandlerCustomizers().addAll(protocolHandlerCustomizers.orderedStream().toList());
         if (additionalPort < 1) {
         	return factory;
         }
@@ -515,7 +515,7 @@ public class Application implements WebMvcConfigurer {
         connector.setScheme("http");
         connector.setPort(additionalPort);
         connector.setProperty("minSpareThreads", "3");  // This is for local administration, we don't need many.
-        factory.addAdditionalTomcatConnectors(connector);
+        factory.addAdditionalConnectors(connector);
         return factory;
 	}
 

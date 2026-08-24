@@ -47,7 +47,7 @@ import org.bouncycastle.tls.TlsFatalAlertReceived;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLSocketFactory;
-import javax.xml.ws.http.HTTPException;
+import gov.cdc.izgateway.common.HttpStatusException;
 
 /**
  * This class implements the FileSender interface to Azure and the Azurite Azure emulator.
@@ -174,7 +174,7 @@ public abstract class RestfulFileSender implements FileSender {
             RequestContext.getTransactionData().setElapsedTimeIIS(elapsedTimeIIS);
             // If not CREATED or OK, generate an error. 
             if (responseCode != HttpStatus.CREATED.value() && responseCode != HttpStatus.OK.value()) {
-                throw new HTTPException(responseCode);
+                throw new HttpStatusException(responseCode);
             }
             return con;
         } catch (URISyntaxException e) {
@@ -190,7 +190,7 @@ public abstract class RestfulFileSender implements FileSender {
         } catch (HttpException ex) {
             InputStream errorStream = ex.getErrorStream();
 			throw HubClientFault.invalidMessage(ex, route, ex.getStatusCode(), con.getURL().toString(), errorStream);
-        } catch (IOException | HTTPException e) {
+        } catch (IOException | HttpStatusException e) {
             checkException(route, con.getURL().toString(), elapsedTimeIIS, ObjectUtils.getIfNull(ExceptionUtils.getRootCause(e), e), con.getErrorStream());
             // CheckException always throws, this is never reached.
             return null;
@@ -283,7 +283,7 @@ public abstract class RestfulFileSender implements FileSender {
                         error = is;
                     }
                 }
-                throw new HTTPException(responseCode);
+                throw new HttpStatusException(responseCode);
             }
             
             return Pair.of(con.getInputStream(), con.getHeaderFields());
@@ -328,12 +328,12 @@ public abstract class RestfulFileSender implements FileSender {
                         error = is;
                     }
                 }
-                throw new HTTPException(responseCode);
+                throw new HttpStatusException(responseCode);
             }
             return "ACCEPTED";
         } catch (MalformedURLException e) {
             throw new MetadataFault(meta, e, FILENAME_INVALID);
-        } catch (IOException | URISyntaxException | HTTPException e) {
+        } catch (IOException | URISyntaxException | HttpStatusException e) {
             if (elapsedTimeIIS < 0) {
                 elapsedTimeIIS += System.currentTimeMillis();
             }
@@ -463,14 +463,14 @@ public abstract class RestfulFileSender implements FileSender {
             }
             if (responseCode != HttpStatus.OK.value() && 
             	responseCode != HttpStatus.NO_CONTENT.value()) {
-            	throw new HTTPException(responseCode);
+            	throw new HttpStatusException(responseCode);
             }
             @SuppressWarnings("unused")
 			Map<String, List<String>> headers = con.getHeaderFields();
         	is = (responseCode >= 200 && responseCode < 300)  ? con.getInputStream() : con.getErrorStream();
         	result = is != null ? IOUtils.toString(is, StandardCharsets.UTF_8) : null;  // NOSONAR: result is for debugging purposes
             return route.getDestUri();
-        } catch (IOException | HTTPException | URISyntaxException e) {
+        } catch (IOException | HttpStatusException | URISyntaxException e) {
             String path = (con != null && con.getURL() != null) ? StringUtils.substringBefore(con.getURL().getPath(), "?") : null;
             // check if the Connect Exception is ActiveReject or Timeout
             checkException(route, path, elapsedTimeIIS, ObjectUtils.getIfNull(ExceptionUtils.getRootCause(e), e), con != null ? con.getErrorStream() : null);
@@ -575,7 +575,7 @@ public abstract class RestfulFileSender implements FileSender {
 	    }
 	    
 	    int statusCode = 0;
-	    if (rootCause instanceof HTTPException httpEx) {
+	    if (rootCause instanceof HttpStatusException httpEx) {
 	    	statusCode = httpEx.getStatusCode();
 	    } else if (rootCause instanceof IOException ioEx) {
 	    	String message = ioEx.getMessage();
@@ -588,7 +588,7 @@ public abstract class RestfulFileSender implements FileSender {
 	    	throw DestinationConnectionFault.ioError(routing, ioEx);
 	    }
 	    if (!(rootCause instanceof FaultSupport) &&
-	    	!(rootCause instanceof HTTPException) &&
+	    	!(rootCause instanceof HttpStatusException) &&
 	    	!(rootCause instanceof CertificateException)) {
 	        // This is an unexpected exception in the response.
 	        log.error(Markers2.append(rootCause), "Unexpected Exception: {}", rootCause.getMessage(), rootCause);
