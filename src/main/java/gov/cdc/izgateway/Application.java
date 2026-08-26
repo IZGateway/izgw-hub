@@ -399,12 +399,21 @@ public class Application implements WebMvcConfigurer {
 	@Value("${server.local-port:9081}") 
 	private int additionalPort;
 	
+	// NOTE: must be extendMessageConverters, not configureMessageConverters. In Spring
+	// Boot 4 / Framework 7, Boot's own default converters (Jackson, etc.) are only
+	// registered when getMessageConverters() finds the list still empty after the
+	// configureMessageConverters(List) phase; Boot's own registration now happens via
+	// the newer configureMessageConverters(HttpMessageConverters.ServerBuilder)
+	// overload, reached only from that empty-list branch. Adding to the List-based
+	// hook here made the list non-empty and silently dropped every default converter
+	// (Jackson included) app-wide. extendMessageConverters always runs after defaults
+	// are added, so it doesn't have this problem.
 	@Override
-    public void configureMessageConverters(List<HttpMessageConverter<?>> messageConverters) {
-    	SoapMessageConverter smc = new SoapMessageConverter(SoapMessageConverter.INBOUND); 
+    public void extendMessageConverters(List<HttpMessageConverter<?>> messageConverters) {
+    	SoapMessageConverter smc = new SoapMessageConverter(SoapMessageConverter.INBOUND);
     	smc.setHub(true);
         messageConverters.add(smc);
-        // Sets up SoapMessageWriter to handle \r as &#xD; if true, otherwise 
+        // Sets up SoapMessageWriter to handle \r as &#xD; if true, otherwise
         // \r in hl7Message will be replaced with \n due to XML Parsing rules.
         SoapMessageWriter.setFixNewLines(fixNewlines);
     }
