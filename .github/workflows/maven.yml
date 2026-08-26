@@ -483,6 +483,10 @@ jobs:
       env:
         BEARER_TOKEN_EXPIRED: ${{ secrets.BEARER_TOKEN_EXPIRED }}
         BEARER_TOKEN_FOR_CICD: ${{ secrets.BEARER_TOKEN_FOR_CICD }}
+        BEARER_TOKEN_REVOKED: ${{ secrets.BEARER_TOKEN_REVOKED }}
+        BEARER_TOKEN_WRONG_SECRET: ${{ secrets.BEARER_TOKEN_WRONG_SECRET }}
+        BEARER_TOKEN_WRONG_ENV: ${{ secrets.BEARER_TOKEN_WRONG_ENV }}
+        BEARER_TOKEN_NO_USETYPE: ${{ secrets.BEARER_TOKEN_NO_USETYPE }}
         NODE_OPTIONS: "--require ${{ github.workspace }}/.github/scripts/enable-keepalive.js"
       run: |
         newman run ../scripts/IZGW_2.0_Integration_Test.postman_collection.json -n 1 --folder "Working" \
@@ -491,6 +495,10 @@ jobs:
           "--environment" ../scripts/dev.postman_environment.json \
           "--env-var" "bearer_token_expired=$BEARER_TOKEN_EXPIRED" \
           "--env-var" "bearer_token_for_cicd=$BEARER_TOKEN_FOR_CICD" \
+          "--env-var" "bearer_token_revoked=$BEARER_TOKEN_REVOKED" \
+          "--env-var" "bearer_token_wrong_secret=$BEARER_TOKEN_WRONG_SECRET" \
+          "--env-var" "bearer_token_wrong_env=$BEARER_TOKEN_WRONG_ENV" \
+          "--env-var" "bearer_token_no_usetype=$BEARER_TOKEN_NO_USETYPE" \
           "--ssl-extra-ca-certs" certs/izgwroot.pem \
           "--ssl-client-cert-list" ../newman-cert-list.json \
           "--insecure" --reporters cli,junitfull --reporter-junitfull-export ../logs/integration-test.xml
