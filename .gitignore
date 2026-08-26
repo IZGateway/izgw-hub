@@ -10,6 +10,7 @@ temp/**
 **/.m2
 .claude/settings.local.json
 src/main/resources/application-local-jwt.yml
+src/main/resources/logback-local.xml
 .vscode
 .classpath
 .factorypath
