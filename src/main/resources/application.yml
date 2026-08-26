@@ -47,7 +47,7 @@ springdoc:
         # Must match org.webjars:swagger-ui version pinned in izgw-bom (currently 5.32.13).
         # springdoc's bundled default differs, so it serves resources from the wrong version
         # path and index.html 404s unless this is set explicitly.
-        version: 5.32.13
+        version: 5.32.14
     api-docs:
         path: /swagger/api-docs
 
