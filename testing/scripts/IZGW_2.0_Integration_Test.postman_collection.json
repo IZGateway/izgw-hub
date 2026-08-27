@@ -2092,6 +2092,561 @@
               "response": []
             },
             {
+              "name": "TC_API_KEY_VALID Test valid API Key",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "var status = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Body to parse as json object\", function() {\r",
+                      "    pm.expect(typeof status).to.eql(\"object\");\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"dev endpoints have status = Connected\", function() {\r",
+                      "    pm.expect(status.status).to.be.eql(\"Connected\");\r",
+                      "});\r",
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "utils.setup(pm);"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "protocolProfileBehavior": {
+                "disabledSystemHeaders": {
+                  "host": true
+                }
+              },
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token_for_cicd}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Host",
+                    "value": "{{hostHeader}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/xml"
+                  },
+                  {
+                    "key": "X-Message-ID",
+                    "value": "{{testMessageId}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{protocol}}://{{no_cert_host}}:{{port}}/rest/status/dev",
+                  "protocol": "{{protocol}}",
+                  "host": [
+                    "{{no_cert_host}}"
+                  ],
+                  "port": "{{port}}",
+                  "path": [
+                    "rest",
+                    "status",
+                    "dev"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "TC_API_KEY_EXP Test expired API Key",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 401\", function () {\r",
+                      "    pm.response.to.have.status(401);\r",
+                      "});\r",
+                      "\r",
+                      "async function moreTests() {\r",
+                      "    utils.getLogs(null, pm).then((logData) => {\r",
+                      "        logs = logData.json();\r",
+                      "\r",
+                      "        pm.test(\"Log contains JWT rejected: expired\", function() {\r",
+                      "            for (let i = 0; i < logs.length; i++) {\r",
+                      "                if (logs[i].message.includes(\"JWT rejected: expired\")) {\r",
+                      "                    pm.expect(true).to.be.true;\r",
+                      "                    return;\r",
+                      "                }\r",
+                      "            }\r",
+                      "            pm.expect(false).to.be.true;\r",
+                      "        });\r",
+                      "    });\r",
+                      "}\r",
+                      "\r",
+                      "moreTests();\r",
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "utils.setup(pm);"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "protocolProfileBehavior": {
+                "disabledSystemHeaders": {
+                  "host": true
+                }
+              },
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token_expired}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Host",
+                    "value": "{{hostHeader}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/xml"
+                  },
+                  {
+                    "key": "X-Message-ID",
+                    "value": "{{testMessageId}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{protocol}}://{{no_cert_host}}:{{port}}/rest/status/dev",
+                  "protocol": "{{protocol}}",
+                  "host": [
+                    "{{no_cert_host}}"
+                  ],
+                  "port": "{{port}}",
+                  "path": [
+                    "rest",
+                    "status",
+                    "dev"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "TC_API_KEY_REVOKED Test revoked API Key",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 401\", function () {\r",
+                      "    pm.response.to.have.status(401);\r",
+                      "});\r",
+                      "\r",
+                      "async function moreTests() {\r",
+                      "    utils.getLogs(null, pm).then((logData) => {\r",
+                      "        logs = logData.json();\r",
+                      "\r",
+                      "        pm.test(\"Log contains JWT revoked message\", function() {\r",
+                      "            for (let i = 0; i < logs.length; i++) {\r",
+                      "                if (logs[i].message.includes(\"is in REVOKED cache\")) {\r",
+                      "                    pm.expect(true).to.be.true;\r",
+                      "                    return;\r",
+                      "                }\r",
+                      "            }\r",
+                      "            pm.expect(false).to.be.true;\r",
+                      "        });\r",
+                      "    });\r",
+                      "}\r",
+                      "\r",
+                      "moreTests();"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "utils.setup(pm);"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "protocolProfileBehavior": {
+                "disabledSystemHeaders": {
+                  "host": true
+                }
+              },
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token_revoked}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Host",
+                    "value": "{{hostHeader}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/xml"
+                  },
+                  {
+                    "key": "X-Message-ID",
+                    "value": "{{testMessageId}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{protocol}}://{{no_cert_host}}:{{port}}/rest/status/dev",
+                  "protocol": "{{protocol}}",
+                  "host": [
+                    "{{no_cert_host}}"
+                  ],
+                  "port": "{{port}}",
+                  "path": [
+                    "rest",
+                    "status",
+                    "dev"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "TC_API_KEY_BADSIG Test API Key signed with wrong secret",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 401\", function () {\r",
+                      "    pm.response.to.have.status(401);\r",
+                      "});\r",
+                      "\r",
+                      "async function moreTests() {\r",
+                      "    utils.getLogs(null, pm).then((logData) => {\r",
+                      "        logs = logData.json();\r",
+                      "\r",
+                      "        pm.test(\"Log contains JWT signature verification failed\", function() {\r",
+                      "            for (let i = 0; i < logs.length; i++) {\r",
+                      "                if (logs[i].message.includes(\"JWT signature verification failed\")) {\r",
+                      "                    pm.expect(true).to.be.true;\r",
+                      "                    return;\r",
+                      "                }\r",
+                      "            }\r",
+                      "            pm.expect(false).to.be.true;\r",
+                      "        });\r",
+                      "    });\r",
+                      "}\r",
+                      "\r",
+                      "moreTests();"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "utils.setup(pm);"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "protocolProfileBehavior": {
+                "disabledSystemHeaders": {
+                  "host": true
+                }
+              },
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token_wrong_secret}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Host",
+                    "value": "{{hostHeader}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/xml"
+                  },
+                  {
+                    "key": "X-Message-ID",
+                    "value": "{{testMessageId}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{protocol}}://{{no_cert_host}}:{{port}}/rest/status/dev",
+                  "protocol": "{{protocol}}",
+                  "host": [
+                    "{{no_cert_host}}"
+                  ],
+                  "port": "{{port}}",
+                  "path": [
+                    "rest",
+                    "status",
+                    "dev"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "TC_API_KEY_WRONGENV Test API Key scoped to Testing (2) sent to Development (5)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 401\", function () {\r",
+                      "    pm.response.to.have.status(401);\r",
+                      "});\r",
+                      "\r",
+                      "async function moreTests() {\r",
+                      "    utils.getLogs(null, pm).then((logData) => {\r",
+                      "        logs = logData.json();\r",
+                      "\r",
+                      "        pm.test(\"Log contains 'not valid for target env'\", function() {\r",
+                      "            for (let i = 0; i < logs.length; i++) {\r",
+                      "                if (logs[i].message.includes(\"not valid for target env\")) {\r",
+                      "                    pm.expect(true).to.be.true;\r",
+                      "                    return;\r",
+                      "                }\r",
+                      "            }\r",
+                      "            pm.expect(false).to.be.true;\r",
+                      "        });\r",
+                      "    });\r",
+                      "}\r",
+                      "\r",
+                      "moreTests();\r",
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "utils.setup(pm);"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "protocolProfileBehavior": {
+                "disabledSystemHeaders": {
+                  "host": true
+                }
+              },
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token_wrong_env}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Host",
+                    "value": "{{hostHeader}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/xml"
+                  },
+                  {
+                    "key": "X-Message-ID",
+                    "value": "{{testMessageId}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{protocol}}://{{no_cert_host}}:{{port}}/rest/status/dev",
+                  "protocol": "{{protocol}}",
+                  "host": [
+                    "{{no_cert_host}}"
+                  ],
+                  "port": "{{port}}",
+                  "path": [
+                    "rest",
+                    "status",
+                    "dev"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "TC_API_KEY_USETYPE Test API Key with no useTypes fails use-type intersection",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 500\", function () {\r",
+                      "    pm.response.to.have.status(500);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"SOAP Fault reports Use Type Not Allowed\", function () {\r",
+                      "    pm.expect(pm.response.text()).to.include(\"Use Type Not Allowed\");\r",
+                      "});\r",
+                      "\r",
+                      "async function moreTests() {\r",
+                      "    utils.getLogs(null, pm).then((logData) => {\r",
+                      "        logs = logData.json();\r",
+                      "\r",
+                      "        pm.test(\"Log contains Use Type Not Allowed\", function() {\r",
+                      "            for (let i = 0; i < logs.length; i++) {\r",
+                      "                if (logs[i].message.includes(\"Use Type Not Allowed\")) {\r",
+                      "                    pm.expect(true).to.be.true;\r",
+                      "                    return;\r",
+                      "                }\r",
+                      "            }\r",
+                      "            pm.expect(false).to.be.true;\r",
+                      "        });\r",
+                      "    });\r",
+                      "}\r",
+                      "\r",
+                      "moreTests();\r",
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "utils.setup(pm, \"dev\");"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "protocolProfileBehavior": {
+                "disabledSystemHeaders": {
+                  "host": true
+                }
+              },
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token_no_usetype}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Host",
+                    "value": "{{hostHeader}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/xml"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>{{GoodMessage}}</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+                },
+                "url": {
+                  "raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+                  "protocol": "{{protocol}}",
+                  "host": [
+                    "{{host}}"
+                  ],
+                  "port": "{{port}}",
+                  "path": [
+                    "IISHubService"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
               "name": "TC_99 IIS Status",
               "event": [
                 {

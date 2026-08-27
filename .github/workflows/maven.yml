@@ -379,10 +379,32 @@ jobs:
       env:
         TESTING_CERT: ${{ secrets.TESTING_CERT }}
         TESTING_KEY: ${{ secrets.TESTING_KEY }}
+        TESTING_PASS: ${{ secrets.TESTING_PASS }}
       run: |
         echo "$TESTING_CERT" > testing/newman.pem
         # Don't upload this file !!!
         echo "$TESTING_KEY" > testing/newman.key
+
+        # Scope the mTLS client cert to only the real target host (host/port
+        # read from the Postman environment file so this stays in sync with
+        # it). Requests to `no_cert_host` (e.g. TC_API_KEY_EXP, which tests an
+        # expired JWT) then get no client certificate at all, so the Hub's
+        # cert-based auth fallback can't mask an expired-token rejection with
+        # a successful cert-based login.
+        # Don't upload this file !!! (embeds TESTING_PASS in plaintext)
+        HOST=$(jq -r '.values[] | select(.key=="host") | .value' testing/scripts/dev.postman_environment.json)
+        PORT=$(jq -r '.values[] | select(.key=="port") | .value' testing/scripts/dev.postman_environment.json)
+        jq -n \
+          --arg host "$HOST" \
+          --arg port "$PORT" \
+          --arg pass "$TESTING_PASS" \
+          '[{
+             name: "IZGW dev mTLS cert",
+             matches: ["https://\($host)/*", "https://\($host):\($port)/*"],
+             key: {src: "../newman.key"},
+             cert: {src: "../newman.pem"},
+             passphrase: $pass
+           }]' > testing/newman-cert-list.json
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v6
@@ -441,7 +463,6 @@ jobs:
     - name: Run Warm Up for Functional Testing
       working-directory: ./testing/testdata
       env:
-        TESTING_PASS: ${{ secrets.TESTING_PASS }}
         NODE_OPTIONS: "--require ${{ github.workspace }}/.github/scripts/enable-keepalive.js"
       run: |
         mkdir ../logs
@@ -450,9 +471,7 @@ jobs:
         newman run ../scripts/IZGW_2.0_Integration_Test.postman_collection.json -n 1 --folder "Smoke Test" \
           "--environment" ../scripts/dev.postman_environment.json \
           "--ssl-extra-ca-certs" ../certs/izgwroot.pem \
-          "--ssl-client-cert" ../newman.pem \
-          "--ssl-client-key" ../newman.key \
-          "--ssl-client-passphrase" $TESTING_PASS \
+          "--ssl-client-cert-list" ../newman-cert-list.json \
           "--insecure" -x > ../logs/warmup.log
         endTime=$(date +%s);
         WARMUP=$(($endTime-$startTime));
@@ -462,17 +481,26 @@ jobs:
       id: FunctionalTests
       working-directory: ./testing/testdata
       env:
-        TESTING_PASS: ${{ secrets.TESTING_PASS }}
+        BEARER_TOKEN_EXPIRED: ${{ secrets.BEARER_TOKEN_EXPIRED }}
+        BEARER_TOKEN_FOR_CICD: ${{ secrets.BEARER_TOKEN_FOR_CICD }}
+        BEARER_TOKEN_REVOKED: ${{ secrets.BEARER_TOKEN_REVOKED }}
+        BEARER_TOKEN_WRONG_SECRET: ${{ secrets.BEARER_TOKEN_WRONG_SECRET }}
+        BEARER_TOKEN_WRONG_ENV: ${{ secrets.BEARER_TOKEN_WRONG_ENV }}
+        BEARER_TOKEN_NO_USETYPE: ${{ secrets.BEARER_TOKEN_NO_USETYPE }}
         NODE_OPTIONS: "--require ${{ github.workspace }}/.github/scripts/enable-keepalive.js"
       run: |
         newman run ../scripts/IZGW_2.0_Integration_Test.postman_collection.json -n 1 --folder "Working" \
           "--env-var" "build=`grep Build target\classes\build.txt | cut '-d:' -f2 | cut -c2-99`" \
           "--env-var" "timestamp=`grep Timestamp target\classes\build.txt | cut '-d:' -f2 | cut -c2-99`" \
           "--environment" ../scripts/dev.postman_environment.json \
+          "--env-var" "bearer_token_expired=$BEARER_TOKEN_EXPIRED" \
+          "--env-var" "bearer_token_for_cicd=$BEARER_TOKEN_FOR_CICD" \
+          "--env-var" "bearer_token_revoked=$BEARER_TOKEN_REVOKED" \
+          "--env-var" "bearer_token_wrong_secret=$BEARER_TOKEN_WRONG_SECRET" \
+          "--env-var" "bearer_token_wrong_env=$BEARER_TOKEN_WRONG_ENV" \
+          "--env-var" "bearer_token_no_usetype=$BEARER_TOKEN_NO_USETYPE" \
           "--ssl-extra-ca-certs" certs/izgwroot.pem \
-          "--ssl-client-cert" ../newman.pem \
-          "--ssl-client-key" ../newman.key \
-          "--ssl-client-passphrase" $TESTING_PASS \
+          "--ssl-client-cert-list" ../newman-cert-list.json \
           "--insecure" --reporters cli,junitfull --reporter-junitfull-export ../logs/integration-test.xml
 
         xunit-viewer -r ../logs/integration-test.xml
@@ -506,6 +534,7 @@ jobs:
         path: |
             .
             !testing/newman.key
+            !testing/newman-cert-list.json
 
     - name: Remove runner IP from security group
       if: always()
