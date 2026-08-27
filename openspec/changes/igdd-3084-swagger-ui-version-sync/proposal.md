@@ -19,7 +19,7 @@ that second consumer arriving, confirmed still live on `IGDD-2353_spring_upgrade
 (`mvn dependency:tree` resolves `org.webjars:swagger-ui:5.32.14`; `application.yml` is pinned to `5.32.13`).
 
 Full design rationale, alternatives considered, and the cross-repo rollout sequence are recorded in
-[`docs/superpowers/specs/2026-08-26-swagger-ui-version-sync-design.md`](../../../docs/superpowers/specs/2026-08-26-swagger-ui-version-sync-design.md).
+`design.md` alongside this proposal.
 
 ## What Changes
 

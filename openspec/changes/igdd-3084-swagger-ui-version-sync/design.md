@@ -35,9 +35,7 @@ precisely the failure mode that produced this ticket (IGDD-2976 fixed it in `izg
 that same gap resurfacing in `izgw-hub`).
 
 The full alternatives analysis (per-service duplication vs. `izgw-core` vs. removing `izgw-bom`'s independent
-override) is recorded in
-[`docs/superpowers/specs/2026-08-26-swagger-ui-version-sync-design.md`](../../../docs/superpowers/specs/2026-08-26-swagger-ui-version-sync-design.md).
-This document covers Hub's consuming side only.
+override) is summarized in the Decisions section below. This document covers Hub's consuming side only.
 
 ## Goals / Non-Goals
 
