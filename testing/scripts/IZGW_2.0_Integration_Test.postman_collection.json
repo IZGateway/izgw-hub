@@ -1,9 +1,10 @@
-﻿{
+{
   "info": {
-    "_postman_id": "0404e59b-867c-45ba-ab70-d117f4a8ba0f",
+    "_postman_id": "adb407ac-2ad5-44d9-8dcf-ef8d248346df",
     "name": "IZGW 2.0 Integtration Test",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_exporter_id": "28864196"
+    "_exporter_id": "2729094",
+    "_collection_link": "https://go.postman.co/collection/2729094-adb407ac-2ad5-44d9-8dcf-ef8d248346df?source=collection_link"
   },
   "item": [
     {
@@ -41,6 +42,16 @@
                 }
               ],
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "GET",
                 "header": [
                   {
@@ -60,17 +71,7 @@
                     "build.txt"
                   ]
                 },
-                "description": "Retrieve the build information using\n\nGET /rest/build.txt\n\nVerify the build name and timestamp match the expected values in global variables.",
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
-                  ]
-                }
+                "description": "Retrieve the build information using\n\nGET /rest/build.txt\n\nVerify the build name and timestamp match the expected values in global variables."
               },
               "response": []
             },
@@ -89,6 +90,16 @@
                 }
               ],
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "GET",
                 "header": [],
                 "url": {
@@ -102,17 +113,7 @@
                     "icanhazip"
                   ]
                 },
-                "description": "Retrieve the test system's IP Address to verify log response values by calling a third party IP Address reporting tool and storing the value in the collection variables under myIpAddr.",
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
-                  ]
-                }
+                "description": "Retrieve the test system's IP Address to verify log response values by calling a third party IP Address reporting tool and storing the value in the collection variables under myIpAddr."
               },
               "response": []
             },
@@ -231,6 +232,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -255,16 +266,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -378,6 +379,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -402,16 +413,6 @@
                   "port": "{{port}}",
                   "path": [
                     "izgw"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -460,6 +461,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "GET",
                 "header": [
                   {
@@ -489,16 +500,6 @@
                     {
                       "key": "wsdl",
                       "value": ""
-                    }
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
                     }
                   ]
                 }
@@ -548,6 +549,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "GET",
                 "header": [
                   {
@@ -577,16 +588,6 @@
                     {
                       "key": "wsdl",
                       "value": ""
-                    }
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
                     }
                   ]
                 }
@@ -636,6 +637,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "GET",
                 "header": [
                   {
@@ -665,16 +676,6 @@
                     {
                       "key": "xsd",
                       "value": "cdc-iis.xsd"
-                    }
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
                     }
                   ]
                 }
@@ -880,6 +881,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -904,16 +915,6 @@
                   "port": "{{port}}",
                   "path": [
                     "izgw"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -998,6 +999,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -1022,16 +1033,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -1105,6 +1106,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -1129,16 +1140,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -1193,6 +1194,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -1217,16 +1228,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -1280,6 +1281,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -1304,16 +1315,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -1377,6 +1378,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -1401,16 +1412,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -1463,6 +1464,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -1491,16 +1502,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -1568,6 +1569,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "GET",
                 "header": [
                   {
@@ -1598,16 +1609,6 @@
                     {
                       "key": "all",
                       "value": "true"
-                    }
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
                     }
                   ]
                 }
@@ -1651,6 +1652,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "GET",
                 "header": [
                   {
@@ -1677,16 +1688,6 @@
                     "rest",
                     "submitFile"
                   ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
-                  ]
                 }
               },
               "response": []
@@ -1712,6 +1713,16 @@
                 }
               ],
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "GET",
                 "header": [
                   {
@@ -1731,17 +1742,7 @@
                     "ui.html"
                   ]
                 },
-                "description": "Retrieve the test system's IP Address to verify log response values by calling a third party IP Address reporting tool and storing the value in the collection variables under myIpAddr.",
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
-                  ]
-                }
+                "description": "Retrieve the test system's IP Address to verify log response values by calling a third party IP Address reporting tool and storing the value in the collection variables under myIpAddr."
               },
               "response": []
             },
@@ -1766,6 +1767,16 @@
                 }
               ],
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "GET",
                 "header": [
                   {
@@ -1783,16 +1794,6 @@
                   "path": [
                     "swagger",
                     "api-docs.yaml"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -1864,6 +1865,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "GET",
                 "header": [
                   {
@@ -1889,16 +1900,6 @@
                   "path": [
                     "rest",
                     "statushistory"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -1957,6 +1958,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "GET",
                 "header": [
                   {
@@ -1987,16 +1998,6 @@
                     {
                       "key": "test",
                       "value": "true"
-                    }
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
                     }
                   ]
                 }
@@ -2050,6 +2051,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "GET",
                 "header": [
                   {
@@ -2075,16 +2086,6 @@
                   "path": [
                     "rest",
                     "access"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -2161,6 +2162,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "GET",
                 "header": [
                   {
@@ -2186,16 +2197,6 @@
                   "path": [
                     "rest",
                     "status"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -2252,6 +2253,16 @@
                     }
                   ],
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "GET",
                     "header": [],
                     "url": {
@@ -2263,16 +2274,6 @@
                       "port": "{{port}}{{prefix}}",
                       "path": [
                         "headers"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -2322,6 +2323,16 @@
                     }
                   ],
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "GET",
                     "header": [],
                     "url": {
@@ -2334,16 +2345,6 @@
                       "path": [
                         "headers",
                         "IRIS"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -2398,6 +2399,16 @@
                     }
                   ],
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -2419,16 +2430,6 @@
                       "path": [
                         "headers",
                         "IRIS"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -2496,6 +2497,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -2520,16 +2531,6 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -2584,6 +2585,16 @@
                     }
                   ],
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -2605,16 +2616,6 @@
                       "path": [
                         "headers",
                         "IRIS"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -2674,6 +2675,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "GET",
                     "header": [
                       {
@@ -2698,16 +2709,6 @@
                       "port": "{{port}}{{prefix}}",
                       "path": [
                         "maint"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -2761,6 +2762,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "GET",
                     "header": [
                       {
@@ -2786,16 +2797,6 @@
                       "path": [
                         "maint",
                         "dev"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -2849,6 +2850,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -2883,16 +2894,6 @@
                         {
                           "key": "start",
                           "value": "now"
-                        }
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
                         }
                       ]
                     }
@@ -2953,6 +2954,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -2981,16 +2992,6 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -3044,6 +3045,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "DELETE",
                     "header": [
                       {
@@ -3069,16 +3080,6 @@
                       "path": [
                         "maint",
                         "dev"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -3124,6 +3125,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -3149,16 +3160,6 @@
                       "path": [
                         "IISHubService"
                       ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
-                      ]
                     }
                   },
                   "response": []
@@ -3183,6 +3184,16 @@
                     }
                   ],
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "DELETE",
                     "header": [],
                     "url": {
@@ -3195,16 +3206,6 @@
                       "path": [
                         "headers",
                         "NEW"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -3228,6 +3229,16 @@
                     }
                   ],
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "DELETE",
                     "header": [],
                     "url": {
@@ -3240,16 +3251,6 @@
                       "path": [
                         "headers",
                         "nonexisting"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -3286,6 +3287,16 @@
                     }
                   ],
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "PUT",
                     "header": [],
                     "body": {
@@ -3306,16 +3317,6 @@
                       "port": "{{port}}{{prefix}}",
                       "path": [
                         "headers"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -3339,6 +3340,16 @@
                     }
                   ],
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "PUT",
                     "header": [],
                     "body": {
@@ -3359,16 +3370,6 @@
                       "port": "{{port}}{{prefix}}",
                       "path": [
                         "headers"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -3401,6 +3402,16 @@
                     }
                   ],
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "DELETE",
                     "header": [],
                     "url": {
@@ -3413,16 +3424,6 @@
                       "path": [
                         "headers",
                         "NEW"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -3446,6 +3447,16 @@
                     }
                   ],
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "DELETE",
                     "header": [],
                     "url": {
@@ -3458,16 +3469,6 @@
                       "path": [
                         "headers",
                         "NEW"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -3523,6 +3524,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "GET",
                 "header": [
                   {
@@ -3549,17 +3560,7 @@
                     "logs"
                   ]
                 },
-                "description": "Verify recent logs can be retrieved via\n\nGET /rest/logs\n\nLog output content type is application/json\n\nLog parses as a json Array",
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
-                  ]
-                }
+                "description": "Verify recent logs can be retrieved via\n\nGET /rest/logs\n\nLog output content type is application/json\n\nLog parses as a json Array"
               },
               "response": []
             },
@@ -3603,6 +3604,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "DELETE",
                 "header": [
                   {
@@ -3632,16 +3643,6 @@
                     {
                       "key": "clear",
                       "value": "dev"
-                    }
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
                     }
                   ]
                 }
@@ -3797,6 +3798,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -3821,16 +3832,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -3947,6 +3948,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -3972,16 +3983,6 @@
                   "path": [
                     "dev",
                     "IISService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -4067,6 +4068,16 @@
                 }
               ],
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "GET",
                 "header": [],
                 "url": {
@@ -4079,16 +4090,6 @@
                   "path": [
                     "rest",
                     "health"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -4144,6 +4145,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -4168,16 +4179,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -4233,6 +4234,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -4257,16 +4268,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -4324,6 +4325,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -4348,16 +4359,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -4413,6 +4414,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -4437,16 +4448,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -4497,6 +4498,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -4525,16 +4536,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -4581,6 +4582,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -4613,16 +4624,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -4669,6 +4670,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -4701,16 +4712,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -4756,6 +4757,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -4784,16 +4795,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -4839,6 +4840,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -4867,16 +4878,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -4922,6 +4923,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -4950,16 +4961,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -5005,6 +5006,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -5033,16 +5044,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -5091,6 +5092,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -5115,16 +5126,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -5171,6 +5172,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -5195,16 +5206,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -5294,6 +5295,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -5318,16 +5329,6 @@
                   "port": "{{port}}",
                   "path": [
                     "izgw"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -5411,6 +5412,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -5436,16 +5447,6 @@
                   "path": [
                     "izgw",
                     "dev"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -5496,6 +5497,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -5520,16 +5531,6 @@
                   "port": "{{port}}",
                   "path": [
                     "izgw"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -5586,6 +5587,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -5610,16 +5621,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -5670,6 +5671,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -5694,16 +5705,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -5759,6 +5760,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -5788,16 +5799,6 @@
                     {
                       "key": "cdc-iis.xsd",
                       "value": null
-                    }
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
                     }
                   ]
                 }
@@ -5889,6 +5890,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -5913,16 +5924,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -5992,6 +5993,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -6016,16 +6027,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -6065,6 +6066,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -6093,16 +6104,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -6180,6 +6181,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -6204,16 +6215,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -6306,6 +6307,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -6330,16 +6341,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -6428,6 +6429,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -6452,16 +6463,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -6554,6 +6555,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -6578,16 +6589,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -6680,6 +6681,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -6704,16 +6715,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -6808,6 +6809,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -6832,16 +6843,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -6936,6 +6937,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -6960,16 +6971,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -7064,6 +7065,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -7092,16 +7103,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -7166,6 +7167,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "GET",
                 "header": [
                   {
@@ -7190,16 +7201,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -7248,6 +7249,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "PUT",
                 "header": [
                   {
@@ -7272,16 +7283,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -7331,6 +7332,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "DELETE",
                 "header": [
                   {
@@ -7355,16 +7366,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -7432,6 +7433,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -7456,16 +7467,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -7515,6 +7516,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -7539,16 +7550,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -7598,6 +7599,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -7622,16 +7633,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -7703,6 +7704,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -7727,16 +7738,6 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -7799,6 +7800,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -7823,16 +7834,6 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -7896,6 +7897,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -7920,16 +7931,6 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -7993,6 +7994,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -8017,16 +8028,6 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -8090,6 +8091,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -8114,16 +8125,6 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -8187,6 +8188,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -8211,16 +8222,6 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -8267,6 +8268,16 @@
                     }
                   ],
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -8294,16 +8305,6 @@
                         {
                           "key": "reason",
                           "value": "testing"
-                        }
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
                         }
                       ]
                     }
@@ -8346,6 +8347,16 @@
                     }
                   ],
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "GET",
                     "header": [
                       {
@@ -8364,16 +8375,6 @@
                         "rest",
                         "access",
                         "denylist"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -8424,6 +8425,16 @@
                     }
                   ],
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "DELETE",
                     "header": [
                       {
@@ -8451,16 +8462,6 @@
                         {
                           "key": "reason",
                           "value": "testing"
-                        }
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
                         }
                       ]
                     }
@@ -8505,6 +8506,16 @@
                     }
                   ],
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "GET",
                     "header": [
                       {
@@ -8523,16 +8534,6 @@
                         "rest",
                         "access",
                         "denylist"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -8594,6 +8595,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -8618,16 +8629,6 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -8736,6 +8737,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -8760,16 +8771,6 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -8832,6 +8833,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -8856,16 +8867,6 @@
                       "port": "{{port}}",
                       "path": [
                         "izgw"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -8927,6 +8928,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -8951,16 +8962,6 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -9022,6 +9023,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -9046,16 +9057,6 @@
                       "port": "{{port}}",
                       "path": [
                         "izgw"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -9117,6 +9118,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -9141,16 +9152,6 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -9212,6 +9213,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -9236,16 +9247,6 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -9308,6 +9309,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -9332,16 +9343,6 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -9403,6 +9404,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -9427,16 +9438,6 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -9503,6 +9504,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -9527,16 +9538,6 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -9603,6 +9604,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -9627,16 +9638,6 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -9696,6 +9697,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -9720,16 +9731,6 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -9789,6 +9790,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -9813,16 +9824,6 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -9884,6 +9885,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -9908,16 +9919,6 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -9979,6 +9980,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -10003,16 +10014,6 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -10074,6 +10075,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -10098,16 +10109,6 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -10169,6 +10170,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -10193,16 +10204,6 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -10264,6 +10265,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -10288,16 +10299,6 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -10359,6 +10360,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -10383,16 +10394,6 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -10457,6 +10458,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -10481,16 +10492,6 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -10552,6 +10553,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -10576,16 +10587,6 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -10665,6 +10666,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -10689,16 +10700,6 @@
                       "port": "{{port}}",
                       "path": [
                         "IISHubService"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -10774,6 +10775,16 @@
                     }
                   ],
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "GET",
                     "header": [],
                     "url": {
@@ -10787,16 +10798,6 @@
                         "rest",
                         "status",
                         "{{dex-endpoint}}"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -10896,6 +10897,16 @@
                     }
                   },
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [
                       {
@@ -10921,16 +10932,6 @@
                       "path": [
                         "IISHubService"
                       ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
-                      ]
                     }
                   },
                   "response": []
@@ -10954,6 +10955,16 @@
                     }
                   ],
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "OPTIONS",
                     "header": [],
                     "url": {
@@ -10967,16 +10978,6 @@
                         "rest",
                         "upload",
                         "dex"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -11038,6 +11039,16 @@
                     }
                   ],
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "GET",
                     "header": [],
                     "url": {
@@ -11052,16 +11063,6 @@
                         "ads",
                         "{{dex-endpoint}}",
                         "status"
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
                       ]
                     }
                   },
@@ -11086,6 +11087,16 @@
                     }
                   ],
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [],
                     "body": {
@@ -11115,16 +11126,6 @@
                         "upload",
                         "oauth"
                       ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
-                      ]
                     }
                   },
                   "response": []
@@ -11153,6 +11154,16 @@
                     }
                   ],
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [],
                     "body": {
@@ -11187,16 +11198,6 @@
                         "upload",
                         "oauth"
                       ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
-                        }
-                      ]
                     }
                   },
                   "response": []
@@ -11225,6 +11226,16 @@
                     }
                   ],
                   "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{bearer_token}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
                     "method": "POST",
                     "header": [],
                     "body": {
@@ -11267,16 +11278,6 @@
                         {
                           "key": "password",
                           "value": "password"
-                        }
-                      ]
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{bearer_token}}",
-                          "type": "string"
                         }
                       ]
                     }
@@ -12855,6 +12856,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -12879,16 +12890,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -12925,6 +12926,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -12949,16 +12960,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -12996,6 +12997,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -13020,16 +13031,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -13066,6 +13067,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -13090,16 +13101,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -13136,6 +13137,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -13160,16 +13171,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -13206,6 +13207,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -13230,16 +13241,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -13276,6 +13277,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -13300,16 +13311,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -13346,6 +13347,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -13370,16 +13381,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -13416,6 +13417,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -13440,16 +13451,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -13487,6 +13488,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -13511,16 +13522,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -13557,6 +13558,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -13581,16 +13592,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -13627,6 +13628,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -13651,16 +13662,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -13697,6 +13698,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -13721,16 +13732,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -13766,6 +13767,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -13790,16 +13801,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -13836,6 +13837,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -13860,16 +13871,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -13906,6 +13907,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -13930,16 +13941,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -13976,6 +13977,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -14000,16 +14011,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -14046,6 +14047,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -14070,16 +14081,6 @@
                   "port": "{{port}}",
                   "path": [
                     "IISHubService"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{bearer_token}}",
-                      "type": "string"
-                    }
                   ]
                 }
               },
@@ -14116,6 +14117,16 @@
                 }
               },
               "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -14141,7 +14152,80 @@
                   "path": [
                     "IISHubService"
                   ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "TC_MOCK_10a: Query for Immunization History (multiple RSP)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "// Extract the HL7 message from the SOAP response and normalize segment separators.",
+                      "// The IIS Hub response encodes carriage returns as &#xD; (or &#x0d;) and escapes & as &amp;.",
+                      "let responseText = pm.response.text();",
+                      "",
+                      "// Grab the HL7 payload inside <iis:Hl7Message>...</iis:Hl7Message>",
+                      "let hl7Match = responseText.match(/<iis:Hl7Message>([\\s\\S]*?)<\\/iis:Hl7Message>/i);",
+                      "let hl7 = hl7Match ? hl7Match[1] : responseText;",
+                      "",
+                      "// Decode XML entities and normalize the HL7 segment terminator to a newline.",
+                      "hl7 = hl7",
+                      "    .replace(/&#x0?d;/gi, \"\\n\")   // carriage return segment terminators",
+                      "    .replace(/&#x0?a;/gi, \"\\n\")",
+                      "    .replace(/&amp;/g, \"&\")",
+                      "    .replace(/&lt;/g, \"<\")",
+                      "    .replace(/&gt;/g, \">\");",
+                      "",
+                      "// Split into segments (handle \\r, \\n and \\r\\n) and drop empties.",
+                      "let segments = hl7.split(/[\\r\\n]+/).map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; });",
+                      "",
+                      "// ---- Check 1: MSH-21-1 is Z42 ----",
+                      "pm.test(\"MSH-21-1 is Z42\", function () {",
+                      "    let msh = segments.find(function (s) { return s.indexOf(\"MSH|\") === 0; });",
+                      "    pm.expect(msh, \"No MSH segment found in response\").to.not.be.undefined;",
+                      "",
+                      "    // MSH is special: MSH-1 is the field separator \"|\", so MSH.split(\"|\")[1] is MSH-2 (encoding chars).",
+                      "    // Fields are 1-based; index into the split array equals the MSH field number.",
+                      "    let mshFields = msh.split(\"|\");",
+                      "    let msh21 = mshFields[20] || \"\";",
+                      "    let msh21_1 = msh21.split(\"^\")[0];",
+                      "    pm.expect(msh21_1, \"MSH-21-1 value was '\" + msh21_1 + \"'\").to.eql(\"Z42\");",
+                      "});",
+                      "",
+                      "// ---- Check 2: There are 6 RXA segments containing 998^No vaccine administered^CVX ----",
+                      "pm.test(\"There are 6 RXA segments containing 998^No vaccine administered^CVX\", function () {",
+                      "    let matchingRxa = segments.filter(function (s) {",
+                      "        return s.indexOf(\"RXA|\") === 0 && s.indexOf(\"998^No vaccine administered^CVX\") !== -1;",
+                      "    });",
+                      "    pm.expect(matchingRxa.length, \"Found \" + matchingRxa.length + \" matching RXA segment(s)\").to.eql(6);",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
                 },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "utils.setup(pm, \"dev\");"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "protocolProfileBehavior": {
+                "disabledSystemHeaders": {
+                  "host": true
+                }
+              },
+              "request": {
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -14150,6 +14234,141 @@
                       "value": "{{bearer_token}}",
                       "type": "string"
                     }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Host",
+                    "value": "{{hostHeader}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/xml"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|01KZW85EJKP3V2Z64B80T7HZGC||TitusAIRA^KevinAIRA^^^^^L||19900103|M||(999)457-8173&#x0d;RCP|I|5^RD&amp;records&#xd;\r\n      </urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+                },
+                "url": {
+                  "raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+                  "protocol": "{{protocol}}",
+                  "host": [
+                    "{{host}}"
+                  ],
+                  "port": "{{port}}",
+                  "path": [
+                    "IISHubService"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "TC_MOCK_10b: Query for Immunization History (single RSP)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "// Extract the HL7 message from the SOAP response and normalize segment separators.",
+                      "// The IIS Hub response encodes carriage returns as &#xD; (or &#x0d;) and escapes & as &amp;.",
+                      "let responseText = pm.response.text();",
+                      "",
+                      "// Grab the HL7 payload inside <iis:Hl7Message>...</iis:Hl7Message>",
+                      "let hl7Match = responseText.match(/<iis:Hl7Message>([\\s\\S]*?)<\\/iis:Hl7Message>/i);",
+                      "let hl7 = hl7Match ? hl7Match[1] : responseText;",
+                      "",
+                      "// Decode XML entities and normalize the HL7 segment terminator to a newline.",
+                      "hl7 = hl7",
+                      "    .replace(/&#x0?d;/gi, \"\\n\")   // carriage return segment terminators",
+                      "    .replace(/&#x0?a;/gi, \"\\n\")",
+                      "    .replace(/&amp;/g, \"&\")",
+                      "    .replace(/&lt;/g, \"<\")",
+                      "    .replace(/&gt;/g, \">\");",
+                      "",
+                      "// Split into segments (handle \\r, \\n and \\r\\n) and drop empties.",
+                      "let segments = hl7.split(/[\\r\\n]+/).map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; });",
+                      "",
+                      "// ---- Check 1: MSH-21-1 is Z42 ----",
+                      "pm.test(\"MSH-21-1 is Z42\", function () {",
+                      "    let msh = segments.find(function (s) { return s.indexOf(\"MSH|\") === 0; });",
+                      "    pm.expect(msh, \"No MSH segment found in response\").to.not.be.undefined;",
+                      "",
+                      "    // MSH is special: MSH-1 is the field separator \"|\", so MSH.split(\"|\")[1] is MSH-2 (encoding chars).",
+                      "    // Fields are 1-based; index into the split array equals the MSH field number.",
+                      "    let mshFields = msh.split(\"|\");",
+                      "    let msh21 = mshFields[20] || \"\";",
+                      "    let msh21_1 = msh21.split(\"^\")[0];",
+                      "    pm.expect(msh21_1, \"MSH-21-1 value was '\" + msh21_1 + \"'\").to.eql(\"Z42\");",
+                      "});",
+                      "",
+                      "// ---- Check 2: There are 1 RXA segments containing 998^No vaccine administered^CVX ----",
+                      "pm.test(\"There are 1 RXA segments containing 998^No vaccine administered^CVX\", function () {",
+                      "    let matchingRxa = segments.filter(function (s) {",
+                      "        return s.indexOf(\"RXA|\") === 0 && s.indexOf(\"998^No vaccine administered^CVX\") !== -1;",
+                      "    });",
+                      "    pm.expect(matchingRxa.length, \"Found \" + matchingRxa.length + \" matching RXA segment(s)\").to.eql(1);",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "utils.setup(pm, \"dev\");"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "protocolProfileBehavior": {
+                "disabledSystemHeaders": {
+                  "host": true
+                }
+              },
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Host",
+                    "value": "{{hostHeader}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/xml"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|01KZW85EJKP3V2Z64B80T7HZGC||ZibbertAIRA^GlorpAIRA^^^^^L||19900110|F||(999)914-8214&#x0d;RCP|I|5^RD&amp;records&#xd;\r\n      </urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+                },
+                "url": {
+                  "raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+                  "protocol": "{{protocol}}",
+                  "host": [
+                    "{{host}}"
+                  ],
+                  "port": "{{port}}",
+                  "path": [
+                    "IISHubService"
                   ]
                 }
               },
@@ -14931,6 +15150,16 @@
         {
           "name": "Blacklist a User",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearer_token}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "POST",
             "header": [],
             "url": {
@@ -14949,16 +15178,6 @@
                 {
                   "key": "user",
                   "value": "epicenter.stchealthops.com"
-                }
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{bearer_token}}",
-                  "type": "string"
                 }
               ]
             }
@@ -15118,6 +15337,16 @@
             }
           },
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearer_token}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "POST",
             "header": [
               {
@@ -15142,16 +15371,6 @@
               "port": "{{port}}",
               "path": [
                 "IISHubService"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{bearer_token}}",
-                  "type": "string"
-                }
               ]
             }
           },
@@ -15310,6 +15529,16 @@
             }
           },
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearer_token}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "POST",
             "header": [
               {
@@ -15334,16 +15563,6 @@
               "port": "{{port}}",
               "path": [
                 "IISHubService"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{bearer_token}}",
-                  "type": "string"
-                }
               ]
             }
           },
@@ -15420,6 +15639,16 @@
             }
           },
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearer_token}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "header": [
               {
@@ -15445,16 +15674,6 @@
               "path": [
                 "rest",
                 "status"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{bearer_token}}",
-                  "type": "string"
-                }
               ]
             }
           },
@@ -15610,6 +15829,16 @@
             }
           ],
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearer_token}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "PUT",
             "header": [],
             "body": {
@@ -15631,16 +15860,6 @@
               "path": [
                 "headers"
               ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{bearer_token}}",
-                  "type": "string"
-                }
-              ]
             }
           },
           "response": []
@@ -15648,11 +15867,6 @@
         {
           "name": "New Request",
           "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": ""
-            },
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -15662,6 +15876,11 @@
                   "type": "string"
                 }
               ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": ""
             }
           },
           "response": []
