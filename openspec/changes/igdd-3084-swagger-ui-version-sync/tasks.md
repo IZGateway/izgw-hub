@@ -8,20 +8,21 @@ Jira: IGDD-3084
   `alignVersionFromWebjar(SwaggerUiConfigProperties)`, `alignVersion(SwaggerUiConfigProperties,
   Supplier<String>)`, static `@Bean BeanPostProcessor swaggerUiVersionAligner()`) is implemented and
   passing (7/7 tests) — see `izgw-core`'s own `igdd-3084-swagger-ui-version-sync/tasks.md` Stage 1.
-  **Not yet PR'd/merged upstream** — installed to local `.m2` via `mvn clean install` in that checkout
-  for the purposes of tasks 1–2 below.
-- [ ] 0.2 Record the exact published SNAPSHOT version string once the real `izgw-core` PR merges — not
-  needed yet since 0.1's version string (`3.5.1-IGDD-2353_spring_upgrade-SNAPSHOT`) is currently
-  identical to what's already in this repo's `pom.xml` (both are on the same migration-branch-scoped
-  SNAPSHOT coordinate). **Revisit task 1.1 once `izgw-core`'s branch placement is finalized** (see that
-  repo's tasks.md task 1.0) — if it lands on a fresh branch off `develop` instead, the resulting SNAPSHOT
-  string will differ and this repo's `pom.xml` will need an actual version bump at that point.
+- [x] 0.2 `izgw-core` PR opened and its SNAPSHOT published to GitHub Packages:
+  `gov.cdc.izgw:izgw-core:3.6.0-IGDD-3084_swagger_ui_version_sync-SNAPSHOT`
+  (build `3.6.0-IGDD-3084_swagger_ui_version_sync-20260828.152613-3`). **Correction:** an earlier version
+  of this task claimed no `pom.xml` bump was needed because the coordinate happened to already match the
+  migration branch's SNAPSHOT — that was only true transiently, before the branch-placement decision (see
+  `izgw-core` tasks.md task 1.0) moved the fix to its own branch off `develop` with its own version. `pom.xml`
+  here has since been updated to the real coordinate above.
 
 ## 1. Code changes
 
-- [x] 1.1 `pom.xml`'s `gov.cdc.izgw:izgw-core` dependency `<version>` already matches the fixed artifact's
-  coordinate (`3.5.1-IGDD-2353_spring_upgrade-SNAPSHOT`) — no edit was needed for local verification. See
-  0.2 for why this may still need a real bump later.
+- [x] 1.1 `pom.xml`'s `gov.cdc.izgw:izgw-core` dependency `<version>` set to
+  `3.6.0-IGDD-3084_swagger_ui_version_sync-SNAPSHOT`. Verified this actually resolves from GitHub Packages
+  (not just local `.m2`): cleared the local cache for that exact coordinate, ran
+  `mvn dependency:tree -Dincludes=gov.cdc.izgw:izgw-core -U`, and confirmed a fresh download from
+  `github-bom` matching the exact published build number above.
 - [x] 1.2 Removed the `version: 5.32.13` line and its two-line explanatory comment under
   `springdoc.swagger-ui` in `src/main/resources/application.yml`, replaced with a one-line pointer to
   `SwaggerUiVersionConfig` in `izgw-core` and this ticket.
@@ -43,6 +44,14 @@ Jira: IGDD-3084
 - [x] 2.4 Ran `mvn clean test` (full suite, with `COMMON_PASS`/`AMAZON_DYNAMODB_*`/etc. set to match
   `.vscode/hub.env`): **174 tests run, 0 failures, 0 errors, 6 pre-existing skips (unrelated), BUILD
   SUCCESS.**
+- [x] 2.5 **Re-verification against the actually-shipped artifact** (2.2–2.4 above ran before the
+  branch-placement move, against `izgw-core:3.5.1-IGDD-2353_spring_upgrade-SNAPSHOT` — a code review
+  correctly flagged that this no longer matched what's committed in `pom.xml`). Cleared the local `.m2`
+  cache for `izgw-core:3.6.0-IGDD-3084_swagger_ui_version_sync-SNAPSHOT`, forced a fresh fetch from
+  GitHub Packages (`-U`), and reran `mvn clean test`: **174 tests run, 0 failures, 0 errors, BUILD
+  SUCCESS**, including `SwaggerUiVersionIntegrationTests` (1/1 pass) and a startup log line confirming
+  `Detected swagger-ui webjar version: 5.32.14` from the real published artifact
+  (`izgw-core-3.6.0-IGDD-3084_swagger_ui_version_sync-20260828.152613-3`).
 
 ## 3. Validation
 
@@ -54,7 +63,12 @@ Jira: IGDD-3084
   and `TC_92b Get Api Document` Postman requests via newman with a real client certificate (using the
   `admin` DynamoDB seed from earlier in this session): both **200 OK**, `TC_92a` returns `text/html`
   (Swagger UI), `TC_92b` returns the full 64KB OpenAPI JSON document. These are the exact two tests that
-  were failing at the start of this investigation.
+  were failing at the start of this investigation. **Note:** this manual pass ran before the
+  branch-placement move, against `izgw-core:3.5.1-IGDD-2353_spring_upgrade-SNAPSHOT`, not the
+  `3.6.0-IGDD-3084_swagger_ui_version_sync-SNAPSHOT` now in `pom.xml`. Unlike 2.4/2.5, this manual check
+  has not been re-run against the real published artifact — the automated `SwaggerUiVersionIntegrationTests`
+  in 2.5 covers the same assertion, but a fresh Newman/browser pass against the real artifact would close
+  this out fully.
 - [x] 3.3 Confirmed by inspection — this change touches only `application.yml` (springdoc block) and adds
   one new test file; no edit to `AccessControlValve`, `AccessControlService`, or `Roles`.
 
