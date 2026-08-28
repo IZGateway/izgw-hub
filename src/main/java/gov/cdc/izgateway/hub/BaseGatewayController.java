@@ -230,4 +230,31 @@ public abstract class BaseGatewayController extends SoapControllerBase {
         // Hub Controller performs no credential checking. Credentials are not supplied in SOAP message, instead they
         // are supplied in client certificate in TLS Connection/
     }
+
+    /**
+     * The fault code for {@code SecurityFault.sourceAttack(...)} — see izgw-core's
+     * {@code SecurityFault.MESSAGE_TEMPLATES[1]}, code {@code "61"}. Not a public constant in
+     * izgw-core, so it's mirrored here (IGDD-2805); a unit test asserts it against a real
+     * {@code SecurityFault.sourceAttack(...)} instance so a future izgw-core change to that literal
+     * fails loudly instead of silently disabling the lockout below.
+     */
+    private static final String SOURCE_ATTACK_CODE = "61";
+
+    /**
+     * Handle a detected source attack (IGDD-2805) by adding the sender to the deny list, subject to
+     * the {@code hub.source-attack-lockout.enabled} flag and any configured exception, before
+     * delegating to the normal fault-handling behavior. The {@code sf.getEndpoint() == null} guard
+     * excludes the outbound/destination-response source-attack scan (see {@code MessageSender}),
+     * which reaches this same method with a non-null endpoint — without it, a malicious response
+     * from a destination IIS would wrongfully deny-list the original (innocent) sender.
+     */
+    @Override
+    protected ResponseEntity<FaultMessage> handleFault(Fault fault) {
+        if (fault instanceof SecurityFault sf
+                && SOURCE_ATTACK_CODE.equals(sf.getCode())
+                && sf.getEndpoint() == null) {
+            accessControlService.handleSourceAttack(RequestContext.getSourceInfo().getCommonName(), sf.getDiagnostics());
+        }
+        return super.handleFault(fault);
+    }
 }

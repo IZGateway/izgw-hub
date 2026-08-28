@@ -12,6 +12,7 @@ import gov.cdc.izgateway.dynamodb.model.AccessGroup;
 import gov.cdc.izgateway.dynamodb.model.AllowedUser;
 import gov.cdc.izgateway.dynamodb.model.DenyListRecord;
 import gov.cdc.izgateway.dynamodb.model.FileType;
+import gov.cdc.izgateway.dynamodb.model.SourceAttackExceptionRecord;
 import gov.cdc.izgateway.logging.RequestContext;
 import gov.cdc.izgateway.model.IAccessGroup;
 import gov.cdc.izgateway.model.IDenyListRecord;
@@ -19,6 +20,9 @@ import gov.cdc.izgateway.model.IFileType;
 import gov.cdc.izgateway.repository.IRepository;
 import gov.cdc.izgateway.utils.SystemUtils;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.List;
+import java.util.ArrayList;
 
 @Slf4j
 class NewModelHelper implements AccessControlModelHelper {
@@ -39,12 +43,17 @@ class NewModelHelper implements AccessControlModelHelper {
 	private Map<String, DenyListRecord> denyListRecordCache = Collections.emptyMap();
 	Map<String, FileType> fileTypeCache = new TreeMap<>();
 	private Map<String, Set<AllowedUser>> allowedUserCache = Collections.emptyMap();
-	
+	// Package-private and pre-populated with a mutable map (not Collections.emptyMap()), like
+	// fileTypeCache above, so a stub subclass in the same package can pre-populate it directly in
+	// unit tests without requiring DynamoDB (IGDD-2805).
+	Map<String, SourceAttackExceptionRecord> sourceAttackExceptionCache = new TreeMap<>();
+
 	@Override
 	public void refresh() {
     	accessGroupCache = refreshCache(accessControlService.accessGroupRepository, ag -> ag.getGroupName());
     	denyListRecordCache = refreshCache(accessControlService.denyListRecordRepository, dr -> dr.getPrincipal());
     	fileTypeCache = refreshCache(accessControlService.fileTypeRepository, FileType::getFileTypeName);
+    	sourceAttackExceptionCache = refreshCache(accessControlService.sourceAttackExceptionRepository, SourceAttackExceptionRecord::getSender);
     	Map<String, Set<AllowedUser>> newAllowedUserCache = new TreeMap<>();
     	for (AllowedUser user : refreshCache(accessControlService.allowedUserRepository, au -> au.getDestinationId()).values()) {
     		newAllowedUserCache.computeIfAbsent(
@@ -209,6 +218,11 @@ class NewModelHelper implements AccessControlModelHelper {
 
 	@Override
 	public IDenyListRecord block(String user, String reason) {
+		return block(user, reason, RequestContext.getPrincipal().getName());
+	}
+
+	@Override
+	public IDenyListRecord block(String user, String reason, String createdBy) {
 		if (denyListRecordCache.isEmpty()) {
 			refresh();
 		}
@@ -221,7 +235,7 @@ class NewModelHelper implements AccessControlModelHelper {
 		dlr.setPrincipal(user);
 		dlr.setEnvironment(SystemUtils.getDestType());
 		dlr.setReason(reason);
-		dlr.setCreatedBy(RequestContext.getPrincipal().getName());
+		dlr.setCreatedBy(createdBy);
 		dlr = accessControlService.denyListRecordRepository.store(dlr);
 		denyListRecordCache.put(user, dlr);
 		return dlr;
@@ -230,5 +244,56 @@ class NewModelHelper implements AccessControlModelHelper {
 	@Override
 	public Set<String> getDenyList() {
 		return denyListRecordCache.keySet();
+	}
+
+	@Override
+	public boolean isExemptFromSourceAttackLockout(String sender) {
+		if (sourceAttackExceptionCache.isEmpty()) {
+			refresh();
+		}
+		return sourceAttackExceptionCache.containsKey(sender);
+	}
+
+	/**
+	 * Create (or replace) a source-attack exception record for a sender (IGDD-2805).
+	 * @param sender	The sender's common name
+	 * @param reason	Operator justification for the exception
+	 * @return	The stored exception record
+	 */
+	SourceAttackExceptionRecord addSourceAttackException(String sender, String reason) {
+		if (sourceAttackExceptionCache.isEmpty()) {
+			refresh();
+		}
+		SourceAttackExceptionRecord record = accessControlService.sourceAttackExceptionRepository.createEntity();
+		record.setSender(sender);
+		record.setReason(reason);
+		record.setEnvironment(SystemUtils.getDestType());
+		record.setCreatedBy(RequestContext.getPrincipal().getName());
+		record = accessControlService.sourceAttackExceptionRepository.store(record);
+		sourceAttackExceptionCache.put(sender, record);
+		return record;
+	}
+
+	/**
+	 * Remove a sender's source-attack exception, if any (IGDD-2805).
+	 * @param sender	The sender's common name
+	 */
+	void removeSourceAttackException(String sender) {
+		if (sourceAttackExceptionCache.isEmpty()) {
+			refresh();
+		}
+		SourceAttackExceptionRecord record = sourceAttackExceptionCache.get(sender);
+		if (record != null) {
+			accessControlService.sourceAttackExceptionRepository.delete(record);
+		}
+		sourceAttackExceptionCache.remove(sender);
+	}
+
+	/**
+	 * List all configured source-attack exceptions (IGDD-2805).
+	 * @return	The current exception records
+	 */
+	List<SourceAttackExceptionRecord> getSourceAttackExceptions() {
+		return new ArrayList<>(sourceAttackExceptionCache.values());
 	}
 }

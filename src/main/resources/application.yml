@@ -144,6 +144,12 @@ hub:
         # intersect the destination jurisdiction's allowedUseTypes is always rejected with a SecurityFault.
         # An absent/empty allowedUseTypes denies every API-key sender to that jurisdiction, so the
         # IGDD-3258 seeding/backfill is a prerequisite. mTLS callers are not affected.
+    source-attack-lockout:
+        enabled: ${HUB_SOURCE_ATTACK_LOCKOUT_ENABLED:false}
+        # Distinct from security.enable-blacklist / security.blacklist.disabled, which govern
+        # deny-list *enforcement* in general. This flag governs only whether a detected source
+        # attack (SecurityFault code 61) automatically adds the sender to the deny list.
+        # See openspec/changes/igdd-2805-source-attack-lockout/design.md.
     status-check:
         period: 5
         testing-endpoints:

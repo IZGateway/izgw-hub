@@ -1,5 +1,6 @@
 package gov.cdc.izgateway.hub.service.accesscontrol;
 
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -7,17 +8,20 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestMethod;
 
+import gov.cdc.izgateway.common.BadRequestException;
 import gov.cdc.izgateway.dynamodb.model.AccessControl;
 import gov.cdc.izgateway.dynamodb.model.AccessGroup;
 import gov.cdc.izgateway.dynamodb.model.AllowedUser;
 import gov.cdc.izgateway.dynamodb.model.DenyListRecord;
 import gov.cdc.izgateway.dynamodb.model.FileType;
 import gov.cdc.izgateway.dynamodb.model.Jurisdiction;
+import gov.cdc.izgateway.dynamodb.model.SourceAttackExceptionRecord;
 import gov.cdc.izgateway.hub.repository.IAccessControlRepository;
 import gov.cdc.izgateway.hub.repository.IAccessGroupRepository;
 import gov.cdc.izgateway.hub.repository.IAllowedUserRepository;
 import gov.cdc.izgateway.hub.repository.IDenyListRecordRepository;
 import gov.cdc.izgateway.hub.repository.IFileTypeRepository;
+import gov.cdc.izgateway.hub.repository.ISourceAttackExceptionRepository;
 import gov.cdc.izgateway.hub.repository.RepositoryFactory;
 import gov.cdc.izgateway.logging.RequestContext;
 import gov.cdc.izgateway.logging.markers.Markers2;
@@ -64,6 +68,8 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
     final IAllowedUserRepository<AllowedUser> allowedUserRepository;
     final IDenyListRecordRepository<DenyListRecord> denyListRecordRepository;
     final IFileTypeRepository<FileType> fileTypeRepository;
+    /** Source-attack exception records (IGDD-2805). */
+    final ISourceAttackExceptionRepository<SourceAttackExceptionRecord> sourceAttackExceptionRepository;
     
 	private final IAccessControlRegistry registry;
     private final AccessControlMigrator migrator;
@@ -77,7 +83,9 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
     protected String accessControlAction;
 
     private OldModelHelper oldModelHelper;
-    private NewModelHelper newModelHelper;
+    // Package-private (not private) so same-package unit tests can construct a NewModelHelper
+    // directly instead of calling afterPropertiesSet(), which starts a real scheduled executor (IGDD-2805).
+    NewModelHelper newModelHelper;
     private AccessControlModelHelper currentModelHelper;
 	
     @Getter
@@ -94,9 +102,17 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 	@Value("${server.hostname:dev.izgateway.org}") 
 	String serverName;
 	
-	@Value("${security.enable-blacklist:true}") 
+	@Value("${security.enable-blacklist:true}")
 	boolean blacklistEnabled;
-	
+
+	/**
+	 * Master switch for source-attack auto-lockout (IGDD-2805). Distinct from {@code blacklistEnabled}
+	 * above, which governs deny-list enforcement in general. Defaults to {@code false} so shipping
+	 * this feature does not change production behavior until an operator opts in.
+	 */
+	@Value("${hub.source-attack-lockout.enabled:false}")
+	boolean sourceAttackLockoutEnabled;
+
 	@Value("${hub.migration-data:access-controls.csv}")
 	private String migrationData;
 	
@@ -119,6 +135,7 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
         this.allowedUserRepository = factory.allowedUserRepository();
         this.denyListRecordRepository = factory.denyListRecordRepository();
         this.fileTypeRepository = factory.fileTypeRepository();
+        this.sourceAttackExceptionRepository = factory.sourceAttackExceptionRepository();
         this.migrator = migrator;
         this.destinationService = destinationService;
         this.jurisdictionService = jurisdictionService;
@@ -173,7 +190,16 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 	public boolean isUserDenied(String user) {
 		return currentModelHelper.isUserDenied(user);
 	}
-    
+
+	/**
+	 * Determine whether a sender is exempt from source-attack auto-lockout (IGDD-2805).
+	 * @param sender	The sender's common name
+	 * @return true if the sender has a configured source-attack exception
+	 */
+	public boolean isExemptFromSourceAttackLockout(String sender) {
+		return currentModelHelper.isExemptFromSourceAttackLockout(sender);
+	}
+
 	@Override
 	public Set<String> getEventTypes() {
 		return currentModelHelper.getEventTypes();
@@ -273,11 +299,86 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 		}
 	}
 
+	/**
+	 * Add a user to the deny list, attributing the block to an explicit actor rather than the
+	 * calling {@code RequestContext} principal (IGDD-2805). Used by {@link #handleSourceAttack}, where
+	 * the request principal is the sender being blocked, not the actor responsible for the block.
+	 * @param user		The user (sender) to block
+	 * @param reason	Reason for the block
+	 * @param createdBy	The actor to record as having created the block
+	 */
+	public Object addUserToDenyList(String user, String reason, String createdBy) {
+		try {
+			return currentModelHelper.block(user, reason, createdBy);
+		} finally {
+			refresh();
+		}
+	}
+
 	@Override
 	public Set<String> getDenyList() {
 		return currentModelHelper.getDenyList();
 	}
-	
+
+	/**
+	 * Handle a detected source attack (IGDD-2805): if auto-lockout is enabled and the sender has no
+	 * configured exception, add the sender to the deny list. This does not alter the SecurityFault
+	 * already being returned to the sender for the triggering request.
+	 * @param sender	The sender's common name (from {@code RequestContext.getSourceInfo().getCommonName()})
+	 * @param reason	The fault's diagnostic detail, used as the deny-list reason
+	 */
+	private static final String SOURCE_ATTACK_ACTOR = "system:source-attack";
+
+	public void handleSourceAttack(String sender, String reason) {
+		if (!sourceAttackLockoutEnabled) {
+			log.warn(Markers2.append("sender", sender), "Source attack lockout is disabled; {} was not added to the deny list", sender);
+			return;
+		}
+		if (isExemptFromSourceAttackLockout(sender)) {
+			log.info(Markers2.append("sender", sender), "{} has a configured source-attack exception; not adding to deny list", sender);
+			return;
+		}
+		addUserToDenyList(sender, reason, SOURCE_ATTACK_ACTOR);
+		log.error(Markers2.append("sender", sender), "{} added to deny list after a source attack: {}", sender, reason);
+	}
+
+	/**
+	 * Create (or replace) a source-attack exception for a sender (IGDD-2805).
+	 * @param sender	The sender's common name
+	 * @param reason	Operator justification for the exception
+	 * @return	The stored exception record
+	 */
+	public SourceAttackExceptionRecord createSourceAttackException(String sender, String reason) {
+		if (StringUtils.isBlank(sender) || StringUtils.isBlank(reason)) {
+			throw new BadRequestException("sender and reason are required");
+		}
+		try {
+			return newModelHelper.addSourceAttackException(sender, reason);
+		} finally {
+			refresh();
+		}
+	}
+
+	/**
+	 * Remove a sender's source-attack exception, if any (IGDD-2805).
+	 * @param sender	The sender's common name
+	 */
+	public void deleteSourceAttackException(String sender) {
+		try {
+			newModelHelper.removeSourceAttackException(sender);
+		} finally {
+			refresh();
+		}
+	}
+
+	/**
+	 * List all configured source-attack exceptions (IGDD-2805).
+	 * @return	The current exception records
+	 */
+	public List<SourceAttackExceptionRecord> listSourceAttackExceptions() {
+		return newModelHelper.getSourceAttackExceptions();
+	}
+
 	/**
 	 * Sets the migrated status, used for unit testing when accessing a database that has already been migrated.
 	 * @param migrated	true if migration has been performed

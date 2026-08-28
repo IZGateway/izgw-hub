@@ -17,12 +17,34 @@ interface AccessControlModelHelper {
 	boolean canAccessDestination(String user, String destId);
 
 	boolean isUserDenied(String user);
-	
+
+	/**
+	 * Determine whether a sender is exempt from source-attack auto-lockout (IGDD-2805).
+	 * New-model-only: {@code OldModelHelper} always returns {@code false}.
+	 * @param sender	The sender's common name
+	 * @return true if the sender has a configured source-attack exception
+	 */
+	boolean isExemptFromSourceAttackLockout(String sender);
+
 	Set<String> getEventTypes();
 
 	Object unblock(String user);
 
 	Object block(String user, String reason);
+
+	/**
+	 * Block a user, attributing the action to an explicit actor rather than the caller's own
+	 * {@code RequestContext} principal (IGDD-2805). Used by automated lockouts (e.g. source-attack
+	 * auto-lockout), where the calling identity is the sender being blocked, not the actor
+	 * responsible for the block.
+	 * @param user		The user (sender) to block
+	 * @param reason	Reason for the block
+	 * @param createdBy	The actor to record as having created the block
+	 * @return the deny-list record, or model-specific equivalent
+	 */
+	default Object block(String user, String reason, String createdBy) {
+		return block(user, reason);
+	}
 
 	Set<String> getDenyList();
 

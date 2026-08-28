@@ -1,3 +1,7 @@
+# IZ Gateway Release 2.16.0
+
+- IGDD-2805 — Fix Source Attack Exception lockout not firing (a detected source attack never actually deny-listed the sender), and add a per-sender exception mechanism (`hub.source-attack-lockout.enabled`, default off; `/rest/sourceAttackExceptions` admin API) so known false positives (e.g., a patient name containing "javascript") don't get a sender locked out.
+
 # IZ Gateway Release 2.15.0
 
 - IGDD-3056 — Ready to Ship — Fix TransactionData logging for WSDL GET requests (shared with Xform Service)

@@ -10,6 +10,7 @@ import gov.cdc.izgateway.dynamodb.model.FileType;
 import gov.cdc.izgateway.dynamodb.model.Jurisdiction;
 import gov.cdc.izgateway.dynamodb.model.MessageHeader;
 import gov.cdc.izgateway.dynamodb.model.OrganizationRecord;
+import gov.cdc.izgateway.dynamodb.model.SourceAttackExceptionRecord;
 import gov.cdc.izgateway.dynamodb.repository.EventRepository;
 
 /**
@@ -94,4 +95,10 @@ public interface RepositoryFactory {
      * @return The EventRepository
      */
     EventRepository eventRepository();
+
+    /**
+     * Get the Repository for Source Attack Exception Records (IGDD-2805).
+     * @return The SourceAttackExceptionRepository
+     */
+    ISourceAttackExceptionRepository<SourceAttackExceptionRecord> sourceAttackExceptionRepository();
 }
