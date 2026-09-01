@@ -7,6 +7,7 @@ import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import gov.cdc.izgateway.dynamodb.model.ApiKeyCredential;
 import gov.cdc.izgateway.dynamodb.repository.ApiKeyCredentialRepository;
 import gov.cdc.izgateway.security.IzgPrincipal;
 import gov.cdc.izgateway.security.principal.InvalidJwtTokenException;
@@ -151,19 +152,10 @@ public class ApiKeyPrincipalProvider {
             return null;
         }
 
-        Object envClaim = claims.getClaim("env");
-        if (!(envClaim instanceof Number)) {
-            log.warn("JWT rejected: env claim missing or not numeric: {}", envClaim);
-            return null;
-        }
-        int envInt = ((Number) envClaim).intValue();
-        if (SystemUtils.getDestType() != envInt) {
-            log.warn("JWT rejected: env mismatch token env={}, hub env={}", envInt, SystemUtils.getDestType());
-            return null;
-        }
-        String env = String.valueOf(envInt);
-
         // Step 7: Credential cache lookup by jti
+        // Note: the token carries no `env` claim — environment authorization is a server-side property
+        // of the credential and is enforced against its `environments` list after the DynamoDB lookup
+        // (see lookupAndCacheCredential).
         String jti = claims.getJWTID();
         if (jti == null) {
             log.warn("JWT rejected: missing jti claim");
@@ -186,13 +178,30 @@ public class ApiKeyPrincipalProvider {
         }
 
         // Step 8: DynamoDB lookup on cache miss
-        return lookupAndCacheCredential(claims, env, jti);
+        return lookupAndCacheCredential(claims, jti);
     }
 
-    private IzgPrincipal lookupAndCacheCredential(JWTClaimsSet claims, String env, String jti) {
-        var credentialOpt = credentialRepository.findByEnvAndJti(env, jti);
+    private IzgPrincipal lookupAndCacheCredential(JWTClaimsSet claims, String jti) {
+        var credentialOpt = credentialRepository.findByJti(jti);
 
         if (credentialOpt.isPresent() && isUsableStatus(credentialOpt.get().getStatus())) {
+            ApiKeyCredential credential = credentialOpt.get();
+
+            // Environment authorization: the request's target environment must be in the credential's
+            // server-side `environments` set (a DynamoDB Number Set). A mismatch is cached in the short-lived
+            // absentCache (not the 366-day revoked sentinel) so an `environments` edit takes effect within the
+            // credential TTL.
+            //
+            // DynamoDB cannot store an empty set, so an absent attribute arrives here as null; null and empty
+            // both mean "valid in no environment" and are handled by the same deny below.
+            Integer targetEnv = SystemUtils.getDestType();
+            if (credential.getEnvironments() == null || !credential.getEnvironments().contains(targetEnv)) {
+                absentCache.put(jti, Boolean.TRUE);
+                log.warn("JWT rejected: jti={} not valid for target env={} (environments={})",
+                        jti, targetEnv, credential.getEnvironments());
+                return null;
+            }
+
             String sub = claims.getSubject();
             String upn = (String) claims.getClaim("upn");
             if (upn == null || upn.isBlank()) {
@@ -200,11 +209,15 @@ public class ApiKeyPrincipalProvider {
                 return null;
             }
 
+            // useTypes is carried on the principal so the routing-time intersection check (IGDD-3257) uses the
+            // credential looked up by jti without a second DynamoDB read per message; it refreshes on the
+            // credential cache TTL, the same window that governs an `environments` edit.
             ApiKeyPrincipal principal = new ApiKeyPrincipal(
                     sub,
                     jti,
                     upn,
-                    config.getIssuer()
+                    config.getIssuer(),
+                    credential.getUseTypes()
             );
             credentialCache.put(jti, principal);
             log.debug("Authenticated ApiKeyPrincipal jti={} org={} upn={}", jti, sub, upn);

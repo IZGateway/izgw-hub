@@ -13,38 +13,39 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class ApiKeyCredentialRepositoryTest {
+class ApiKeyCredentialRepositoryTests {
 
     @Mock
     private ApiKeyCredentialRepository repository;
 
     @Test
-    void findByEnvAndJti_missingRecord_returnsEmpty() {
-        when(repository.findByEnvAndJti("Production", "unknown-jti")).thenReturn(Optional.empty());
+    void findByJti_missingRecord_returnsEmpty() {
+        when(repository.findByJti("unknown-jti")).thenReturn(Optional.empty());
 
-        Optional<ApiKeyCredential> result = repository.findByEnvAndJti("Production", "unknown-jti");
+        Optional<ApiKeyCredential> result = repository.findByJti("unknown-jti");
 
         assertThat(result).isEmpty();
     }
 
     @Test
-    void findByEnvAndJti_existingRecord_returnsPresent() {
+    void findByJti_existingRecord_returnsPresent() {
         ApiKeyCredential cred = new ApiKeyCredential();
         cred.setStatus("active");
-        when(repository.findByEnvAndJti("Production", "test-jti")).thenReturn(Optional.of(cred));
+        when(repository.findByJti("test-jti")).thenReturn(Optional.of(cred));
 
-        Optional<ApiKeyCredential> result = repository.findByEnvAndJti("Production", "test-jti");
+        Optional<ApiKeyCredential> result = repository.findByJti("test-jti");
 
         assertThat(result).isPresent();
         assertThat(result.get().getStatus()).isEqualTo("active");
     }
 
     @Test
-    void sortKeyFormat_isCorrect() {
-        // Validates the sort key contract: env + "#" + jti
-        String env = "Production";
+    void sortKeyFormat_isJtiAlone() {
+        // The sort key is the jti alone — no environment prefix (IGDD-3140).
         String jti = "018f4e2a-5678-7abc-8def-000000000002";
-        String expectedSortKey = "Production#018f4e2a-5678-7abc-8def-000000000002";
-        assertThat(env + "#" + jti).isEqualTo(expectedSortKey);
+        ApiKeyCredential cred = new ApiKeyCredential();
+        cred.setJti(jti);
+        assertThat(cred.getPrimaryId()).isEqualTo(jti);
+        assertThat(cred.getSortKey()).isEqualTo(jti);
     }
 }

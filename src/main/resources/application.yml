@@ -44,10 +44,10 @@ security:
 springdoc:
     swagger-ui:
         path: /swagger/ui.html
-        # Must match org.webjars:swagger-ui version pinned in izgw-bom (currently 5.32.11).
+        # Must match org.webjars:swagger-ui version pinned in izgw-bom (currently 5.32.13).
         # springdoc's bundled default differs, so it serves resources from the wrong version
         # path and index.html 404s unless this is set explicitly.
-        version: 5.32.11
+        version: 5.32.14
     api-docs:
         path: /swagger/api-docs
 
@@ -139,6 +139,11 @@ hub:
     max-retries: 3
     access-control:
         action: warn
+        # NOTE: `action` above governs only the source/destination (AccessGroup/AllowedUser) check.
+        # The API-key use-type check (IGDD-3257) has no warn mode — a credential whose useTypes do not
+        # intersect the destination jurisdiction's allowedUseTypes is always rejected with a SecurityFault.
+        # An absent/empty allowedUseTypes denies every API-key sender to that jurisdiction, so the
+        # IGDD-3258 seeding/backfill is a prerequisite. mTLS callers are not affected.
     status-check:
         period: 5
         testing-endpoints:

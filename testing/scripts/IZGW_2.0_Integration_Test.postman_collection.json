@@ -2092,6 +2092,561 @@
               "response": []
             },
             {
+              "name": "TC_API_KEY_VALID Test valid API Key",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 200\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "var status = pm.response.json();\r",
+                      "\r",
+                      "pm.test(\"Body to parse as json object\", function() {\r",
+                      "    pm.expect(typeof status).to.eql(\"object\");\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"dev endpoints have status = Connected\", function() {\r",
+                      "    pm.expect(status.status).to.be.eql(\"Connected\");\r",
+                      "});\r",
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "utils.setup(pm);"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "protocolProfileBehavior": {
+                "disabledSystemHeaders": {
+                  "host": true
+                }
+              },
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token_for_cicd}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Host",
+                    "value": "{{hostHeader}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/xml"
+                  },
+                  {
+                    "key": "X-Message-ID",
+                    "value": "{{testMessageId}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{protocol}}://{{no_cert_host}}:{{port}}/rest/status/dev",
+                  "protocol": "{{protocol}}",
+                  "host": [
+                    "{{no_cert_host}}"
+                  ],
+                  "port": "{{port}}",
+                  "path": [
+                    "rest",
+                    "status",
+                    "dev"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "TC_API_KEY_EXP Test expired API Key",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 401\", function () {\r",
+                      "    pm.response.to.have.status(401);\r",
+                      "});\r",
+                      "\r",
+                      "async function moreTests() {\r",
+                      "    utils.getLogs(null, pm).then((logData) => {\r",
+                      "        logs = logData.json();\r",
+                      "\r",
+                      "        pm.test(\"Log contains JWT rejected: expired\", function() {\r",
+                      "            for (let i = 0; i < logs.length; i++) {\r",
+                      "                if (logs[i].message.includes(\"JWT rejected: expired\")) {\r",
+                      "                    pm.expect(true).to.be.true;\r",
+                      "                    return;\r",
+                      "                }\r",
+                      "            }\r",
+                      "            pm.expect(false).to.be.true;\r",
+                      "        });\r",
+                      "    });\r",
+                      "}\r",
+                      "\r",
+                      "moreTests();\r",
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "utils.setup(pm);"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "protocolProfileBehavior": {
+                "disabledSystemHeaders": {
+                  "host": true
+                }
+              },
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token_expired}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Host",
+                    "value": "{{hostHeader}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/xml"
+                  },
+                  {
+                    "key": "X-Message-ID",
+                    "value": "{{testMessageId}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{protocol}}://{{no_cert_host}}:{{port}}/rest/status/dev",
+                  "protocol": "{{protocol}}",
+                  "host": [
+                    "{{no_cert_host}}"
+                  ],
+                  "port": "{{port}}",
+                  "path": [
+                    "rest",
+                    "status",
+                    "dev"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "TC_API_KEY_REVOKED Test revoked API Key",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 401\", function () {\r",
+                      "    pm.response.to.have.status(401);\r",
+                      "});\r",
+                      "\r",
+                      "async function moreTests() {\r",
+                      "    utils.getLogs(null, pm).then((logData) => {\r",
+                      "        logs = logData.json();\r",
+                      "\r",
+                      "        pm.test(\"Log contains JWT revoked message\", function() {\r",
+                      "            for (let i = 0; i < logs.length; i++) {\r",
+                      "                if (logs[i].message.includes(\"is in REVOKED cache\")) {\r",
+                      "                    pm.expect(true).to.be.true;\r",
+                      "                    return;\r",
+                      "                }\r",
+                      "            }\r",
+                      "            pm.expect(false).to.be.true;\r",
+                      "        });\r",
+                      "    });\r",
+                      "}\r",
+                      "\r",
+                      "moreTests();"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "utils.setup(pm);"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "protocolProfileBehavior": {
+                "disabledSystemHeaders": {
+                  "host": true
+                }
+              },
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token_revoked}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Host",
+                    "value": "{{hostHeader}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/xml"
+                  },
+                  {
+                    "key": "X-Message-ID",
+                    "value": "{{testMessageId}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{protocol}}://{{no_cert_host}}:{{port}}/rest/status/dev",
+                  "protocol": "{{protocol}}",
+                  "host": [
+                    "{{no_cert_host}}"
+                  ],
+                  "port": "{{port}}",
+                  "path": [
+                    "rest",
+                    "status",
+                    "dev"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "TC_API_KEY_BADSIG Test API Key signed with wrong secret",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 401\", function () {\r",
+                      "    pm.response.to.have.status(401);\r",
+                      "});\r",
+                      "\r",
+                      "async function moreTests() {\r",
+                      "    utils.getLogs(null, pm).then((logData) => {\r",
+                      "        logs = logData.json();\r",
+                      "\r",
+                      "        pm.test(\"Log contains JWT signature verification failed\", function() {\r",
+                      "            for (let i = 0; i < logs.length; i++) {\r",
+                      "                if (logs[i].message.includes(\"JWT signature verification failed\")) {\r",
+                      "                    pm.expect(true).to.be.true;\r",
+                      "                    return;\r",
+                      "                }\r",
+                      "            }\r",
+                      "            pm.expect(false).to.be.true;\r",
+                      "        });\r",
+                      "    });\r",
+                      "}\r",
+                      "\r",
+                      "moreTests();"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "utils.setup(pm);"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "protocolProfileBehavior": {
+                "disabledSystemHeaders": {
+                  "host": true
+                }
+              },
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token_wrong_secret}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Host",
+                    "value": "{{hostHeader}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/xml"
+                  },
+                  {
+                    "key": "X-Message-ID",
+                    "value": "{{testMessageId}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{protocol}}://{{no_cert_host}}:{{port}}/rest/status/dev",
+                  "protocol": "{{protocol}}",
+                  "host": [
+                    "{{no_cert_host}}"
+                  ],
+                  "port": "{{port}}",
+                  "path": [
+                    "rest",
+                    "status",
+                    "dev"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "TC_API_KEY_WRONGENV Test API Key scoped to Testing (2) sent to Development (5)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 401\", function () {\r",
+                      "    pm.response.to.have.status(401);\r",
+                      "});\r",
+                      "\r",
+                      "async function moreTests() {\r",
+                      "    utils.getLogs(null, pm).then((logData) => {\r",
+                      "        logs = logData.json();\r",
+                      "\r",
+                      "        pm.test(\"Log contains 'not valid for target env'\", function() {\r",
+                      "            for (let i = 0; i < logs.length; i++) {\r",
+                      "                if (logs[i].message.includes(\"not valid for target env\")) {\r",
+                      "                    pm.expect(true).to.be.true;\r",
+                      "                    return;\r",
+                      "                }\r",
+                      "            }\r",
+                      "            pm.expect(false).to.be.true;\r",
+                      "        });\r",
+                      "    });\r",
+                      "}\r",
+                      "\r",
+                      "moreTests();\r",
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "utils.setup(pm);"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "protocolProfileBehavior": {
+                "disabledSystemHeaders": {
+                  "host": true
+                }
+              },
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token_wrong_env}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Host",
+                    "value": "{{hostHeader}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/xml"
+                  },
+                  {
+                    "key": "X-Message-ID",
+                    "value": "{{testMessageId}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{protocol}}://{{no_cert_host}}:{{port}}/rest/status/dev",
+                  "protocol": "{{protocol}}",
+                  "host": [
+                    "{{no_cert_host}}"
+                  ],
+                  "port": "{{port}}",
+                  "path": [
+                    "rest",
+                    "status",
+                    "dev"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "TC_API_KEY_USETYPE Test API Key with no useTypes fails use-type intersection",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Status code is 500\", function () {\r",
+                      "    pm.response.to.have.status(500);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"SOAP Fault reports Use Type Not Allowed\", function () {\r",
+                      "    pm.expect(pm.response.text()).to.include(\"Use Type Not Allowed\");\r",
+                      "});\r",
+                      "\r",
+                      "async function moreTests() {\r",
+                      "    utils.getLogs(null, pm).then((logData) => {\r",
+                      "        logs = logData.json();\r",
+                      "\r",
+                      "        pm.test(\"Log contains Use Type Not Allowed\", function() {\r",
+                      "            for (let i = 0; i < logs.length; i++) {\r",
+                      "                if (logs[i].message.includes(\"Use Type Not Allowed\")) {\r",
+                      "                    pm.expect(true).to.be.true;\r",
+                      "                    return;\r",
+                      "                }\r",
+                      "            }\r",
+                      "            pm.expect(false).to.be.true;\r",
+                      "        });\r",
+                      "    });\r",
+                      "}\r",
+                      "\r",
+                      "moreTests();\r",
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "utils.setup(pm, \"dev\");"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "protocolProfileBehavior": {
+                "disabledSystemHeaders": {
+                  "host": true
+                }
+              },
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token_no_usetype}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Host",
+                    "value": "{{hostHeader}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/xml"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>{{GoodMessage}}</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+                },
+                "url": {
+                  "raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+                  "protocol": "{{protocol}}",
+                  "host": [
+                    "{{host}}"
+                  ],
+                  "port": "{{port}}",
+                  "path": [
+                    "IISHubService"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
               "name": "TC_99 IIS Status",
               "event": [
                 {
@@ -14144,6 +14699,224 @@
                 "body": {
                   "mode": "raw",
                   "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||VXU^V04^VXU_V04|bd4ffcb7-8d37-4384-b642-add379877a2e|P|2.5.1|||ER|AL|||||Z22^CDCPHINVS&#x0d;PID|1||432155^^^dcs^MRS||FagenAIRA^SophoclesAIRA^JerrieAIRA^^^^L|FagenAIRA^SophoclesAIRA^^^^^M |19760128|M||ASIAN|1760 Ve Marne Ln^^Fargo^ND^58104^^L||^PRN^PH^^^111^2320112|||||||||not HISPANIC&#x0d;NK1|1|FagenAIRA^SophoclesAIRA^^^^^L|MTH^Mom^HL70063|1760 Ve Marne Ln^^Fargo^ND^58104^^L &#x0d;ORC|RE||65930^DCS||||||20120113|^FagenAIRA^SophoclesAIRA||^FagenAIRA^SophoclesAIRA^^^^^^^ ^^^^^^^^^^^MD|||||||||Dabig Clinic System&#x0d;RXA|0|1|20040515||08^08^CVX|.05|ml||01^historical^NIP001|||||||||||CP|A&#x0d;RXR|C28161^IM^NCIT^IM^^HL70162|RT^Right Thigh^HL70163&#x0d;OBX|1|CE|64994-7^Eligibility Status^LN|1|V02^Medicaid^HL70064||||||F||||||VXC40^vaccine level^CDCPHINVS&#x0d;OBX|2|DT|29769-7^VIS presented^LN|2|20120113||||||F&#x0d;OBX|3|CE|69764-9 ^Document type^LN|2|253088698300026411121116^Multivaccine VIS^cdcgs1vis||||||F &#x0d;ORC|RE||65949^DCS||||||20120113|^FagenAIRA^SophoclesAIRA||^FagenAIRA^SophoclesAIRA^^^^^^^ ^^^^^^^^^^^MD|||||||||Dabig Clinic System&#x0d;OBX|4|CE|64994-7^Eligibility Status^LN|1|V02^Medicaid^HL70064||||||F||||||VXC40^vaccine level^CDCPHINVS&#x0d;OBX|5|DT|29769-7^VIS presented^LN|2|20120113||||||F OBX|6|CE|69764-9^Eligibility Status^LN|2|253088698300026411121116^Multivaccine VIS^cdcgs1vis||||||F&#x0d;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+                },
+                "url": {
+                  "raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+                  "protocol": "{{protocol}}",
+                  "host": [
+                    "{{host}}"
+                  ],
+                  "port": "{{port}}",
+                  "path": [
+                    "IISHubService"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "TC_MOCK_10a: Query for Immunization History (multiple RSP)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "// Extract the HL7 message from the SOAP response and normalize segment separators.",
+                      "// The IIS Hub response encodes carriage returns as &#xD; (or &#x0d;) and escapes & as &amp;.",
+                      "let responseText = pm.response.text();",
+                      "",
+                      "// Grab the HL7 payload inside <iis:Hl7Message>...</iis:Hl7Message>",
+                      "let hl7Match = responseText.match(/<iis:Hl7Message>([\\s\\S]*?)<\\/iis:Hl7Message>/i);",
+                      "let hl7 = hl7Match ? hl7Match[1] : responseText;",
+                      "",
+                      "// Decode XML entities and normalize the HL7 segment terminator to a newline.",
+                      "hl7 = hl7",
+                      "    .replace(/&#x0?d;/gi, \"\\n\")   // carriage return segment terminators",
+                      "    .replace(/&#x0?a;/gi, \"\\n\")",
+                      "    .replace(/&amp;/g, \"&\")",
+                      "    .replace(/&lt;/g, \"<\")",
+                      "    .replace(/&gt;/g, \">\");",
+                      "",
+                      "// Split into segments (handle \\r, \\n and \\r\\n) and drop empties.",
+                      "let segments = hl7.split(/[\\r\\n]+/).map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; });",
+                      "",
+                      "// ---- Check 1: MSH-21-1 is Z42 ----",
+                      "pm.test(\"MSH-21-1 is Z42\", function () {",
+                      "    let msh = segments.find(function (s) { return s.indexOf(\"MSH|\") === 0; });",
+                      "    pm.expect(msh, \"No MSH segment found in response\").to.not.be.undefined;",
+                      "",
+                      "    // MSH is special: MSH-1 is the field separator \"|\", so MSH.split(\"|\")[1] is MSH-2 (encoding chars).",
+                      "    // Fields are 1-based; index into the split array equals the MSH field number.",
+                      "    let mshFields = msh.split(\"|\");",
+                      "    let msh21 = mshFields[20] || \"\";",
+                      "    let msh21_1 = msh21.split(\"^\")[0];",
+                      "    pm.expect(msh21_1, \"MSH-21-1 value was '\" + msh21_1 + \"'\").to.eql(\"Z42\");",
+                      "});",
+                      "",
+                      "// ---- Check 2: There are 6 RXA segments containing 998^No vaccine administered^CVX ----",
+                      "pm.test(\"There are 6 RXA segments containing 998^No vaccine administered^CVX\", function () {",
+                      "    let matchingRxa = segments.filter(function (s) {",
+                      "        return s.indexOf(\"RXA|\") === 0 && s.indexOf(\"998^No vaccine administered^CVX\") !== -1;",
+                      "    });",
+                      "    pm.expect(matchingRxa.length, \"Found \" + matchingRxa.length + \" matching RXA segment(s)\").to.eql(6);",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "utils.setup(pm, \"dev\");"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "protocolProfileBehavior": {
+                "disabledSystemHeaders": {
+                  "host": true
+                }
+              },
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Host",
+                    "value": "{{hostHeader}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/xml"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|01KZW85EJKP3V2Z64B80T7HZGC||TitusAIRA^KevinAIRA^^^^^L||19900103|M||(999)457-8173&#x0d;RCP|I|5^RD&amp;records&#xd;\r\n      </urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+                },
+                "url": {
+                  "raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
+                  "protocol": "{{protocol}}",
+                  "host": [
+                    "{{host}}"
+                  ],
+                  "port": "{{port}}",
+                  "path": [
+                    "IISHubService"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "TC_MOCK_10b: Query for Immunization History (single RSP)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "// Extract the HL7 message from the SOAP response and normalize segment separators.",
+                      "// The IIS Hub response encodes carriage returns as &#xD; (or &#x0d;) and escapes & as &amp;.",
+                      "let responseText = pm.response.text();",
+                      "",
+                      "// Grab the HL7 payload inside <iis:Hl7Message>...</iis:Hl7Message>",
+                      "let hl7Match = responseText.match(/<iis:Hl7Message>([\\s\\S]*?)<\\/iis:Hl7Message>/i);",
+                      "let hl7 = hl7Match ? hl7Match[1] : responseText;",
+                      "",
+                      "// Decode XML entities and normalize the HL7 segment terminator to a newline.",
+                      "hl7 = hl7",
+                      "    .replace(/&#x0?d;/gi, \"\\n\")   // carriage return segment terminators",
+                      "    .replace(/&#x0?a;/gi, \"\\n\")",
+                      "    .replace(/&amp;/g, \"&\")",
+                      "    .replace(/&lt;/g, \"<\")",
+                      "    .replace(/&gt;/g, \">\");",
+                      "",
+                      "// Split into segments (handle \\r, \\n and \\r\\n) and drop empties.",
+                      "let segments = hl7.split(/[\\r\\n]+/).map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; });",
+                      "",
+                      "// ---- Check 1: MSH-21-1 is Z42 ----",
+                      "pm.test(\"MSH-21-1 is Z42\", function () {",
+                      "    let msh = segments.find(function (s) { return s.indexOf(\"MSH|\") === 0; });",
+                      "    pm.expect(msh, \"No MSH segment found in response\").to.not.be.undefined;",
+                      "",
+                      "    // MSH is special: MSH-1 is the field separator \"|\", so MSH.split(\"|\")[1] is MSH-2 (encoding chars).",
+                      "    // Fields are 1-based; index into the split array equals the MSH field number.",
+                      "    let mshFields = msh.split(\"|\");",
+                      "    let msh21 = mshFields[20] || \"\";",
+                      "    let msh21_1 = msh21.split(\"^\")[0];",
+                      "    pm.expect(msh21_1, \"MSH-21-1 value was '\" + msh21_1 + \"'\").to.eql(\"Z42\");",
+                      "});",
+                      "",
+                      "// ---- Check 2: There are 1 RXA segments containing 998^No vaccine administered^CVX ----",
+                      "pm.test(\"There are 1 RXA segments containing 998^No vaccine administered^CVX\", function () {",
+                      "    let matchingRxa = segments.filter(function (s) {",
+                      "        return s.indexOf(\"RXA|\") === 0 && s.indexOf(\"998^No vaccine administered^CVX\") !== -1;",
+                      "    });",
+                      "    pm.expect(matchingRxa.length, \"Found \" + matchingRxa.length + \" matching RXA segment(s)\").to.eql(1);",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "utils.setup(pm, \"dev\");"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "protocolProfileBehavior": {
+                "disabledSystemHeaders": {
+                  "host": true
+                }
+              },
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearer_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Host",
+                    "value": "{{hostHeader}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/xml"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|01KZW85EJKP3V2Z64B80T7HZGC||ZibbertAIRA^GlorpAIRA^^^^^L||19900110|F||(999)914-8214&#x0d;RCP|I|5^RD&amp;records&#xd;\r\n      </urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
                 },
                 "url": {
                   "raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",

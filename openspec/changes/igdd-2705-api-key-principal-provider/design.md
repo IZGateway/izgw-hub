@@ -55,12 +55,53 @@ When Hub is configured with `server.ssl.client-auth=want` (required to accept JW
 ### D5 — Revocation propagates `jti` via existing SQS refresh mechanism
 `DbController`'s `/rest/refresh?all=true` endpoint and `RefreshQueueService` already propagate refresh events to all Hub instances via SQS. Config Console calls this endpoint after marking a `jti` revoked. Hub's `ApiKeyPrincipalProvider` subscribes to the refresh event, evicts the `jti` from `credentialCache`, and inserts a REVOKED sentinel with TTL = max token lifetime — ensuring no subsequent cache miss can re-validate the revoked credential. No new SQS topic or SNS resource is needed.
 
-### D7 — `env` claim is a numeric integer, not a string
-The JWT `env` claim carries the environment as a numeric ID matching `SystemUtils.getDestType()` (1=Production, 2=Testing, 3=Onboarding, 4=Staging, 5=Development) rather than the human-readable string name (e.g., `"Development"`). Hub parses the claim as a `Number` and compares it to `SystemUtils.getDestType()` directly. A missing or non-numeric `env` claim is rejected.
+### D7 — Environment authorization is a server-side `environments` list, not a JWT claim
+The environment(s) a credential is valid in are stored on the `ApiKeyCredential` record as a server-side `environments` list — numeric IDs from the IZG `Environment` enumeration (1=PRODUCTION, 2=TEST, 3=ONBOARD, 4=STAGE, 5=DEV, 6=UNKNOWN) — and are **not** carried in the JWT. At routing time Hub looks the credential up by `jti` and validates that its own environment (`SystemUtils.getDestType()`) is contained in the credential's `environments` list; a request whose target environment is absent from the list is rejected (`null` → 401). Standard sender credentials contain exactly one environment ID; admin/operational credentials MAY contain several.
 
-The numeric form is required for referential integrity with other IZG database tables that key on the numeric environment identifier. The string-name form used in the original ADR examples was an implicit choice that was not evaluated against the data model; this decision supersedes it. Config Console must emit the numeric ID when signing JWTs.
+Keeping the permitted environments server-side (rather than in the token) lets the set change under access-control review without reissuing the credential — the same rationale that keeps `useTypes` off the token. Because the environment is not part of the credential's identity, the DynamoDB sort key is simply `{jti}` with no environment prefix; `ApiKeyCredentialRepository.findByJti(jti)` reads the record directly by `jti`.
 
-The `env` string passed internally to `ApiKeyCredentialRepository.findByEnvAndJti()` is `String.valueOf(envInt)` (e.g., `"5"`), so DynamoDB sort keys take the form `5#<jti>` rather than `Development#<jti>`.
+### D10 — Use-type authorization is server-side, and its enforcement is deferred to IGDD-3257
+
+> **Context only — this change specifies no use-type behaviour.** Recorded here so the
+> authorization model can be read whole from one place; the requirements and code land under
+> IGDD-3257.
+
+Alongside `environments`, IGDD-3140 defines a second server-side authorization property on the
+credential: `useTypes` — the categories of immunization data a sender is authorized to submit,
+drawn from the enumeration `PATIENT | PROVIDER | PUBLIC_HEALTH`. It is stored on the
+`ApiKeyCredential` record (as a DynamoDB String Set) and is **not** carried in the JWT, for the
+same reason `environments` is not: policy can then change under access-control review without
+reissuing the credential.
+
+The counterpart property is `allowedUseTypes` on the **destination** `Jurisdiction` record —
+the categories that jurisdiction has opted to accept. The authorization rule is an intersection
+evaluated **at routing time, not at issuance**:
+
+```
+credential.useTypes ∩ destination.jurisdiction.allowedUseTypes ≠ ∅
+```
+
+An empty intersection rejects the message. An empty `allowedUseTypes` on the destination is
+therefore **deny-all** for API-key senders. The check is per-destination, not per-credential: a
+sender's credential is bound to its own `jurisdictionId`, but it may transmit to many
+destinations, so the same credential can be authorized for one destination and rejected by the
+next. Rejection must surface as a new `izgw-core` `SecurityFault` — a clear, logged
+authorization error, not a silent drop.
+
+**Why this change does not implement it.** 2705 establishes the credential registry and the
+authentication path (signature, claims, `status`, `environments`). Use-type enforcement needs
+two things 2705 does not touch: a `useTypes` field on `ApiKeyCredential`, an `allowedUseTypes`
+field on `Jurisdiction`, and a new fault type in `izgw-core`. IGDD-3140's own jurisdiction-policy
+spec defers it to a separate izgw-hub + izgw-core ticket, which is **IGDD-3257**. That ticket
+also carries the `active`/`grace_period` usable-status rule, which overlaps the
+`igdd-2711-grace-period-revocation` delta on the same requirement — so 3257 is expected to
+supersede the "DynamoDB credential status check" requirement wholesale rather than add a fourth
+delta layer to it.
+
+**Consequence for deployment order.** Until 3257 ships, an API-key sender that passes
+authentication can route to any destination its `AllowedUser` entries permit, with no use-type
+restriction. Jurisdictions relying on use-type scoping as an access control are not yet
+protected by it.
 
 ### D6 — `jwt.test-secret` property bypasses Secrets Manager for local dev
 When `jwt.test-secret` is set, `ApiKeyPrincipalProvider` uses that secret for all `kid` values instead of calling Secrets Manager. This allows local testing without AWS credentials. The property must not be set in non-local profiles.

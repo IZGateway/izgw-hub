@@ -10,6 +10,8 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 
+import java.util.Set;
+
 /**
  * An entity to get jurisdiction information
  * 
@@ -50,6 +52,12 @@ public class Jurisdiction extends DynamoDbAudit implements DynamoDbEntity, IJuri
 		this.jurisdictionId = that.getJurisdictionId();
 		this.name = that.getName();
 		this.prefix = that.getPrefix();
+		// allowedUseTypes is not on IJurisdiction (it is a DynamoDB-only attribute), so it can only be
+		// copied when the source is itself a Jurisdiction. Without this a copy would silently drop the
+		// jurisdiction's use-type policy, and a dropped policy reads as deny-all (IGDD-3257).
+		if (that instanceof Jurisdiction j) {
+			this.allowedUseTypes = j.getAllowedUseTypes();
+		}
 	}
 
     @Schema(description="The identifier of the jurisdiction.")
@@ -69,7 +77,19 @@ public class Jurisdiction extends DynamoDbAudit implements DynamoDbEntity, IJuri
     
     @Schema(description="The vendor for the jurisdiction.")
     private String vendor;
-    
+
+    @Schema(description="The use-types (PATIENT, PROVIDER, PUBLIC_HEALTH) this jurisdiction accepts from "
+    		+ "API-key senders. Intersected at routing time with the calling credential's useTypes; an empty "
+    		+ "or absent set denies all API-key senders (IGDD-3257). Does not affect mTLS certificate callers.")
+    // Persisted as a DynamoDB String Set (SS), matching ApiKeyCredential.useTypes.
+    //
+    // DynamoDB cannot store an empty set, so this jurisdiction's deny-all policy state is represented by
+    // the attribute being ABSENT, not by an empty set — an absent attribute deserializes to null here.
+    // null and empty are treated identically (both deny), so callers never need to distinguish them; see
+    // UseType#intersects. Seeding/backfill (IGDD-3258) must therefore omit the attribute rather than write
+    // an empty set, which DynamoDB would reject.
+    private Set<String> allowedUseTypes;
+
 	@Override
 	public String getPrimaryId() {
 		return  Integer.toString(jurisdictionId);

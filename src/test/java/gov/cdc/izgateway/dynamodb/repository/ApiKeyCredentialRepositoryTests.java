@@ -12,8 +12,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Unit tests for the grace-revocation selection predicate
- * ({@link ApiKeyCredentialRepository#selectGraceCandidates}) and the conditional revoke-request
- * builder ({@link ApiKeyCredentialRepository#buildGraceRevokeRequest}). The DynamoDB calls
+ * ({@link ApiKeyCredentialRepository#selectGraceCandidates}), the terminal-status resolver
+ * ({@link ApiKeyCredentialRepository#resolveTerminalStatus}), and the conditional termination-request
+ * builder ({@link ApiKeyCredentialRepository#buildGraceTerminationRequest}). The DynamoDB calls
  * themselves are thin delegations covered by integration testing; these tests pin the pure logic.
  */
 class ApiKeyCredentialRepositoryTests {
@@ -75,25 +76,71 @@ class ApiKeyCredentialRepositoryTests {
     }
 
     @Test
-    void buildGraceRevokeRequest_targetsCorrectKeyWithGracePeriodCondition() {
-        Instant revokedAt = Instant.parse("2026-07-20T15:00:00Z");
-        UpdateItemRequest req = ApiKeyCredentialRepository.buildGraceRevokeRequest(
-                "izgateway-dev-test", "5", "jti-abc", revokedAt, "system:grace-revocation");
+    void buildGraceTerminationRequest_revokedBranch_targetsCorrectKeyWithGracePeriodCondition() {
+        Instant terminatedAt = Instant.parse("2026-07-20T15:00:00Z");
+        UpdateItemRequest req = ApiKeyCredentialRepository.buildGraceTerminationRequest(
+                "izgateway-dev-test", "jti-abc", "revoked", terminatedAt, "system:grace-revocation");
 
         assertThat(req.tableName()).isEqualTo("izgateway-dev-test");
-        // Targets the exact item: partition entityType=ApiKeyCredential, sort key {env}#{jti}.
+        // Targets the exact item: partition entityType=ApiKeyCredential, sort key {jti} (no env prefix).
         assertThat(req.key().get("entityType").s()).isEqualTo("ApiKeyCredential");
-        assertThat(req.key().get("sortKey").s()).isEqualTo("5#jti-abc");
+        assertThat(req.key().get("sortKey").s()).isEqualTo("jti-abc");
         // Only writes when still grace_period → exactly-once revoke across concurrent instances.
         assertThat(req.conditionExpression()).isEqualTo("#st = :grace");
         assertThat(req.expressionAttributeNames()).containsEntry("#st", "status");
         assertThat(req.expressionAttributeValues().get(":grace").s()).isEqualTo("grace_period");
-        assertThat(req.expressionAttributeValues().get(":revoked").s()).isEqualTo("revoked");
-        // revokedAt is the ISO-8601 'Z' Instant form; updatedOn uses the DynamoDbAudit Date form
+        assertThat(req.expressionAttributeValues().get(":terminal").s()).isEqualTo("revoked");
+        // Writes revokedAt/revokedBy for the revoked branch; expiredAt/expiredBy stay untouched.
+        assertThat(req.updateExpression()).contains("revokedAt = :ta", "revokedBy = :tb")
+                .doesNotContain("expiredAt", "expiredBy");
+        // terminatedAt is the ISO-8601 'Z' Instant form; updatedOn uses the DynamoDbAudit Date form
         // (millis + numeric +0000 offset) so it round-trips through the Enhanced Client's converter.
-        assertThat(req.expressionAttributeValues().get(":ra").s()).isEqualTo("2026-07-20T15:00:00Z");
-        assertThat(req.expressionAttributeValues().get(":rb").s()).isEqualTo("system:grace-revocation");
-        assertThat(req.updateExpression()).contains("updatedOn = :uo", "updatedBy = :rb");
+        assertThat(req.expressionAttributeValues().get(":ta").s()).isEqualTo("2026-07-20T15:00:00Z");
+        assertThat(req.expressionAttributeValues().get(":tb").s()).isEqualTo("system:grace-revocation");
+        assertThat(req.updateExpression()).contains("updatedOn = :uo", "updatedBy = :tb");
         assertThat(req.expressionAttributeValues().get(":uo").s()).isEqualTo("2026-07-20T15:00:00.000+0000");
+    }
+
+    @Test
+    void buildGraceTerminationRequest_expiredBranch_writesExpiredFieldsOnly() {
+        Instant terminatedAt = Instant.parse("2026-07-20T15:00:00Z");
+        UpdateItemRequest req = ApiKeyCredentialRepository.buildGraceTerminationRequest(
+                "izgateway-dev-test", "jti-abc", "expired", terminatedAt, "system:grace-expiration");
+
+        assertThat(req.expressionAttributeValues().get(":terminal").s()).isEqualTo("expired");
+        assertThat(req.updateExpression()).contains("expiredAt = :ta", "expiredBy = :tb")
+                .doesNotContain("revokedAt", "revokedBy");
+        assertThat(req.expressionAttributeValues().get(":tb").s()).isEqualTo("system:grace-expiration");
+    }
+
+    private ApiKeyCredential credWithExpiry(Instant expiresAt, Instant graceExpiresAt) {
+        ApiKeyCredential c = new ApiKeyCredential();
+        c.setExpiresAt(expiresAt);
+        c.setGraceExpiresAt(graceExpiresAt);
+        return c;
+    }
+
+    @Test
+    void resolveTerminalStatus_expiresBeforeGraceExpiry_isExpired() {
+        ApiKeyCredential c = credWithExpiry(NOW.minus(1, ChronoUnit.HOURS), NOW);
+        assertThat(ApiKeyCredentialRepository.resolveTerminalStatus(c)).isEqualTo("expired");
+    }
+
+    @Test
+    void resolveTerminalStatus_expiresEqualsGraceExpiry_isExpired() {
+        ApiKeyCredential c = credWithExpiry(NOW, NOW);
+        assertThat(ApiKeyCredentialRepository.resolveTerminalStatus(c)).isEqualTo("expired");
+    }
+
+    @Test
+    void resolveTerminalStatus_graceExpiryBeforeExpires_isRevoked() {
+        ApiKeyCredential c = credWithExpiry(NOW.plus(1, ChronoUnit.HOURS), NOW);
+        assertThat(ApiKeyCredentialRepository.resolveTerminalStatus(c)).isEqualTo("revoked");
+    }
+
+    @Test
+    void resolveTerminalStatus_nullExpiresAt_defaultsToRevoked() {
+        ApiKeyCredential c = credWithExpiry(null, NOW);
+        assertThat(ApiKeyCredentialRepository.resolveTerminalStatus(c)).isEqualTo("revoked");
     }
 }
