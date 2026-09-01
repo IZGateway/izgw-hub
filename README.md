@@ -8,7 +8,7 @@ The Immunization (IZ) Gateway is a data exchange hub that enables efficient data
 - Enables large, national, and non-traditional vaccinators to report to multiple immunization information systems (IISs).
 - Ensures multiple IISs receive data from multijurisdictional provider organizations by providing a centralized data    exchange connection.
 - Simplifies the onboarding and data sharing process for multijurisdictional provider organizations by eliminating the need for multiple individual, point-to-point IIS connections.
-  
+
 ### Benefits
 - IISs have more complete and accurate immunization information.
 Multijurisdictional providers can query IISs to obtain a patient’s full immunization history.
@@ -44,3 +44,5 @@ Multijurisdictional providers can query IISs to obtain a patient’s full immuni
 ### Benefits
 - Automated submission process simplifies connection and communication of reports to CDC reporting endpoints
 - Simplifies the onboarding process to CDC for reporting
+
+# Test edit for debugging pipeline
