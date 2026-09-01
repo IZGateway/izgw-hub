@@ -13,11 +13,11 @@ import gov.cdc.izgateway.Application;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-// The version is seeded with a bogus value so the assertions below prove izgw-core
-// actively overrode it, rather than that it happened to already be correct.
+// Keep this annotation identical to ApplicationTests so both share one cached context.
+// Adding attributes here (e.g. properties) forks a second context, which cannot bind the
+// fixed server.local-port 9081 that RANDOM_PORT does not randomize.
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT,
-    useMainMethod = SpringBootTest.UseMainMethod.ALWAYS,
-    properties = "springdoc.swagger-ui.version=0.0.0-test-pin"
+    useMainMethod = SpringBootTest.UseMainMethod.ALWAYS
 )
 @ComponentScan("gov.cdc.izgateway")
 class SwaggerUiVersionIntegrationTests {
