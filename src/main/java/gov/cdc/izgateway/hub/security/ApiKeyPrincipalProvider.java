@@ -80,7 +80,8 @@ public class ApiKeyPrincipalProvider {
     }
 
     public IzgPrincipal getPrincipal(HttpServletRequest request) {
-        // Step 1: Extract Bearer token — return null if absent (fallback to cert auth)
+        // Step 1: Extract Bearer token — return null if absent (fallback to cert auth is still allowed;
+        // no API key was presented at all).
         String token;
         try {
             token = jwtTokenExtractor.extractToken(request);
@@ -88,19 +89,23 @@ public class ApiKeyPrincipalProvider {
             return null;
         }
 
+        // From here on, a Bearer-scheme Authorization header WAS presented. Every failure below throws
+        // ApiKeyAuthenticationException instead of returning null: a caller that presents an API key and
+        // fails authentication must not be silently retried against the client certificate.
+
         // Step 2: Parse JWT header only
         SignedJWT signedJwt;
         try {
             signedJwt = SignedJWT.parse(token);
         } catch (ParseException e) {
-            log.debug("Failed to parse JWT token: {}", e.getMessage());
-            return null;
+            log.warn("JWT rejected: failed to parse token: {}", e.getMessage());
+            throw new ApiKeyAuthenticationException("Failed to parse JWT token: " + e.getMessage());
         }
 
         // Step 3: Pre-check alg and iss before expensive operations
         if (!JWSAlgorithm.HS256.equals(signedJwt.getHeader().getAlgorithm())) {
             log.warn("JWT rejected: unsupported algorithm={}", signedJwt.getHeader().getAlgorithm());
-            return null;
+            throw new ApiKeyAuthenticationException("Unsupported algorithm=" + signedJwt.getHeader().getAlgorithm());
         }
 
         JWTClaimsSet unverifiedClaims;
@@ -108,34 +113,35 @@ public class ApiKeyPrincipalProvider {
             unverifiedClaims = signedJwt.getJWTClaimsSet();
         } catch (ParseException e) {
             log.warn("JWT rejected: failed to parse claims: {}", e.getMessage());
-            return null;
+            throw new ApiKeyAuthenticationException("Failed to parse JWT claims: " + e.getMessage());
         }
 
         if (!config.getIssuer().equals(unverifiedClaims.getIssuer())) {
             log.warn("JWT rejected: issuer mismatch (expected={}, got={})", config.getIssuer(), unverifiedClaims.getIssuer());
-            return null;
+            throw new ApiKeyAuthenticationException("Issuer mismatch (expected=" + config.getIssuer() + ", got=" + unverifiedClaims.getIssuer() + ")");
         }
 
         // Step 4: Resolve signing secret by kid
         String kid = signedJwt.getHeader().getKeyID();
         if (kid == null || kid.isBlank()) {
             log.warn("JWT rejected: missing kid header");
-            return null;
+            throw new ApiKeyAuthenticationException("Missing kid header");
         }
         byte[] secretBytes = resolveSecret(kid);
         if (secretBytes == null) {
-            return null;
+            log.warn("JWT rejected: unable to resolve signing secret for kid={}", kid);
+            throw new ApiKeyAuthenticationException("Unable to resolve signing secret for kid=" + kid);
         }
 
         // Step 5: Verify HS256 signature
         try {
             if (!signedJwt.verify(new MACVerifier(secretBytes))) {
                 log.warn("JWT signature verification failed for kid={}", kid);
-                return null;
+                throw new ApiKeyAuthenticationException("Signature verification failed for kid=" + kid);
             }
         } catch (JOSEException e) {
             log.warn("JWT verification exception for kid={}: {}", kid, e.getMessage());
-            return null;
+            throw new ApiKeyAuthenticationException("Verification exception for kid=" + kid + ": " + e.getMessage());
         }
 
         // Step 6: Validate claims against verified payload
@@ -143,13 +149,13 @@ public class ApiKeyPrincipalProvider {
         Date expiry = claims.getExpirationTime();
         if (expiry == null || expiry.toInstant().plusSeconds(CLOCK_SKEW_SECONDS).isBefore(Instant.now())) {
             log.warn("JWT rejected: expired exp={}", expiry);
-            return null;
+            throw new ApiKeyAuthenticationException("Expired exp=" + expiry);
         }
 
         Date notBefore = claims.getNotBeforeTime();
         if (notBefore != null && notBefore.toInstant().isAfter(Instant.now().plusSeconds(CLOCK_SKEW_SECONDS))) {
             log.warn("JWT rejected: not yet valid nbf={}", notBefore);
-            return null;
+            throw new ApiKeyAuthenticationException("Not yet valid nbf=" + notBefore);
         }
 
         // Step 7: Credential cache lookup by jti
@@ -159,17 +165,17 @@ public class ApiKeyPrincipalProvider {
         String jti = claims.getJWTID();
         if (jti == null) {
             log.warn("JWT rejected: missing jti claim");
-            return null;
+            throw new ApiKeyAuthenticationException("Missing jti claim");
         }
 
         if (revokedCache.getIfPresent(jti) != null) {
             log.warn("JWT rejected: jti={} is in REVOKED cache", jti);
-            return null;
+            throw new ApiKeyAuthenticationException("jti=" + jti + " is in REVOKED cache");
         }
 
         if (absentCache.getIfPresent(jti) != null) {
             log.debug("JWT rejected: jti={} is in ABSENT cache", jti);
-            return null;
+            throw new ApiKeyAuthenticationException("jti=" + jti + " is in ABSENT cache");
         }
 
         ApiKeyPrincipal cached = credentialCache.getIfPresent(jti);
@@ -199,14 +205,14 @@ public class ApiKeyPrincipalProvider {
                 absentCache.put(jti, Boolean.TRUE);
                 log.warn("JWT rejected: jti={} not valid for target env={} (environments={})",
                         jti, targetEnv, credential.getEnvironments());
-                return null;
+                throw new ApiKeyAuthenticationException("jti=" + jti + " not valid for target env=" + targetEnv);
             }
 
             String sub = claims.getSubject();
             String upn = (String) claims.getClaim("upn");
             if (upn == null || upn.isBlank()) {
                 log.warn("JWT rejected: missing or blank upn claim for jti={}", jti);
-                return null;
+                throw new ApiKeyAuthenticationException("Missing or blank upn claim for jti=" + jti);
             }
 
             // useTypes is carried on the principal so the routing-time intersection check (IGDD-3257) uses the
@@ -227,13 +233,13 @@ public class ApiKeyPrincipalProvider {
         if (credentialOpt.isEmpty()) {
             absentCache.put(jti, Boolean.TRUE);
             log.warn("JWT rejected: jti={} not found in DynamoDB", jti);
-            return null;
+            throw new ApiKeyAuthenticationException("jti=" + jti + " not found in DynamoDB");
         }
 
         // Credential found but not in a usable state (e.g. validated, expired, revoked) — cache for full token lifetime
         revokedCache.put(jti, Boolean.TRUE);
         log.warn("JWT rejected: jti={} has non-usable status={}, cached in REVOKED cache", jti, credentialOpt.get().getStatus());
-        return null;
+        throw new ApiKeyAuthenticationException("jti=" + jti + " has non-usable status=" + credentialOpt.get().getStatus());
     }
 
     private static boolean isUsableStatus(String status) {
