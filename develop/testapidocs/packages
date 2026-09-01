@@ -5,6 +5,6 @@ gov.cdc.izgateway.dynamodb.model
 gov.cdc.izgateway
 gov.cdc.izgateway.mock.perf
 gov.cdc.izgateway.mock.data
+gov.cdc.izgateway.hub.service
 gov.cdc.izgateway.hub.service.accesscontrol
 gov.cdc.izgateway.hub.security
-gov.cdc.izgateway.configuration
