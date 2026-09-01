@@ -472,7 +472,7 @@ jobs:
           "--environment" ../scripts/dev.postman_environment.json \
           "--ssl-extra-ca-certs" ../certs/izgwroot.pem \
           "--ssl-client-cert-list" ../newman-cert-list.json \
-          "--insecure" -x > ../logs/warmup.log
+          "--insecure" -x > ../logs/warmup.log 2>&1
         endTime=$(date +%s);
         WARMUP=$(($endTime-$startTime));
         echo Warmed up for $WARMUP seconds

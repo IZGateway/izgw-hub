@@ -16,6 +16,13 @@
  */
 'use strict';
 
+// NODE_OPTIONS is inherited by Newman's postman-sandbox worker thread.
+// That thread has a bundled require that can't resolve Node.js built-ins.
+try {
+    const { isMainThread } = require('worker_threads');
+    if (!isMainThread) return;
+} catch (e) { /* Node <12 — no worker_threads, safe to continue */ }
+
 const http = require('http');
 const https = require('https');
 
