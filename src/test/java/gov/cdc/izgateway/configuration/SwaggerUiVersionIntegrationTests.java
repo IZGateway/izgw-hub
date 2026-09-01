@@ -13,8 +13,11 @@ import gov.cdc.izgateway.Application;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+// The version is seeded with a bogus value so the assertions below prove izgw-core
+// actively overrode it, rather than that it happened to already be correct.
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT,
-    useMainMethod = SpringBootTest.UseMainMethod.ALWAYS
+    useMainMethod = SpringBootTest.UseMainMethod.ALWAYS,
+    properties = "springdoc.swagger-ui.version=0.0.0-test-pin"
 )
 @ComponentScan("gov.cdc.izgateway")
 class SwaggerUiVersionIntegrationTests {
@@ -33,5 +36,13 @@ class SwaggerUiVersionIntegrationTests {
         assertNotNull(expected, "swagger-ui webjar must be on the test classpath");
         assertEquals(expected, swaggerUiConfigProperties.getVersion(),
                 "Hub's application context must inherit izgw-core's version-aligning BeanPostProcessor");
+    }
+
+    @Test
+    void resolvedVersionMapsToRealWebjarResources() {
+        String version = swaggerUiConfigProperties.getVersion();
+        String indexHtml = "META-INF/resources/webjars/swagger-ui/" + version + "/index.html";
+        assertNotNull(getClass().getClassLoader().getResource(indexHtml),
+                "swagger-ui " + version + " has no resources on the classpath; springdoc would serve 404 for " + indexHtml);
     }
 }
