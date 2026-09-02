@@ -8,6 +8,7 @@ import com.nimbusds.jwt.SignedJWT;
 import gov.cdc.izgateway.dynamodb.model.ApiKeyCredential;
 import gov.cdc.izgateway.dynamodb.repository.ApiKeyCredentialRepository;
 import gov.cdc.izgateway.security.IzgPrincipal;
+import gov.cdc.izgateway.security.principal.MissingJwtTokenException;
 import gov.cdc.izgateway.security.principal.JwtTokenExtractor;
 import gov.cdc.izgateway.utils.SystemUtils;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,6 +26,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
@@ -113,40 +115,37 @@ class ApiKeyPrincipalProviderTests {
     }
 
     @Test
-    void wrongAlgorithm_returnsNull_noSmCall() throws Exception {
+    void wrongAlgorithm_throws_noSmCall() throws Exception {
         when(jwtTokenExtractor.extractToken(request)).thenReturn(
                 "eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJvdGhlciJ9.sig");
 
-        IzgPrincipal principal = provider.getPrincipal(request);
-
-        assertThat(principal).isNull();
+        assertThatThrownBy(() -> provider.getPrincipal(request))
+                .isInstanceOf(ApiKeyAuthenticationException.class);
         verifyNoInteractions(credentialRepository);
     }
 
     @Test
-    void wrongIssuer_returnsNull_noSmCall() throws Exception {
+    void wrongIssuer_throws_noSmCall() throws Exception {
         String token = buildToken("HS256", "https://other.example.com", TEST_JTI, null);
         when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
 
-        IzgPrincipal principal = provider.getPrincipal(request);
-
-        assertThat(principal).isNull();
+        assertThatThrownBy(() -> provider.getPrincipal(request))
+                .isInstanceOf(ApiKeyAuthenticationException.class);
         verifyNoInteractions(credentialRepository);
     }
 
     @Test
-    void expiredToken_returnsNull() throws Exception {
+    void expiredToken_throws() throws Exception {
         Date past = Date.from(Instant.now().minus(Duration.ofHours(1)));
         String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, past);
         when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
 
-        IzgPrincipal principal = provider.getPrincipal(request);
-
-        assertThat(principal).isNull();
+        assertThatThrownBy(() -> provider.getPrincipal(request))
+                .isInstanceOf(ApiKeyAuthenticationException.class);
     }
 
     @Test
-    void targetEnvNotInCredentialEnvironments_returnsNull() throws Exception {
+    void targetEnvNotInCredentialEnvironments_throws() throws Exception {
         String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, null);
         when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
 
@@ -157,27 +156,25 @@ class ApiKeyPrincipalProviderTests {
         cred.setEnvironments(Set.of(otherEnv));
         when(credentialRepository.findByJti(TEST_JTI)).thenReturn(Optional.of(cred));
 
-        IzgPrincipal principal = provider.getPrincipal(request);
-
-        assertThat(principal).isNull();
+        assertThatThrownBy(() -> provider.getPrincipal(request))
+                .isInstanceOf(ApiKeyAuthenticationException.class);
     }
 
     @Test
-    void revokedSentinelInCache_returnsNull_noDynamoDbCall() throws Exception {
+    void revokedSentinelInCache_throws_noDynamoDbCall() throws Exception {
         String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, null);
         when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
 
         // Pre-populate revoked sentinel
         provider.evictCredential(TEST_JTI);
 
-        IzgPrincipal principal = provider.getPrincipal(request);
-
-        assertThat(principal).isNull();
+        assertThatThrownBy(() -> provider.getPrincipal(request))
+                .isInstanceOf(ApiKeyAuthenticationException.class);
         verifyNoInteractions(credentialRepository);
     }
 
     @Test
-    void dynamoDbRevokedStatus_returnsNull_insertsSentinel() throws Exception {
+    void dynamoDbRevokedStatus_throws_insertsSentinel() throws Exception {
         String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, null);
         when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
 
@@ -185,40 +182,41 @@ class ApiKeyPrincipalProviderTests {
         cred.setStatus("revoked");
         when(credentialRepository.findByJti(TEST_JTI)).thenReturn(Optional.of(cred));
 
-        IzgPrincipal principal = provider.getPrincipal(request);
-
-        assertThat(principal).isNull();
+        assertThatThrownBy(() -> provider.getPrincipal(request))
+                .isInstanceOf(ApiKeyAuthenticationException.class);
 
         // Subsequent request must hit sentinel (no DynamoDB call)
         String token2 = buildToken("HS256", TEST_ISSUER, TEST_JTI, null);
         when(jwtTokenExtractor.extractToken(request)).thenReturn(token2);
-        IzgPrincipal principal2 = provider.getPrincipal(request);
-        assertThat(principal2).isNull();
+        assertThatThrownBy(() -> provider.getPrincipal(request))
+                .isInstanceOf(ApiKeyAuthenticationException.class);
         verify(credentialRepository, times(1)).findByJti(anyString());
     }
 
     @Test
-    void missingUpnClaim_returnsNull() throws Exception {
+    void missingUpnClaim_throws() throws Exception {
         String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, null, null);
         when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
 
         when(credentialRepository.findByJti(TEST_JTI)).thenReturn(Optional.of(activeCredForThisEnv()));
 
-        assertThat(provider.getPrincipal(request)).isNull();
+        assertThatThrownBy(() -> provider.getPrincipal(request))
+                .isInstanceOf(ApiKeyAuthenticationException.class);
     }
 
     @Test
-    void blankUpnClaim_returnsNull() throws Exception {
+    void blankUpnClaim_throws() throws Exception {
         String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, null, "");
         when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
 
         when(credentialRepository.findByJti(TEST_JTI)).thenReturn(Optional.of(activeCredForThisEnv()));
 
-        assertThat(provider.getPrincipal(request)).isNull();
+        assertThatThrownBy(() -> provider.getPrincipal(request))
+                .isInstanceOf(ApiKeyAuthenticationException.class);
     }
 
     @Test
-    void evictCredential_insertsRevokedSentinel_subsequentLookupReturnsNull() throws Exception {
+    void evictCredential_insertsRevokedSentinel_subsequentLookupThrows() throws Exception {
         String token = buildToken("HS256", TEST_ISSUER, TEST_JTI, null);
         when(credentialRepository.findByJti(TEST_JTI)).thenReturn(Optional.of(activeCredForThisEnv()));
 
@@ -230,10 +228,21 @@ class ApiKeyPrincipalProviderTests {
         // Evict
         provider.evictCredential(TEST_JTI);
 
-        // Second call — must return null from REVOKED sentinel
+        // Second call — must throw from REVOKED sentinel
         when(jwtTokenExtractor.extractToken(request)).thenReturn(token);
-        IzgPrincipal second = provider.getPrincipal(request);
-        assertThat(second).isNull();
+        assertThatThrownBy(() -> provider.getPrincipal(request))
+                .isInstanceOf(ApiKeyAuthenticationException.class);
         verify(credentialRepository, times(1)).findByJti(anyString());
+    }
+
+    @Test
+    void noApiKeyPresented_returnsNull_eligibleForCertFallback() throws Exception {
+        // Absent or non-Bearer Authorization header — JwtTokenExtractor signals this the same way
+        // regardless of which; either way, no API key was presented, so the caller can still fall
+        // back to certificate authentication.
+        when(jwtTokenExtractor.extractToken(request)).thenThrow(new MissingJwtTokenException("no bearer token"));
+
+        assertThat(provider.getPrincipal(request)).isNull();
+        verifyNoInteractions(credentialRepository);
     }
 }

@@ -463,6 +463,12 @@ jobs:
     - name: Run Warm Up for Functional Testing
       working-directory: ./testing/testdata
       env:
+        BEARER_TOKEN_EXPIRED: ${{ secrets.BEARER_TOKEN_EXPIRED }}
+        BEARER_TOKEN_FOR_CICD: ${{ secrets.BEARER_TOKEN_FOR_CICD }}
+        BEARER_TOKEN_REVOKED: ${{ secrets.BEARER_TOKEN_REVOKED }}
+        BEARER_TOKEN_WRONG_SECRET: ${{ secrets.BEARER_TOKEN_WRONG_SECRET }}
+        BEARER_TOKEN_WRONG_ENV: ${{ secrets.BEARER_TOKEN_WRONG_ENV }}
+        BEARER_TOKEN_NO_USETYPE: ${{ secrets.BEARER_TOKEN_NO_USETYPE }}
         NODE_OPTIONS: "--require ${{ github.workspace }}/.github/scripts/enable-keepalive.js"
       run: |
         mkdir ../logs
