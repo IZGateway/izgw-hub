@@ -10,7 +10,7 @@ import com.nimbusds.jwt.SignedJWT;
 import gov.cdc.izgateway.dynamodb.model.ApiKeyCredential;
 import gov.cdc.izgateway.dynamodb.repository.ApiKeyCredentialRepository;
 import gov.cdc.izgateway.security.IzgPrincipal;
-import gov.cdc.izgateway.security.principal.InvalidJwtTokenException;
+import gov.cdc.izgateway.security.principal.MissingJwtTokenException;
 import gov.cdc.izgateway.security.principal.JwtTokenExtractor;
 import gov.cdc.izgateway.utils.SystemUtils;
 import jakarta.servlet.http.HttpServletRequest;
@@ -85,7 +85,7 @@ public class ApiKeyPrincipalProvider {
         String token;
         try {
             token = jwtTokenExtractor.extractToken(request);
-        } catch (InvalidJwtTokenException e) {
+        } catch (MissingJwtTokenException e) {
             return null;
         }
 

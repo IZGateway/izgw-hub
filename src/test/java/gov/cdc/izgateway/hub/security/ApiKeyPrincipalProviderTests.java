@@ -8,7 +8,7 @@ import com.nimbusds.jwt.SignedJWT;
 import gov.cdc.izgateway.dynamodb.model.ApiKeyCredential;
 import gov.cdc.izgateway.dynamodb.repository.ApiKeyCredentialRepository;
 import gov.cdc.izgateway.security.IzgPrincipal;
-import gov.cdc.izgateway.security.principal.InvalidJwtTokenException;
+import gov.cdc.izgateway.security.principal.MissingJwtTokenException;
 import gov.cdc.izgateway.security.principal.JwtTokenExtractor;
 import gov.cdc.izgateway.utils.SystemUtils;
 import jakarta.servlet.http.HttpServletRequest;
@@ -240,7 +240,7 @@ class ApiKeyPrincipalProviderTests {
         // Absent or non-Bearer Authorization header — JwtTokenExtractor signals this the same way
         // regardless of which; either way, no API key was presented, so the caller can still fall
         // back to certificate authentication.
-        when(jwtTokenExtractor.extractToken(request)).thenThrow(new InvalidJwtTokenException("no bearer token"));
+        when(jwtTokenExtractor.extractToken(request)).thenThrow(new MissingJwtTokenException("no bearer token"));
 
         assertThat(provider.getPrincipal(request)).isNull();
         verifyNoInteractions(credentialRepository);
