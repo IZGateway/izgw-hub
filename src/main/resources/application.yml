@@ -44,10 +44,8 @@ security:
 springdoc:
     swagger-ui:
         path: /swagger/ui.html
-        # Must match org.webjars:swagger-ui version pinned in izgw-bom (currently 5.32.13).
-        # springdoc's bundled default differs, so it serves resources from the wrong version
-        # path and index.html 404s unless this is set explicitly.
-        version: 5.32.14
+        # Version is auto-detected at startup from the actual org.webjars:swagger-ui webjar on the
+        # classpath (see SwaggerUiVersionConfig in izgw-core) — do not hand-pin this. IGDD-3084.
     api-docs:
         path: /swagger/api-docs
 
