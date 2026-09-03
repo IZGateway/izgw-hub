@@ -47,10 +47,20 @@ that a run **started** and whether it **succeeded** or **failed**:
 | `GRACE_REVOCATION_STARTED` | at the start of a cycle (on the instance that runs it) | INFO | `environment`, `serverName` |
 | `GRACE_REVOCATION_RUN` | cycle completed successfully (even if 0 terminated) | INFO | `environment`, `serverName`, `evaluated`, `expired`, `revoked` |
 | `GRACE_REVOCATION_FAILED` | a cycle threw an unhandled exception | ERROR | exception detail |
+| `CREDENTIAL_TIMESTAMP_PARSE_FAILED` | the initial fetch hits a row with a malformed `Instant` attribute (e.g. a legacy value missing the `:` in its UTC offset) | ERROR | `entityType`, `keyId` (jti), `attribute`, `rawValue` |
 
 The `API_KEY_REVOKED` / `API_KEY_EXPIRED` audit events carry `environment` and `serverName` too, so a
 termination can be attributed to the Hub instance that performed it. `environment` identifies the
 **acting instance**, not the scope of the sweep.
+
+**`CREDENTIAL_TIMESTAMP_PARSE_FAILED` (IGDD-3344)** — the initial fetch (`ApiKeyCredentialRepository
+#findAll()`) used to map every row through the Enhanced Client's bean mapper in one pass, so a single
+row with a malformed `Instant` attribute threw and aborted the whole scan before a single candidate was
+evaluated — silently wedging the sweep for every environment sharing the table (the table-wide scan is
+by design; see above). It now validates each row's `Instant` attributes up front and nulls out (rather
+than propagating) any that fail to parse, logging this event every time — once per malformed
+attribute, every cycle, not deduplicated — so a persistently bad row shows as sustained alert pressure
+rather than a one-time blip or a silently-vanished record.
 
 ## Alert conditions (deferred — spec for future CloudWatch alarms)
 
@@ -63,6 +73,12 @@ termination can be attributed to the Hub instance that performed it. `environmen
    - CloudWatch: metric filter `{ $.eventType = "GRACE_REVOCATION_RUN" }` → alarm `< 1` over the
      window, **treat missing data as breaching**.
    - Elastic: watcher that alerts when the `GRACE_REVOCATION_RUN` count over the window is 0.
+3. **Malformed credential timestamp** — one or more `CREDENTIAL_TIMESTAMP_PARSE_FAILED` events in a
+   period. Unlike the two conditions above, this does not mean the sweep failed (it degrades and keeps
+   running) — it flags a data-quality issue on a specific legacy record that should be corrected.
+   - CloudWatch: Logs metric filter `{ $.eventType = "CREDENTIAL_TIMESTAMP_PARSE_FAILED" }` → alarm
+     `>= 1`.
+   - Elastic: watcher/alert on `eventType: CREDENTIAL_TIMESTAMP_PARSE_FAILED`.
 
 Route alert actions to the same notification channel used by the existing `izgateway-*` alarms.
 
@@ -87,6 +103,13 @@ grace period:
    query on `entityType = ApiKeyCredential`).
 4. **Verify** — confirm the keys now show `revoked` and that an `API_KEY_REVOKED` audit event was
    recorded for each.
+
+If instead you see `CREDENTIAL_TIMESTAMP_PARSE_FAILED`, the sweep itself is still running — it is not
+the "job didn't execute" case above, so restarting/restoring Hub will not help. Use the `keyId`,
+`attribute`, and `rawValue` on the log event to find and correct the malformed value directly on that
+`ApiKeyCredential` record (e.g. via a DynamoDB `UpdateItem` writing a valid ISO-8601 value, or removing
+the attribute if it is not otherwise needed). Until corrected, that one attribute on that one record is
+treated as absent for grace-revocation purposes; every other credential is unaffected.
 
 ## Notes
 

@@ -2,20 +2,25 @@ package gov.cdc.izgateway.dynamodb.repository;
 
 import gov.cdc.izgateway.dynamodb.model.ApiKeyCredential;
 import org.junit.jupiter.api.Test;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Unit tests for the grace-revocation selection predicate
  * ({@link ApiKeyCredentialRepository#selectGraceCandidates}), the terminal-status resolver
- * ({@link ApiKeyCredentialRepository#resolveTerminalStatus}), and the conditional termination-request
- * builder ({@link ApiKeyCredentialRepository#buildGraceTerminationRequest}). The DynamoDB calls
- * themselves are thin delegations covered by integration testing; these tests pin the pure logic.
+ * ({@link ApiKeyCredentialRepository#resolveTerminalStatus}), the conditional termination-request
+ * builder ({@link ApiKeyCredentialRepository#buildGraceTerminationRequest}), and the per-item
+ * malformed-timestamp sanitizer ({@link ApiKeyCredentialRepository#sanitizeAndMap}, IGDD-3344). The
+ * DynamoDB calls themselves are thin delegations covered by integration testing; these tests pin the
+ * pure logic.
  */
 class ApiKeyCredentialRepositoryTests {
 
@@ -142,5 +147,96 @@ class ApiKeyCredentialRepositoryTests {
     void resolveTerminalStatus_nullExpiresAt_defaultsToRevoked() {
         ApiKeyCredential c = credWithExpiry(null, NOW);
         assertThat(ApiKeyCredentialRepository.resolveTerminalStatus(c)).isEqualTo("revoked");
+    }
+
+    private Map<String, AttributeValue> rawItem(String jti, String status, String graceExpiresAt) {
+        Map<String, AttributeValue> item = new HashMap<>();
+        item.put("entityType", AttributeValue.fromS("ApiKeyCredential"));
+        // "sortKey" is the derived DynamoDB key attribute (has a phantom no-op setter); "jti" is the
+        // real bean property. Both are present on an actual row.
+        item.put("sortKey", AttributeValue.fromS(jti));
+        item.put("jti", AttributeValue.fromS(jti));
+        item.put("status", AttributeValue.fromS(status));
+        item.put("issuedAt", AttributeValue.fromS("2026-01-01T00:00:00Z"));
+        item.put("expiresAt", AttributeValue.fromS("2026-12-31T00:00:00Z"));
+        if (graceExpiresAt != null) {
+            item.put("graceExpiresAt", AttributeValue.fromS(graceExpiresAt));
+        }
+        return item;
+    }
+
+    @Test
+    void sanitizeAndMap_allValidTimestamps_mapsCleanly() {
+        Map<String, AttributeValue> item = rawItem("jti-good", "grace_period", "2026-07-20T00:00:00Z");
+
+        ApiKeyCredential c = ApiKeyCredentialRepository.sanitizeAndMap(item);
+
+        assertThat(c.getJti()).isEqualTo("jti-good");
+        assertThat(c.getStatus()).isEqualTo("grace_period");
+        assertThat(c.getIssuedAt()).isEqualTo(Instant.parse("2026-01-01T00:00:00Z"));
+        assertThat(c.getExpiresAt()).isEqualTo(Instant.parse("2026-12-31T00:00:00Z"));
+        assertThat(c.getGraceExpiresAt()).isEqualTo(Instant.parse("2026-07-20T00:00:00Z"));
+    }
+
+    @Test
+    void sanitizeAndMap_malformedGraceExpiresAt_nullsOnlyThatFieldAndKeepsRestOfRecord() {
+        // Reproduces the reported bad legacy value: missing colon in the UTC offset (+0000 vs +00:00/Z).
+        Map<String, AttributeValue> item = rawItem("jti-bad-grace", "grace_period", "2025-06-23T13:28:00.000+0000");
+
+        ApiKeyCredential c = ApiKeyCredentialRepository.sanitizeAndMap(item);
+
+        assertThat(c.getJti()).isEqualTo("jti-bad-grace");
+        assertThat(c.getStatus()).isEqualTo("grace_period");
+        assertThat(c.getGraceExpiresAt()).isNull();
+        // Unrelated valid Instant fields on the same record are unaffected.
+        assertThat(c.getIssuedAt()).isEqualTo(Instant.parse("2026-01-01T00:00:00Z"));
+        assertThat(c.getExpiresAt()).isEqualTo(Instant.parse("2026-12-31T00:00:00Z"));
+    }
+
+    @Test
+    void sanitizeAndMap_malformedGraceExpiresAt_dropsOutOfGraceCandidateSelection() {
+        // End-to-end of the fix's intent: a record that would previously abort findAll() entirely now
+        // maps to a credential that selectGraceCandidates naturally excludes (graceExpiresAt == null),
+        // instead of the malformed value silently making it look like a non-expiring grace_period key.
+        Map<String, AttributeValue> item = rawItem("jti-bad-grace", "grace_period", "2025-06-23T13:28:00.000+0000");
+        ApiKeyCredential c = ApiKeyCredentialRepository.sanitizeAndMap(item);
+
+        assertThat(ApiKeyCredentialRepository.selectGraceCandidates(List.of(c), NOW)).isEmpty();
+    }
+
+    @Test
+    void sanitizeAndMap_multipleMalformedFields_nullsEachIndependently() {
+        Map<String, AttributeValue> item = rawItem("jti-multi-bad", "grace_period", "2025-06-23T13:28:00.000+0000");
+        item.put("issuedAt", AttributeValue.fromS("not-a-timestamp"));
+
+        ApiKeyCredential c = ApiKeyCredentialRepository.sanitizeAndMap(item);
+
+        assertThat(c.getGraceExpiresAt()).isNull();
+        assertThat(c.getIssuedAt()).isNull();
+        // A field that parses fine is untouched even though sibling fields on the same item are bad.
+        assertThat(c.getExpiresAt()).isEqualTo(Instant.parse("2026-12-31T00:00:00Z"));
+    }
+
+    @Test
+    void sanitizeAndMap_unmappableAttributeOutsideInstantSet_skipsRecordInsteadOfThrowing() {
+        // A bad-data case the up-front Instant validation doesn't cover (e.g. a corrupt Set attribute)
+        // must not propagate out of sanitizeAndMap -- that would still let one bad row abort findAll().
+        Map<String, AttributeValue> item = rawItem("jti-corrupt", "grace_period", "2026-07-20T00:00:00Z");
+        item.put("environments", AttributeValue.fromS("not-a-number-set"));
+
+        ApiKeyCredential c = ApiKeyCredentialRepository.sanitizeAndMap(item);
+
+        assertThat(c).isNull();
+    }
+
+    @Test
+    void sanitizeAndMap_noGraceExpiresAtAttribute_mapsWithNullField() {
+        // Normal active keys have no graceExpiresAt attribute at all (absent, not malformed).
+        Map<String, AttributeValue> item = rawItem("jti-active", "active", null);
+
+        ApiKeyCredential c = ApiKeyCredentialRepository.sanitizeAndMap(item);
+
+        assertThat(c.getGraceExpiresAt()).isNull();
+        assertThat(c.getStatus()).isEqualTo("active");
     }
 }
