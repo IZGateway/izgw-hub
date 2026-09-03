@@ -71,6 +71,20 @@ IP CIDRs can be specified for IPv4 and IPv6.
 
 To specify, for example, allowing localhost for both IPv4 and IPv6 you would set this to: 127.0.0.1/32,::1/128
 
+* __HUB_SOURCE_ATTACK_LOCKOUT_ENABLED__
+
+Turns on automatic deny-listing of a sender when a source attack is detected (a `SecurityFault` with
+code 61, e.g. content matching `script`/`javascript` patterns in an inbound SOAP message). When enabled,
+the sender is added to the deny list unless a source-attack exception has been configured for it via the
+`/rest/sourceAttackExceptions` admin API (see
+`openspec/changes/igdd-2805-source-attack-lockout/runbook.md`).
+
+Distinct from any deny-list *enforcement* setting — this only controls whether a detected attack
+automatically adds the sender to the deny list. The triggering message is always rejected regardless of
+this setting.
+
+By default, this is set to false.
+
 # SQS Configuration 
 Each Hub instance creates a pair SQS queues when it starts up and delete them when it exits.  Each hub instance will need to be able to send messages to the SQS queues that have been created in any region, so a hub service in us-east-1 will need to be able to send a message to a hub service in us-west-2, and vice versa.  The messages being sent contain no PHI or sensitive data they just tell the other instances to refresh their database caches.
 

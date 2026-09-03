@@ -25,6 +25,7 @@ import gov.cdc.izgateway.dynamodb.repository.ApiKeyCredentialRepository;
 import gov.cdc.izgateway.dynamodb.repository.DenyListRecordRepository;
 import gov.cdc.izgateway.dynamodb.repository.FileTypeRepository;
 import gov.cdc.izgateway.dynamodb.repository.OrganizationRecordRepository;
+import gov.cdc.izgateway.dynamodb.repository.SourceAttackExceptionRepository;
 import gov.cdc.izgateway.hub.repository.IDestinationRepository;
 import gov.cdc.izgateway.hub.repository.IJurisdictionRepository;
 import gov.cdc.izgateway.hub.repository.IMessageHeaderRepository;
@@ -62,6 +63,7 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
 	private DenyListRecordRepository dlr;
 	private FileTypeRepository ftr;
 	private OrganizationRecordRepository orr;
+	private SourceAttackExceptionRepository saer;
 
 	/**
 	 * Create the factory for DynamoDb Repositories
@@ -238,5 +240,16 @@ public class DynamoDbRepositoryFactory implements RepositoryFactory {
 			orr = new OrganizationRecordRepository(client, this.tableName);
 		}
 		return orr;
+	}
+
+	/**
+	 * Get the DynamoDbRepository for Source Attack Exception Records (IGDD-2805)
+	 * @return The SourceAttackExceptionRepository
+	 */
+	public SourceAttackExceptionRepository sourceAttackExceptionRepository() {
+		if (saer == null) {
+			saer = new SourceAttackExceptionRepository(client, this.tableName);
+		}
+		return saer;
 	}
 }
