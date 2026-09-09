@@ -26,4 +26,26 @@
         <sha1>29e50540ef987241f13ece8aa4297c524cdca5ed</sha1>
         <cve>CVE-2018-1258</cve>
     </suppress>
+    <suppress>
+        <notes><![CDATA[
+        tomcat-embed-core: CVE-2026-66299 is a false positive for embedded Tomcat usage.
+        The vulnerability is an unbounded buffer for undelivered messages in the WebSocket
+        chat example web application bundled with the full Apache Tomcat distribution,
+        allowing a slow client to exhaust memory. Apache's own advisory states users who
+        removed the examples web application are not affected. Our use of tomcat-embed does
+        not include the examples web application - this is Spring Boot's embedded Tomcat
+        (tomcat-embed-core/-el/-websocket only, pulled in via izgw-bom's tomcat.version
+        property), which never bundles the examples webapp in the first place. Confirmed as
+        a known false-positive pattern on the Apache Tomcat security mailing list thread for
+        this CVE.
+
+        Fixed versions (11.0.25 / 10.1.58 / 9.0.121) had not been released as of this
+        writing - confirmed tomcat-embed-core 10.1.58 does not yet exist on Maven Central
+        (still under development). Revisit once 10.1.58 ships; this suppression may become
+        unnecessary (harmless if left in place - it will simply stop matching).
+        Added: 2026-08-08 (IGDD-3254)
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.apache\.tomcat\.embed/tomcat\-embed\-core@.*$</packageUrl>
+        <cve>CVE-2026-66299</cve>
+    </suppress>
 </suppressions>

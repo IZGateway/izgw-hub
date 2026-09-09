@@ -1,6 +1,6 @@
 ## Why
 
-When a jurisdiction renews an API key, Config Console (IGDD-2707) issues a new credential but leaves the old one **active** for a configurable grace period — it stamps the old `ApiKeyCredential` with `supersededBy = <new jti>` and `graceExpiresAt`, so both keys authenticate while the caller cuts over. Nothing currently revokes the old key once that grace window closes. Without an automated sweep, superseded keys accumulate as indefinitely-valid credentials, defeating the purpose of renewal and widening the credential attack surface.
+When a jurisdiction renews an API key, Config Console (IGDD-2707) issues a new credential but leaves the old one usable (status **`grace_period`**) for a configurable grace period — it stamps the old `ApiKeyCredential` with `status = grace_period`, `supersededBy = <new jti>`, and `graceExpiresAt`, so both keys authenticate while the caller cuts over. Nothing currently revokes the old key once that grace window closes. Without an automated sweep, superseded keys accumulate as indefinitely-valid credentials, defeating the purpose of renewal and widening the credential attack surface.
 
 This change adds a scheduled job inside Hub that revokes superseded API keys after their grace period expires (IGDD-2711, User Story 10).
 
@@ -25,7 +25,7 @@ This change adds a scheduled job inside Hub that revokes superseded API keys aft
 ## Impact
 
 - **DynamoDB shared table** — `ApiKeyCredential` gains two attributes written by Config Console (IGDD-2707) and read by Hub. No table/key structure change; new optional attributes only. Older records without these attributes deserialize with `null` and are never selected by the sweep.
-- **Status literals** — lowercase `active` / `revoked` per Keith's IGDD-2703 ADR (no `'Grace Period'` status; grace is a timestamp on an `active` key). Hub's 2705 auth path already matches; Config Console conforms in storage and capitalizes only for display.
+- **Status literals** — lowercase `active` / `grace_period` / `revoked` per Keith's IGDD-2703 ADR. Hub's 2705 auth path treats `active` and `grace_period` as usable; Config Console conforms in storage and capitalizes only for display.
 - **Cache coherence** — the acting instance evicts the revoked key from its cache immediately; other instances converge within the credential-cache TTL (default 5 min) as entries expire and re-validate against DynamoDB. Immediate fleet-wide broadcast is intentionally out of scope (design D6) — it is the manual-revoke path's concern (IGDD-2707).
 - **Scheduling** — Hub gains an `@EnableScheduling`-driven job. Hub runs multi-instance behind an ALB, so the job needs a single-runner guard to avoid redundant writes/audit noise.
 - **Observability / Ops** — per-run counts logged for CloudWatch; a log-based CloudWatch alarm plus an operations runbook entry cover the "job failed to run" acceptance criterion (AC #3).

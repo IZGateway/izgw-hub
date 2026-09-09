@@ -14,7 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class AuthenticationEnforcementFilterTest {
+class AuthenticationEnforcementFilterTests {
 
     @Mock private PrincipalService principalService;
     @Mock private HttpServletRequest request;

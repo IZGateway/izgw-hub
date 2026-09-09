@@ -55,27 +55,20 @@ Hub SHALL verify the JWT's HMAC-SHA256 signature against the secret retrieved fo
 ### Requirement: Claims validation
 After successful signature verification, Hub SHALL validate the following claims in order. Any failure SHALL cause the provider to return `null`:
 1. `exp` has not passed (with a configurable clock skew tolerance, default 30 seconds)
-2. `env` is present, is a numeric integer, and its value matches `SystemUtils.getDestType()` (e.g., `5` for Development, `1` for Production). A missing or non-numeric `env` claim SHALL be rejected.
-3. `iss` matches the configured `jwt.issuer` (re-validated against the decoded payload)
+2. `iss` matches the configured `jwt.issuer` (re-validated against the decoded payload)
+
+The token does NOT carry an `env` claim. Environment authorization is a server-side property of the credential and is enforced later against the credential's `environments` list (see "DynamoDB credential status check").
 
 #### Scenario: Expired token
 - **WHEN** the current time exceeds the JWT `exp` claim (beyond the clock-skew tolerance)
 - **THEN** `ApiKeyPrincipalProvider` returns `null`
 
-#### Scenario: Wrong environment
-- **WHEN** the JWT `env` claim (numeric) does not match Hub's `SystemUtils.getDestType()` value
-- **THEN** `ApiKeyPrincipalProvider` returns `null`
-
-#### Scenario: Non-numeric environment
-- **WHEN** the JWT `env` claim is absent or is a string (e.g., `"Development"`)
-- **THEN** `ApiKeyPrincipalProvider` returns `null`
-
 #### Scenario: Valid claims
-- **WHEN** `exp` is in the future, `env` is numeric and matches, and `iss` matches
+- **WHEN** `exp` is in the future and `iss` matches
 - **THEN** credential cache lookup proceeds
 
 ### Requirement: Credential cache lookup by `jti`
-Hub SHALL maintain an in-memory credential cache keyed by `jti`. On a cache hit, the cached value (an `ApiKeyPrincipal` or REVOKED sentinel) SHALL be returned immediately without a DynamoDB call. On a cache miss, Hub SHALL query DynamoDB for the `ApiKeyCredential` record with sort key `env#jti`.
+Hub SHALL maintain an in-memory credential cache keyed by `jti`. On a cache hit, the cached value (an `ApiKeyPrincipal` or REVOKED sentinel) SHALL be returned immediately without a DynamoDB call. On a cache miss, Hub SHALL query DynamoDB for the `ApiKeyCredential` record with sort key `{jti}`.
 
 #### Scenario: Credential cache hit — active
 - **WHEN** the `jti` is in the credential cache as an `ApiKeyPrincipal`
@@ -87,7 +80,7 @@ Hub SHALL maintain an in-memory credential cache keyed by `jti`. On a cache hit,
 
 #### Scenario: Credential cache miss
 - **WHEN** the `jti` is not in the credential cache
-- **THEN** Hub reads the `ApiKeyCredential` record from DynamoDB by sort key `env#jti`
+- **THEN** Hub reads the `ApiKeyCredential` record from DynamoDB by sort key `{jti}`
 
 ### Requirement: `upn` claim validation
 After signature and standard claims verification, Hub SHALL extract the `upn` claim from the verified JWT payload. If `upn` is absent or blank, Hub SHALL log a warning and return `null`, rejecting the token. A non-blank `upn` is required for the principal to be usable in `AllowedUser` authorization lookups.
@@ -106,19 +99,23 @@ After signature and standard claims verification, Hub SHALL extract the `upn` cl
 
 ### Requirement: DynamoDB credential status check
 When the credential cache misses, Hub SHALL read the `ApiKeyCredential` record and act on its `status`:
-- **active**: construct an `ApiKeyPrincipal` from JWT claims (`upn` → `name` (IzgPrincipal.getName()), `sub` → `organization` (a numeric string jurisdiction ID, e.g., `"42"`), `roles` → roles, `jti` → jti), store in credential cache with `jwt.credential-cache-ttl` (default 5 minutes), and return the principal.
-- **revoked**, **expired**, or record absent: store a REVOKED sentinel in credential cache with TTL equal to the maximum possible token lifetime (1 year), and return `null`.
+- **active**: validate that the request's target environment (`SystemUtils.getDestType()`) is contained in the credential's server-side `environments` list; if it is not, return `null`. Otherwise construct an `ApiKeyPrincipal` from JWT claims (`upn` → `name` (IzgPrincipal.getName()), `sub` → `organization` (a numeric string jurisdiction ID, e.g., `"42"`), `roles` → roles, `jti` → jti), store in credential cache with `jwt.credential-cache-ttl` (default 5 minutes), and return the principal.
+- **revoked** or record absent: store a REVOKED sentinel in credential cache with TTL equal to the maximum possible token lifetime (1 year), and return `null`.
 
 #### Scenario: Active credential
-- **WHEN** DynamoDB returns `status = active` for the `jti`
+- **WHEN** DynamoDB returns `status = active` for the `jti` and the request's target environment is in the credential's `environments` list
 - **THEN** an `ApiKeyPrincipal` is constructed from JWT claims with `name = upn` and cached with 5-minute TTL, then returned
+
+#### Scenario: Credential not valid for the target environment
+- **WHEN** DynamoDB returns `status = active` for the `jti` but the request's target environment (`SystemUtils.getDestType()`) is NOT in the credential's `environments` list
+- **THEN** `ApiKeyPrincipalProvider` returns `null`, resulting in 401
 
 #### Scenario: Revoked credential
 - **WHEN** DynamoDB returns `status = revoked` for the `jti`
 - **THEN** a REVOKED sentinel is cached with max-token-lifetime TTL and `null` is returned, resulting in 401
 
 #### Scenario: Absent credential record
-- **WHEN** DynamoDB has no `ApiKeyCredential` record for `env#jti`
+- **WHEN** DynamoDB has no `ApiKeyCredential` record for `{jti}`
 - **THEN** the `jti` is cached in the absent cache (5-minute TTL) and `null` is returned. A shorter TTL is used (vs. the 366-day revoked TTL) to allow a credential record to be created after a cold-cache miss without permanent lockout.
 
 ### Requirement: Revocation propagation via refresh endpoint

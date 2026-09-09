@@ -7,7 +7,7 @@ import java.security.Principal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class ApiKeyPrincipalTest {
+class ApiKeyPrincipalTests {
 
     private static final String SUB = "TEST_ORG";
     private static final String JTI = "0d0fa1d2-3c5d-4e2a-9a5c-1f7b4d2e9c10";

@@ -215,4 +215,11 @@ class OldModelHelper implements AccessControlModelHelper {
 		// The old model does not have destination access controls
 		return true;
 	}
+
+	@Override
+	public boolean isExemptFromSourceAttackLockout(String sender) {
+		// Source-attack exceptions (IGDD-2805) are a new-model-only feature; the old model has no
+		// equivalent concept, same precedent as canAccessDestination above.
+		return false;
+	}
 }

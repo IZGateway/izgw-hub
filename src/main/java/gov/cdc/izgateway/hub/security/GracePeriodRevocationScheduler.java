@@ -16,23 +16,26 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * Scheduled job that revokes superseded API-key credentials after their grace period expires
- * (IGDD-2711, User Story 10).
+ * Scheduled job that terminates superseded API-key credentials after their grace period expires
+ * (IGDD-2711, User Story 10), recording the correct terminal status (IGDD-3167).
  *
  * <p>When Config Console renews an API key (IGDD-2707) it issues a new credential and moves the old
  * one to status {@code grace_period} with a {@code graceExpiresAt}; it keeps authenticating alongside
- * the new key during the grace window. Once {@code graceExpiresAt} passes, the old key must be revoked
- * so renewed keys do not accumulate as indefinitely-valid credentials. This job performs that sweep
- * inside Hub, reusing the credential repository and audit logger.</p>
+ * the new key during the grace window. Once {@code graceExpiresAt} passes, the old key must be
+ * terminated so renewed keys do not accumulate as indefinitely-valid credentials. Per the credential
+ * state model the effective grace end is {@code min(graceExpiresAt, expiresAt)}: a key whose own
+ * {@code expiresAt} was reached first is recorded {@code expired}; a key cut off before its own expiry
+ * is recorded {@code revoked} ({@link ApiKeyCredentialRepository#resolveTerminalStatus}). This job
+ * performs that sweep inside Hub, reusing the credential repository and audit logger.</p>
  *
  * <p>The job is gated on {@code apikey.grace-revocation.enabled} (off by default) so it can be enabled
  * per environment. Spring's scheduling infrastructure is enabled globally by {@code @EnableScheduling}
  * on the application class, independent of this bean's conditional.</p>
  *
  * <p><b>Multi-instance safety (design D5):</b> every enabled instance runs the cycle; correctness does
- * not depend on electing a single runner. Each candidate is revoked via a <em>conditional</em> write
- * ({@link ApiKeyCredentialRepository#revokeIfGracePeriod}) that only succeeds while the key is still
- * {@code grace_period}, so a given key is revoked — and audited — exactly once even under concurrent
+ * not depend on electing a single runner. Each candidate is terminated via a <em>conditional</em> write
+ * ({@link ApiKeyCredentialRepository#terminateIfGracePeriod}) that only succeeds while the key is still
+ * {@code grace_period}, so a given key is terminated — and audited — exactly once even under concurrent
  * runs. (An earlier host-ordering election was removed: the host registry can retain stale hosts, which
  * could make a lone live instance defer to a ghost and never run.) Cross-instance cache propagation is
  * intentionally not broadcast — see {@link #evictLocalCache(String)}.</p>
@@ -86,76 +89,101 @@ public class GracePeriodRevocationScheduler {
     }
 
     /**
-     * Execute one revocation cycle: find superseded credentials whose grace period has expired in
-     * this environment, revoke each, emit an audit event, and evict the local cache. Emits a
+     * Execute one revocation cycle: find every superseded credential whose grace period has expired,
+     * terminate each to its correct status ({@code expired} or {@code revoked}, IGDD-3167), emit the
+     * matching audit event, and evict the local cache. The sweep is NOT scoped to this Hub's
+     * environment -- see {@link #runRevocationCycle()} for why -- so the {@code environment} and
+     * {@code serverName} fields on the log and audit events identify the instance that performed a
+     * termination, not the set of credentials considered. Emits a
      * {@code GRACE_REVOCATION_STARTED} log at the beginning and a {@code GRACE_REVOCATION_RUN} log on
-     * successful completion (with the number of credentials evaluated and revoked); a failure is
-     * logged as {@code GRACE_REVOCATION_FAILED} by {@link #scheduledRun()}. These three events let
-     * operations see that a run started and whether it succeeded or failed (AC #4; alarms may be
-     * layered on these log events later).
+     * successful completion (with the number of credentials evaluated, expired, and revoked); a
+     * failure is logged as {@code GRACE_REVOCATION_FAILED} by {@link #scheduledRun()}. These three
+     * events let operations see that a run started and whether it succeeded or failed (AC #4; alarms
+     * may be layered on these log events later).
      */
     CycleResult runRevocationCycle() {
-        // Records are keyed by the numeric environment (e.g. "5"), matching ApiKeyPrincipalProvider's
-        // String.valueOf(envInt) and the {env}#{jti} sort key — NOT the human-readable dest-type name.
-        String env = String.valueOf(SystemUtils.getDestType());
-        log.info(Markers2.append("eventType", "GRACE_REVOCATION_STARTED", "environment", env),
+        // The credential sort key is {jti} with no environment prefix (IGDD-3140), so there is no prefix
+        // left to scope a query by: the sweep evaluates every ApiKeyCredential record. A key's permitted
+        // environments are a server-side `environments` set, not part of the key.
+        //
+        // The DynamoDB table is shared across environments (dev and test both use izgateway-dev-test),
+        // so any enabled Hub may terminate a credential belonging to another environment. That is
+        // harmless -- grace expiry is environment-independent and the conditional write keeps it
+        // exactly-once -- but it does mean a termination cannot be attributed without recording who did
+        // it, hence `environment`/`serverName` below and on the audit events (IGDD-3257 review).
+        log.info(Markers2.append("eventType", "GRACE_REVOCATION_STARTED",
+                        "environment", SystemUtils.getDestTag(),
+                        "serverName", SystemUtils.getHostname()),
                 "Grace-period revocation cycle started");
 
-        List<ApiKeyCredential> candidates = credentialRepository.findGraceRevocationCandidates(env);
+        List<ApiKeyCredential> candidates = credentialRepository.findGraceRevocationCandidates();
 
         int evaluated = candidates.size();
+        int expired = 0;
         int revoked = 0;
         for (ApiKeyCredential credential : candidates) {
             try {
-                if (revokeCredential(credential)) {
+                String terminalStatus = terminateCredential(credential);
+                if (ApiKeyCredentialRepository.STATUS_EXPIRED.equals(terminalStatus)) {
+                    expired++;
+                } else if (ApiKeyCredentialRepository.STATUS_REVOKED.equals(terminalStatus)) {
                     revoked++;
                 }
             } catch (Exception e) {  // NOSONAR — one bad credential must not abort the rest of the sweep
                 log.warn(Markers2.append("eventType", "GRACE_REVOCATION_ERROR", "keyId", credential.getJti())
                                 .and(Markers2.append(e)),
-                        "Failed to revoke credential {}: {}", credential.getJti(), e.getMessage());
+                        "Failed to terminate credential {}: {}", credential.getJti(), e.getMessage());
             }
         }
 
         log.info(Markers2.append(
                 "eventType", "GRACE_REVOCATION_RUN",
-                "environment", env,
+                "environment", SystemUtils.getDestTag(),
+                "serverName", SystemUtils.getHostname(),
                 "evaluated", evaluated,
+                "expired", expired,
                 "revoked", revoked
-        ), "Grace-period revocation cycle succeeded: evaluated={}, revoked={}", evaluated, revoked);
-        return new CycleResult(evaluated, revoked);
+        ), "Grace-period revocation cycle succeeded: evaluated={}, expired={}, revoked={}",
+                evaluated, expired, revoked);
+        return new CycleResult(evaluated, expired, revoked);
     }
 
-    /** Outcome of one revocation cycle: candidates evaluated and credentials actually revoked. */
-    record CycleResult(int evaluated, int revoked) {
+    /** Outcome of one revocation cycle: candidates evaluated, and how many were marked expired vs revoked. */
+    record CycleResult(int evaluated, int expired, int revoked) {
     }
 
     /**
-     * Revoke a single superseded credential via a conditional write (revoke only if still
-     * {@code grace_period}). On the write that actually performs the revocation, emit the
-     * {@code API_KEY_REVOKED} audit event and evict the credential from this instance's local cache.
-     * If another instance already revoked it (conditional write fails), do nothing — so the audit
-     * event fires exactly once across the fleet.
+     * Terminate a single superseded credential via a conditional write (terminate only if still
+     * {@code grace_period}). The terminal status ({@code expired} vs {@code revoked}) is resolved from
+     * the credential's own {@code expiresAt}/{@code graceExpiresAt} up front (IGDD-3167), so the actor
+     * value written and the audit event emitted match the write the repository performs. On the write
+     * that actually performs the termination, emit the matching audit event and evict the credential
+     * from this instance's local cache. If another instance already terminated it (conditional write
+     * fails), do nothing — so the audit event fires exactly once across the fleet.
      *
-     * @param credential the grace-expired candidate to revoke
-     * @return {@code true} if this call performed the revocation; {@code false} otherwise
+     * @param credential the grace-expired candidate to terminate
+     * @return the terminal status applied ({@link ApiKeyCredentialRepository#STATUS_EXPIRED} or
+     *         {@link ApiKeyCredentialRepository#STATUS_REVOKED}) if this call performed the
+     *         termination; {@code null} if the conditional write lost
      */
-    private boolean revokeCredential(ApiKeyCredential credential) {
-        boolean revoked = credentialRepository.revokeIfGracePeriod(
-                credential, Instant.now(), ApiKeyAuditLogger.SYSTEM_GRACE_REVOCATION);
-        if (!revoked) {
-            return false;
+    private String terminateCredential(ApiKeyCredential credential) {
+        String terminalStatus = ApiKeyCredentialRepository.resolveTerminalStatus(credential);
+        boolean expired = ApiKeyCredentialRepository.STATUS_EXPIRED.equals(terminalStatus);
+        String actor = expired ? ApiKeyAuditLogger.SYSTEM_GRACE_EXPIRATION : ApiKeyAuditLogger.SYSTEM_GRACE_REVOCATION;
+
+        boolean won = credentialRepository.terminateIfGracePeriod(credential, Instant.now(), actor);
+        if (!won) {
+            return null;
         }
 
         String jti = credential.getJti();
-        auditLogger.apiKeyRevoked(
-                jti,
-                credential.getJurisdictionId(),
-                ApiKeyAuditLogger.SYSTEM_GRACE_REVOCATION,
-                credential.getSupersededBy()
-        );
+        if (expired) {
+            auditLogger.apiKeyExpired(jti, credential.getJurisdictionId(), actor, credential.getSupersededBy());
+        } else {
+            auditLogger.apiKeyRevoked(jti, credential.getJurisdictionId(), actor, credential.getSupersededBy());
+        }
         evictLocalCache(jti);
-        return true;
+        return terminalStatus;
     }
 
     /**
