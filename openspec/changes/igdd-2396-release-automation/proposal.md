@@ -32,9 +32,9 @@ with the adaptations needed to preserve Hub's release gates and artifact contrac
   Transform's conflict preferences: release content wins conflicting hunks when
   merging into the trunk; base content wins during the back-merge. Retain visible
   warnings about hotfix changes that require manual review rather than introducing
-  a mandatory manual conflict-resolution gate. Reject a trunk merge tree that
-  differs from the tested candidate tree. That guard covers trunk content outside
-  the candidate's ancestry, not hotfix content that the back-merge omitted.
+  a mandatory manual conflict-resolution gate. The trunk merge does not protect
+  hotfix content that the back-merge omitted, because the trunk equals the merge
+  base of the next release.
 - Build and deploy a release candidate to the existing dev ECS service. Serialize
   releases and develop CI across deployment and verification so another run cannot
   replace the candidate while it is being tested.
@@ -92,7 +92,11 @@ of all external publications and deployments is outside the agreed scope.
 
 - **Repository:** Add `.github/workflows/release.yml`, `hotfix.yml`, and
   `_release_common.yml`; reduce `maven.yml` to development CI and retire `main.yml`.
-  Reuse the existing ECS deployment/health actions and Newman suite. Release-time
+  Keep the shell inline in workflow and composite action steps, as Transform and
+  `.github/actions/ecs-deploy` already do. Add one shared `verify-hub` composite
+  action, because Hub has dev-CI verification to share with the release path and
+  Transform has none. Reuse the existing ECS deployment/health actions and Newman
+  suite. Release-time
   updates affect `pom.xml`, `RELEASE_NOTES.md`, and `docs/release`; update release
   operating guidance and project CI/branching documentation with the new process.
 - **Platforms and credentials:** Use existing GitHub Actions, GHCR, dev/APHL ECR,

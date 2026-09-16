@@ -66,8 +66,17 @@ Use these implementation boundaries:
 | `.github/workflows/maven.yml` | Develop push/PR, schedule, and manual CI; retain its build/verify jobs and remove release/APHL paths |
 | `.github/actions/verify-hub/action.yml` | Shared deployed-image, health, logging, and Newman verification, with temporary access cleanup |
 | Existing ECS actions | Deployment receipts and bounded deployment/health waiting; extend interfaces without breaking existing callers |
-| `.github/scripts/release.sh` and focused fixture tests | Release input/version processing, notes, Git operations, non-secret state, and cleanup helpers |
 | `docs/release-automation.md` | Operator inputs, prerequisites, cutover, rehearsal, and recovery instructions |
+
+All shell stays inline in workflow steps and composite action steps. Transform
+uses no shell library, and Hub's `.github/actions/ecs-deploy/action.yml` already
+embeds its shell the same way. A shell library would be the exception in both
+repositories rather than the convention.
+
+The cost is explicit: inline shell cannot run outside GitHub, so behavior is
+proved by the rehearsals in the rollout plan rather than by a local suite. That
+is how Transform's release was proved. The trade is fewer moving parts against
+more rehearsal cycles.
 
 The shared verification action accepts deployment IDs, configured regions, the
 expected Hub image digest, expected build/timestamp, and the existing service and
@@ -76,15 +85,21 @@ environment, not committed configuration. The caller establishes AWS credentials
 The action verifies only: it does not publish `good`, APHL, or release metadata.
 
 Retaining one release runner keeps the candidate image, generated site, Git
-objects, and cleanup receipts together. The dev pipeline can retain separate
+objects, and cleanup state together. The dev pipeline can retain separate
 build/verify jobs by passing non-secret image and build metadata as job outputs.
-Extract rather than copy the Newman stage so release and development behavior
-cannot silently diverge.
+
+The shared verification action is the one deliberate addition beyond Transform's
+shape. Hub has dev-CI verification worth sharing with the release path, and
+Transform has none. Extract rather than copy that stage so release and
+development behavior cannot silently diverge.
 
 **Alternative:** A multi-job release workflow would require passing images/sites
 and partial-failure state across runners. That is unnecessary complexity for the
 Transform model. Copying the verification stage into a second workflow would
-create two owners for certificate handling and test fixes.
+create two owners for certificate handling and test fixes. A shell library with
+an offline fixture suite was also considered and rejected: it would make Hub
+diverge from both Transform and Hub's own composite actions, and the argument
+for it rested on local testability rather than on a Hub requirement.
 
 ### 2. Serialize the complete operation, not individual jobs
 
@@ -212,30 +227,26 @@ artifacts and removed when the runner can perform cleanup.
 current health-only waiter and arbitrary-task logging lookup can accept evidence
 from the wrong deployment. Creating new AWS infrastructure is not required.
 
-### 6. Apply the selected merge preferences without changing tested source
+### 6. Apply the selected merge preferences
 
-After all gates pass, prepare the trunk merge in a separate Git worktree using
-`--no-ff -X theirs`. Compare its complete tracked tree with the recorded tested
-candidate tree before any APHL or release publication. If they differ, fail and
-report the differing paths; the maintainer aligns the source branches and retries.
-Do not silently rebuild a changed merge tree or publish untested trunk content.
-This is the maintainer-selected tree-drift rejection policy.
+After all gates pass, merge the release branch into the trunk with
+`--no-ff -X theirs`, exactly as Transform does. Do not add a separate worktree
+or a tree-equality guard: the maintainer chose Transform parity, and the guard
+would cover only trunk content outside the candidate's ancestry, such as a direct
+push to the trunk.
 
-The guard has a known limit, and `-X theirs` is not the mechanism. The
+One limit needs stating, because it is easy to assume the merge protects it. The
 back-merge makes the hotfix commit a parent of the base branch. The trunk merge
 of the next release therefore uses that hotfix commit as its merge base, and the
 trunk holds no change against that base. Plain three-way resolution takes the
 candidate tree for every path. Content that the `-X ours` back-merge omitted
-disappears from the trunk with no conflict and no tree difference.
-
-The guard therefore covers only trunk content outside the candidate's ancestry,
-such as a direct push to the trunk or an unreverted partial publication. The
-hotfix review warnings are the only signal for omitted hotfix content. Record
-this limit in the runbook, and require action on every warning.
+disappears from the trunk with no conflict. The hotfix review warnings are the
+only signal for that content. Record this in the runbook, and require action on
+every warning.
 
 Capture the expected remote trunk/base tips and use ordinary non-forced pushes
 for branch advancement. A concurrent update that makes the planned publication
-unsafe fails rather than resetting the remote. Tag the exact accepted trunk
+unsafe fails rather than resetting the remote. Tag the exact merged trunk
 commit with annotated `vX.Y.Z`.
 
 Prepare the base back-merge using `--no-ff -X ours`. For standard releases, apply
@@ -243,21 +254,19 @@ the selected next version. For hotfixes, preserve the development version from
 the base being merged into. Update only version metadata as required; do not
 restore the entire old POM and thereby discard non-conflicting dependency fixes.
 
-Determine hotfix review warnings from the recorded pre-merge hotfix source/fork
-and conflict paths, not a diff against trunk after trunk already contains the
-hotfix. Probe conflicts in an isolated worktree before applying the automatic
-preference. Report potential omitted operator changes conservatively; exclude
-purely generated version noise, but do not hide dependency changes by excluding
-all of `pom.xml`. Also flag generated release notes omitted by a back-merge
-conflict for manual review. Structural merge failures remain release failures.
+Determine hotfix review warnings from the recorded pre-merge hotfix source and
+fork point and the conflict paths, not a diff against trunk after trunk already
+contains the hotfix. Report potential omitted operator changes conservatively;
+exclude purely generated version noise, but do not hide dependency changes by
+excluding all of `pom.xml`. Also flag generated release notes omitted by a
+back-merge conflict for manual review. Structural merge failures remain release
+failures.
 
-Separate worktrees keep Maven outputs and publication files intact; there is no
-need to reset or clean the build workspace to move between branches.
-
-**Alternative:** Building a local preview of the final trunk merge was considered.
-The maintainer chose the smaller Transform-style build-from-release approach
-with a tree-equality guard instead. Forced branch replacement is not a substitute
-for either approach.
+**Alternative:** A separate worktree with a tree-equality guard was considered
+and rejected. It adds the most embedded shell for the least proven risk, and the
+back-merge ancestry above means it would not catch the omission case that people
+expect it to catch. Forced branch replacement is not a substitute for either
+approach.
 
 ### 7. Stage publications and preserve Hub's documentation contract
 
@@ -273,13 +282,12 @@ Release  -> GHCR/dev ECR: publish candidate tags and record digest
 Release  -> ECS: deploy; record regional deployment IDs
 Release  -> Shared verifier: stable deployment, digest, ALB, logging, Newman
 Verifier -> Release: passed gates for this candidate
-Release  -> Git worktrees: plan merges; reject trunk tree drift
 Release  -> dev ECR: advance good using the verified digest
 Release  -> APHL ECR: deliver that image [real release only]
-Release  -> Git: publish accepted trunk commit, tag, and base update
+Release  -> Git: merge to trunk, tag, and update base
 Release  -> Pages: current/versioned paths [test paths for dry-run]
 Release  -> GitHub Release: notes + attachments [draft for dry-run]
-Release  -> Summary/cleanup: report outputs or run-owned recovery
+Release  -> Summary/cleanup: report outputs or flag-guarded recovery
 Wrapper  -> Shared dev lock: release
 ```
 
@@ -314,22 +322,25 @@ publication in the extracted verifier or ordinary dev CI.
 or retaining `main.yml` as a second publisher would leave mismatched outputs
 and ambiguous ownership.
 
-### 8. Keep an attempt-owned receipt journal for cleanup
+### 8. Track run-owned writes with per-step flags
 
-Initialize a non-secret state journal under `RUNNER_TEMP`, identified by
-repository, workflow run ID, and run attempt. Record source/candidate IDs,
-original remote refs, planned mutations, confirmed resulting object IDs,
-deployment receipts, image digests, published paths, and GitHub Release IDs.
-Helpers use structured JSON and explicit status values, not commit-message
-substring matching or global ref existence to infer ownership.
+Follow Transform: after each confirmed write, record a `THIS_RUN_*` flag and the
+resulting object identity in the job environment. Capture the expected remote
+trunk and base tips before the first write. Cleanup reads those values, so a
+flag must be set only after the write succeeded, and it must carry the object
+identity that cleanup will compare against.
 
-Record intent before a write and confirmation after a successful result. A
-write whose result is uncertain remains uncertain unless its exact expected
-identity and creation conditions can be established. Upload a sanitized journal
-and summary even on failure when the runner is available. A later rerun starts
-a new journal and never adopts previous-run objects as its own.
+Environment values are scoped to one job in one run attempt, so a rerun starts
+with no flags and cannot adopt a previous attempt's objects. Ownership never
+comes from commit-message matching or from global ref existence.
 
-| State confirmed for this attempt | Recovery |
+The trade against a structured journal is honest: flags cannot express an
+uncertain outcome as a distinct state. A write whose result cannot be read back
+therefore leaves its flag unset and is reported in the summary for manual
+recovery, rather than being classified. Report the summary even on failure when
+the runner is available.
+
+| Flag recorded for this attempt | Recovery |
 | --- | --- |
 | Standard-release branch created | Delete only if the remote ref still matches the recorded run-owned ref |
 | Version tag created | Compare its exact tag object before conditional deletion |
@@ -338,7 +349,7 @@ a new journal and never adopts previous-run objects as its own.
 | Trunk created for an initial release | Remove only the run-created branch at its recorded tip; do not try to revert a nonexistent merge parent |
 | Hotfix branch prepared | Keep it for investigation and retry |
 | Images, Pages, or dev deployment changed | No automatic rollback; report locations, identities, and manual recovery |
-| Ownership or current remote state uncertain | Leave it intact and report manual recovery |
+| No flag, or the remote no longer matches the recorded object | Leave it intact and report manual recovery |
 
 Branch/tag deletion uses a compare-and-delete condition against the recorded
 object, not an unguarded check followed by a potentially racing deletion. Do not
@@ -349,18 +360,20 @@ Keep the original release failure even when cleanup succeeds. Capture cleanup
 errors individually so later safe cleanup attempts and the summary can still
 run; do not turn them into success-shaped defaults. Fresh App authentication is
 required for recovery writes. Forced cancellation or runner loss can prevent
-cleanup entirely, so the runbook also covers receipt-based manual inspection.
+cleanup entirely, so the runbook also covers manual inspection from the run log
+and the summary.
 
-**Alternative:** Transform's per-step completion flags are a useful starting
-point, but exact receipts are needed for remote races, partial regional
-deployment, and distinguishing pre-existing objects from this attempt's writes.
-Rollback of all external systems would require a different release architecture.
+**Alternative:** A structured JSON journal under `RUNNER_TEMP` was considered and
+rejected. Without a shell library it becomes a large amount of embedded `jq`, and
+the flag approach already carries the object identities that the recovery table
+needs. Rollback of all external systems would require a different release
+architecture.
 
 ### 9. Keep application behavior and diagnostics separate
 
 This design adds workflow audit information, not new application audit events.
-Use named Actions steps, a sanitized release-state artifact, and step summaries;
-no `Markers2.*` changes are required. There are no new DynamoDB access patterns,
+Use named Actions steps and step summaries; no `Markers2.*` changes are
+required. There are no new DynamoDB access patterns,
 Spring Security filters, destination groups, circuit breakers, or Bouncy Castle
 API calls. Existing BCFIPS provider/keystore behavior stays in the Hub build and
 runtime.
@@ -393,8 +406,8 @@ application retry classifications.
 
 Reuse bounded AWS/logging waits; do not add blind whole-release retries. Replace
 full-environment printing and whole-workspace uploads in the new/shared release
-path with named reports, sanitized receipts, and test logs that preserve existing
-secret/PHI protections. Do not upload private keys, password-bearing certificate
+path with named reports and test logs that preserve existing secret and PHI
+protections. Do not upload private keys, password-bearing certificate
 lists, Maven credentials, or token-bearing Git configuration.
 
 ## Risks / Trade-offs
@@ -412,15 +425,19 @@ lists, Maven credentials, or token-bearing Git configuration.
   disable manual workflow dispatch: operators do not dispatch from those refs.
 - **Automatic back-merge preferences can omit a fix** -> Retain the selected
   policy, preserve version metadata explicitly, and show hotfix review warnings.
-- **Trunk contains changes absent from the tested source** -> Reject tree drift;
-  require a maintainer to align branches and prepare another candidate.
+- **Automatic merge preferences can drop a hotfix change** -> The trunk merge
+  cannot detect this, because the trunk equals the merge base. Act on the hotfix
+  review warnings before the next standard release.
+- **Inline shell has no offline suite** -> Logic errors surface in rehearsals
+  rather than locally. Budget more than one rehearsal window, and keep the
+  static checks and contract review in the pre-rehearsal tasks.
 - **Ref changes occur outside workflow concurrency** -> Use expected object IDs,
   normal advancement pushes, conditional deletion, and manual recovery on doubt.
 - **A post-gate failure leaves APHL images or Pages published** -> Report the
   exact external effects; never claim Git cleanup restored those systems.
 - **App credentials expire or the runner disappears** -> Refresh authentication
-  at write boundaries; preserve sanitized receipts when possible and document
-  manual recovery rather than promising unconditional automatic cleanup.
+  at write boundaries; preserve the summary when possible and document manual
+  recovery rather than promising unconditional automatic cleanup.
 - **Scanner or integration instability blocks releases** -> Retain diagnostics
   and bounded waits; do not weaken the agreed gates to make a release pass.
 - **The App lacks branch-protection bypass on real branches** -> Test branches
@@ -444,11 +461,10 @@ prepares inputs, drafts the exact commands and dispatch values, and records the
 evidence that the maintainer supplies. The task checklist carries the binding
 form of this boundary.
 
-1. Implement the wrappers, common workflow, helpers, and shared verifier on the
-   change branch. Add fixture coverage using existing Bash/Git/jq and available
-   runner tools, without a new test framework. Cover input rejection, version
-   suffixes, notes, merge preferences/tree drift, exact-image selection, and
-   cleanup against pre-existing or concurrently changed objects.
+1. Implement the wrappers, the common workflow, and the shared verifier on the
+   change branch, with the shell inline. Run the available static checks and
+   complete a workflow contract review. Behavior is proved in the rehearsals
+   below, not locally.
 2. Prepare `developalm` and `mainalm` with the new workflow definitions and
    suitable released BOM/core versions. This includes removing the legacy
    release path in these test copies. Do not modify or rename real legacy release
@@ -484,8 +500,8 @@ form of this boundary.
    guidance, including the stale release-path context in `openspec/config.yaml`.
    Obtain separate maintainer approval before dispatching the first real release.
 
-For automation rollback, stop new release dispatches and inspect active-run
-receipts first. Reverting workflow changes does not undo delivered images, Git
+For automation rollback, stop new release dispatches and inspect the active run's
+log and summary first. Reverting workflow changes does not undo delivered images, Git
 publication, or deployed services. Re-enabling a legacy workflow or unfreezing
 a historical release branch is an explicit maintainer decision, not an automated
 rollback side effect.

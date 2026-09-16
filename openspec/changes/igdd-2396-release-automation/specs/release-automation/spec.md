@@ -272,15 +272,10 @@ explicit version rules. A merge that cannot complete under those preferences
 SHALL fail the run. Hotfix changes not carried into the base SHALL be identified
 for manual review without making such a warning alone a release failure.
 
-The planned trunk tree SHALL match the tested candidate tree before any release
-publication. A difference SHALL fail the run and SHALL report the differing
-paths. This guard detects trunk content outside the candidate's ancestry, for
-example a direct push to the trunk or an unreverted partial publication.
-
-The guard SHALL NOT be treated as protection for omitted hotfix content. After a
-hotfix, the trunk equals the merge base of the next release, so the release tree
-replaces that content without a conflict and without a tree difference. The
-hotfix review warnings from the back-merge are the only signal for that case.
+The trunk merge SHALL NOT be treated as protection for omitted hotfix content.
+After a hotfix, the trunk equals the merge base of the next release, so the
+release content replaces that trunk content without a conflict. The hotfix
+review warnings from the back-merge are the only signal for that case.
 
 #### Scenario: Trunk merge has a resolvable content conflict
 - GIVEN trunk and release contain conflicting edits to the same content
@@ -295,17 +290,11 @@ hotfix review warnings from the back-merge are the only signal for that case.
 - AND the run identifies the affected hotfix change for manual review
 - AND that warning alone does not mark the release failed
 
-#### Scenario: Trunk holds content that the release did not test
-- GIVEN the trunk contains a non-conflicting change that the candidate does not contain
-- WHEN the release compares its planned trunk tree with the tested candidate tree
-- THEN the run fails and reports the differing paths
-- AND the maintainer reconciles the branches before another candidate
-
 #### Scenario: Standard release follows a hotfix that the back-merge omitted
 - GIVEN the back-merge preference kept the base value and left the fix only on the trunk
 - WHEN the next standard release merges into the trunk
-- THEN the trunk equals the merge base, so the release tree replaces that content
-- AND the tree comparison passes without reporting the loss
+- THEN the trunk equals the merge base, so the release content replaces it
+- AND the merge reports no conflict for that content
 - AND the hotfix review warnings remain the only signal for that content
 
 #### Scenario: A merge cannot complete
@@ -416,11 +405,12 @@ Example versions in this document are illustrations, not approved inputs.
 ### Requirement: Failure cleanup changes only run-owned Git outputs
 
 On failure, the workflow SHALL attempt to reverse trunk/base updates and remove
-standard-release branches, version tags, and GitHub Releases only when it can
-establish that the current run created or changed them. It SHALL preserve the
-operator's hotfix branch. Cleanup SHALL NOT remove pre-existing objects or
-overwrite unrelated work. When ownership or safe reversal is uncertain, it
-SHALL leave the affected state intact and report manual recovery.
+standard-release branches, version tags, and GitHub Releases only when the
+current run recorded that it created them and the remote object still matches
+that record. It SHALL preserve the operator's hotfix branch. Cleanup SHALL NOT
+remove pre-existing objects or overwrite unrelated work. When no record exists,
+or the remote no longer matches the record, it SHALL leave the affected state
+intact and report manual recovery.
 
 #### Scenario: Failure after creation of a standard-release branch
 - GIVEN this run created its standard-release branch and has not merged into trunk
@@ -434,10 +424,10 @@ SHALL leave the affected state intact and report manual recovery.
 - THEN cleanup attempts to reverse those updates and remove that tag
 - AND it removes a GitHub Release only if this run created that release
 
-#### Scenario: Ownership is uncertain or unrelated work intervenes
-- GIVEN safe reversal of a branch update or ownership of an object cannot be established
+#### Scenario: No record exists or unrelated work intervenes
+- GIVEN the run recorded no creation of an object, or the remote no longer matches its record
 - WHEN failure cleanup evaluates that state
-- THEN it does not overwrite unrelated work or delete the uncertain object
+- THEN it does not overwrite unrelated work and does not delete the object
 - AND it reports the unresolved state for manual recovery
 
 #### Scenario: Hotfix release fails
