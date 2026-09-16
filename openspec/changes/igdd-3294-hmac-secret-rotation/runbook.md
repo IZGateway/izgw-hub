@@ -19,9 +19,8 @@ versions within a token's 366-day life
 (`ApiKeyPrincipalProvider.MAX_TOKEN_LIFETIME`) — so skipping this step is unlikely to
 actually break anything today. Labeling anyway is cheap insurance that removes the
 dependency on an undocumented AWS threshold entirely, which is why every step below keeps
-a label on every version that's still "in flight." (A Console feature to automate this
-labeling step is planned as follow-on work — see `design.md`. Until it ships, this manual
-procedure is the primary path.)
+a label on every version that's still "in flight." This is a purely operational
+procedure — no Hub or Console code change is involved.
 
 ## Prerequisites
 

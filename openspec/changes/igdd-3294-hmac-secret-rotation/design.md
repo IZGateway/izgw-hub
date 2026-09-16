@@ -1,7 +1,8 @@
 # Decision Record: HMAC JWT Signing Secret Rotation (IGDD-3294)
 
-**Type:** Spike deliverable — decision record. Hub needs no code or schema changes.
-Console needs one new feature (rotation capability); see "Follow-on work" for the ticket.
+**Type:** Spike deliverable — decision record. No Hub or Console code/schema changes are
+required. Rotation is purely operational (label the outgoing secret version at rotation
+time); see `runbook.md` for the procedure.
 
 **Epic:** IGDD-2702 (API Key use)
 
@@ -48,9 +49,9 @@ whether the version being fetched carries a staging label — Hub reads by `Vers
 by label. So Hub needs zero changes to support any number of simultaneously-valid
 versions.
 
-**Console needs a new feature.** See "Decision" below — the operational safety net (an
-explicit staging label on the outgoing version at rotation time) should be applied by
-code, not left to whoever runs the AWS CLI commands correctly.
+**Console needs nothing either.** The operational safety net — an explicit staging label
+on the outgoing version at rotation time — is an action taken against Secrets Manager at
+rotation time, not application code. See `runbook.md`.
 
 *Correction (2026-09-16, per code review on PR #194):* an earlier draft of this document
 claimed AWS auto-deletes a deprecated (unlabeled) secret version within ~24h of losing its
@@ -85,14 +86,15 @@ undocumented AWS threshold" is not something to depend on indefinitely (e.g. a
 misconfigured retry loop or an automated rotation schedule could plausibly accumulate
 versions faster than expected). The fix costs nothing and removes the dependency entirely:
 explicitly label the outgoing version at rotation time so it can never become
-"deprecated" in the first place. That's the actual recommendation — see "Decision" below.
+"deprecated" in the first place. That's the actual recommendation — a manual operational
+step, not a code change. See "Decision" below.
 
 ### What does the rotation procedure look like operationally?
 
-See `runbook.md` in this same directory. The Console-side rotation feature (new,
-follow-on work — see below) should apply the staging label automatically as part of
-rotation. The runbook documents the manual/fallback procedure and the criteria for safely
-releasing a retired version after ~366 days.
+See `runbook.md` in this same directory: identify the version being retired, label it,
+write the new secret value, verify, and release the label after ~366 days once no live
+token can still reference it. Purely operational — no deploy, no restart, no code
+involved on either Hub or Console.
 
 ### Is a DynamoDB schema change required?
 
@@ -104,22 +106,20 @@ migration, or new attribute is needed for rotation.
 
 ## Decision
 
-**Rotation is supported using the existing `kid` / Secrets Manager mechanism — Hub needs
-no changes.** Console needs one new feature: a rotation capability that generates a new
-secret value and explicitly labels the outgoing version, mirroring the existing password
-encryption key rotation (`izg-configuration-console/src/pages/api/rotatekey/index.ts` +
-`src/lib/security/crypto/DbCrypto.ts::rotateKey` + the admin trigger in
-`PasswordEncryptionCard.tsx`). This is not required to prevent invalidating active keys
-under realistic rotation cadences (see above), but it removes the dependency on an
-undocumented AWS cleanup threshold and gives operators one button instead of a multi-step
-AWS CLI runbook for the common case. Filed as a follow-on story — see below.
+**Rotation is supported using the existing `kid` / Secrets Manager mechanism — no Hub or
+Console code changes are required.** The only action needed is operational: whoever
+performs a rotation must explicitly label the outgoing secret version (via
+`UpdateSecretVersionStage`) so it stays resolvable for as long as a token signed with it
+could still be valid (up to 366 days), rather than relying on Secrets Manager's
+undocumented version-count cleanup threshold. That procedure is documented in
+`runbook.md`.
 
 ## Follow-on work
 
-- **New story: Console — JWT signing secret rotation capability.** Genuine new feature
-  work, not a doc/ops gap. Drafted as a follow-on ticket (see PR/ticket description);
-  scope: new Console endpoint that calls `PutSecretValue` then `UpdateSecretVersionStage`
-  to label the outgoing version, plus an admin UI trigger. No Hub-side change needed.
+These are gaps in *ownership and verification*, not in the mechanism, surfaced while
+tracing this end-to-end. Flagging here per the ticket's "follow-on tasks or spikes are
+created and linked" deliverable — not yet ticketed, pending confirmation.
+
 - **The JWT signing secret is not in Terraform at all.** Every other Hub-managed secret
   (e.g. `password_encrypt_key` in `iz-gateway-terraform/hub/service/secrets.tf`) has an
   `aws_secretsmanager_secret` resource, and that one is even explicitly multi-region
@@ -154,4 +154,3 @@ AWS CLI runbook for the common case. Filed as a follow-on story — see below.
 | Token lifetime ~366 days | `ApiKeyPrincipalProvider.java:33` (`MAX_TOKEN_LIFETIME`); `izg-configuration-console/src/pages/api/apikeys/index.ts:221`, `token.ts:74` |
 | Secret path, not in Terraform as a managed resource | `iz-gateway-terraform/hub/service/{ecs.tf:179-181, variables.tf:175, terraform.tfvars:24}`; absence confirmed against `hub/service/secrets.tf` |
 | AWS Secrets Manager deletes deprecated versions only past a 100-version count threshold (never <24h old) — corrects this doc's earlier ~24h claim | AWS Secrets Manager documentation (`UpdateSecretVersionStage` / staging label lifecycle); flagged in PR #194 code review |
-| Existing precedent for an admin-triggered key rotation feature in Console | `izg-configuration-console/src/pages/api/rotatekey/index.ts`, `src/lib/security/crypto/DbCrypto.ts::rotateKey` |
