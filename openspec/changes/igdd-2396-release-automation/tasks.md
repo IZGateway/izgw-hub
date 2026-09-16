@@ -11,10 +11,33 @@ a new test framework. No Java packages, new Java unit/Spring Boot test classes,
 are planned. Existing Maven unit tests and Newman provide the runtime gates.
 Pause for scope approval if implementation requires changing those boundaries.
 
-Maintainer-controlled tasks require explicit coordination before live mutations.
-Do not inspect secret values; use the confirmed App setup and request missing
-secret names from the maintainer if execution reports a problem. The first real
-release is outside this checklist's execution authority.
+Do not inspect secret values. Use the confirmed App setup. If execution reports a
+problem, request the missing secret name from the maintainer.
+
+### Execution boundary
+
+Sections 1 to 7 are local work: write files, run offline fixtures, and run local
+Maven and shell checks. Sections 8 and 9 are the maintainer's work. The
+maintainer is the only actor who operates GitHub and AWS for this change.
+
+An assistant working this checklist must never perform these actions:
+
+- Dispatch, re-run, or cancel any GitHub Actions workflow, by UI, API, or
+  `gh workflow run`.
+- Push any branch, tag, or ref to `origin`, including test branches such as
+  `developalm` and `mainalm`.
+- Change the default branch, a branch ruleset, or a workflow enabled state.
+- Create, edit, publish, or delete a GitHub Release, a tag, or a Pages
+  publication.
+- Write to GHCR, dev ECR, APHL ECR, dev ECS, or any other AWS resource.
+- Commit or amend anything without the explicit approval of the maintainer.
+- Mark a task in section 8 or 9 complete from a plan, an inference, or an
+  expected result.
+
+For each task in sections 8 and 9, the assistant prepares inputs, drafts the
+exact commands and dispatch values, and states the expected result. The
+maintainer runs the action. The assistant then records only the evidence that the
+maintainer supplies. If evidence is absent, the task stays unchecked.
 
 - [ ] 1.1 Create `.github/scripts/release.sh` and
   `.github/scripts/tests/release-tests.sh` with explicit helper entry points and
@@ -63,6 +86,10 @@ release is outside this checklist's execution authority.
   **Done when:** fixtures accept an identical tree and an initial trunk, reject
   untested non-conflicting trunk content with a path report, and fail structural
   merge errors without rewriting shared refs or cleaning the build workspace.
+  Add a fixture that records the guard's limit: after a hotfix whose back-merge
+  omitted content, the trunk equals the merge base, the candidate tree wins
+  cleanly, and the guard passes. That fixture proves that the hotfix review
+  warnings are the only signal for such content. Task 7.1 documents the limit.
 - [ ] 2.4 Implement base merge planning in `.github/scripts/release.sh` using
   `--no-ff -X ours`, explicit standard next versions, and preservation of the
   current base development version for hotfixes. Derive review warnings from
@@ -112,7 +139,10 @@ release is outside this checklist's execution authority.
   timestamp inputs and the resolved `testing/certs/izgwroot.pem` path.
   **Done when:** fixtures capture the correct Newman arguments and nonzero
   failure propagation, reject missing required inputs/files, and do not weaken
-  existing collection assertions or certificate matching.
+  existing collection assertions or certificate matching. The `build` and
+  `timestamp` values are empty today, and the collection applies `|| ".*"`, so
+  that assertion matches any value. Confirm the expected format of both values
+  against `target/classes/build.txt` before the first rehearsal.
 - [ ] 3.5 Add temporary access and sensitive-file cleanup to
   `.github/actions/verify-hub/verify.sh` and its action wiring. Record only
   ingress rules created by this run and clean them on success or failure.
@@ -209,6 +239,19 @@ release is outside this checklist's execution authority.
   default-branch restoration and manual-dispatch limits, and requires separate
   approval for the first real release. Do not pre-populate a real
   `RELEASE_NOTES.md` entry; its generator is covered by task 2.1.
+  The runbook must also state these four operator rules:
+  - Act on every hotfix review warning before the next standard release. That
+    release replaces omitted hotfix content on the trunk without a conflict and
+    without a guard failure.
+  - The trunk tree guard covers only trunk content outside the candidate's
+    ancestry, such as a direct push to the trunk. It does not protect omitted
+    hotfix content, because the trunk equals the merge base of the next release.
+  - Return the base branch to SNAPSHOT `izgw-bom` and `izgw-core` versions after
+    every standard release. The workflow does not change dependency versions.
+  - Select a rehearsal version that no planned release uses. A dry-run writes a
+    real global version tag.
+  The runbook must record the new versioned Pages path `vX.Y.Z` and the earlier
+  path that used the complete Maven version.
 - [ ] 7.2 Complete a security review checkpoint for the new workflows,
   `.github/scripts/release.sh`, and the touched `.github/actions/` code.
   Review input quoting, App permissions/token renewal, conditional Git writes,
@@ -226,64 +269,119 @@ release is outside this checklist's execution authority.
   promotion, receipt ownership/races, and failure summaries; no runtime outcome
   is claimed from inspection or planning alone.
 
-## 8. Maintainer-controlled GitHub Rehearsals
+## 8. GitHub Rehearsals — the maintainer runs every step
 
-These tasks use shared dev and create real remote state. Record actual run IDs,
+The maintainer performs every live action in this section. An assistant prepares
+and records only. See the execution boundary in section 1.
+
+These steps use shared dev and create real remote state. Record actual run IDs,
 ref/object IDs, digests, sites, approvals, and residual actions in
 `openspec/changes/igdd-2396-release-automation/rehearsal-results.json`, without
-credentials. Estimates exclude unattended cloud runtime and approval delays.
+credentials. Estimates cover assistant preparation and record work. They exclude
+maintainer time, unattended cloud runtime, and approval delays.
 Task 8.5 is an exit obligation whenever task 8.1 changes the default branch,
-including when later rehearsal tasks fail or are cancelled.
+including when later rehearsal steps fail or are cancelled.
 
-- [ ] 8.1 Obtain the rehearsal window and inputs from the maintainer, then
-  prepare `developalm`/`mainalm` with the new definitions and selected released
-  BOM/core versions. Record unused rehearsal versions, starting refs, and the
-  default-branch restoration procedure. **Done when:** the maintainer-controlled
-  temporary switch to `developalm` makes the dispatch workflows available,
-  scheduled-CI/PR-target impacts are acknowledged, and no real legacy release
-  branch or first real release has been changed.
-- [ ] 8.2 Run a standard `dry-run=true` release and exercise the refactored
-  manual CI path on the test source, including an overlap attempt to prove the
-  shared lock. **Done when:** recorded GitHub runs show Maven/scanner and full
-  dev health/digest/logging/Newman gates, expected Git/image/docs outputs and
-  next snapshot, no APHL writes, and no candidate replacement or active-run
+Two rehearsal expectations follow from the current pipeline. Dev CI runs the
+dependency scanner with `continue-on-error: true`, so the release gate is the
+first blocking use of that scanner. Budget triage time for findings that the
+current pipeline tolerates. The Newman `build` and `timestamp` assertion is
+inactive today, so real metadata can produce a new failure.
+
+- [ ] 8.1 Rehearsal setup.
+  *Assistant:* ask the maintainer for the window and the inputs. Propose
+  rehearsal versions that no planned release uses, because a dry-run writes a
+  real global tag. Draft the exact branch content for `developalm` and `mainalm`,
+  including the selected released BOM and core versions. Write the
+  default-branch restoration procedure. List the branch rulesets to inspect for
+  the real `main` and `develop`.
+  *Maintainer:* create and push the test branches. Switch the default branch to
+  `developalm`. Inspect the rulesets and report whether the release App can write
+  the real `main` and `develop` and their tags. Current CI bypasses protection
+  with `secrets.ACTIONS_KEY`, and test branches carry no rulesets, so a rehearsal
+  cannot prove this access.
+  **Done when:** the maintainer reports that the dispatch workflows are
+  available, the maintainer acknowledges the scheduled-CI and PR-target impacts,
+  the App bypass result for the real branches is recorded in
+  `rehearsal-results.json` from the maintainer's report, and no real legacy
+  release branch or first real release has been changed.
+- [ ] 8.2 Standard-release rehearsal.
+  *Assistant:* draft the dispatch inputs, the overlap-attempt sequence, and the
+  list of evidence to collect. State the expected result of each gate.
+  *Maintainer:* dispatch the standard release with `dry-run=true`. Dispatch the
+  refactored manual CI on the test source to attempt the overlap. Supply the run
+  URLs and outputs.
+  **Done when:** the maintainer's run records show Maven/scanner and full dev
+  health/digest/logging/Newman gates, expected Git/image/docs outputs and next
+  snapshot, no APHL writes, and no candidate replacement or active-run
   cancellation by overlapping CI.
-- [ ] 8.3 Prepare an operator hotfix from the rehearsed released trunk and run
-  its `dry-run=true` workflow. **Done when:** GitHub evidence shows the exact
-  verified image and version tag, retained base development version, preserved
-  operator branch, correct conflict-review reporting where exercised, test
-  Pages/draft attachments, and no APHL writes.
-- [ ] 8.4 Run the forced-failure/cleanup rehearsal using failure injection
-  confined to test-branch workflow changes. Exercise partial Git publication and
-  preservation of known pre-existing objects, including a duplicate-version
-  rejection probe. **Done when:** GitHub evidence shows failed status, safe
+- [ ] 8.3 Hotfix rehearsal.
+  *Assistant:* draft the hotfix branch content, its fork point on the rehearsed
+  released trunk, and the dispatch inputs. State the expected conflict-review
+  warnings.
+  *Maintainer:* create and push the hotfix branch. Dispatch the hotfix workflow
+  with `dry-run=true`. Supply the run URLs and outputs.
+  **Done when:** the maintainer's GitHub evidence shows the exact verified image
+  and version tag, retained base development version, preserved operator branch,
+  correct conflict-review reporting where exercised, test Pages and draft
+  attachments, and no APHL writes.
+- [ ] 8.4 Forced-failure and cleanup rehearsal.
+  *Assistant:* write the failure-injection change and confine it to the test
+  branches. Draft the pre-existing objects to create, the partial-publication
+  sequence, and the duplicate-version rejection probe. State the expected
+  cleanup result.
+  *Maintainer:* push the injection change to the test branch. Dispatch the
+  failing run. Supply the run URLs, the resulting refs, and the cleanup output.
+  **Done when:** the maintainer's GitHub evidence shows failed status, safe
   cleanup of confirmed run-owned state, untouched pre-existing objects, visible
-  residual external effects, and no permanent failure/bypass switch in the
+  residual external effects, and no permanent failure or bypass switch in the
   implementation intended for `develop`.
-- [ ] 8.5 Restore `develop` as the default after the rehearsal window, including
-  on failure, before deleting any test branch. Perform only approved cleanup of
-  confirmed rehearsal-owned refs/releases; address Pages, registry aliases, and
-  shared dev separately. **Done when:** the actual default is restored and the
-  rollout record identifies removed objects and any residual effects with
-  explicit owners/recovery actions; unsuccessful rehearsals remain unchecked.
+- [ ] 8.5 Rehearsal exit.
+  *Assistant:* list the confirmed rehearsal-owned refs and releases for removal.
+  Identify the Pages paths, registry aliases, and shared-dev state that stay as
+  separate manual items with named owners. Remind the maintainer to restore the
+  default branch first.
+  *Maintainer:* restore `develop` as the default branch, including after a failed
+  rehearsal, before deleting any test branch. Delete only the approved objects.
+  Report what was removed.
+  **Done when:** the maintainer confirms that the actual default is restored, and
+  the rollout record identifies removed objects and residual effects with
+  explicit owners and recovery actions. Unsuccessful rehearsals remain unchecked.
 
-## 9. Maintainer-controlled Cutover and Handoff
+## 9. Cutover and Handoff — the maintainer runs every step
 
-- [ ] 9.1 Obtain the cutover window, drain or cancel legacy release runs, and
-  stop legacy dispatches. Have the maintainer freeze updates/deletions on
-  existing `Release*` branches without automation bypass and disable the old
-  `.github/workflows/main.yml` workflow repository-wide by path/ID.
-  **Done when:** the rollout record shows the controls applied and before/after
-  legacy branch names and object IDs unchanged; no old branch was renamed,
-  deleted, or rewritten.
-- [ ] 9.2 Merge the approved implementation into `develop` through the agreed
-  repository process, keeping it as the default branch and retaining `maven.yml`
-  for development CI. **Done when:** the post-cutover CI run passes the shared
-  verification path, new dispatch workflows are available, legacy `main.yml`
-  is disabled, and `main` has not been advanced by an unapproved real release.
-- [ ] 9.3 Complete the rollout record and operator handoff in
+The maintainer performs every live action in this section. An assistant prepares
+and records only. See the execution boundary in section 1.
+
+- [ ] 9.1 Cutover controls.
+  *Assistant:* draft the cutover checklist. Record the current legacy branch
+  names and object IDs before the change. Draft the ruleset settings and the
+  workflow path or ID to disable.
+  *Maintainer:* confirm the window. Drain or cancel legacy release runs and stop
+  legacy dispatches. Freeze updates and deletions on the existing `Release*`
+  branches with no automation bypass. Disable the old
+  `.github/workflows/main.yml` workflow repository-wide by path or ID.
+  Do not start the cutover until the recorded App bypass result from task 8.1
+  confirms write access to the real `main` and `develop`.
+  **Done when:** the rollout record shows the applied controls, and the
+  before-and-after legacy branch names and object IDs are unchanged. No old
+  branch was renamed, deleted, or rewritten.
+- [ ] 9.2 Merge into `develop`.
+  *Assistant:* prepare the branch and the pull request content for review. Wait
+  for approval before any commit.
+  *Maintainer:* review, approve, and merge the pull request into `develop`
+  through the agreed repository process. Keep `develop` as the default branch.
+  **Done when:** the maintainer reports that the post-cutover CI run passes the
+  shared verification path, the new dispatch workflows are available, legacy
+  `main.yml` is disabled, `maven.yml` still serves development CI, and `main` has
+  not been advanced by an unapproved real release.
+- [ ] 9.3 Rollout record and operator handoff.
+  *Assistant:* complete
   `openspec/changes/igdd-2396-release-automation/rehearsal-results.json` and
-  `docs/release-automation.md`. **Done when:** all required rehearsals and the
+  `docs/release-automation.md` from the evidence that the maintainer supplied.
+  Record no result that the maintainer did not report.
+  *Maintainer:* accept the handoff.
+  **Done when:** all required rehearsals and the
   CI regression have real evidence, remaining external recovery is explicit,
   maintainers can locate release/recovery instructions, and the first real
   release remains a separately approved action rather than an automatic final
@@ -295,6 +393,14 @@ Rough active engineering estimates; each task is a 1-4 hour work unit. These are
 not elapsed-time promises. Rehearsal failures can require fixes and another
 approved window. Dependencies identify prerequisites, not permission to perform
 live mutations.
+
+Treat the total as a floor. Transform's equivalent release path is one untested
+workflow file. This plan adds a receipt journal, conditional-delete Git cleanup,
+worktree merge planning, ECS digest verification, and an offline fixture harness
+for all of it. Every "Done when" clause requires fixtures. Tasks 1.4, 2.6, and
+5.3 carry most of that effort. If the estimate becomes a problem, one option is
+to move the journal and cleanup machinery to a follow-up change and deliver
+Transform parity plus the Hub gates first.
 
 | Task | Hours | Dependencies |
 | --- | ---: | --- |
@@ -323,10 +429,10 @@ live mutations.
 | 5.4 | 2 | 5.3 |
 | 6.1 | 4 | 3.5, 4.3, 5.1 |
 | 6.2 | 1 | 4.1, 6.1 |
-| 7.1 | 3 | 5.4, 6.1 |
+| 7.1 | 4 | 5.4, 6.1 |
 | 7.2 | 2 | 5.4, 6.2, 7.1 |
 | 7.3 | 3 | 7.2 |
-| 8.1 | 3 | 7.3; maintainer-approved inputs/window |
+| 8.1 | 4 | 7.3; maintainer-approved inputs/window |
 | 8.2 | 4 | 8.1 |
 | 8.3 | 4 | 8.2 |
 | 8.4 | 3 | 8.1, 8.3 |
@@ -334,4 +440,4 @@ live mutations.
 | 9.1 | 2 | 8.2, 8.3, 8.4, 8.5; maintainer-approved cutover |
 | 9.2 | 3 | 9.1; approved merge |
 | 9.3 | 1 | 9.2 |
-| **Total** | **103** | **36 tasks** |
+| **Total** | **105** | **36 tasks** |

@@ -272,6 +272,16 @@ explicit version rules. A merge that cannot complete under those preferences
 SHALL fail the run. Hotfix changes not carried into the base SHALL be identified
 for manual review without making such a warning alone a release failure.
 
+The planned trunk tree SHALL match the tested candidate tree before any release
+publication. A difference SHALL fail the run and SHALL report the differing
+paths. This guard detects trunk content outside the candidate's ancestry, for
+example a direct push to the trunk or an unreverted partial publication.
+
+The guard SHALL NOT be treated as protection for omitted hotfix content. After a
+hotfix, the trunk equals the merge base of the next release, so the release tree
+replaces that content without a conflict and without a tree difference. The
+hotfix review warnings from the back-merge are the only signal for that case.
+
 #### Scenario: Trunk merge has a resolvable content conflict
 - GIVEN trunk and release contain conflicting edits to the same content
 - WHEN the gated release merges into trunk
@@ -284,6 +294,19 @@ for manual review without making such a warning alone a release failure.
 - THEN the base's conflicting content is retained
 - AND the run identifies the affected hotfix change for manual review
 - AND that warning alone does not mark the release failed
+
+#### Scenario: Trunk holds content that the release did not test
+- GIVEN the trunk contains a non-conflicting change that the candidate does not contain
+- WHEN the release compares its planned trunk tree with the tested candidate tree
+- THEN the run fails and reports the differing paths
+- AND the maintainer reconciles the branches before another candidate
+
+#### Scenario: Standard release follows a hotfix that the back-merge omitted
+- GIVEN the back-merge preference kept the base value and left the fix only on the trunk
+- WHEN the next standard release merges into the trunk
+- THEN the trunk equals the merge base, so the release tree replaces that content
+- AND the tree comparison passes without reporting the loss
+- AND the hotfix review warnings remain the only signal for that content
 
 #### Scenario: A merge cannot complete
 - GIVEN a required merge cannot complete under the agreed conflict preferences
@@ -317,9 +340,11 @@ The release SHALL retain generated Markdown in `docs/release` and attach those
 release documents to the corresponding GitHub Release. The attached
 `RELEASE_NOTES.md` SHALL describe the requested release rather than the entire
 historical notes file. Successful real releases SHALL publish the Maven site to
-`current/` and `vX.Y.Z/`. Published documents and sites SHALL correspond to the
-requested release and SHALL NOT be published as completed release outputs
-before the release gates pass.
+`current/` and `vX.Y.Z/`. This versioned path replaces the previous path, which
+used the complete Maven version, for example `v2.16.0-IZGW-RELEASE`. Existing
+published directories SHALL remain in place under their original names.
+Published documents and sites SHALL correspond to the requested release and
+SHALL NOT be published as completed release outputs before the release gates pass.
 
 #### Scenario: Real release publishes documentation
 - GIVEN release `2.17.0` passed all required gates
@@ -363,16 +388,24 @@ It SHALL write real version tags and GHCR/dev ECR image tags, including `latest`
 and verified `good`. It SHALL skip APHL delivery, publish Pages to
 `test/current/` and `test/vX.Y.Z/`, and create a draft GitHub Release.
 The operator-facing description and run summary SHALL state that test branches
-do not isolate shared dev, global version tags, or registries.
+do not isolate shared dev, global version tags, or registries. Rehearsals SHALL
+use a version that no planned release uses, because the written tag is global.
+Example versions in this document are illustrations, not approved inputs.
 
 #### Scenario: Successful rehearsal on test branches
-- GIVEN a standard dry-run uses base `developalm`, trunk `mainalm`, and version `2.17.0`
+- GIVEN a standard dry-run uses base `developalm`, trunk `mainalm`, and unused version `99.0.0`
 - WHEN it passes all gates and completes
-- THEN it updates the selected test branches and creates real tag `v2.17.0`
+- THEN it updates the selected test branches and creates real tag `v99.0.0`
 - AND it has deployed and verified its candidate on shared dev
 - AND it has written GHCR/dev ECR images but has not delivered to APHL
-- AND Pages use `test/current/` and `test/v2.17.0/`
+- AND Pages use `test/current/` and `test/v99.0.0/`
 - AND the GitHub Release is a draft
+
+#### Scenario: Rehearsal version collides with a planned release
+- GIVEN a dry-run requests a version that the project plans to release
+- WHEN that dry-run writes its real version tag
+- THEN the tag blocks the later real release through the duplicate-identity check
+- AND rehearsals therefore use versions that no planned release uses
 
 #### Scenario: Dry-run does not bypass verification
 - GIVEN a dry-run has deployed its candidate

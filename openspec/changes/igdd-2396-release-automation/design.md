@@ -23,6 +23,18 @@ The following inspected Hub details determine the adaptations:
   check and obtains `good` from mutable `latest`. Its Newman build metadata
   lookup refers to a build output absent from that separate job. The repository
   CA file is `testing/certs/izgwroot.pem`, not a file under `testing/testdata/certs`.
+- The dependency-check step carries `continue-on-error: true`, so CVSS >= 7 does
+  not block any build today. The release gate is the first blocking use of that
+  scanner.
+- The Newman `build` and `timestamp` variables are empty today, because the
+  lookup path is wrong. The collection applies `|| ".*"`, so the assertion
+  matches any value. Real metadata makes that assertion active for the first time.
+- Current pushes to protected branches use `secrets.ACTIONS_KEY`. The release App
+  replaces that identity, so the App needs the same branch-protection bypass.
+- The versioned Maven site directory is `v${BASE_TAG}`, for example
+  `v2.16.0-IZGW-RELEASE`. The new versioned path is `vX.Y.Z`.
+- After a release, a maintainer returns `develop` to SNAPSHOT dependency versions
+  by hand. Commit `f25657861` is an example.
 - Historical release branches still contain active workflow definitions.
   Updating the files on `develop` does not change those historical definitions.
   The maintainer selected branch freezing, not branch renaming or rewriting.
@@ -208,6 +220,18 @@ candidate tree before any APHL or release publication. If they differ, fail and
 report the differing paths; the maintainer aligns the source branches and retries.
 Do not silently rebuild a changed merge tree or publish untested trunk content.
 This is the maintainer-selected tree-drift rejection policy.
+
+The guard has a known limit, and `-X theirs` is not the mechanism. The
+back-merge makes the hotfix commit a parent of the base branch. The trunk merge
+of the next release therefore uses that hotfix commit as its merge base, and the
+trunk holds no change against that base. Plain three-way resolution takes the
+candidate tree for every path. Content that the `-X ours` back-merge omitted
+disappears from the trunk with no conflict and no tree difference.
+
+The guard therefore covers only trunk content outside the candidate's ancestry,
+such as a direct push to the trunk or an unreverted partial publication. The
+hotfix review warnings are the only signal for omitted hotfix content. Record
+this limit in the runbook, and require action on every warning.
 
 Capture the expected remote trunk/base tips and use ordinary non-forced pushes
 for branch advancement. A concurrent update that makes the planned publication
@@ -399,8 +423,26 @@ lists, Maven credentials, or token-bearing Git configuration.
   manual recovery rather than promising unconditional automatic cleanup.
 - **Scanner or integration instability blocks releases** -> Retain diagnostics
   and bounded waits; do not weaken the agreed gates to make a release pass.
+- **The App lacks branch-protection bypass on real branches** -> Test branches
+  carry no rulesets, so rehearsals cannot prove this. Confirm App bypass on the
+  real `main` and `develop` rulesets before cutover.
+- **The first blocking scan reveals tolerated findings** -> Dev CI uses
+  `continue-on-error: true` today. Budget suppression triage inside the rehearsal
+  window, and evaluate each finding rather than widening the suppression file.
+- **Real Newman build metadata activates a dormant assertion** -> The current
+  empty value matches any build. Confirm the expected build and timestamp values
+  against the deployed candidate before treating a new failure as a regression.
+- **A rehearsal version blocks a planned release** -> Dry-runs write real global
+  tags. Select rehearsal versions that no planned release uses, and treat every
+  example version in these artifacts as an illustration only.
 
 ## Migration Plan
+
+Steps 1 and 2 of this plan are local implementation work. Steps 3 to 8 need live
+GitHub and AWS actions, and the maintainer performs all of them. An assistant
+prepares inputs, drafts the exact commands and dispatch values, and records the
+evidence that the maintainer supplies. The task checklist carries the binding
+form of this boundary.
 
 1. Implement the wrappers, common workflow, helpers, and shared verifier on the
    change branch. Add fixture coverage using existing Bash/Git/jq and available
@@ -424,18 +466,21 @@ lists, Maven credentials, or token-bearing Git configuration.
    draft releases, and test branches when approved. Treat test Pages, registry
    aliases, and shared dev as separate manual recovery items. Rehearsal success
    does not authorize a real release.
-5. In a maintainer-controlled cutover window, drain or cancel outstanding legacy
+5. Before the cutover, confirm with the maintainer that the release App can write
+   the real `main` and `develop` branches and their tags. Check the branch
+   rulesets directly. Rehearsals on test branches do not prove this access.
+6. In a maintainer-controlled cutover window, drain or cancel outstanding legacy
    release runs and stop new legacy dispatches. Make existing `Release*` branches
    read-only with an update/deletion restriction and no bypass for automation
    identities. Keep their names, contents, and history unchanged. Disable the
    old workflow identified by `.github/workflows/main.yml` repository-wide;
    use its file path/ID, since both current workflows share a display name.
-6. Merge the new automation and dev-only `maven.yml` into `develop`; retain
+7. Merge the new automation and dev-only `maven.yml` into `develop`; retain
    `develop` as the default branch. Remove `main.yml` from the new source line.
    Confirm normal dev CI and the shared verification path still operate.
    New code reaches `main` through the approved standard release. Historical
    branches are for reference, not future release work.
-7. Publish the operating/recovery runbook and update the repository's CI/branch
+8. Publish the operating/recovery runbook and update the repository's CI/branch
    guidance, including the stale release-path context in `openspec/config.yaml`.
    Obtain separate maintainer approval before dispatching the first real release.
 
