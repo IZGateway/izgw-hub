@@ -10,12 +10,18 @@ decision and evidence behind this procedure — read that first if you haven't.
 
 ## The one rule
 
-**Never let a secret version that might still be referenced by a live token lose its
-last Secrets Manager staging label.** A version with no staging label is "deprecated" and
-AWS auto-deletes it within about 24 hours. API-key JWTs live up to 366 days
-(`ApiKeyPrincipalProvider.MAX_TOKEN_LIFETIME`), so a version can be needed for validation
-long after it stops being used to sign new tokens. Every step below exists to keep at
-least one label on every version that's still "in flight."
+**Label the outgoing secret version at rotation time, and don't remove that label for at
+least 366 days.** A version with no staging label is "deprecated," and Secrets Manager
+*can* delete deprecated versions — but only once a secret accumulates more than 100
+versions, and never before a version is 24h old. It is not a short fixed window, and
+under any realistic rotation cadence you will never come close to 100 accumulated
+versions within a token's 366-day life
+(`ApiKeyPrincipalProvider.MAX_TOKEN_LIFETIME`) — so skipping this step is unlikely to
+actually break anything today. Labeling anyway is cheap insurance that removes the
+dependency on an undocumented AWS threshold entirely, which is why every step below keeps
+a label on every version that's still "in flight." (A Console feature to automate this
+labeling step is planned as follow-on work — see `design.md`. Until it ships, this manual
+procedure is the primary path.)
 
 ## Prerequisites
 
@@ -38,8 +44,9 @@ least one label on every version that's still "in flight."
    ```
    aws secretsmanager get-secret-value --secret-id <secret-name> --query VersionId
    ```
-2. **Protect it from garbage collection.** Attach a custom staging label to that version
-   so it survives being demoted below `AWSPREVIOUS` on a future rotation:
+2. **Label it explicitly.** Attach a custom staging label to that version so it stays
+   labeled (and therefore never "deprecated") even after a future rotation demotes it
+   below `AWSPREVIOUS`:
    ```
    aws secretsmanager update-secret-version-stage \
      --secret-id <secret-name> \
