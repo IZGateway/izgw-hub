@@ -933,8 +933,19 @@ jobs:
           BUILD_FILE=target/classes/build.txt
           [ -f "${BUILD_FILE}" ] || fail "${BUILD_FILE} is missing."
 
-          BUILD_NUMBER="$(sed -n 's/^Build:[[:space:]]*//p' "${BUILD_FILE}" | head -1)"
-          BUILD_TIMESTAMP="$(sed -n 's/^Timestamp:[[:space:]]*//p' "${BUILD_FILE}" | head -1)"
+          # build.txt is right-aligned, so the labels carry leading spaces:
+          #
+          #     Build: izgw-hub-2.17.0-IZGW-SNAPSHOT-202609171317
+          #      Host: runnervm
+          # Timestamp: 202609171317
+          #
+          # Allow that indent and trim the value.
+          read_field() {
+            sed -n "s/^[[:space:]]*$1:[[:space:]]*//p" "${BUILD_FILE}" |
+              head -1 | tr -d '\r' | sed 's/[[:space:]]*$//'
+          }
+          BUILD_NUMBER="$(read_field Build)"
+          BUILD_TIMESTAMP="$(read_field Timestamp)"
           [ -n "${BUILD_NUMBER}" ] || fail "Could not read Build from ${BUILD_FILE}. Newman would assert an empty value, which matches anything."
           [ -n "${BUILD_TIMESTAMP}" ] || fail "Could not read Timestamp from ${BUILD_FILE}. Newman would assert an empty value, which matches anything."
 
