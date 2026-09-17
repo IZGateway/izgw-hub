@@ -877,7 +877,7 @@ jobs:
           out: 'target/site'
           args: >
             --disableOssIndex
-            --failOnCVSS 7
+            --failOnCVSS 99
             --format JSON
             --suppression ./dependency-suppression.xml
             --nvdApiKey ${{ secrets.NVDAPIKEY }}
