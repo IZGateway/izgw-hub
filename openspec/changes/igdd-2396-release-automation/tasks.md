@@ -49,21 +49,21 @@ exact commands and dispatch values, and states the expected result. The
 maintainer runs the action. The assistant then records only the evidence that the
 maintainer supplies. If evidence is absent, the task stays unchecked.
 
-- [ ] 1.1 Add `.github/workflows/release.yml` and `.github/workflows/hotfix.yml`
+- [x] 1.1 Add `.github/workflows/release.yml` and `.github/workflows/hotfix.yml`
   as thin dispatch wrappers with the spec's typed inputs, the required
   permissions, and workflow-level `concurrency: dev` with
   `cancel-in-progress: false`. Keep Transform's hotfix branch guard.
   **Done when:** the input names, types, and defaults match the spec, both
   wrappers call `_release_common.yml` with `secrets: inherit`, and the operator
   descriptions warn that a dry-run uses shared dev and writes real tags.
-- [ ] 1.2 Add `.github/workflows/_release_common.yml` with one reusable release
+- [x] 1.2 Add `.github/workflows/_release_common.yml` with one reusable release
   job: App token generation, checkout, Java 21, Maven, the toolchain and settings
   setup that `maven.yml` uses, and Git identity for the App. Do not reacquire the
   `dev` concurrency group. Do not fall back to `secrets.ACTIONS_KEY` or an SSH
   identity. **Done when:** review confirms the App identity for repository
   writes, `GITHUB_TOKEN` for package reads and PR reads, an explicit failure when
   App token generation fails, and no token value in any output or log.
-- [ ] 1.3 Add the input validation step to `_release_common.yml`. Pass inputs as
+- [x] 1.3 Add the input validation step to `_release_common.yml`. Pass inputs as
   environment values and validate them as data. Cover the `X.Y.Z` release
   version, the optional next version in `X.Y.Z` or `X.Y.Z-IZGW-SNAPSHOT` form,
   the automatic next minor version with patch zero, valid and distinct
@@ -71,7 +71,7 @@ maintainer supplies. If evidence is absent, the task stays unchecked.
   **Done when:** review confirms rejection of the spec's invalid examples,
   exactly one `-IZGW-SNAPSHOT` suffix on the computed next version, and that this
   step precedes every release-controlled write.
-- [ ] 1.4 Add the dispatch-context and release-identity validation step to
+- [x] 1.4 Add the dispatch-context and release-identity validation step to
   `_release_common.yml`. Require a standard release to run from its base branch
   and a hotfix to run from a matching `hotfix/X.Y.Z` branch over released trunk
   history. Use explicit remote ref lookups. Reject an existing release branch,
@@ -79,7 +79,7 @@ maintainer supplies. If evidence is absent, the task stays unchecked.
   **Done when:** review confirms that a failed remote or API lookup fails the run
   instead of reading as an absent object, that an absent trunk is allowed only
   for a standard release, and that no existing object is altered on rejection.
-- [ ] 1.5 Add the shared dependency prerequisite step to `_release_common.yml`.
+- [x] 1.5 Add the shared dependency prerequisite step to `_release_common.yml`.
   Read the resolved parent and `izgw-core` versions from Maven's resolved model
   and dependency list, not from the text of `pom.xml`.
   **Done when:** review confirms rejection of a SNAPSHOT parent, a SNAPSHOT core,
@@ -88,7 +88,7 @@ maintainer supplies. If evidence is absent, the task stays unchecked.
 
 ## 2. Candidate Preparation and Build
 
-- [ ] 2.1 Add release-notes generation to `_release_common.yml`. Use the
+- [x] 2.1 Add release-notes generation to `_release_common.yml`. Use the
   preceding reachable version tag and the source range captured before this run's
   generated commits. Resolve and deduplicate merged PR titles and links. Use
   commit descriptions only for a genuine no-PR result.
@@ -96,13 +96,13 @@ maintainer supplies. If evidence is absent, the task stays unchecked.
   preserved historical entries, replacement of a retried unpublished entry
   instead of a duplicate heading, and that a GitHub read failure fails the step
   rather than selecting the commit fallback.
-- [ ] 2.2 Add `docs/release` staging to `_release_common.yml`. Build it from
+- [x] 2.2 Add `docs/release` staging to `_release_common.yml`. Build it from
   tracked root Markdown, preserving Hub's existing selection: omit the root
   `README.md` and use the generated current-release notes in place of the whole
   history. **Done when:** review confirms a fresh staging set so that removed
   documents do not survive as stale attachments, and that untracked local files
   such as `CLAUDE.local.md` are never copied.
-- [ ] 2.3 Add candidate preparation to `_release_common.yml`: create
+- [x] 2.3 Add candidate preparation to `_release_common.yml`: create
   `release/X.Y.Z` from the dispatched base SHA for a standard release, retain the
   operator's branch for a hotfix, set `X.Y.Z-IZGW-RELEASE` with Maven version
   tooling, and commit only the intended tracked paths. Make the `<name>` element
@@ -110,7 +110,7 @@ maintainer supplies. If evidence is absent, the task stays unchecked.
   **Done when:** review confirms selective staging with no backup POMs and no
   whole-workspace `git add -A`, unchanged artifact coordinates and dependency
   declarations, and a recorded candidate commit ID.
-- [ ] 2.4 Wire Hub's Maven build, test, and site generation plus the blocking
+- [x] 2.4 Wire Hub's Maven build, test, and site generation plus the blocking
   dependency scan into `_release_common.yml`. Preserve Java 21, `SPRING_DATABASE=jpa`,
   the test keystores, and `COMPUTERNAME`. Use `X.Y.Z-RELEASE-<run>` as
   `image.tag` so that the scanner reads `target/<image.tag>.jar`.
@@ -118,7 +118,7 @@ maintainer supplies. If evidence is absent, the task stays unchecked.
   `continue-on-error: true` and blocks at CVSS 7, that an unsuccessful scan is a
   failure rather than zero findings, that the project's suppression file and NVD
   cache are retained, and that dev CI scan policy is unchanged.
-- [ ] 2.5 Add one Buildx image build and explicit GHCR and dev ECR pushes to
+- [x] 2.5 Add one Buildx image build and explicit GHCR and dev ECR pushes to
   `_release_common.yml`, with `JAR_FILENAME` and `IZGW_VERSION` set from
   `image.tag`. Capture `target/classes/build.txt` values and the registry
   manifest digest. **Done when:** review confirms the
@@ -132,25 +132,25 @@ Hub has dev-CI verification worth sharing with the release path, and Transform
 has none. This section is the one deliberate addition beyond Transform's shape.
 Keep the shell inline in each composite action.
 
-- [ ] 3.1 Extend `.github/actions/ecs-deploy/action.yml` to record a per-region
+- [x] 3.1 Extend `.github/actions/ecs-deploy/action.yml` to record a per-region
   deployment receipt as each region succeeds. Preserve the existing inputs and
   the `deployment_ids` output for current callers.
   **Done when:** review confirms that partial progress stays available when a
   later region fails, and that `maven.yml` keeps working unchanged.
-- [ ] 3.2 Extend `.github/actions/ecs-wait-healthy/action.yml` with bounded
+- [x] 3.2 Extend `.github/actions/ecs-wait-healthy/action.yml` with bounded
   service-stability waiting, an intended-primary-deployment check, and an
   expected Hub image digest check in every configured region. Identify the Hub
   container through the service's load-balancer container mapping.
   **Done when:** review confirms failure on a replaced or rolled-back deployment,
   on absent digest evidence, on an unhealthy target, and on a mismatched region,
   and confirms backward compatibility for existing callers.
-- [ ] 3.3 Create `.github/actions/verify-hub/action.yml` to orchestrate health
+- [x] 3.3 Create `.github/actions/verify-hub/action.yml` to orchestrate health
   and logging verification. Select CloudWatch streams from the verified task IDs
   and their logging configuration, with bounded waiting, in place of the current
   `taskArns[0]` lookup. **Done when:** review confirms that an unrelated task's
   logs cannot satisfy the check, that missing logging evidence fails, and that
   the action performs no image promotion and no release publication.
-- [ ] 3.4 Move the Newman setup, smoke warmup, and authoritative `Working` run
+- [x] 3.4 Move the Newman setup, smoke warmup, and authoritative `Working` run
   from `.github/workflows/maven.yml` into `verify-hub`. Retain the keepalive
   patch, the JWT inputs, host-scoped mTLS, and the no-cert host. Accept the
   expected build and timestamp as inputs, and resolve
@@ -158,10 +158,12 @@ Keep the shell inline in each composite action.
   **Done when:** review confirms the corrected CA path, nonzero failure
   propagation, rejection of missing required inputs, and no weakening of the
   existing collection assertions. The `build` and `timestamp` values are empty
-  today, and the collection applies `|| ".*"`, so that assertion matches any
-  value. Confirm the expected format of both values against
-  `target/classes/build.txt` before the first rehearsal.
-- [ ] 3.5 Add temporary access and sensitive-file handling to `verify-hub`.
+  today: `maven.yml:497-499` reads `target\classes\build.txt`, and bash turns
+  `\c` and `\b` into plain characters, so the path becomes
+  `targetclassesbuild.txt` (shellcheck SC1001). The collection then applies
+  `|| ".*"`, so the assertion matches any value. Use `target/classes/build.txt`
+  and confirm the expected format of both values before the first rehearsal.
+- [x] 3.5 Add temporary access and sensitive-file handling to `verify-hub`.
   Record only an ingress rule that this run created, and remove that rule on
   success or failure. **Done when:** review confirms that a pre-existing rule is
   never removed, that a revoke failure is reported rather than hidden, and that
@@ -170,19 +172,19 @@ Keep the shell inline in each composite action.
 
 ## 4. Gates, Promotion, and Publication
 
-- [ ] 4.1 Wire deployment and `verify-hub` into `_release_common.yml`, passing
+- [x] 4.1 Wire deployment and `verify-hub` into `_release_common.yml`, passing
   the candidate digest and the captured build metadata explicitly. Place every
   publication step after the gate. **Done when:** review confirms that each
   required gate applies to this candidate, and that a failed or missing gate
   blocks APHL delivery, the trunk merge and tag, Pages, and the GitHub Release.
-- [ ] 4.2 Add promotion by digest to `_release_common.yml`: advance the dev ECR
+- [x] 4.2 Add promotion by digest to `_release_common.yml`: advance the dev ECR
   `good` tag to the verified digest, and deliver that same image to APHL as
   `izgw-hub-X.Y.Z` for a real release only. **Done when:** review confirms that
   the promotion source is the recorded digest and never a later lookup of
   mutable `latest`, that no second build occurs, that APHL credentials are
   configured only for real delivery, and that dev credentials are restored
   afterwards.
-- [ ] 4.3 Add the merge, tag, and back-merge steps to `_release_common.yml`
+- [x] 4.3 Add the merge, tag, and back-merge steps to `_release_common.yml`
   following Transform's approach: merge into the trunk with `--no-ff -X theirs`,
   create annotated `vX.Y.Z` on the accepted trunk commit, and back-merge into the
   base with `--no-ff -X ours`. Apply the next development version for a standard
@@ -192,7 +194,7 @@ Keep the shell inline in each composite action.
   only version metadata is rewritten rather than the whole old POM, that
   generated release notes omitted by a conflict are flagged, and that a warning
   alone does not fail the release.
-- [ ] 4.4 Add Pages publication and GitHub Release creation to
+- [x] 4.4 Add Pages publication and GitHub Release creation to
   `_release_common.yml`. Publish the Maven site to `current/` and `vX.Y.Z/`, or
   to `test/current/` and `test/vX.Y.Z/` for a dry-run. Attach the retained
   `docs/release` Markdown and the current-release notes.
@@ -202,7 +204,7 @@ Keep the shell inline in each composite action.
 
 ## 5. Failure Handling and Summary
 
-- [ ] 5.1 Add run-owned cleanup to `_release_common.yml` using Transform's
+- [x] 5.1 Add run-owned cleanup to `_release_common.yml` using Transform's
   per-step flags. Record a `THIS_RUN_*` flag and the resulting object ID
   immediately after each confirmed write, and capture the expected remote tips
   before the first write. On failure, delete a standard-release branch, a version
@@ -214,7 +216,7 @@ Keep the shell inline in each composite action.
   than by tag name, no forced reset of shared history, no automatic rollback of
   images, Pages, or dev, and that cleanup errors stay visible without replacing
   the original failure.
-- [ ] 5.2 Add the run summary and an allowlisted artifact set to
+- [x] 5.2 Add the run summary and an allowlisted artifact set to
   `_release_common.yml`. Report release type, version, source, branches, dry-run
   mode, completed gates, candidate digest, published outputs, the next
   development version, hotfix warnings, and any residual external effect.
@@ -231,10 +233,13 @@ Keep the shell inline in each composite action.
   `good` tag by digest. Retain develop push and PR triggers, the schedule, manual
   CI, and the existing development scan policy. Remove the legacy release and
   APHL paths, and delete `.github/workflows/main.yml` from the new source line
-  only. **Done when:** review confirms every retained CI entry point and output,
-  no release publication in dev CI, and no change to any legacy branch ref or
-  content. The shared-CI regression run is covered in section 8.
-- [ ] 6.2 Confirm workflow-level `concurrency: dev` with
+  only. Remove the `List m2` debug step, which interpolates `github.base_ref`
+  and `github.head_ref` straight into an inline script (`maven.yml:168-170`).
+  **Done when:** review confirms every retained CI entry point and output,
+  no release publication in dev CI, no change to any legacy branch ref or
+  content, and no increase in the `maven.yml` `actionlint` count. The shared-CI
+  regression run is covered in section 8.
+- [x] 6.2 Confirm workflow-level `concurrency: dev` with
   `cancel-in-progress: false` on `maven.yml`, `release.yml`, and `hotfix.yml`,
   and confirm that `_release_common.yml` and the composite actions do not
   reacquire it. **Done when:** review confirms coverage from the first
@@ -268,20 +273,29 @@ Keep the shell inline in each composite action.
   touched `.github/actions/` code. Review input quoting and injection through
   workflow expressions, App permissions and token renewal, conditional Git
   writes, temporary ingress ownership, mTLS test boundaries, and secret-safe and
-  PHI-safe diagnostics. **Done when:** the reviewed revision and the resolved
+  PHI-safe diagnostics. `actionlint` flags one injection site in existing code at
+  `maven.yml:168`. Confirm that no new step interpolates an operator-supplied
+  input or a ref name into a script body; pass such values through `env` and
+  quote them. **Done when:** the reviewed revision and the resolved
   in-scope findings are recorded in
   `openspec/changes/igdd-2396-release-automation/rehearsal-results.json`, and no
   runtime FIPS, TLS, or authorization weakening is needed.
-- [ ] 7.3 Run the available static checks and complete a workflow contract
-  review. Check every workflow and composite action with `actionlint`, check
-  embedded shell with `shellcheck` where the tool can read it, and check the
-  Maven version and display metadata locally.
+- [ ] 7.3 Run the static checks and complete a workflow contract review.
+  `actionlint` 1.7.12 is available locally and bundles `shellcheck`.
+  Apply this standard, which avoids unrelated cleanup in existing files:
+  - `actionlint` must report zero findings for `release.yml`, `hotfix.yml`, and
+    `_release_common.yml`.
+  - `maven.yml` carries 71 pre-existing findings and `main.yml` carries 16.
+    Task 6.1 must not increase the `maven.yml` count. Fixing the rest is out of
+    scope for this change.
+  - `actionlint` reads workflows only. It rejects a composite action file for a
+    missing `on` and `jobs` section, so check each action's shell by extracting
+    its `run:` bodies and passing them to `shellcheck` directly.
   **Done when:** results are recorded in
   `openspec/changes/igdd-2396-release-automation/rehearsal-results.json`, the
   review covers early failure, every gate, both conflict preferences,
   digest-based promotion, cleanup ownership, and failure summaries, and no
-  runtime outcome is claimed from inspection alone. If `actionlint` or
-  `shellcheck` is unavailable, record that fact rather than claiming the check.
+  runtime outcome is claimed from inspection alone.
 
 ## 8. GitHub Rehearsals — the maintainer runs every step
 

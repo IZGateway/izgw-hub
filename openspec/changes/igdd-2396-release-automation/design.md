@@ -26,9 +26,12 @@ The following inspected Hub details determine the adaptations:
 - The dependency-check step carries `continue-on-error: true`, so CVSS >= 7 does
   not block any build today. The release gate is the first blocking use of that
   scanner.
-- The Newman `build` and `timestamp` variables are empty today, because the
-  lookup path is wrong. The collection applies `|| ".*"`, so the assertion
-  matches any value. Real metadata makes that assertion active for the first time.
+- The Newman `build` and `timestamp` variables are empty today.
+  `maven.yml:497-499` reads `target\classes\build.txt`, and bash turns `\c` and
+  `\b` into plain characters, so the path becomes `targetclassesbuild.txt`
+  (shellcheck SC1001). The verify job also has no `target/` directory. The
+  collection applies `|| ".*"`, so the assertion matches any value. Real metadata
+  makes that assertion active for the first time.
 - Current pushes to protected branches use `secrets.ACTIONS_KEY`. The release App
   replaces that identity, so the App needs the same branch-protection bypass.
 - The versioned Maven site directory is `v${BASE_TAG}`, for example
