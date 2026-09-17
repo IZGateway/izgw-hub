@@ -857,6 +857,13 @@ jobs:
       # database does not exist". maven.yml still carries that argument, and its
       # continue-on-error hides the resulting failure. izgw-transform omits it,
       # which is why the scan works there.
+      #
+      # OSS Index is disabled, as izgw-transform does. Hub's
+      # OSS_INDEX_USERNAME and OSS_INDEX_PASSWORD are rejected by Sonatype.
+      # dependency-check collects the analyzer exception and exits nonzero even
+      # after a clean NVD analysis, so passing those credentials fails the gate
+      # for a reason unrelated to any vulnerability. Re-enable this only with
+      # credentials confirmed to work.
       - name: Dependency Check
         id: scan
         env:
@@ -869,8 +876,7 @@ jobs:
           format: 'HTML'
           out: 'target/site'
           args: >
-            --ossIndexUsername ${{ secrets.OSS_INDEX_USERNAME }}
-            --ossIndexPassword ${{ secrets.OSS_INDEX_PASSWORD }}
+            --disableOssIndex
             --failOnCVSS 7
             --format JSON
             --suppression ./dependency-suppression.xml
