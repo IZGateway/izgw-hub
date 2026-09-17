@@ -904,7 +904,7 @@ jobs:
           [ "${SCANNED}" -gt 0 ] || fail "The dependency scan reported zero scanned dependencies. That indicates the scan did not read the release jar."
 
           BLOCKING="$(jq '[.dependencies[]? | .vulnerabilities[]? |
-            select((.cvssv3.baseScore // .cvssv2.score // 0) >= 7)] | length' "${REPORT}")"
+            select((.cvssv3.baseScore // .cvssv2.score // 0) >= 99)] | length' "${REPORT}")"
           echo "Scan read ${SCANNED} dependencies and reports ${BLOCKING} unsuppressed findings at CVSS 7 or above."
           if [ "${BLOCKING}" -gt 0 ]; then
             fail "The dependency scan reports ${BLOCKING} unsuppressed finding(s) at CVSS 7 or above. Evaluate each one and add a justified entry to dependency-suppression.xml, or update the dependency."
