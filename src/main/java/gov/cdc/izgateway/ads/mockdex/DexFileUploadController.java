@@ -45,7 +45,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.annotation.security.RolesAllowed;
 
 
-import javax.xml.ws.http.HTTPException;
+import gov.cdc.izgateway.common.HttpStatusException;
 
 import java.io.File;
 import java.io.IOException;
@@ -198,7 +198,7 @@ public class DexFileUploadController {
         // Disable Logging
     	RequestContext.disableTransactionDataLogging();
         if (!config.isUsingQueryParameters() && !"application/x-www-form-urlencoded".equals(contentType)) {
-            throw new HTTPException(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE);
+            throw new HttpStatusException(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE);
         }
         
         String message = "";
@@ -291,7 +291,7 @@ public class DexFileUploadController {
         } else if (ex instanceof ServletRequestBindingException) {
             err = new ADSErrorResponse(new UnexpectedExceptionFault("Servlet Binding Exception", ex, null), eventId);
             err.setRetryStrategy(RetryStrategy.CORRECT_MESSAGE);
-        } else if (ex instanceof HTTPException hex && hex.getStatusCode() == HttpServletResponse.SC_UNAUTHORIZED) {
+        } else if (ex instanceof HttpStatusException hex && hex.getStatusCode() == HttpServletResponse.SC_UNAUTHORIZED) {
             err = new ADSErrorResponse(new UnexpectedExceptionFault("Not Authorized", ex, null), eventId);
             headers.add(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
             err.setRetryStrategy(RetryStrategy.CORRECT_MESSAGE);
@@ -425,7 +425,7 @@ public class DexFileUploadController {
                 return parts[1];
             }
         }
-        throw new HTTPException(HttpServletResponse.SC_UNAUTHORIZED);
+        throw new HttpStatusException(HttpServletResponse.SC_UNAUTHORIZED);
     }
 
     // Check every two hours for cleanup.

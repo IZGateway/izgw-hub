@@ -18,7 +18,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import javax.xml.ws.http.HTTPException;
+import gov.cdc.izgateway.common.HttpStatusException;
 
 import jakarta.activation.DataHandler;
 import lombok.extern.slf4j.Slf4j;
@@ -159,10 +159,10 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
     	if (bytesToSend != 0) {
         	return result; 
     	} 
-    	// If the initial write failed, throw an HTTPException so that 
+    	// If the initial write failed, throw an HttpStatusException so that 
     	// status will be reported.
     	if (result >= HttpStatus.BAD_REQUEST.value()) {
-    		throw new HTTPException(result);
+    		throw new HttpStatusException(result);
     	}
     	
     	return writeInMultipleBlocks(con.getURL(), route, data, meta, buffer);
@@ -215,7 +215,7 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
 	            logProgress(route, meta, count);
 			}
 	    	if (status != HttpStatus.CREATED.value()) {
-	    		throw new HTTPException(status);
+	    		throw new HttpStatusException(status);
 	    	}
     	} while (count < meta.getFileSize());
     	
@@ -263,7 +263,7 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
 			for (Future<Integer> result: futures) {
 				status = result.get();
 		    	if (status != HttpStatus.CREATED.value()) {
-		    		throw new HTTPException(status);
+		    		throw new HttpStatusException(status);
 		    	}
 			}
 		} catch (InterruptedException e) {
