@@ -51,7 +51,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.http.MediaType;
-import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.converter.HttpMessageConverters;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -399,20 +399,24 @@ public class Application implements WebMvcConfigurer {
 	@Value("${server.local-port:9081}") 
 	private int additionalPort;
 	
-	// NOTE: must be extendMessageConverters, not configureMessageConverters. In Spring
-	// Boot 4 / Framework 7, Boot's own default converters (Jackson, etc.) are only
-	// registered when getMessageConverters() finds the list still empty after the
-	// configureMessageConverters(List) phase; Boot's own registration now happens via
-	// the newer configureMessageConverters(HttpMessageConverters.ServerBuilder)
-	// overload, reached only from that empty-list branch. Adding to the List-based
-	// hook here made the list non-empty and silently dropped every default converter
-	// (Jackson included) app-wide. extendMessageConverters always runs after defaults
-	// are added, so it doesn't have this problem.
+	// NOTE: use the ServerBuilder overload, not either List-based hook. Framework 7
+	// deprecated configureMessageConverters(List)/extendMessageConverters(List) for
+	// removal. WebMvcConfigurationSupport.createMessageConverters() calls
+	// registerDefaults() before this hook, so the defaults (Jackson included) are
+	// always present and we only add to them. The legacy list path still has the trap
+	// that getMessageConverters() only adds defaults when the list is left empty, so
+	// populating configureMessageConverters(List) silently dropped every default
+	// converter app-wide.
+	//
+	// addCustomConverter places this ahead of the defaults. That is safe here because
+	// SoapMessageConverter.canRead/canWrite both require
+	// SoapMessage.class.isAssignableFrom(clazz) and exclude JSON, so it can never
+	// claim a String or JSON payload regardless of its position.
 	@Override
-    public void extendMessageConverters(List<HttpMessageConverter<?>> messageConverters) {
+    public void configureMessageConverters(HttpMessageConverters.ServerBuilder builder) {
     	SoapMessageConverter smc = new SoapMessageConverter(SoapMessageConverter.INBOUND);
     	smc.setHub(true);
-        messageConverters.add(smc);
+        builder.addCustomConverter(smc);
         // Sets up SoapMessageWriter to handle \r as &#xD; if true, otherwise
         // \r in hl7Message will be replaced with \n due to XML Parsing rules.
         SoapMessageWriter.setFixNewLines(fixNewlines);
