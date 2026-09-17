@@ -56,6 +56,12 @@ server:
     local-port: 9081
     mode: ${PHIZ_MODE:prod}
     maxRetries: 3
+    # Keep getRemoteAddr() returning the ALB's address rather than the
+    # X-Forwarded-For client. izgw-core's IpAddressFilter allowlists only
+    # internal CIDRs, so resolving the real client IP denies every request --
+    # including the hub's own NAT egress to /dev/IISService. Set explicitly so
+    # the behavior no longer depends on the Boot default or platform detection.
+    forward-headers-strategy: none
     tomcat:
         accept-count: 200
         max-connections: 16384
