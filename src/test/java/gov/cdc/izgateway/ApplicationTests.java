@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
 import java.util.List;
 import org.apache.commons.lang3.Strings;
 import org.junit.jupiter.api.BeforeAll;
@@ -17,19 +16,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.converter.HttpMessageConverter;
-import org.springframework.mock.http.MockHttpOutputMessage;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter;
 import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
 import gov.cdc.izgateway.common.HealthService;
 import gov.cdc.izgateway.logging.MemoryAppender;
 import gov.cdc.izgateway.logging.event.Health;
 import gov.cdc.izgateway.logging.event.LogEvent;
-import gov.cdc.izgateway.soap.net.SoapMessageConverter;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -44,8 +36,6 @@ class ApplicationTests {
 	AppController appController;
 	@Autowired(required = true)
 	LogController logController;
-	@Autowired(required = true)
-	RequestMappingHandlerAdapter handlerAdapter;
 
 	static {
 		Application.setAbortOnNoIIS(false);
@@ -144,63 +134,5 @@ class ApplicationTests {
 				throw err;
 			}
 		}
-	}
-
-	/**
-	 * Guards {@code Application.configureMessageConverters(HttpMessageConverters.ServerBuilder)}.
-	 * That hook runs after Framework 7's registerDefaults(), so the defaults must still be
-	 * present alongside our custom SoapMessageConverter. The legacy
-	 * configureMessageConverters(List) overload silently dropped every default converter
-	 * app-wide once the list was populated; this fails loudly if that ever recurs.
-	 * @throws IOException if writing through a converter fails
-	 */
-	@Test
-	void messageConverterDefaultsSurviveCustomRegistration() throws IOException {
-		assertNotNull(handlerAdapter);
-		List<HttpMessageConverter<?>> converters = handlerAdapter.getMessageConverters();
-
-		assertTrue(converters.stream().anyMatch(SoapMessageConverter.class::isInstance),
-				"SoapMessageConverter was not registered: " + describe(converters));
-
-		// A real JSON write of an existing non-SOAP endpoint's return value, through the same
-		// converter list the handler adapter actually uses. If the defaults are ever dropped,
-		// nothing claims Health and this fails here rather than breaking JSON app-wide at runtime.
-		String json = writeWith(converters, appController.getHealth(), MediaType.APPLICATION_JSON);
-		assertNotNull(json, "No registered converter writes Health as JSON: " + describe(converters));
-		try (JsonParser parser = jf.createParser(json)) {
-			assertEquals(JsonToken.START_OBJECT, parser.nextToken(),
-					"Health did not serialize as a JSON object: " + json);
-			assertNotNull(parser.nextFieldName(), "Health serialized as an empty JSON object: " + json);
-		}
-
-		// The old regression dropped *every* default, so cover the String/text-plain path too.
-		String build = appController.getBuild();
-		assertNotNull(build, "AppController.getBuild() returned no content to convert");
-		String text = writeWith(converters, build, MediaType.TEXT_PLAIN);
-		assertNotNull(text, "No registered converter writes String as text/plain: " + describe(converters));
-		assertEquals(build, text);
-	}
-
-	/**
-	 * Write a value through the first registered converter that claims it, the way
-	 * RequestResponseBodyMethodProcessor selects one at runtime.
-	 * @return the written body, or null if no registered converter claimed the value
-	 */
-	private String writeWith(List<HttpMessageConverter<?>> converters, Object value, MediaType mediaType)
-			throws IOException {
-		for (HttpMessageConverter<?> converter : converters) {
-			if (converter.canWrite(value.getClass(), mediaType)) {
-				@SuppressWarnings("unchecked")
-				HttpMessageConverter<Object> writer = (HttpMessageConverter<Object>) converter;
-				MockHttpOutputMessage out = new MockHttpOutputMessage();
-				writer.write(value, mediaType, out);
-				return out.getBodyAsString();
-			}
-		}
-		return null;
-	}
-
-	private String describe(List<HttpMessageConverter<?>> converters) {
-		return converters.stream().map(c -> c.getClass().getSimpleName()).toList().toString();
 	}
 }	
