@@ -846,22 +846,17 @@ jobs:
 
           echo "Built ${JAR_PATH}."
 
-      - name: Get current date for the NVD cache key
-        id: scan-date
-        shell: bash
-        run: echo "date=$(date -u +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"
-
-      - name: Cache Dependency-Check NVD data
-        uses: actions/cache@v6
-        with:
-          path: ~/dependency-check-data
-          key: dependency-check-nvd-${{ runner.os }}-${{ steps.scan-date.outputs.date }}
-          restore-keys: |
-            dependency-check-nvd-${{ runner.os }}-
-
       # No continue-on-error. dev CI tolerates findings; a release must not.
       # The action exits nonzero both for a finding at or above the threshold
       # and for a scan that could not complete, and either blocks the release.
+      #
+      # Do not add --data. The owasp/dependency-check-action image ships with a
+      # populated NVD database at the default path, which is why the action
+      # injects --noupdate. Pointing --data at an empty directory bypasses the
+      # bundled database and the scan fails with "Autoupdate is disabled and the
+      # database does not exist". maven.yml still carries that argument, and its
+      # continue-on-error hides the resulting failure. izgw-transform omits it,
+      # which is why the scan works there.
       - name: Dependency Check
         id: scan
         env:
@@ -874,7 +869,6 @@ jobs:
           format: 'HTML'
           out: 'target/site'
           args: >
-            --data ~/dependency-check-data
             --ossIndexUsername ${{ secrets.OSS_INDEX_USERNAME }}
             --ossIndexPassword ${{ secrets.OSS_INDEX_PASSWORD }}
             --failOnCVSS 7
