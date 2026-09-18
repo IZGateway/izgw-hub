@@ -14,6 +14,12 @@ inputs:
   deployment_ids:
     description: 'Space-separated region=deployment_id pairs (from ecs-deploy output)'
     required: true
+  task_wait_attempts:
+    description: 'Bounded number of polls for the new tasks to appear'
+    default: '30'
+  task_wait_seconds:
+    description: 'Seconds between task-appearance polls'
+    default: '10'
   expected_image_digest:
     description: >
       Optional registry manifest digest (sha256:...) that the Hub container must
@@ -40,6 +46,8 @@ runs:
         REGIONS_INPUT: ${{ inputs.regions }}
         DEPLOYMENT_IDS: ${{ inputs.deployment_ids }}
         EXPECTED_DIGEST: ${{ inputs.expected_image_digest }}
+        TASK_ATTEMPTS: ${{ inputs.task_wait_attempts }}
+        TASK_DELAY: ${{ inputs.task_wait_seconds }}
       run: |
         set -euo pipefail
 
@@ -55,12 +63,26 @@ runs:
             fail "[$region] No deployment id was recorded for this region. The deploy step did not report one."
           fi
           echo "[$region] Recorded deployment: $DEPLOYMENT_ID"
-          TASKS="$(aws ecs list-tasks --region "$region" \
-            --cluster "$CLUSTER" \
-            --started-by "$DEPLOYMENT_ID" \
-            --query 'taskArns' --output text)"
-          if [ -z "$TASKS" ] || [ "$TASKS" = "None" ]; then
-            fail "[$region] No tasks found for deployment $DEPLOYMENT_ID."
+          # ECS does not create the replacement tasks the moment
+          # update-service returns, so an empty list is "not yet", not
+          # "never". Poll for them to appear.
+          TASKS=""
+          attempt=1
+          while [ "$attempt" -le "${TASK_ATTEMPTS:-30}" ]; do
+            TASKS="$(aws ecs list-tasks --region "$region" \
+              --cluster "$CLUSTER" \
+              --started-by "$DEPLOYMENT_ID" \
+              --query 'taskArns' --output text)"
+            if [ -n "$TASKS" ] && [ "$TASKS" != "None" ]; then
+              break
+            fi
+            TASKS=""
+            echo "[$region] No tasks for $DEPLOYMENT_ID yet (attempt ${attempt}/${TASK_ATTEMPTS:-30})"
+            attempt=$((attempt + 1))
+            [ "$attempt" -le "${TASK_ATTEMPTS:-30}" ] && sleep "${TASK_DELAY:-10}"
+          done
+          if [ -z "$TASKS" ]; then
+            fail "[$region] No tasks appeared for deployment $DEPLOYMENT_ID within the bounded wait. The deployment did not start any tasks."
           fi
           echo "[$region] Tasks: $TASKS"
           REGION_TASKS[$region]="$TASKS"
