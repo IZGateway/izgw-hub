@@ -372,15 +372,19 @@ jobs:
             fi
           fi
 
+          # List and match on tag_name rather than calling /releases/tags/.
+          # That endpoint returns 404 for a draft release even when the git tag
+          # exists, so it cannot see the draft that every dry-run leaves behind.
           set +e
-          RELEASE_LOOKUP="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/v${RELEASE_VERSION}" 2>&1)"
+          RELEASE_LOOKUP="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases" \
+            --jq ".[] | select(.tag_name == \"v${RELEASE_VERSION}\") | \"\(.id) draft=\(.draft)\"" 2>&1)"
           RELEASE_STATUS=$?
           set -e
-          if [ "${RELEASE_STATUS}" -eq 0 ]; then
-            fail "A GitHub Release already exists for v${RELEASE_VERSION}. Choose an unreleased version. This run has not changed that release."
-          fi
-          if ! printf '%s' "${RELEASE_LOOKUP}" | grep -q 'HTTP 404'; then
+          if [ "${RELEASE_STATUS}" -ne 0 ]; then
             fail "Could not determine whether a GitHub Release exists for v${RELEASE_VERSION} (gh exit ${RELEASE_STATUS}). Treating this as a lookup failure, not as an absent release. Output: ${RELEASE_LOOKUP}"
+          fi
+          if [ -n "${RELEASE_LOOKUP}" ]; then
+            fail "A GitHub Release already exists for v${RELEASE_VERSION} ($(printf '%s' "${RELEASE_LOOKUP}" | tr '\n' ' ')). A draft counts: a previous dry-run leaves one behind. Choose an unreleased version, or remove that release. This run has not changed it."
           fi
 
           # Recorded before any write, so that cleanup can compare against it.
