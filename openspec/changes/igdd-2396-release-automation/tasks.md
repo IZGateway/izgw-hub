@@ -228,7 +228,7 @@ Keep the shell inline in each composite action.
 
 ## 6. Development CI Integration
 
-- [ ] 6.1 Refactor `.github/workflows/maven.yml` to call `verify-hub` with
+- [x] 6.1 Refactor `.github/workflows/maven.yml` to call `verify-hub` with
   build-time metadata and the exact candidate digest, and to promote its verified
   `good` tag by digest. Retain develop push and PR triggers, the schedule, manual
   CI, and the existing development scan policy. Remove the legacy release and
