@@ -1485,6 +1485,23 @@ jobs:
 
       # The final public completion marker. A real release is published, not
       # drafted; a dry-run is a draft.
+      # Record the attempt before the release is created. softprops creates the
+      # release and then uploads the assets, so a failed upload leaves a real
+      # release behind while the step reports failure. Without this flag the
+      # confirmation step below never runs and cleanup cannot see it.
+      - name: Record the GitHub Release attempt
+        if: ${{ steps.gates.outputs.passed == 'true' }}
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.inputs.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          {
+            echo "THIS_RUN_ATTEMPTED_GH_RELEASE=1"
+            echo "THIS_RUN_GH_RELEASE_TAG=${RELEASE_TAG}"
+          } >> "$GITHUB_ENV"
+          echo "About to create the GitHub Release for ${RELEASE_TAG}."
+
       - name: Create the GitHub Release
         id: github-release
         if: ${{ steps.gates.outputs.passed == 'true' }}
@@ -1615,13 +1632,35 @@ jobs:
             fi
           fi
 
-          # 3. The GitHub Release, deleted by its recorded id rather than by a
-          #    matching tag name, so a release this run did not create survives.
+          # 3. The GitHub Release. Prefer the recorded id, so a release this run
+          #    did not create can never be removed by a matching tag name.
           if [ "${THIS_RUN_CREATED_GH_RELEASE:-}" = "1" ]; then
             if gh api -X DELETE "repos/${REPOSITORY}/releases/${THIS_RUN_GH_RELEASE_ID}"; then
               echo "Removed GitHub Release ${THIS_RUN_GH_RELEASE_ID}, which this run created."
             else
               note_unresolved "Could not remove GitHub Release ${THIS_RUN_GH_RELEASE_ID}."
+            fi
+          elif [ "${THIS_RUN_ATTEMPTED_GH_RELEASE:-}" = "1" ]; then
+            # Creation was attempted but never confirmed, so the id is unknown.
+            # This happens when the release is created and an asset upload then
+            # fails. Resolving by tag is safe here: the identity check at the
+            # start of this run proved that no release existed for this tag, and
+            # the shared dev lock prevents a concurrent release run.
+            set +e
+            LOOKUP="$(gh api "repos/${REPOSITORY}/releases" \
+              --jq ".[] | select(.tag_name == \"${THIS_RUN_GH_RELEASE_TAG}\") | .id" 2>&1)"
+            LOOKUP_STATUS=$?
+            set -e
+            if [ "${LOOKUP_STATUS}" -ne 0 ]; then
+              note_unresolved "Could not determine whether a GitHub Release exists for ${THIS_RUN_GH_RELEASE_TAG}. Check it by hand. Output: ${LOOKUP}"
+            elif [ -z "${LOOKUP}" ]; then
+              echo "No GitHub Release exists for ${THIS_RUN_GH_RELEASE_TAG}. Nothing to remove."
+            elif [ "$(printf '%s\n' "${LOOKUP}" | grep -c .)" -ne 1 ]; then
+              note_unresolved "Found more than one GitHub Release for ${THIS_RUN_GH_RELEASE_TAG}: $(printf '%s' "${LOOKUP}" | tr '\n' ' '). Ownership is unclear, so none were removed."
+            elif gh api -X DELETE "repos/${REPOSITORY}/releases/${LOOKUP}"; then
+              echo "Removed GitHub Release ${LOOKUP} for ${THIS_RUN_GH_RELEASE_TAG}, which this run created but did not finish."
+            else
+              note_unresolved "A GitHub Release (${LOOKUP}) exists for ${THIS_RUN_GH_RELEASE_TAG} from this run and could not be removed."
             fi
           fi
 
