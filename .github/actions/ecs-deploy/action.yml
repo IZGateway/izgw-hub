@@ -25,24 +25,53 @@ runs:
   steps:
     - id: deploy
       shell: bash
+      # Inputs arrive as environment values rather than being interpolated into
+      # the script body.
+      env:
+        CLUSTER: ${{ inputs.cluster }}
+        SERVICE: ${{ inputs.service }}
+        REGIONS_INPUT: ${{ inputs.regions }}
+        DESIRED_INPUT: ${{ inputs.desired_count }}
       run: |
-        REGIONS="${{ inputs.regions }}"
-        if [ -z "$REGIONS" ]; then REGIONS="us-east-1"; fi
-        DESIRED="${{ inputs.desired_count }}"
-        if [ -z "$DESIRED" ]; then DESIRED="1"; fi
+        set -euo pipefail
+
+        REGIONS="${REGIONS_INPUT:-us-east-1}"
+        DESIRED="${DESIRED_INPUT:-1}"
 
         IDS=""
         for region in $REGIONS; do
-          echo "[$region] Updating ${{ inputs.service }} (desired: $DESIRED)"
-          DEPLOYMENT_ID=$(aws ecs update-service \
-            --region $region \
-            --cluster ${{ inputs.cluster }} \
-            --service ${{ inputs.service }} \
+          echo "[$region] Updating ${SERVICE} (desired: ${DESIRED})"
+          DEPLOYMENT_ID="$(aws ecs update-service \
+            --region "$region" \
+            --cluster "$CLUSTER" \
+            --service "$SERVICE" \
             --force-new-deployment \
             --enable-execute-command \
-            --desired-count $DESIRED \
-            | jq -r '.service.deployments[] | select(.status=="PRIMARY") | .id')
+            --desired-count "$DESIRED" \
+            | jq -r '.service.deployments[] | select(.status=="PRIMARY") | .id')"
+
+          # An empty or unexpected id must not be recorded as a deployment.
+          # A later waiter would otherwise look for tasks of "region=" and
+          # report a confusing absence instead of this failure.
+          case "$DEPLOYMENT_ID" in
+            ecs-svc/*) ;;
+            '')
+              echo "::error::[$region] update-service returned no PRIMARY deployment id for ${SERVICE}."
+              exit 1
+              ;;
+            *)
+              echo "::error::[$region] unexpected deployment id '${DEPLOYMENT_ID}' for ${SERVICE}. Expected an ecs-svc/... id."
+              exit 1
+              ;;
+          esac
+
           echo "[$region] Deployment ID: $DEPLOYMENT_ID"
           IDS="${IDS}${region}=${DEPLOYMENT_ID} "
+
+          # Record the receipt after each region succeeds. Rewriting the output
+          # every time keeps the partial set available when a later region
+          # fails, so the caller can report what was already deployed.
+          echo "deployment_ids=${IDS}" >> "$GITHUB_OUTPUT"
         done
-        echo "deployment_ids=${IDS}" >> "$GITHUB_OUTPUT"
+
+        echo "Recorded deployments: ${IDS}"

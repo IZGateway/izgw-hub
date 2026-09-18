@@ -1,10 +1,10 @@
 {
   "info": {
-    "_postman_id": "7a6826f1-74d9-4855-a72f-790daac96915",
+    "_postman_id": "4479a4e4-b65c-46c0-a4d6-a53b1b8307f7",
     "name": "IZGW 2.0 Integtration Test",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "940288",
-    "_collection_link": "https://go.postman.co/collection/940288-7a6826f1-74d9-4855-a72f-790daac96915?source=collection_link"
+    "_collection_link": "https://go.postman.co/collection/940288-4479a4e4-b65c-46c0-a4d6-a53b1b8307f7?source=collection_link"
   },
   "item": [
     {
@@ -13533,8 +13533,7 @@
                       ""
                     ],
                     "type": "text/javascript",
-                    "packages": {},
-                    "requests": {}
+                    "packages": {}
                   }
                 },
                 {
@@ -13544,8 +13543,7 @@
                       "utils.setup(pm, \"dev\");"
                     ],
                     "type": "text/javascript",
-                    "packages": {},
-                    "requests": {}
+                    "packages": {}
                   }
                 }
               ],
@@ -14020,23 +14018,19 @@
                 {
                   "listen": "test",
                   "script": {
-                    "exec": [
-                      "if (pm.environment.get(\"host\").endsWith(\"dev.phiz-project.org\")) return;",
-                      "utils.testHL7RSP(pm.response.text(), pm.request.body, [], \"AA\", \"NF\", \"\");",
-                      ""
-                    ],
                     "type": "text/javascript",
-                    "packages": {}
+                    "exec": [
+                      "if (pm.environment.get(\"host\").endsWith(\"dev.phiz-project.org\")) return;\nif (pm.environment.get(\"host\").endsWith(\"preprod.phiz-project.org\")) return;\nutils.testHL7RSP(pm.response.text(), pm.request.body, [], \"AA\", \"NF\", \"\");\n"
+                    ]
                   }
                 },
                 {
                   "listen": "prerequest",
                   "script": {
+                    "type": "text/javascript",
                     "exec": [
                       "utils.setup(pm, \"dev\");"
-                    ],
-                    "type": "text/javascript",
-                    "packages": {}
+                    ]
                   }
                 }
               ],
@@ -14069,7 +14063,12 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarRA^MalkaAIRA^^^^L|CuyahoA^MarnyAIRA^^^^^M|19600507|F|1663 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>"
+                  "raw": "<soap:Envelope xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:urn=\"urn:cdc:iisb:hub:2014\" xmlns:urn1=\"urn:cdc:iisb:2014\">\r\n  <soap:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\r\n    <urn:HubRequestHeader>\r\n      <urn:DestinationId>dev</urn:DestinationId>\r\n    </urn:HubRequestHeader>\r\n    <wsa:Action>urn:cdc:iisb:hub:2014:IISHubPortType:SubmitSingleMessageRequest</wsa:Action>\r\n    <wsa:MessageID>{{testMessageId}}</wsa:MessageID>\r\n  </soap:Header>\r\n  <soap:Body>\r\n    <urn1:SubmitSingleMessageRequest>\r\n      <urn1:FacilityID>IZG</urn1:FacilityID>\r\n      <urn1:Hl7Message>MSH|^~\\&amp;|IZGW|IZGW|TEST|MOCK|202204261522-0400||QBP^Q11^QBP_Q11|ea3fa2e9-5d26-4ab1-877a-6bef40c575f8|P|2.5.1|||ER|AL|||||Z34^CDCPHINVS&#x0d;QPD|Z34^Request Immunization History^CDCPHINVS|37374859|234820^^^MYEHR^MR|CuyahogaAIRA^MarRA^MalkaAIRA^^^^L|CuyahoA^MarnyAIRA^^^^^M|19600507|F|1663 Persoon Ave^^Williston^ND^58801^USA^L&#xd;RCP|I|5^RD&amp;records&#xd;</urn1:Hl7Message>\r\n    </urn1:SubmitSingleMessageRequest>\r\n  </soap:Body>\r\n</soap:Envelope>",
+                  "options": {
+                    "raw": {
+                      "language": "text"
+                    }
+                  }
                 },
                 "url": {
                   "raw": "{{protocol}}://{{host}}:{{port}}/IISHubService",
@@ -14939,7 +14938,6 @@
               "script": {
                 "type": "text/javascript",
                 "packages": {},
-                "requests": {},
                 "exec": [
                   "utils.testHl7Error = async function (pm, hl7Error) {\r",
                   "    if (!pm.environment.get(\"host\").endsWith(\"phiz-project.org\")) {\r",
@@ -15028,7 +15026,6 @@
               "script": {
                 "type": "text/javascript",
                 "packages": {},
-                "requests": {},
                 "exec": [
                   "pm.test(\"Status code is 200\", function () {\r",
                   "    if (pm.environment.get(\"host\").endsWith(\"dev.phiz-project.org\")) return;\r",

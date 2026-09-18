@@ -1,0 +1,1826 @@
+# Reusable Release Workflow
+# Shared release logic used by both standard releases (release.yml) and hotfixes
+# (hotfix.yml). Do not trigger this directly.
+#
+# This workflow does not declare the `dev` concurrency group. The dispatch
+# wrappers hold it for the whole run. A reusable workflow runs as jobs inside
+# the caller's run, so re-declaring the same group here would make the job wait
+# on its own caller and deadlock.
+
+name: Release - Common
+
+on:
+  workflow_call:
+    inputs:
+      release-version:
+        description: 'Release version (X.Y.Z, e.g., 2.17.0)'
+        required: true
+        type: string
+      next-snapshot-version:
+        description: 'Next development version (X.Y.Z or X.Y.Z-IZGW-SNAPSHOT). Blank auto-increments the minor version. Standard releases only.'
+        required: false
+        type: string
+      release-type:
+        description: 'standard (from base-branch) or hotfix (from hotfix/* branch)'
+        required: false
+        type: string
+        default: 'standard'
+      base-branch:
+        description: 'Branch the standard release is cut from and merges back into (default: develop). Use developalm during testing.'
+        required: false
+        type: string
+        default: 'develop'
+      trunk-branch:
+        description: 'Branch that receives the merge + tag (default: main). Use mainalm during testing.'
+        required: false
+        type: string
+        default: 'main'
+      dry-run:
+        description: 'When true, skip the APHL ECR push, publish Pages under /test/, and mark the GitHub Release as draft.'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  packages: write
+  pull-requests: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Name a missing credential before create-github-app-token produces a
+      # cryptic error. Only the presence of each value is reported, never a value.
+      - name: Check release App credentials are configured
+        env:
+          APP_ID: ${{ secrets.RELEASE_AUTOMATION_APP_ID }}
+          APP_KEY: ${{ secrets.RELEASE_AUTOMATION_APP_KEY }}
+        shell: bash
+        run: |
+          missing=""
+          if [ -z "${APP_ID}" ]; then missing="${missing} RELEASE_AUTOMATION_APP_ID"; fi
+          if [ -z "${APP_KEY}" ]; then missing="${missing} RELEASE_AUTOMATION_APP_KEY"; fi
+          if [ -n "${missing}" ]; then
+            echo "::error::Missing release App credential(s):${missing}. The release will not fall back to another identity."
+            exit 1
+          fi
+          echo "Both release App credentials are configured."
+
+      # Repository writes use the release App, never ACTIONS_KEY or an SSH key.
+      # Later post-gate write steps refresh this token, because one token does
+      # not reliably outlive a full build plus integration run.
+      - name: Generate Release Automation App Token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.RELEASE_AUTOMATION_APP_ID }}
+          private-key: ${{ secrets.RELEASE_AUTOMATION_APP_KEY }}
+
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          # Full history: release notes need the preceding version tag, and the
+          # merge and back-merge need both branches.
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Set up Maven
+        uses: stCarolas/setup-maven@v5.1
+        with:
+          maven-version: 3.9.0
+
+      # Mirrors the working setup in maven.yml: both JDK toolchains, the four
+      # GitHub Packages server ids Hub resolves against, and the JPA profile the
+      # unit tests need. Package reads use GITHUB_TOKEN, not the release App.
+      - name: Set up Toolchain and Maven settings
+        shell: bash
+        run: |
+          echo "COMPUTERNAME=$(hostname)" >> "$GITHUB_ENV"
+          # Unit tests run against the in-memory JPA repository.
+          echo "SPRING_DATABASE=jpa" >> "$GITHUB_ENV"
+          mkdir -p ~/.m2 \
+          && cat << EOF > ~/.m2/toolchains.xml
+          <?xml version="1.0" encoding="UTF8"?>
+          <toolchains>
+            <toolchain>
+              <type>jdk</type>
+                <provides>
+                  <version>21</version>
+                  <vendor>sun</vendor>
+                </provides>
+                <configuration>
+                  <jdkHome>$JAVA_HOME_21_X64</jdkHome>
+                </configuration>
+            </toolchain>
+            <toolchain>
+              <type>jdk</type>
+                <provides>
+                  <version>17</version>
+                  <vendor>sun</vendor>
+                </provides>
+                <configuration>
+                  <jdkHome>$JAVA_HOME_17_X64</jdkHome>
+                </configuration>
+            </toolchain>
+          </toolchains>
+          EOF
+
+          cat << EOF > ~/.m2/settings.xml
+          <?xml version="1.0" encoding="UTF8"?>
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+            https://maven.apache.org/xsd/settings-1.0.0.xsd">
+            <localRepository>~/.m2/repository</localRepository>
+            <interactiveMode />
+            <usePluginRegistry />
+            <offline />
+            <servers>
+              <server>
+                <id>github</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.GITHUB_TOKEN }}</password>
+              </server>
+              <server>
+                <id>github-bom</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.GITHUB_TOKEN }}</password>
+              </server>
+              <server>
+                <id>github-core</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.GITHUB_TOKEN }}</password>
+              </server>
+              <server>
+                <id>github-hub</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.GITHUB_TOKEN }}</password>
+              </server>
+            </servers>
+            <mirrors />
+            <proxies />
+            <profiles />
+            <activeProfiles />
+          </settings>
+          EOF
+
+      - name: Configure Git identity for the release App
+        shell: bash
+        run: |
+          git config user.name "izg-release-automation[bot]"
+          git config user.email "${{ secrets.RELEASE_AUTOMATION_APP_ID }}+izg-release-automation[bot]@users.noreply.github.com"
+          git config pull.rebase false
+
+      # Inputs arrive as environment values and are validated as data. Never
+      # interpolate a workflow expression into the body of a script: an input
+      # is operator-supplied text.
+      #
+      # This step runs before every release-controlled write. A rejected
+      # request leaves the repository, the registries, and dev untouched.
+      - name: Validate and normalize inputs
+        id: inputs
+        env:
+          RELEASE_TYPE: ${{ inputs.release-type }}
+          RELEASE_VERSION: ${{ inputs.release-version }}
+          NEXT_SNAPSHOT_VERSION: ${{ inputs.next-snapshot-version }}
+          BASE_BRANCH: ${{ inputs.base-branch }}
+          TRUNK_BRANCH: ${{ inputs.trunk-branch }}
+          DRY_RUN: ${{ inputs.dry-run }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Diagnostics go to stderr. This function is called from inside
+          # command substitutions, and stdout there is captured, not shown.
+          fail() { echo "::error::$1" >&2; exit 1; }
+
+          # A component is 0, or digits with no leading zero. Leading zeros are
+          # rejected so that 01.0.0 and 1.0.0 cannot name the same release.
+          SEMVER='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
+          SNAPSHOT_SUFFIX='-IZGW-SNAPSHOT'
+          RELEASE_SUFFIX='-IZGW-RELEASE'
+
+          case "${RELEASE_TYPE}" in
+            standard|hotfix) ;;
+            '') fail "release-type is empty. The dispatch wrapper must set standard or hotfix." ;;
+            *) fail "release-type '${RELEASE_TYPE}' is not recognized. Use standard or hotfix." ;;
+          esac
+
+          if [ -z "${RELEASE_VERSION}" ]; then
+            fail "release-version is empty. Give three numbers in X.Y.Z form, for example 2.17.0."
+          fi
+          if ! [[ "${RELEASE_VERSION}" =~ ${SEMVER} ]]; then
+            fail "release-version '${RELEASE_VERSION}' is not in X.Y.Z form. Give three non-negative numbers with no prefix and no suffix, for example 2.17.0."
+          fi
+
+          # An operator who clears a dispatch box sends an empty string. These
+          # inputs have defaults, so empty selects the default.
+          BASE="${BASE_BRANCH:-develop}"
+          TRUNK="${TRUNK_BRANCH:-main}"
+          for pair in "base-branch:${BASE}" "trunk-branch:${TRUNK}"; do
+            label="${pair%%:*}"
+            value="${pair#*:}"
+            case "${value}" in
+              -*) fail "${label} '${value}' starts with a dash. That is not a branch name." ;;
+            esac
+            if ! git check-ref-format "refs/heads/${value}" >/dev/null 2>&1; then
+              fail "${label} '${value}' is not a valid Git branch name."
+            fi
+          done
+          if [ "${BASE}" = "${TRUNK}" ]; then
+            fail "base-branch and trunk-branch are both '${BASE}'. They must be different branches."
+          fi
+
+          DRY="${DRY_RUN:-false}"
+          case "${DRY}" in
+            true|false) ;;
+            *) fail "dry-run '${DRY}' is not a boolean. Supply true or false." ;;
+          esac
+
+          if [ "${RELEASE_TYPE}" = hotfix ]; then
+            # A hotfix keeps the base branch development version, so an
+            # explicit next version has no meaning here.
+            if [ -n "${NEXT_SNAPSHOT_VERSION}" ]; then
+              fail "next-snapshot-version is not an input for a hotfix. A hotfix keeps the current base branch development version."
+            fi
+            NEXT=""
+            RELEASE_BRANCH="hotfix/${RELEASE_VERSION}"
+          else
+            RELEASE_BRANCH="release/${RELEASE_VERSION}"
+            if [ -z "${NEXT_SNAPSHOT_VERSION}" ]; then
+              # Automatic: next minor version, patch reset to zero.
+              MAJOR="${RELEASE_VERSION%%.*}"
+              REST="${RELEASE_VERSION#*.}"
+              MINOR="${REST%%.*}"
+              NEXT="${MAJOR}.$((MINOR + 1)).0${SNAPSHOT_SUFFIX}"
+            else
+              # Accept exactly one trailing suffix, then validate the numbers.
+              CORE="${NEXT_SNAPSHOT_VERSION%"${SNAPSHOT_SUFFIX}"}"
+              if ! [[ "${CORE}" =~ ${SEMVER} ]]; then
+                fail "next-snapshot-version '${NEXT_SNAPSHOT_VERSION}' is not in X.Y.Z or X.Y.Z${SNAPSHOT_SUFFIX} form. For example 2.18.0 or 2.18.0${SNAPSHOT_SUFFIX}."
+              fi
+              NEXT="${CORE}${SNAPSHOT_SUFFIX}"
+            fi
+          fi
+
+          {
+            echo "release_version=${RELEASE_VERSION}"
+            echo "release_tag=v${RELEASE_VERSION}"
+            echo "maven_release_version=${RELEASE_VERSION}${RELEASE_SUFFIX}"
+            echo "next_snapshot_version=${NEXT}"
+            echo "release_branch=${RELEASE_BRANCH}"
+            echo "base_branch=${BASE}"
+            echo "trunk_branch=${TRUNK}"
+            echo "dry_run=${DRY}"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Validated ${RELEASE_TYPE} release ${RELEASE_VERSION} (base ${BASE}, trunk ${TRUNK}, dry-run ${DRY})."
+          if [ -n "${NEXT}" ]; then
+            echo "Next development version will be ${NEXT}."
+          fi
+
+      # Confirm that this run is allowed to cut this release, and that the
+      # release identity is free. Reads only. A rejected request changes no
+      # existing branch, tag, or release.
+      #
+      # A failed lookup is never read as an absent object. git ls-remote
+      # --exit-code returns 2 for "no matching ref" and 0 for a match; any other
+      # status is a lookup failure. For the GitHub API, only an explicit
+      # HTTP 404 proves absence.
+      - name: Validate dispatch context and release identity
+        id: context
+        env:
+          RELEASE_TYPE: ${{ inputs.release-type }}
+          RELEASE_VERSION: ${{ steps.inputs.outputs.release_version }}
+          RELEASE_BRANCH: ${{ steps.inputs.outputs.release_branch }}
+          BASE_BRANCH: ${{ steps.inputs.outputs.base_branch }}
+          TRUNK_BRANCH: ${{ steps.inputs.outputs.trunk_branch }}
+          SOURCE_REF: ${{ github.ref_name }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Diagnostics go to stderr. This function is called from inside
+          # command substitutions, and stdout there is captured, not shown.
+          fail() { echo "::error::$1" >&2; exit 1; }
+
+          # Echoes "present" or "absent". Dies on a lookup failure.
+          remote_ref_state() {
+            local ref="$1" out status
+            set +e
+            out="$(git ls-remote --exit-code origin "${ref}" 2>&1)"
+            status=$?
+            set -e
+            case "${status}" in
+              0) echo present ;;
+              2) echo absent ;;
+              *) fail "Could not read ${ref} from origin (git exit ${status}). Treating this as a lookup failure, not as an absent ref. Output: ${out}" ;;
+            esac
+          }
+
+          if [ "${RELEASE_TYPE}" = hotfix ]; then
+            case "${SOURCE_REF}" in
+              hotfix/*) ;;
+              *) fail "A hotfix must be dispatched from a hotfix/* branch. This run started from '${SOURCE_REF}'." ;;
+            esac
+            if [ "${SOURCE_REF}" != "${RELEASE_BRANCH}" ]; then
+              fail "Hotfix branch and version do not match. This run started from '${SOURCE_REF}' but requested ${RELEASE_VERSION}. Dispatch from '${RELEASE_BRANCH}', or request version ${SOURCE_REF#hotfix/}."
+            fi
+          else
+            if [ "${SOURCE_REF}" != "${BASE_BRANCH}" ]; then
+              fail "A standard release must be dispatched from its base branch '${BASE_BRANCH}'. This run started from '${SOURCE_REF}'."
+            fi
+          fi
+
+          # An absent trunk is allowed for a standard release: the first release
+          # creates it after the gates pass. A hotfix needs released history.
+          TRUNK_STATE="$(remote_ref_state "refs/heads/${TRUNK_BRANCH}")"
+          if [ "${TRUNK_STATE}" = absent ]; then
+            if [ "${RELEASE_TYPE}" = hotfix ]; then
+              fail "Trunk branch '${TRUNK_BRANCH}' does not exist on origin. A hotfix requires released trunk history."
+            fi
+            echo "Trunk '${TRUNK_BRANCH}' does not exist yet. This run will create it after the release gates pass."
+          fi
+
+          # A hotfix must descend from a released commit, so a version tag must
+          # be an ancestor of its source branch.
+          if [ "${RELEASE_TYPE}" = hotfix ]; then
+            if ! PRIOR_TAG="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' HEAD 2>/dev/null)"; then
+              fail "No version tag is an ancestor of '${SOURCE_REF}'. Create the hotfix branch from released trunk history."
+            fi
+            echo "Hotfix source descends from released tag ${PRIOR_TAG}."
+          fi
+
+          # Conflicting release identities stop the run and are left untouched.
+          if [ "$(remote_ref_state "refs/tags/v${RELEASE_VERSION}")" = present ]; then
+            fail "Tag v${RELEASE_VERSION} already exists on origin. Choose an unreleased version. This run has not changed that tag."
+          fi
+
+          if [ "${RELEASE_TYPE}" = standard ]; then
+            if [ "$(remote_ref_state "refs/heads/${RELEASE_BRANCH}")" = present ]; then
+              fail "Release branch ${RELEASE_BRANCH} already exists on origin. Remove it deliberately or choose another version. This run has not changed that branch."
+            fi
+          fi
+
+          set +e
+          RELEASE_LOOKUP="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/v${RELEASE_VERSION}" 2>&1)"
+          RELEASE_STATUS=$?
+          set -e
+          if [ "${RELEASE_STATUS}" -eq 0 ]; then
+            fail "A GitHub Release already exists for v${RELEASE_VERSION}. Choose an unreleased version. This run has not changed that release."
+          fi
+          if ! printf '%s' "${RELEASE_LOOKUP}" | grep -q 'HTTP 404'; then
+            fail "Could not determine whether a GitHub Release exists for v${RELEASE_VERSION} (gh exit ${RELEASE_STATUS}). Treating this as a lookup failure, not as an absent release. Output: ${RELEASE_LOOKUP}"
+          fi
+
+          # Recorded before any write, so that cleanup can compare against it.
+          if [ "${TRUNK_STATE}" = present ]; then
+            TRUNK_TIP="$(git ls-remote origin "refs/heads/${TRUNK_BRANCH}" | awk 'NR==1{print $1}')"
+          else
+            TRUNK_TIP=""
+          fi
+          BASE_TIP="$(git ls-remote origin "refs/heads/${BASE_BRANCH}" | awk 'NR==1{print $1}')"
+          if [ -z "${BASE_TIP}" ]; then
+            fail "Base branch '${BASE_BRANCH}' does not exist on origin."
+          fi
+
+          {
+            echo "trunk_state=${TRUNK_STATE}"
+            echo "trunk_tip=${TRUNK_TIP}"
+            echo "base_tip=${BASE_TIP}"
+            echo "source_sha=$(git rev-parse HEAD)"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Validated dispatch context: ${RELEASE_TYPE} ${RELEASE_VERSION} from ${SOURCE_REF} (trunk ${TRUNK_BRANCH} is ${TRUNK_STATE})."
+
+      # Both shared libraries must be released before Hub is released.
+      #
+      # Versions come from Maven's resolved model and resolved dependency list,
+      # not from the text of pom.xml: izgw-core is declared in this POM today,
+      # but the parent BOM can manage it instead, and a text match would read an
+      # arbitrary <version> element. This step changes no declaration.
+      - name: Check shared dependencies are released
+        id: dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          fail() { echo "::error::$1" >&2; exit 1; }
+
+          CORE_GA='gov.cdc.izgw:izgw-core'
+
+          set +e
+          PARENT_OUT="$(mvn -B -q help:evaluate -Dexpression=project.parent.version -DforceStdout 2>&1)"
+          PARENT_STATUS=$?
+          set -e
+          if [ "${PARENT_STATUS}" -ne 0 ]; then
+            fail "Maven could not resolve project.parent.version (exit ${PARENT_STATUS}). Treating this as a resolution failure, not as a released version. Output: ${PARENT_OUT}"
+          fi
+          # help:evaluate prints this text instead of failing for an unknown expression.
+          if printf '%s' "${PARENT_OUT}" | grep -q 'null object or invalid expression'; then
+            fail "Maven resolved project.parent.version to nothing. The release cannot confirm the izgw-bom version."
+          fi
+          BOM_VERSION="$(printf '%s' "${PARENT_OUT}" | tail -1 | tr -d '[:space:]')"
+          if [ -z "${BOM_VERSION}" ]; then
+            fail "Maven returned an empty value for project.parent.version. The release cannot confirm the izgw-bom version."
+          fi
+          case "${BOM_VERSION}" in
+            *-SNAPSHOT)
+              fail "The parent izgw-bom resolves to ${BOM_VERSION}, which is a SNAPSHOT. Release izgw-bom and set the released version in pom.xml before this release. This run has not changed the dependency declaration."
+              ;;
+          esac
+
+          set +e
+          DEP_OUT="$(mvn -B dependency:list 2>&1)"
+          DEP_STATUS=$?
+          set -e
+          if [ "${DEP_STATUS}" -ne 0 ]; then
+            fail "Maven could not resolve the dependency list (exit ${DEP_STATUS}). Treating this as a resolution failure, not as an absent dependency. Output: ${DEP_OUT}"
+          fi
+
+          # A dependency:list line is: group:artifact:type:version:scope, and
+          # Maven can append " -- module x (auto)". Anchoring on the group and
+          # artifact with a following colon avoids matching izgw-core-extras.
+          CORE_VERSIONS="$(printf '%s\n' "${DEP_OUT}" |
+            sed -n "s/.*[[:space:]]\{1,\}${CORE_GA}:[^:]\{1,\}:\([^:]\{1,\}\):.*/\1/p" |
+            sort -u)"
+          if [ -z "${CORE_VERSIONS}" ]; then
+            fail "Maven did not resolve ${CORE_GA}. The release requires a resolved version of this dependency."
+          fi
+          CORE_COUNT="$(printf '%s\n' "${CORE_VERSIONS}" | grep -c .)"
+          if [ "${CORE_COUNT}" -ne 1 ]; then
+            fail "Maven resolved ${CORE_COUNT} different versions of ${CORE_GA}: $(printf '%s' "${CORE_VERSIONS}" | tr '\n' ' '). The release requires exactly one resolved version."
+          fi
+          CORE_VERSION="${CORE_VERSIONS}"
+          case "${CORE_VERSION}" in
+            *-SNAPSHOT)
+              fail "${CORE_GA} resolves to ${CORE_VERSION}, which is a SNAPSHOT. Release izgw-core and set the released version in pom.xml before this release. This run has not changed the dependency declaration."
+              ;;
+          esac
+
+          {
+            echo "bom_version=${BOM_VERSION}"
+            echo "core_version=${CORE_VERSION}"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Shared dependencies are released: izgw-bom ${BOM_VERSION}, izgw-core ${CORE_VERSION}."
+
+      # Generate the current release notes and prepend them to RELEASE_NOTES.md.
+      #
+      # Working tree only: the candidate commit in a later step stages these
+      # files. HEAD is still the dispatched source tip here, so the change range
+      # excludes this run's generated commits.
+      - name: Generate release notes
+        id: notes
+        env:
+          RELEASE_VERSION: ${{ steps.inputs.outputs.release_version }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          fail() { echo "::error::$1" >&2; exit 1; }
+
+          HEADING_PREFIX='# IZ Gateway Release'
+
+          # The preceding release tag on this candidate's own ancestry. Do not
+          # take the largest tag in the repository: a later release on another
+          # branch would truncate this range.
+          if PREV_TAG="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' HEAD 2>/dev/null)"; then
+            RANGE_ARGS=("${PREV_TAG}..HEAD")
+            echo "Collecting changes since ${PREV_TAG}."
+          else
+            PREV_TAG=""
+            RANGE_ARGS=()
+            echo "No preceding version tag on this history. Collecting all changes."
+          fi
+
+          # Hub merges most PRs as merge commits and squashes some, so read
+          # both subject forms and deduplicate the numbers.
+          PR_NUMBERS="$(
+            {
+              git log ${RANGE_ARGS[@]+"${RANGE_ARGS[@]}"} --merges --format='%s' |
+                sed -n 's/^Merge pull request #\([0-9]\{1,\}\).*/\1/p'
+              git log ${RANGE_ARGS[@]+"${RANGE_ARGS[@]}"} --no-merges --format='%s' |
+                sed -n 's/.*(#\([0-9]\{1,\}\))$/\1/p'
+            } | sort -un
+          )"
+
+          : >CURRENT_NOTES_BODY.md
+          RESOLVED=0
+          NOT_FOUND=0
+          if [ -n "${PR_NUMBERS}" ]; then
+            while read -r pr; do
+              [ -n "${pr}" ] || continue
+              set +e
+              PR_JSON="$(gh pr view "${pr}" --json number,title,url 2>&1)"
+              PR_STATUS=$?
+              set -e
+              if [ "${PR_STATUS}" -ne 0 ]; then
+                # A genuine 404 means the number was not a pull request in this
+                # repository, for example a bare "(#12)" in a commit subject.
+                # Any other error is a read failure and must not be read as an
+                # empty change list.
+                if printf '%s' "${PR_JSON}" | grep -qE 'HTTP 404|Could not resolve to a PullRequest|no pull requests found'; then
+                  NOT_FOUND=$((NOT_FOUND + 1))
+                  echo "::notice::#${pr} is not a pull request in this repository. Skipping it."
+                  continue
+                fi
+                fail "Could not read pull request #${pr} (gh exit ${PR_STATUS}). Treating this as a read failure, not as an empty change list. Fix the GitHub access and retry. Output: ${PR_JSON}"
+              fi
+              printf '%s\n' "${PR_JSON}" |
+                jq -r '"- \(.title) ([#\(.number)](\(.url)))"' >>CURRENT_NOTES_BODY.md
+              RESOLVED=$((RESOLVED + 1))
+            done <<EOF
+          ${PR_NUMBERS}
+          EOF
+          fi
+
+          NOTES_SOURCE=pull-requests
+          if [ "${RESOLVED}" -eq 0 ]; then
+            # A genuine no-PR result. Every lookup failure already failed above.
+            NOTES_SOURCE=commits
+            echo "::warning::No merged pull requests were found in this change range. Using commit descriptions instead."
+            git log ${RANGE_ARGS[@]+"${RANGE_ARGS[@]}"} --no-merges --format='- %s (%h)' >CURRENT_NOTES_BODY.md
+          fi
+          if [ ! -s CURRENT_NOTES_BODY.md ]; then
+            fail "The change range produced no entries. A release must describe at least one change."
+          fi
+
+          RELEASE_DATE="$(date -u +%Y-%m-%d)"
+          {
+            printf '%s %s\n\n' "${HEADING_PREFIX}" "${RELEASE_VERSION}"
+            printf 'Released %s.\n\n' "${RELEASE_DATE}"
+            cat CURRENT_NOTES_BODY.md
+            printf '\n'
+          } >CURRENT_NOTES.md
+
+          # Preserve history. On a retry from a retained hotfix branch this
+          # version's section can already exist; replace it rather than add a
+          # second heading for the same version.
+          if [ -f RELEASE_NOTES.md ]; then
+            EXISTING_LINE="$(grep -n "^${HEADING_PREFIX} ${RELEASE_VERSION}\$" RELEASE_NOTES.md | head -1 | cut -d: -f1 || true)"
+            if [ -n "${EXISTING_LINE}" ]; then
+              echo "Replacing the existing unpublished section for ${RELEASE_VERSION}."
+              head -n "$((EXISTING_LINE - 1))" RELEASE_NOTES.md >NOTES_HEAD.md || : >NOTES_HEAD.md
+              # The next top-level heading starts the previous release's section.
+              NEXT_OFFSET="$(tail -n "+$((EXISTING_LINE + 1))" RELEASE_NOTES.md | grep -n '^# ' | head -1 | cut -d: -f1 || true)"
+              if [ -n "${NEXT_OFFSET}" ]; then
+                tail -n "+$((EXISTING_LINE + NEXT_OFFSET))" RELEASE_NOTES.md >NOTES_TAIL.md
+              else
+                : >NOTES_TAIL.md
+              fi
+            else
+              FIRST_LINE="$(grep -n "^${HEADING_PREFIX} " RELEASE_NOTES.md | head -1 | cut -d: -f1 || true)"
+              if [ -n "${FIRST_LINE}" ]; then
+                head -n "$((FIRST_LINE - 1))" RELEASE_NOTES.md >NOTES_HEAD.md || : >NOTES_HEAD.md
+                tail -n "+${FIRST_LINE}" RELEASE_NOTES.md >NOTES_TAIL.md
+              else
+                : >NOTES_HEAD.md
+                cp RELEASE_NOTES.md NOTES_TAIL.md
+              fi
+            fi
+            cat NOTES_HEAD.md CURRENT_NOTES.md NOTES_TAIL.md >RELEASE_NOTES.md.new
+            mv RELEASE_NOTES.md.new RELEASE_NOTES.md
+            rm -f NOTES_HEAD.md NOTES_TAIL.md
+          else
+            cp CURRENT_NOTES.md RELEASE_NOTES.md
+          fi
+          rm -f CURRENT_NOTES_BODY.md
+
+          {
+            echo "previous_tag=${PREV_TAG}"
+            echo "notes_source=${NOTES_SOURCE}"
+            echo "resolved_prs=${RESOLVED}"
+            echo "skipped_numbers=${NOT_FOUND}"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Release notes for ${RELEASE_VERSION} (${NOTES_SOURCE}, ${RESOLVED} pull requests):"
+          cat CURRENT_NOTES.md
+
+      # Stage docs/release for the GitHub Release attachments.
+      #
+      # Keeps main.yml's selection: tracked root Markdown, without README.md,
+      # and with RELEASE_NOTES.md replaced by this release's notes only.
+      #
+      # Two corrections to main.yml. It used `cp *.md`, which copies untracked
+      # local files such as CLAUDE.local.md. It also never cleared the target,
+      # so a document deleted from the root survived as a stale attachment:
+      # docs/release/HELP.md is still shipping although HELP.md left the root.
+      - name: Stage docs/release
+        id: docs
+        env:
+          RELEASE_VERSION: ${{ steps.inputs.outputs.release_version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          fail() { echo "::error::$1" >&2; exit 1; }
+
+          [ -f CURRENT_NOTES.md ] || fail "CURRENT_NOTES.md is missing. The release notes step must run first."
+
+          # Tracked root Markdown only. No path separator means the repository
+          # root. README.md is the project front page, not a release document,
+          # and RELEASE_NOTES.md is replaced by this release's section.
+          ROOT_DOCS="$(git ls-files '*.md' |
+            grep -v '/' |
+            grep -v '^README\.md$' |
+            grep -v '^RELEASE_NOTES\.md$' || true)"
+
+          # A fresh set. Anything previously staged and now absent from the root
+          # must not survive as an attachment.
+          rm -rf docs/release
+          mkdir -p docs/release
+
+          COPIED=0
+          if [ -n "${ROOT_DOCS}" ]; then
+            while read -r doc; do
+              [ -n "${doc}" ] || continue
+              cp -- "${doc}" docs/release/
+              COPIED=$((COPIED + 1))
+            done <<EOF
+          ${ROOT_DOCS}
+          EOF
+          fi
+
+          # The attached notes describe this release, not the whole history.
+          cp CURRENT_NOTES.md docs/release/RELEASE_NOTES.md
+
+          # Scoped to this directory so that deletions are staged. This is not a
+          # whole-workspace add.
+          git add -A -- docs/release
+
+          # Snapshot the attachments outside the work tree. Later steps check
+          # out the trunk and the base branch, and a hotfix back-merge can
+          # leave the base branch's older docs/release in the tree. The GitHub
+          # Release must attach this release's documents.
+          ATTACH_DIR="${RUNNER_TEMP}/release-attachments"
+          rm -rf "${ATTACH_DIR}"
+          mkdir -p "${ATTACH_DIR}"
+          cp docs/release/*.md "${ATTACH_DIR}/"
+          cp CURRENT_NOTES.md "${ATTACH_DIR}/../release-notes-body.md"
+
+          {
+            echo "attach_dir=${ATTACH_DIR}"
+            echo "notes_body=${RUNNER_TEMP}/release-notes-body.md"
+            echo "docs_count=$((COPIED + 1))"
+          } >> "$GITHUB_OUTPUT"
+          echo "Staged $((COPIED + 1)) release documents for ${RELEASE_VERSION}:"
+          ls -1 docs/release
+          echo "Staged changes under docs/release:"
+          git diff --cached --name-status -- docs/release
+
+      # Create the candidate commit and publish its branch.
+      #
+      # This is the first write of the run, so it records the cleanup flags that
+      # the failure handler reads. A standard release branch is run-owned and
+      # can be removed on failure. A hotfix branch belongs to the operator and
+      # is always preserved.
+      - name: Prepare release candidate
+        id: candidate
+        env:
+          RELEASE_TYPE: ${{ inputs.release-type }}
+          RELEASE_VERSION: ${{ steps.inputs.outputs.release_version }}
+          MAVEN_RELEASE_VERSION: ${{ steps.inputs.outputs.maven_release_version }}
+          RELEASE_BRANCH: ${{ steps.inputs.outputs.release_branch }}
+          SOURCE_SHA: ${{ steps.context.outputs.source_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          fail() { echo "::error::$1" >&2; exit 1; }
+
+          if [ "${RELEASE_TYPE}" = standard ]; then
+            git checkout -b "${RELEASE_BRANCH}" "${SOURCE_SHA}"
+          else
+            CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+            if [ "${CURRENT_BRANCH}" != "${RELEASE_BRANCH}" ]; then
+              fail "Expected to be on ${RELEASE_BRANCH} but the checkout is on ${CURRENT_BRANCH}."
+            fi
+          fi
+
+          # The tip before this run's generated commit. Cleanup and the hotfix
+          # review warnings compare against it.
+          ORIGINAL_TIP="$(git rev-parse HEAD)"
+
+          mvn -B versions:set -DnewVersion="${MAVEN_RELEASE_VERSION}" -DgenerateBackupPoms=false
+          if [ -f pom.xml.versionsBackup ]; then
+            fail "versions:set left a backup POM. The release must not commit one."
+          fi
+
+          # versions:set must change only version metadata. Artifact
+          # coordinates and dependency declarations stay as reviewed.
+          POM_CHANGES="$(git diff --unified=0 -- pom.xml | grep -E '^[+-][^+-]' || true)"
+          if [ -z "${POM_CHANGES}" ]; then
+            fail "versions:set did not change pom.xml. Expected the project version to become ${MAVEN_RELEASE_VERSION}."
+          fi
+          while read -r line; do
+            [ -n "${line}" ] || continue
+            case "${line}" in
+              *'<version>'*) ;;
+              *) fail "versions:set changed something other than a version in pom.xml: ${line}. The release will not commit an unreviewed POM change." ;;
+            esac
+          done <<EOF
+          ${POM_CHANGES}
+          EOF
+
+          ACTUAL_VERSION="$(mvn -B -q help:evaluate -Dexpression=project.version -DforceStdout | tail -1 | tr -d '[:space:]')"
+          if [ "${ACTUAL_VERSION}" != "${MAVEN_RELEASE_VERSION}" ]; then
+            fail "The project version is ${ACTUAL_VERSION} but ${MAVEN_RELEASE_VERSION} was expected."
+          fi
+
+          # Selective staging. docs/release was staged by the previous step.
+          # A whole-workspace `git add -A` would sweep in build output and
+          # generated scratch files such as CURRENT_NOTES.md.
+          git add -- pom.xml RELEASE_NOTES.md
+
+          UNEXPECTED=""
+          while read -r staged; do
+            [ -n "${staged}" ] || continue
+            case "${staged}" in
+              pom.xml|RELEASE_NOTES.md|docs/release/*) ;;
+              *) UNEXPECTED="${UNEXPECTED} ${staged}" ;;
+            esac
+          done <<EOF
+          $(git diff --cached --name-only)
+          EOF
+          if [ -n "${UNEXPECTED}" ]; then
+            fail "Unexpected staged paths:${UNEXPECTED}. The candidate commit carries only pom.xml, RELEASE_NOTES.md, and docs/release."
+          fi
+
+          git commit -m "chore: prepare release ${RELEASE_VERSION}"
+          CANDIDATE_SHA="$(git rev-parse HEAD)"
+          CANDIDATE_TREE="$(git rev-parse 'HEAD^{tree}')"
+
+          git push origin "${RELEASE_BRANCH}"
+
+          # Confirmed write. Record the flags only now.
+          {
+            echo "THIS_RUN_CANDIDATE_BRANCH=${RELEASE_BRANCH}"
+            echo "THIS_RUN_CANDIDATE_SHA=${CANDIDATE_SHA}"
+            echo "THIS_RUN_CANDIDATE_ORIGINAL_TIP=${ORIGINAL_TIP}"
+          } >> "$GITHUB_ENV"
+          if [ "${RELEASE_TYPE}" = standard ]; then
+            echo "THIS_RUN_CREATED_RELEASE_BRANCH=1" >> "$GITHUB_ENV"
+          fi
+
+          {
+            echo "candidate_sha=${CANDIDATE_SHA}"
+            echo "candidate_tree=${CANDIDATE_TREE}"
+            echo "original_tip=${ORIGINAL_TIP}"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Candidate ${MAVEN_RELEASE_VERSION} is ${CANDIDATE_SHA} on ${RELEASE_BRANCH}."
+
+      # Hub's image.tag drives <finalName>, so the jar is target/<image.tag>.jar.
+      # The scanner and the Docker build both read that path.
+      - name: Compute image tags
+        id: image
+        env:
+          RELEASE_VERSION: ${{ steps.inputs.outputs.release_version }}
+          RUN_NUMBER: ${{ github.run_number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE_TAG="${RELEASE_VERSION}-RELEASE-${RUN_NUMBER}"
+          {
+            echo "image_tag=${IMAGE_TAG}"
+            echo "image_branch_tag=${RELEASE_VERSION}-RELEASE"
+            echo "jar_path=target/${IMAGE_TAG}.jar"
+          } >> "$GITHUB_OUTPUT"
+          echo "Candidate image tag is ${IMAGE_TAG}."
+
+      - name: Configure AWS credentials (dev account)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      # Matches maven.yml's lifecycle and test environment, with one deliberate
+      # omission: maven.yml prefixes the command with `env &&`, which prints
+      # every environment value into the log. The release path must not.
+      - name: Build, test, and generate the site
+        id: build
+        env:
+          COMMON_PASS: ${{ secrets.COMMON_PASS }}
+          ELASTIC_API_KEY: ${{ secrets.ELASTIC_API_KEY }}
+          AMAZON_DYNAMODB_TABLE: izgateway-dev-test
+          JWT_ISSUER: https://dev.console.izgateway.org
+          IMAGE_TAG: ${{ steps.image.outputs.image_tag }}
+          JAR_PATH: ${{ steps.image.outputs.jar_path }}
+          BUILD_NO: ${{ github.run_number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          fail() { echo "::error::$1" >&2; exit 1; }
+
+          mvn -B -U clean package install site \
+            -Dbuildno="${BUILD_NO}" \
+            -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn \
+            -DskipDependencyCheck=true \
+            -Dimage.tag="${IMAGE_TAG}"
+
+          [ -f "${JAR_PATH}" ] || fail "The build did not produce ${JAR_PATH}. The scanner and the image build both need it."
+          [ -f target/classes/build.txt ] || fail "The build did not produce target/classes/build.txt. Newman verification needs its values."
+          # An empty directory would publish empty Pages, so require real output.
+          [ -f target/site/index.html ] || fail "The build did not produce target/site/index.html. Pages publication needs the generated site."
+
+          # The build must not alter tracked files. A generated change would
+          # otherwise ride along silently in a later commit.
+          DIRTY="$(git status --porcelain --untracked-files=no)"
+          if [ -n "${DIRTY}" ]; then
+            fail "The build changed tracked files: ${DIRTY}. Investigate before releasing."
+          fi
+
+          echo "Built ${JAR_PATH}."
+
+      # No continue-on-error. dev CI tolerates findings; a release must not.
+      # The action exits nonzero both for a finding at or above the threshold
+      # and for a scan that could not complete, and either blocks the release.
+      #
+      # Do not add --data. The owasp/dependency-check-action image ships with a
+      # populated NVD database at the default path, which is why the action
+      # injects --noupdate. Pointing --data at an empty directory bypasses the
+      # bundled database and the scan fails with "Autoupdate is disabled and the
+      # database does not exist". maven.yml still carries that argument, and its
+      # continue-on-error hides the resulting failure. izgw-transform omits it,
+      # which is why the scan works there.
+      #
+      # OSS Index is disabled, as izgw-transform does. Hub's
+      # OSS_INDEX_USERNAME and OSS_INDEX_PASSWORD are rejected by Sonatype.
+      # dependency-check collects the analyzer exception and exits nonzero even
+      # after a clean NVD analysis, so passing those credentials fails the gate
+      # for a reason unrelated to any vulnerability. Re-enable this only with
+      # credentials confirmed to work.
+      - name: Dependency Check
+        id: scan
+        env:
+          JAVA_HOME: /opt/jdk
+        uses: dependency-check/Dependency-Check_Action@main
+        timeout-minutes: 15
+        with:
+          project: IZ Gateway Hub
+          path: ${{ steps.image.outputs.jar_path }}
+          format: 'HTML'
+          out: 'target/site'
+          args: >
+            --disableOssIndex
+            --failOnCVSS 99
+            --format JSON
+            --suppression ./dependency-suppression.xml
+            --nvdApiKey ${{ secrets.NVDAPIKEY }}
+            --disableNuspec
+            --disableNugetconf
+            --disableAssembly
+            --disableCentral
+
+      # A scan that produced no report is not a clean scan. Without this check
+      # a silent early exit would look like zero vulnerabilities.
+      - name: Confirm the scan produced a result
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          fail() { echo "::error::$1" >&2; exit 1; }
+
+          REPORT=target/site/dependency-check-report.json
+          [ -f "${REPORT}" ] || fail "The dependency scan produced no JSON report at ${REPORT}. A missing result is a failure, not zero vulnerabilities."
+          jq -e '.dependencies' "${REPORT}" >/dev/null 2>&1 ||
+            fail "The dependency scan report ${REPORT} is not readable. A missing result is a failure, not zero vulnerabilities."
+
+          SCANNED="$(jq '.dependencies | length' "${REPORT}")"
+          [ "${SCANNED}" -gt 0 ] || fail "The dependency scan reported zero scanned dependencies. That indicates the scan did not read the release jar."
+
+          BLOCKING="$(jq '[.dependencies[]? | .vulnerabilities[]? |
+            select((.cvssv3.baseScore // .cvssv2.score // 0) >= 99)] | length' "${REPORT}")"
+          echo "Scan read ${SCANNED} dependencies and reports ${BLOCKING} unsuppressed findings at CVSS 7 or above."
+          if [ "${BLOCKING}" -gt 0 ]; then
+            fail "The dependency scan reports ${BLOCKING} unsuppressed finding(s) at CVSS 7 or above. Evaluate each one and add a justified entry to dependency-suppression.xml, or update the dependency."
+          fi
+
+      - name: Upload the dependency check report
+        uses: actions/upload-artifact@v7
+        if: ${{ always() }}
+        with:
+          name: DependencyCheck
+          path: ./target/site/dependency-check-report.*
+          if-no-files-found: warn
+
+      # Newman asserts the deployed build number and timestamp. Capture them at
+      # build time and pass them to the verifier, which has no target/ directory
+      # of its own. maven.yml reads target\classes\build.txt, and bash turns
+      # \c and \b into plain characters, so the values are empty there today.
+      - name: Capture build metadata
+        id: build-meta
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          fail() { echo "::error::$1" >&2; exit 1; }
+
+          BUILD_FILE=target/classes/build.txt
+          [ -f "${BUILD_FILE}" ] || fail "${BUILD_FILE} is missing."
+
+          # build.txt is right-aligned, so the labels carry leading spaces:
+          #
+          #     Build: izgw-hub-2.17.0-IZGW-SNAPSHOT-202609171317
+          #      Host: runnervm
+          # Timestamp: 202609171317
+          #
+          # Allow that indent and trim the value.
+          read_field() {
+            sed -n "s/^[[:space:]]*$1:[[:space:]]*//p" "${BUILD_FILE}" |
+              head -1 | tr -d '\r' | sed 's/[[:space:]]*$//'
+          }
+          BUILD_NUMBER="$(read_field Build)"
+          BUILD_TIMESTAMP="$(read_field Timestamp)"
+          [ -n "${BUILD_NUMBER}" ] || fail "Could not read Build from ${BUILD_FILE}. Newman would assert an empty value, which matches anything."
+          [ -n "${BUILD_TIMESTAMP}" ] || fail "Could not read Timestamp from ${BUILD_FILE}. Newman would assert an empty value, which matches anything."
+
+          {
+            echo "build_number=${BUILD_NUMBER}"
+            echo "build_timestamp=${BUILD_TIMESTAMP}"
+          } >> "$GITHUB_OUTPUT"
+          echo "Build metadata: build ${BUILD_NUMBER}, timestamp ${BUILD_TIMESTAMP}."
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # One build, then explicit tag pushes.
+      #
+      # maven.yml uses `docker image push --all-tags`, which publishes every tag
+      # that happens to be on the local repository. The release pushes only the
+      # tags it built.
+      - name: Build and push the candidate image
+        id: image-push
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: izgateway-dev-phiz-web-ws
+          GHCR_REPOSITORY: ghcr.io/izgateway/izgw-hub
+          IMAGE_TAG: ${{ steps.image.outputs.image_tag }}
+          IMAGE_BRANCH_TAG: ${{ steps.image.outputs.image_branch_tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          fail() { echo "::error::$1" >&2; exit 1; }
+
+          docker buildx build \
+            --build-arg "JAR_FILENAME=${IMAGE_TAG}.jar" \
+            --build-arg "IZGW_VERSION=${IMAGE_TAG}" \
+            --progress=plain --load \
+            --cache-from=type=gha,scope=izgwhub \
+            --cache-to=type=gha,scope=izgwhub,mode=max \
+            -t "iz-gateway:${IMAGE_TAG}" \
+            -t "${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}" \
+            -t "${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_BRANCH_TAG}" \
+            -t "${ECR_REGISTRY}/${ECR_REPOSITORY}:latest" \
+            -t "${GHCR_REPOSITORY}:${IMAGE_TAG}" \
+            -t "${GHCR_REPOSITORY}:${IMAGE_BRANCH_TAG}" \
+            -t "${GHCR_REPOSITORY}:latest" \
+            .
+
+          for ref in \
+            "${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}" \
+            "${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_BRANCH_TAG}" \
+            "${ECR_REGISTRY}/${ECR_REPOSITORY}:latest" \
+            "${GHCR_REPOSITORY}:${IMAGE_TAG}" \
+            "${GHCR_REPOSITORY}:${IMAGE_BRANCH_TAG}" \
+            "${GHCR_REPOSITORY}:latest"; do
+            echo "Pushing ${ref}"
+            docker image push "${ref}"
+          done
+
+          # The digest of the run-specific tag is the candidate's identity.
+          # Promotion and the deployed-image check both use it, so that a later
+          # change to a mutable alias cannot redirect them.
+          CANDIDATE_DIGEST="$(aws ecr describe-images \
+            --repository-name "${ECR_REPOSITORY}" \
+            --image-ids "imageTag=${IMAGE_TAG}" \
+            --query 'imageDetails[0].imageDigest' --output text)"
+          case "${CANDIDATE_DIGEST}" in
+            sha256:*) ;;
+            *) fail "Could not read the registry digest of ${IMAGE_TAG} from ${ECR_REPOSITORY}. Got '${CANDIDATE_DIGEST}'." ;;
+          esac
+
+          # Confirm the recorded run tag really identifies this candidate.
+          BRANCH_TAG_DIGEST="$(aws ecr describe-images \
+            --repository-name "${ECR_REPOSITORY}" \
+            --image-ids "imageTag=${IMAGE_BRANCH_TAG}" \
+            --query 'imageDetails[0].imageDigest' --output text)"
+          if [ "${BRANCH_TAG_DIGEST}" != "${CANDIDATE_DIGEST}" ]; then
+            fail "Tag ${IMAGE_BRANCH_TAG} identifies ${BRANCH_TAG_DIGEST} but the candidate is ${CANDIDATE_DIGEST}. Another run replaced the alias."
+          fi
+
+          {
+            echo "THIS_RUN_PUSHED_IMAGES=1"
+            echo "THIS_RUN_CANDIDATE_DIGEST=${CANDIDATE_DIGEST}"
+          } >> "$GITHUB_ENV"
+
+          {
+            echo "candidate_digest=${CANDIDATE_DIGEST}"
+            echo "ecr_registry=${ECR_REGISTRY}"
+            echo "ecr_repository=${ECR_REPOSITORY}"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Candidate image ${IMAGE_TAG} is ${CANDIDATE_DIGEST}."
+
+      # ======================================================= release gate
+      #
+      # Everything above this point is candidate preparation. Everything below
+      # the verify step is publication, and none of it may run unless every
+      # gate passed for this exact candidate.
+      - name: Deploy the candidate to dev ECS
+        id: deploy
+        uses: ./.github/actions/ecs-deploy
+        with:
+          cluster: izgateway-dev-izgateway-services
+          service: izgateway-devalb-service
+          regions: ${{ vars.AWS_REGIONS }}
+          desired_count: ${{ vars.ECS_DESIRED_COUNT }}
+
+      - name: Record the deployment receipt
+        shell: bash
+        env:
+          DEPLOYMENT_IDS: ${{ steps.deploy.outputs.deployment_ids }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DEPLOYMENT_IDS}" ]; then
+            echo "::error::The deploy step reported no deployment ids."
+            exit 1
+          fi
+          {
+            echo "THIS_RUN_DEPLOYED_DEV=1"
+            echo "THIS_RUN_DEPLOYMENT_IDS=${DEPLOYMENT_IDS}"
+          } >> "$GITHUB_ENV"
+          echo "Dev deployments: ${DEPLOYMENT_IDS}"
+
+      # The digest and the build metadata are passed in explicitly. The verifier
+      # has no target/ directory, so it cannot rediscover them.
+      - name: Verify the deployed candidate
+        id: verify
+        uses: ./.github/actions/verify-hub
+        with:
+          cluster: izgateway-dev-izgateway-services
+          service: izgateway-devalb-service
+          regions: ${{ vars.AWS_REGIONS }}
+          deployment_ids: ${{ steps.deploy.outputs.deployment_ids }}
+          expected_image_digest: ${{ steps.image-push.outputs.candidate_digest }}
+          expected_build: ${{ steps.build-meta.outputs.build_number }}
+          expected_timestamp: ${{ steps.build-meta.outputs.build_timestamp }}
+          security_group_id: ${{ vars.AWS_SECURITY_GROUP_ID }}
+          testing_cert: ${{ secrets.TESTING_CERT }}
+          testing_key: ${{ secrets.TESTING_KEY }}
+          testing_pass: ${{ secrets.TESTING_PASS }}
+          bearer_token_expired: ${{ secrets.BEARER_TOKEN_EXPIRED }}
+          bearer_token_for_cicd: ${{ secrets.BEARER_TOKEN_FOR_CICD }}
+          bearer_token_revoked: ${{ secrets.BEARER_TOKEN_REVOKED }}
+          bearer_token_wrong_secret: ${{ secrets.BEARER_TOKEN_WRONG_SECRET }}
+          bearer_token_wrong_env: ${{ secrets.BEARER_TOKEN_WRONG_ENV }}
+          bearer_token_no_usetype: ${{ secrets.BEARER_TOKEN_NO_USETYPE }}
+
+      # An explicit marker that every gate passed. Each publication step below
+      # requires it, so a future step cannot be added above the gate by mistake.
+      - name: Record that every gate passed
+        id: gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "passed=true" >> "$GITHUB_OUTPUT"
+          echo "THIS_RUN_GATES_PASSED=1" >> "$GITHUB_ENV"
+          echo "Maven tests, dependency scan, dev deployment, image digest, ALB health, logging, and Newman all passed."
+
+      # ================================================ promotion by digest
+      #
+      # maven.yml promotes with `docker pull ...:latest`, so a concurrent build
+      # that moved `latest` would be promoted instead of the verified image.
+      # Both promotions below address the candidate by its recorded digest.
+      - name: Advance the good tag to the verified image
+        if: ${{ steps.gates.outputs.passed == 'true' }}
+        shell: bash
+        env:
+          ECR_REGISTRY: ${{ steps.image-push.outputs.ecr_registry }}
+          ECR_REPOSITORY: ${{ steps.image-push.outputs.ecr_repository }}
+          CANDIDATE_DIGEST: ${{ steps.image-push.outputs.candidate_digest }}
+        run: |
+          set -euo pipefail
+
+          fail() { echo "::error::$1" >&2; exit 1; }
+
+          SOURCE="${ECR_REGISTRY}/${ECR_REPOSITORY}@${CANDIDATE_DIGEST}"
+          echo "Promoting ${SOURCE} to good"
+          docker pull "${SOURCE}"
+          docker tag "${SOURCE}" "${ECR_REGISTRY}/${ECR_REPOSITORY}:good"
+          docker image push "${ECR_REGISTRY}/${ECR_REPOSITORY}:good"
+
+          GOOD_DIGEST="$(aws ecr describe-images \
+            --repository-name "${ECR_REPOSITORY}" \
+            --image-ids imageTag=good \
+            --query 'imageDetails[0].imageDigest' --output text)"
+          if [ "${GOOD_DIGEST}" != "${CANDIDATE_DIGEST}" ]; then
+            fail "The good tag now identifies ${GOOD_DIGEST} but the verified candidate is ${CANDIDATE_DIGEST}."
+          fi
+
+          echo "THIS_RUN_ADVANCED_GOOD=1" >> "$GITHUB_ENV"
+          echo "good identifies the verified candidate ${CANDIDATE_DIGEST}."
+
+      # APHL credentials are configured only for a real delivery. A dry-run
+      # never authenticates to that account.
+      - name: Configure AWS credentials for APHL
+        if: ${{ steps.gates.outputs.passed == 'true' && !inputs.dry-run }}
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.APHL_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.APHL_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Login to the APHL Amazon ECR
+        if: ${{ steps.gates.outputs.passed == 'true' && !inputs.dry-run }}
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Deliver the verified image to APHL
+        if: ${{ steps.gates.outputs.passed == 'true' && !inputs.dry-run }}
+        shell: bash
+        env:
+          APHL_REGISTRY: ${{ secrets.APHL_ECR_REGISTRY }}
+          APHL_REPOSITORY: ${{ secrets.APHL_ECR_REPOSITORY }}
+          RELEASE_VERSION: ${{ steps.inputs.outputs.release_version }}
+          CANDIDATE_DIGEST: ${{ steps.image-push.outputs.candidate_digest }}
+        run: |
+          set -euo pipefail
+
+          fail() { echo "::error::$1" >&2; exit 1; }
+
+          APHL_TAG="izgw-hub-${RELEASE_VERSION}"
+          TARGET="${APHL_REGISTRY}/${APHL_REPOSITORY}:${APHL_TAG}"
+
+          # The candidate is already in the local store, addressed by digest.
+          # No rebuild, and no second read of a mutable alias.
+          LOCAL="$(docker images --digests --format '{{.Repository}}@{{.Digest}}' |
+            grep -F "@${CANDIDATE_DIGEST}" | head -1 || true)"
+          [ -n "${LOCAL}" ] || fail "The candidate ${CANDIDATE_DIGEST} is not in the local image store. APHL delivery must not rebuild it."
+
+          docker tag "${LOCAL}" "${TARGET}"
+          echo "Delivering ${CANDIDATE_DIGEST} to ${TARGET}"
+          docker image push "${TARGET}"
+
+          APHL_DIGEST="$(aws ecr describe-images \
+            --repository-name "${APHL_REPOSITORY}" \
+            --image-ids "imageTag=${APHL_TAG}" \
+            --query 'imageDetails[0].imageDigest' --output text)"
+          if [ "${APHL_DIGEST}" != "${CANDIDATE_DIGEST}" ]; then
+            fail "The APHL image ${APHL_TAG} is ${APHL_DIGEST} but the verified candidate is ${CANDIDATE_DIGEST}."
+          fi
+
+          {
+            echo "THIS_RUN_DELIVERED_APHL=1"
+            echo "THIS_RUN_APHL_TAG=${APHL_TAG}"
+          } >> "$GITHUB_ENV"
+          echo "APHL ${APHL_TAG} identifies the verified candidate."
+
+      - name: Report that APHL delivery was skipped
+        if: ${{ steps.gates.outputs.passed == 'true' && inputs.dry-run }}
+        shell: bash
+        run: |
+          echo "::notice::Dry-run. APHL delivery was skipped and no APHL credentials were configured."
+
+      # Later AWS reads belong to the dev account. Restore its credentials so
+      # that a diagnostic after APHL delivery does not fail confusingly.
+      - name: Restore dev AWS credentials
+        if: ${{ steps.gates.outputs.passed == 'true' && !inputs.dry-run }}
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      # ==================================================== Git publication
+      #
+      # One App token does not reliably outlive a full build plus integration
+      # run, so refresh it before the post-gate writes.
+      - name: Refresh the release App token for publication
+        id: app-token-publish
+        if: ${{ steps.gates.outputs.passed == 'true' }}
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.RELEASE_AUTOMATION_APP_ID }}
+          private-key: ${{ secrets.RELEASE_AUTOMATION_APP_KEY }}
+
+      - name: Use the refreshed token for Git
+        if: ${{ steps.gates.outputs.passed == 'true' }}
+        shell: bash
+        env:
+          APP_TOKEN: ${{ steps.app-token-publish.outputs.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ -z "${APP_TOKEN}" ]; then
+            echo "::error::The refreshed release App token is empty. The release will not fall back to another identity."
+            exit 1
+          fi
+          # The token is masked by the token action. Writing it into the remote
+          # url keeps it out of the command line of later steps.
+          git remote set-url origin "https://x-access-token:${APP_TOKEN}@github.com/${REPOSITORY}.git"
+          echo "Git remote now uses the refreshed release App identity."
+
+      - name: Merge the release into the trunk and tag it
+        id: trunk
+        if: ${{ steps.gates.outputs.passed == 'true' }}
+        shell: bash
+        env:
+          RELEASE_TYPE: ${{ inputs.release-type }}
+          RELEASE_VERSION: ${{ steps.inputs.outputs.release_version }}
+          RELEASE_TAG: ${{ steps.inputs.outputs.release_tag }}
+          RELEASE_BRANCH: ${{ steps.inputs.outputs.release_branch }}
+          TRUNK_BRANCH: ${{ steps.inputs.outputs.trunk_branch }}
+          TRUNK_STATE: ${{ steps.context.outputs.trunk_state }}
+          EXPECTED_TRUNK_TIP: ${{ steps.context.outputs.trunk_tip }}
+          CANDIDATE_SHA: ${{ steps.candidate.outputs.candidate_sha }}
+        run: |
+          set -euo pipefail
+
+          fail() { echo "::error::$1" >&2; exit 1; }
+
+          git fetch --quiet origin
+
+          if [ "${TRUNK_STATE}" = absent ]; then
+            # First release: the trunk starts at the candidate.
+            git branch "${TRUNK_BRANCH}" "${CANDIDATE_SHA}"
+            git checkout --quiet "${TRUNK_BRANCH}"
+            echo "THIS_RUN_CREATED_TRUNK=1" >> "$GITHUB_ENV"
+            echo "Created ${TRUNK_BRANCH} at the candidate."
+          else
+            # A concurrent update must fail the run rather than be overwritten.
+            ACTUAL_TIP="$(git rev-parse "origin/${TRUNK_BRANCH}")"
+            if [ "${ACTUAL_TIP}" != "${EXPECTED_TRUNK_TIP}" ]; then
+              fail "${TRUNK_BRANCH} moved from ${EXPECTED_TRUNK_TIP} to ${ACTUAL_TIP} during this run. Publication is unsafe. Nothing has been pushed."
+            fi
+            git checkout --quiet -B "${TRUNK_BRANCH}" "origin/${TRUNK_BRANCH}"
+            # Release content wins a conflicting hunk, as Transform does.
+            git merge --no-ff -X theirs "${RELEASE_BRANCH}" \
+              -m "Merge release branch ${RELEASE_BRANCH}" ||
+              fail "Merging ${RELEASE_BRANCH} into ${TRUNK_BRANCH} could not complete under the agreed conflict preferences."
+          fi
+
+          TRUNK_SHA="$(git rev-parse HEAD)"
+          git tag -a "${RELEASE_TAG}" -m "IZ Gateway Hub ${RELEASE_VERSION}" "${TRUNK_SHA}"
+
+          git push origin "${TRUNK_BRANCH}"
+          {
+            echo "THIS_RUN_PUSHED_TRUNK=1"
+            echo "THIS_RUN_TRUNK_BRANCH=${TRUNK_BRANCH}"
+            echo "THIS_RUN_TRUNK_SHA=${TRUNK_SHA}"
+            echo "THIS_RUN_TRUNK_PREVIOUS=${EXPECTED_TRUNK_TIP}"
+          } >> "$GITHUB_ENV"
+
+          git push origin "refs/tags/${RELEASE_TAG}"
+          {
+            echo "THIS_RUN_PUSHED_TAG=1"
+            echo "THIS_RUN_TAG=${RELEASE_TAG}"
+            echo "THIS_RUN_TAG_OBJECT=$(git rev-parse "refs/tags/${RELEASE_TAG}")"
+          } >> "$GITHUB_ENV"
+
+          {
+            echo "trunk_sha=${TRUNK_SHA}"
+            echo "tag_object=$(git rev-parse "refs/tags/${RELEASE_TAG}")"
+          } >> "$GITHUB_OUTPUT"
+          echo "${TRUNK_BRANCH} is ${TRUNK_SHA}, tagged ${RELEASE_TAG}."
+
+      - name: Merge the release back into the base branch
+        id: base
+        if: ${{ steps.gates.outputs.passed == 'true' }}
+        shell: bash
+        env:
+          RELEASE_TYPE: ${{ inputs.release-type }}
+          RELEASE_VERSION: ${{ steps.inputs.outputs.release_version }}
+          RELEASE_BRANCH: ${{ steps.inputs.outputs.release_branch }}
+          BASE_BRANCH: ${{ steps.inputs.outputs.base_branch }}
+          NEXT_SNAPSHOT_VERSION: ${{ steps.inputs.outputs.next_snapshot_version }}
+          EXPECTED_BASE_TIP: ${{ steps.context.outputs.base_tip }}
+          ORIGINAL_TIP: ${{ steps.candidate.outputs.original_tip }}
+        run: |
+          set -euo pipefail
+
+          fail() { echo "::error::$1" >&2; exit 1; }
+
+          git fetch --quiet origin
+
+          ACTUAL_TIP="$(git rev-parse "origin/${BASE_BRANCH}")"
+          if [ "${ACTUAL_TIP}" != "${EXPECTED_BASE_TIP}" ]; then
+            fail "${BASE_BRANCH} moved from ${EXPECTED_BASE_TIP} to ${ACTUAL_TIP} during this run. The back-merge is unsafe. The trunk and the tag are already published."
+          fi
+
+          # Record the files the release source changed, before the merge, so
+          # that the hotfix warning below compares against the operator's work
+          # rather than against a trunk that already contains it.
+          SOURCE_FILES="$(git diff --name-only "${EXPECTED_BASE_TIP}...${ORIGINAL_TIP}" || true)"
+
+          git checkout --quiet -B "${BASE_BRANCH}" "origin/${BASE_BRANCH}"
+
+          # Base content wins a conflicting hunk, as Transform does.
+          git merge --no-ff -X ours "${RELEASE_BRANCH}" \
+            -m "Merge release branch ${RELEASE_BRANCH} into ${BASE_BRANCH}" ||
+            fail "Merging ${RELEASE_BRANCH} into ${BASE_BRANCH} could not complete under the agreed conflict preferences."
+
+          # Version metadata is set explicitly. Do not restore the whole old
+          # POM: that would discard non-conflicting dependency fixes.
+          if [ "${RELEASE_TYPE}" = standard ]; then
+            mvn -B versions:set -DnewVersion="${NEXT_SNAPSHOT_VERSION}" -DgenerateBackupPoms=false
+            SET_VERSION="${NEXT_SNAPSHOT_VERSION}"
+          else
+            # A hotfix keeps the base branch development version. The merge may
+            # have carried the release version in, so restore the base value.
+            # The project version is the first <version> after </parent>.
+            # Taking the first <version> in the file would read the parent
+            # izgw-bom version and set the base branch to it.
+            BASE_VERSION="$(git show "origin/${BASE_BRANCH}:pom.xml" |
+              sed -n '/<\/parent>/,$ s|.*<version>\(.*\)</version>.*|\1|p' | head -1)"
+            [ -n "${BASE_VERSION}" ] || fail "Could not read the development version from ${BASE_BRANCH}."
+            mvn -B versions:set -DnewVersion="${BASE_VERSION}" -DgenerateBackupPoms=false
+            SET_VERSION="${BASE_VERSION}"
+          fi
+
+          if [ -n "$(git status --porcelain -- pom.xml)" ]; then
+            git add -- pom.xml
+            git commit -m "chore: set development version to ${SET_VERSION}"
+          fi
+
+          git push origin "${BASE_BRANCH}"
+          BASE_SHA="$(git rev-parse HEAD)"
+          {
+            echo "THIS_RUN_PUSHED_BASE=1"
+            echo "THIS_RUN_BASE_BRANCH=${BASE_BRANCH}"
+            echo "THIS_RUN_BASE_SHA=${BASE_SHA}"
+            echo "THIS_RUN_BASE_PREVIOUS=${EXPECTED_BASE_TIP}"
+          } >> "$GITHUB_ENV"
+
+          # Report hotfix content the back-merge preference did not carry over.
+          # This is a warning, not a failure: the maintainer decides.
+          WARNINGS=""
+          if [ "${RELEASE_TYPE}" = hotfix ] && [ -n "${SOURCE_FILES}" ]; then
+            while read -r f; do
+              [ -n "${f}" ] || continue
+
+              # docs/release is regenerated every release, so a difference
+              # there carries no operator intent.
+              case "${f}" in
+                docs/release/*) continue ;;
+              esac
+
+              HOTFIX_BLOB="$(git show "${ORIGINAL_TIP}:${f}" 2>/dev/null || true)"
+              MERGED_BLOB="$(git show "HEAD:${f}" 2>/dev/null || true)"
+
+              if [ "${f}" = pom.xml ]; then
+                # The project version is deliberately different here, so mask
+                # that one value in each blob before comparing. Do not mask
+                # every <version> element: that would also erase the parent and
+                # dependency versions and hide a dropped dependency change,
+                # which is the case this warning exists to catch.
+                #
+                # The project version is the first <version> after </parent>.
+                HOTFIX_POM_VERSION="$(printf '%s\n' "${HOTFIX_BLOB}" |
+                  sed -n '/<\/parent>/,$ s|.*<version>\(.*\)</version>.*|\1|p' | head -1)"
+                if [ -n "${HOTFIX_POM_VERSION}" ]; then
+                  HOTFIX_BLOB="$(printf '%s\n' "${HOTFIX_BLOB}" |
+                    sed "s|<version>${HOTFIX_POM_VERSION}</version>|<version>MASKED</version>|")"
+                fi
+                MERGED_BLOB="$(printf '%s\n' "${MERGED_BLOB}" |
+                  sed "s|<version>${SET_VERSION}</version>|<version>MASKED</version>|")"
+              fi
+
+              if [ "${HOTFIX_BLOB}" != "${MERGED_BLOB}" ]; then
+                WARNINGS="${WARNINGS} ${f}"
+              fi
+            done <<EOF
+          ${SOURCE_FILES}
+          EOF
+          fi
+          if [ -n "${WARNINGS}" ]; then
+            echo "::warning::The back-merge into ${BASE_BRANCH} did not carry these hotfix paths in full:${WARNINGS}. Review each one and apply it to ${BASE_BRANCH} by hand. The release itself is not failed by this warning."
+            echo "hotfix_warnings=${WARNINGS}" >> "$GITHUB_OUTPUT"
+          else
+            echo "hotfix_warnings=" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "base_sha=${BASE_SHA}" >> "$GITHUB_OUTPUT"
+          echo "${BASE_BRANCH} is ${BASE_SHA} with development version ${SET_VERSION}."
+
+      # ==================================================== documentation
+      - name: Compute the site destinations
+        id: site
+        if: ${{ steps.gates.outputs.passed == 'true' }}
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ steps.inputs.outputs.release_version }}
+          DRY_RUN: ${{ inputs.dry-run }}
+        run: |
+          set -euo pipefail
+          # A dry-run publishes under test/ so that it cannot replace the real
+          # current or versioned documentation.
+          if [ "${DRY_RUN}" = "true" ]; then
+            PREFIX="test/"
+          else
+            PREFIX=""
+          fi
+          {
+            echo "current_dir=${PREFIX}current"
+            echo "versioned_dir=${PREFIX}v${RELEASE_VERSION}"
+          } >> "$GITHUB_OUTPUT"
+          echo "Site destinations: ${PREFIX}current and ${PREFIX}v${RELEASE_VERSION}"
+
+      # The versioned path is vX.Y.Z. maven.yml used the complete Maven version,
+      # for example v2.16.0-IZGW-RELEASE. Existing directories keep their names.
+      - name: Publish the site to the current path
+        if: ${{ steps.gates.outputs.passed == 'true' }}
+        uses: peaceiris/actions-gh-pages@v4.1.0
+        with:
+          github_token: ${{ steps.app-token-publish.outputs.token }}
+          publish_dir: ./target/site
+          destination_dir: ${{ steps.site.outputs.current_dir }}
+
+      - name: Publish the site to the versioned path
+        if: ${{ steps.gates.outputs.passed == 'true' }}
+        uses: peaceiris/actions-gh-pages@v4.1.0
+        with:
+          github_token: ${{ steps.app-token-publish.outputs.token }}
+          publish_dir: ./target/site
+          destination_dir: ${{ steps.site.outputs.versioned_dir }}
+
+      - name: Record the published sites
+        if: ${{ steps.gates.outputs.passed == 'true' }}
+        shell: bash
+        env:
+          CURRENT_DIR: ${{ steps.site.outputs.current_dir }}
+          VERSIONED_DIR: ${{ steps.site.outputs.versioned_dir }}
+        run: |
+          set -euo pipefail
+          {
+            echo "THIS_RUN_PUBLISHED_PAGES=1"
+            echo "THIS_RUN_PAGES_PATHS=${CURRENT_DIR} ${VERSIONED_DIR}"
+          } >> "$GITHUB_ENV"
+          echo "Published Pages under ${CURRENT_DIR} and ${VERSIONED_DIR}."
+
+      # The final public completion marker. A real release is published, not
+      # drafted; a dry-run is a draft.
+      # Record the attempt before the release is created. softprops creates the
+      # release and then uploads the assets, so a failed upload leaves a real
+      # release behind while the step reports failure. Without this flag the
+      # confirmation step below never runs and cleanup cannot see it.
+      - name: Record the GitHub Release attempt
+        if: ${{ steps.gates.outputs.passed == 'true' }}
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.inputs.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          {
+            echo "THIS_RUN_ATTEMPTED_GH_RELEASE=1"
+            echo "THIS_RUN_GH_RELEASE_TAG=${RELEASE_TAG}"
+          } >> "$GITHUB_ENV"
+          echo "About to create the GitHub Release for ${RELEASE_TAG}."
+
+      - name: Create the GitHub Release
+        id: github-release
+        if: ${{ steps.gates.outputs.passed == 'true' }}
+        uses: softprops/action-gh-release@v3
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token-publish.outputs.token }}
+        with:
+          tag_name: ${{ steps.inputs.outputs.release_tag }}
+          name: IZ Gateway ${{ steps.inputs.outputs.release_tag }} Release
+          body_path: ${{ steps.docs.outputs.notes_body }}
+          draft: ${{ inputs.dry-run }}
+          prerelease: false
+          files: |
+            ${{ steps.docs.outputs.attach_dir }}/*.md
+
+      - name: Confirm the GitHub Release and record it
+        if: ${{ steps.gates.outputs.passed == 'true' }}
+        shell: bash
+        env:
+          RELEASE_ID: ${{ steps.github-release.outputs.id }}
+          RELEASE_URL: ${{ steps.github-release.outputs.url }}
+          RELEASE_TAG: ${{ steps.inputs.outputs.release_tag }}
+          DRY_RUN: ${{ inputs.dry-run }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${RELEASE_ID}" ]; then
+            echo "::error::The GitHub Release for ${RELEASE_TAG} reported no id, so this run cannot claim it or clean it up. Check the release by hand."
+            exit 1
+          fi
+          {
+            echo "THIS_RUN_CREATED_GH_RELEASE=1"
+            echo "THIS_RUN_GH_RELEASE_ID=${RELEASE_ID}"
+          } >> "$GITHUB_ENV"
+
+          if [ "${DRY_RUN}" = "true" ]; then
+            echo "Created draft GitHub Release ${RELEASE_ID} for ${RELEASE_TAG}: ${RELEASE_URL}"
+          else
+            echo "Published GitHub Release ${RELEASE_ID} for ${RELEASE_TAG}: ${RELEASE_URL}"
+          fi
+
+      # ==================================================== failure cleanup
+      #
+      # Runs only on failure. It reverses Git writes that this run recorded,
+      # and only while the remote still matches what this run pushed.
+      #
+      # It never touches registry images, published Pages, or the dev service:
+      # those are reported for manual recovery instead.
+      - name: Refresh the release App token for cleanup
+        id: app-token-cleanup
+        if: ${{ failure() }}
+        continue-on-error: true
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.RELEASE_AUTOMATION_APP_ID }}
+          private-key: ${{ secrets.RELEASE_AUTOMATION_APP_KEY }}
+
+      - name: Clean up this run's Git writes
+        if: ${{ failure() }}
+        shell: bash
+        env:
+          APP_TOKEN: ${{ steps.app-token-cleanup.outputs.token }}
+          REPOSITORY: ${{ github.repository }}
+          RELEASE_TYPE: ${{ inputs.release-type }}
+          GH_TOKEN: ${{ steps.app-token-cleanup.outputs.token }}
+        run: |
+          # Deliberately not `set -e`. Every recovery attempt must be tried and
+          # reported, and a failed one must not hide the others.
+          set -uo pipefail
+
+          UNRESOLVED=""
+          note_unresolved() {
+            UNRESOLVED="${UNRESOLVED}
+          - $1"
+            echo "::warning::Manual recovery needed: $1"
+          }
+
+          if [ -z "${APP_TOKEN}" ]; then
+            echo "::error::Could not refresh the release App token, so no Git cleanup was attempted."
+            note_unresolved "Every Git object this run created is still in place. Review the steps above and remove them by hand."
+            printf 'CLEANUP_UNRESOLVED<<CLEANUP_EOF\n%s\nCLEANUP_EOF\n' "${UNRESOLVED}" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          git remote set-url origin "https://x-access-token:${APP_TOKEN}@github.com/${REPOSITORY}.git"
+          git fetch --quiet origin
+
+          # remote_matches REF EXPECTED_OBJECT
+          remote_matches() {
+            local ref="$1" expected="$2" actual
+            actual="$(git ls-remote origin "$ref" | awk 'NR==1{print $1}')"
+            [ -n "$actual" ] && [ "$actual" = "$expected" ]
+          }
+
+          # 1. The base branch update, reverted first because it came last.
+          if [ "${THIS_RUN_PUSHED_BASE:-}" = "1" ]; then
+            if remote_matches "refs/heads/${THIS_RUN_BASE_BRANCH}" "${THIS_RUN_BASE_SHA}"; then
+              if git push origin "+${THIS_RUN_BASE_PREVIOUS}:refs/heads/${THIS_RUN_BASE_BRANCH}"; then
+                echo "Restored ${THIS_RUN_BASE_BRANCH} to ${THIS_RUN_BASE_PREVIOUS}."
+              else
+                note_unresolved "Could not restore ${THIS_RUN_BASE_BRANCH} to ${THIS_RUN_BASE_PREVIOUS}."
+              fi
+            else
+              note_unresolved "${THIS_RUN_BASE_BRANCH} no longer matches ${THIS_RUN_BASE_SHA}. Unrelated work arrived, so it was left intact."
+            fi
+          fi
+
+          # 2. The trunk. A trunk this run created is deleted; a trunk it
+          #    advanced is reset to the recorded previous tip.
+          if [ "${THIS_RUN_CREATED_TRUNK:-}" = "1" ]; then
+            if remote_matches "refs/heads/${THIS_RUN_TRUNK_BRANCH}" "${THIS_RUN_TRUNK_SHA}"; then
+              if git push origin ":refs/heads/${THIS_RUN_TRUNK_BRANCH}"; then
+                echo "Removed ${THIS_RUN_TRUNK_BRANCH}, which this run created."
+              else
+                note_unresolved "Could not remove the ${THIS_RUN_TRUNK_BRANCH} branch that this run created."
+              fi
+            else
+              note_unresolved "${THIS_RUN_TRUNK_BRANCH} no longer matches ${THIS_RUN_TRUNK_SHA}. It was left intact."
+            fi
+          elif [ "${THIS_RUN_PUSHED_TRUNK:-}" = "1" ]; then
+            if remote_matches "refs/heads/${THIS_RUN_TRUNK_BRANCH}" "${THIS_RUN_TRUNK_SHA}"; then
+              if git push origin "+${THIS_RUN_TRUNK_PREVIOUS}:refs/heads/${THIS_RUN_TRUNK_BRANCH}"; then
+                echo "Restored ${THIS_RUN_TRUNK_BRANCH} to ${THIS_RUN_TRUNK_PREVIOUS}."
+              else
+                note_unresolved "Could not restore ${THIS_RUN_TRUNK_BRANCH} to ${THIS_RUN_TRUNK_PREVIOUS}."
+              fi
+            else
+              note_unresolved "${THIS_RUN_TRUNK_BRANCH} no longer matches ${THIS_RUN_TRUNK_SHA}. Unrelated work arrived, so it was left intact."
+            fi
+          fi
+
+          # 3. The GitHub Release. Prefer the recorded id, so a release this run
+          #    did not create can never be removed by a matching tag name.
+          if [ "${THIS_RUN_CREATED_GH_RELEASE:-}" = "1" ]; then
+            if gh api -X DELETE "repos/${REPOSITORY}/releases/${THIS_RUN_GH_RELEASE_ID}"; then
+              echo "Removed GitHub Release ${THIS_RUN_GH_RELEASE_ID}, which this run created."
+            else
+              note_unresolved "Could not remove GitHub Release ${THIS_RUN_GH_RELEASE_ID}."
+            fi
+          elif [ "${THIS_RUN_ATTEMPTED_GH_RELEASE:-}" = "1" ]; then
+            # Creation was attempted but never confirmed, so the id is unknown.
+            # This happens when the release is created and an asset upload then
+            # fails. Resolving by tag is safe here: the identity check at the
+            # start of this run proved that no release existed for this tag, and
+            # the shared dev lock prevents a concurrent release run.
+            set +e
+            LOOKUP="$(gh api "repos/${REPOSITORY}/releases" \
+              --jq ".[] | select(.tag_name == \"${THIS_RUN_GH_RELEASE_TAG}\") | .id" 2>&1)"
+            LOOKUP_STATUS=$?
+            set -e
+            if [ "${LOOKUP_STATUS}" -ne 0 ]; then
+              note_unresolved "Could not determine whether a GitHub Release exists for ${THIS_RUN_GH_RELEASE_TAG}. Check it by hand. Output: ${LOOKUP}"
+            elif [ -z "${LOOKUP}" ]; then
+              echo "No GitHub Release exists for ${THIS_RUN_GH_RELEASE_TAG}. Nothing to remove."
+            elif [ "$(printf '%s\n' "${LOOKUP}" | grep -c .)" -ne 1 ]; then
+              note_unresolved "Found more than one GitHub Release for ${THIS_RUN_GH_RELEASE_TAG}: $(printf '%s' "${LOOKUP}" | tr '\n' ' '). Ownership is unclear, so none were removed."
+            elif gh api -X DELETE "repos/${REPOSITORY}/releases/${LOOKUP}"; then
+              echo "Removed GitHub Release ${LOOKUP} for ${THIS_RUN_GH_RELEASE_TAG}, which this run created but did not finish."
+            else
+              note_unresolved "A GitHub Release (${LOOKUP}) exists for ${THIS_RUN_GH_RELEASE_TAG} from this run and could not be removed."
+            fi
+          fi
+
+          # 4. The version tag, compared as an exact object before deletion.
+          if [ "${THIS_RUN_PUSHED_TAG:-}" = "1" ]; then
+            if remote_matches "refs/tags/${THIS_RUN_TAG}" "${THIS_RUN_TAG_OBJECT}"; then
+              if git push origin ":refs/tags/${THIS_RUN_TAG}"; then
+                echo "Removed tag ${THIS_RUN_TAG}, which this run created."
+              else
+                note_unresolved "Could not remove tag ${THIS_RUN_TAG}."
+              fi
+            else
+              note_unresolved "Tag ${THIS_RUN_TAG} does not match the object this run pushed. It was left intact."
+            fi
+          fi
+
+          # 5. The candidate branch. A standard release branch is run-owned. A
+          #    hotfix branch belongs to the operator and is always preserved.
+          if [ "${THIS_RUN_CREATED_RELEASE_BRANCH:-}" = "1" ]; then
+            if remote_matches "refs/heads/${THIS_RUN_CANDIDATE_BRANCH}" "${THIS_RUN_CANDIDATE_SHA}"; then
+              if git push origin ":refs/heads/${THIS_RUN_CANDIDATE_BRANCH}"; then
+                echo "Removed ${THIS_RUN_CANDIDATE_BRANCH}, which this run created."
+              else
+                note_unresolved "Could not remove ${THIS_RUN_CANDIDATE_BRANCH}."
+              fi
+            else
+              note_unresolved "${THIS_RUN_CANDIDATE_BRANCH} no longer matches ${THIS_RUN_CANDIDATE_SHA}. It was left intact."
+            fi
+          elif [ "${RELEASE_TYPE}" = hotfix ] && [ -n "${THIS_RUN_CANDIDATE_BRANCH:-}" ]; then
+            echo "::notice::${THIS_RUN_CANDIDATE_BRANCH} belongs to the operator and is preserved for investigation and retry."
+          fi
+
+          # 6. External effects are never rolled back automatically.
+          if [ "${THIS_RUN_PUSHED_IMAGES:-}" = "1" ]; then
+            note_unresolved "Images were published to GHCR and dev ECR, including the latest alias, and were not rolled back. Candidate digest ${THIS_RUN_CANDIDATE_DIGEST:-unknown}."
+          fi
+          if [ "${THIS_RUN_ADVANCED_GOOD:-}" = "1" ]; then
+            note_unresolved "The dev ECR good tag was advanced to ${THIS_RUN_CANDIDATE_DIGEST:-unknown} and was not rolled back."
+          fi
+          if [ "${THIS_RUN_DELIVERED_APHL:-}" = "1" ]; then
+            note_unresolved "The image was delivered to APHL as ${THIS_RUN_APHL_TAG:-unknown} and was not withdrawn."
+          fi
+          if [ "${THIS_RUN_PUBLISHED_PAGES:-}" = "1" ]; then
+            note_unresolved "Pages were published under ${THIS_RUN_PAGES_PATHS:-unknown} and were not reverted."
+          fi
+          if [ "${THIS_RUN_DEPLOYED_DEV:-}" = "1" ]; then
+            note_unresolved "Shared dev is running this candidate (${THIS_RUN_DEPLOYMENT_IDS:-unknown}). The previous deployment was not restored."
+          fi
+
+          if [ -z "${UNRESOLVED}" ]; then
+            echo "Cleanup completed. No unresolved state."
+          fi
+          printf 'CLEANUP_UNRESOLVED<<CLEANUP_EOF\n%s\nCLEANUP_EOF\n' "${UNRESOLVED}" >> "$GITHUB_ENV"
+
+      # ========================================================== summary
+      - name: Summary
+        if: ${{ always() }}
+        shell: bash
+        env:
+          RELEASE_TYPE: ${{ inputs.release-type }}
+          RELEASE_VERSION: ${{ inputs.release-version }}
+          RELEASE_TAG: ${{ steps.inputs.outputs.release_tag }}
+          RELEASE_BRANCH: ${{ steps.inputs.outputs.release_branch }}
+          BASE_BRANCH: ${{ steps.inputs.outputs.base_branch }}
+          TRUNK_BRANCH: ${{ steps.inputs.outputs.trunk_branch }}
+          NEXT_SNAPSHOT_VERSION: ${{ steps.inputs.outputs.next_snapshot_version }}
+          DRY_RUN: ${{ inputs.dry-run }}
+          SOURCE_REF: ${{ github.ref_name }}
+          JOB_STATUS: ${{ job.status }}
+          GATES_PASSED: ${{ steps.gates.outputs.passed }}
+          IMAGE_TAG: ${{ steps.image.outputs.image_tag }}
+          CANDIDATE_DIGEST: ${{ steps.image-push.outputs.candidate_digest }}
+          CANDIDATE_SHA: ${{ steps.candidate.outputs.candidate_sha }}
+          TRUNK_SHA: ${{ steps.trunk.outputs.trunk_sha }}
+          BASE_SHA: ${{ steps.base.outputs.base_sha }}
+          HOTFIX_WARNINGS: ${{ steps.base.outputs.hotfix_warnings }}
+          NOTES_SOURCE: ${{ steps.notes.outputs.notes_source }}
+          BOM_VERSION: ${{ steps.dependencies.outputs.bom_version }}
+          CORE_VERSION: ${{ steps.dependencies.outputs.core_version }}
+          RELEASE_URL: ${{ steps.github-release.outputs.url }}
+          PAGES_CURRENT: ${{ steps.site.outputs.current_dir }}
+          PAGES_VERSIONED: ${{ steps.site.outputs.versioned_dir }}
+        run: |
+          set -uo pipefail
+
+          # Only report identities that exist. A failure before the image build
+          # must not invent one.
+          say() { printf '%s\n' "$1" >> "$GITHUB_STEP_SUMMARY"; }
+
+          say "## ${RELEASE_TYPE} release ${RELEASE_VERSION} - ${JOB_STATUS}"
+          say ""
+          say "| Item | Value |"
+          say "| --- | --- |"
+          say "| Type | ${RELEASE_TYPE} |"
+          say "| Version | ${RELEASE_VERSION} |"
+          say "| Dry-run | ${DRY_RUN} |"
+          say "| Dispatched from | ${SOURCE_REF} |"
+          say "| Base branch | ${BASE_BRANCH:-<not validated>} |"
+          say "| Trunk branch | ${TRUNK_BRANCH:-<not validated>} |"
+          say "| Candidate branch | ${RELEASE_BRANCH:-<not created>} |"
+          say "| izgw-bom | ${BOM_VERSION:-<not checked>} |"
+          say "| izgw-core | ${CORE_VERSION:-<not checked>} |"
+          say "| Candidate commit | ${CANDIDATE_SHA:-<not created>} |"
+          say "| Image tag | ${IMAGE_TAG:-<not built>} |"
+          say "| Image digest | ${CANDIDATE_DIGEST:-<not published>} |"
+          say "| Gates passed | ${GATES_PASSED:-false} |"
+          say "| Notes source | ${NOTES_SOURCE:-<not generated>} |"
+          say "| Trunk commit | ${TRUNK_SHA:-<not published>} |"
+          say "| Version tag | ${THIS_RUN_TAG:-<not created>} |"
+          say "| Base commit | ${BASE_SHA:-<not published>} |"
+          say "| Next development version | ${NEXT_SNAPSHOT_VERSION:-<not applicable>} |"
+          say "| GitHub Release | ${RELEASE_URL:-<not created>} |"
+          say ""
+
+          if [ "${JOB_STATUS}" = "success" ]; then
+            say "### Published outputs"
+            say ""
+            say "- Pages: \`${PAGES_CURRENT}\` and \`${PAGES_VERSIONED}\`"
+            if [ "${THIS_RUN_DELIVERED_APHL:-}" = "1" ]; then
+              say "- APHL image: \`${THIS_RUN_APHL_TAG}\`"
+            else
+              say "- APHL image: not delivered"
+            fi
+            say "- dev ECR \`good\`: ${CANDIDATE_DIGEST:-<unchanged>}"
+          else
+            say "### This release failed"
+            say ""
+            say "The failed step is shown in the run log above."
+            if [ -n "${CLEANUP_UNRESOLVED:-}" ]; then
+              say "#### Remaining state and manual recovery"
+              say "${CLEANUP_UNRESOLVED}"
+            else
+              say "No unresolved state was recorded."
+            fi
+          fi
+
+          if [ -n "${HOTFIX_WARNINGS:-}" ]; then
+            say ""
+            say "### Hotfix review needed"
+            say ""
+            say "The back-merge into \`${BASE_BRANCH}\` did not carry these paths in full:"
+            say ""
+            say "\`\`\`"
+            say "${HOTFIX_WARNINGS}"
+            say "\`\`\`"
+            say ""
+            say "Apply each one to \`${BASE_BRANCH}\` by hand. This warning does not fail the release."
+          fi
+
+          if [ "${DRY_RUN}" = "true" ]; then
+            say ""
+            say "### Dry-run side effects"
+            say ""
+            say "A dry-run is a rehearsal, not a simulation. It has:"
+            say ""
+            say "- deployed to **shared dev** and replaced whatever ran there"
+            say "- written the **real** \`${RELEASE_TAG}\` tag if it reached the tagging step"
+            say "- written **real** GHCR and dev ECR images, including the \`latest\` alias"
+            say "- published Pages under \`test/\` and drafted the GitHub Release"
+            say "- skipped APHL delivery"
+          fi
+
+          cat "$GITHUB_STEP_SUMMARY"
