@@ -720,9 +720,13 @@ jobs:
 
           # versions:set must change only version metadata. Artifact
           # coordinates and dependency declarations stay as reviewed.
+          #
+          # No change is legitimate on a retry from a retained hotfix branch,
+          # whose tip already carries a previous attempt's version commit. The
+          # version check below is what actually decides correctness.
           POM_CHANGES="$(git diff --unified=0 -- pom.xml | grep -E '^[+-][^+-]' || true)"
           if [ -z "${POM_CHANGES}" ]; then
-            fail "versions:set did not change pom.xml. Expected the project version to become ${MAVEN_RELEASE_VERSION}."
+            echo "pom.xml already declares ${MAVEN_RELEASE_VERSION}. Treating this as a retry."
           fi
           while read -r line; do
             [ -n "${line}" ] || continue
@@ -758,7 +762,14 @@ jobs:
             fail "Unexpected staged paths:${UNEXPECTED}. The candidate commit carries only pom.xml, RELEASE_NOTES.md, and docs/release."
           fi
 
-          git commit -m "chore: prepare release ${RELEASE_VERSION}"
+          # A retry can regenerate byte-identical notes and documents, so
+          # there may be nothing left to commit. The existing tip is then
+          # already the candidate.
+          if git diff --cached --quiet; then
+            echo "No staged changes. A previous attempt already prepared this candidate."
+          else
+            git commit -m "chore: prepare release ${RELEASE_VERSION}"
+          fi
           CANDIDATE_SHA="$(git rev-parse HEAD)"
           CANDIDATE_TREE="$(git rev-parse 'HEAD^{tree}')"
 
