@@ -5,19 +5,19 @@
         "dataSource": [
 {
                 "name": "NVD API Last Checked",
-                "timestamp": "2026-09-17T15:35:53Z"
+                "timestamp": "2026-09-18T15:04:17Z"
             }
 ,{
                 "name": "NVD API Last Modified",
-                "timestamp": "2026-09-17T15:26:15Z"
+                "timestamp": "2026-09-18T14:52:30Z"
             }
 ,{
                 "name": "NVD Cache Last Checked",
-                "timestamp": "2026-09-17T15:35:53Z"
+                "timestamp": "2026-09-18T15:04:17Z"
             }
 ,{
                 "name": "NVD Cache Last Modified",
-                "timestamp": "2026-09-17T15:26:15Z"
+                "timestamp": "2026-09-18T14:52:30Z"
             }
         ]
 
@@ -25,7 +25,7 @@
     },
     "projectInfo": {
         "name": "IZ",
-        "reportDate": "2026-09-18T14:34:31.300224466Z",
+        "reportDate": "2026-09-18T16:43:49.717519400Z",
         "credits": {
             "NVD": "This product uses the NVD API but is not endorsed or certified by the NVD. This report contains data retrieved from the National Vulnerability Database: https://nvd.nist.gov",
             "CISA": "This report may contain data retrieved from the CISA Known Exploited Vulnerability Catalog: https://www.cisa.gov/known-exploited-vulnerabilities-catalog",
@@ -37,11 +37,11 @@
     "dependencies": [
 {
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar (shaded: gov.cdc.izgw:izgw-hub:99.0.0-IZGW-RELEASE)",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/META-INF\/maven\/gov.cdc.izgw\/izgw-hub\/pom.xml"
-,"md5": "35e0bda8b21f875e3e38f918cbbf6737",
-            "sha1": "0e5ab8e5999cb46d02bf29b8005bcb537fa4f435",
-            "sha256": "82964aa9d9cedaaa9120953da8ac3c485b8917e62b566f2517f24f954fe04b18","description": "IZ Gateway Hub"            ,"evidenceCollected": {
+            "fileName": "99.0.1-RELEASE-3.jar (shaded: gov.cdc.izgw:izgw-hub:99.0.1-IZGW-RELEASE)",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/META-INF\/maven\/gov.cdc.izgw\/izgw-hub\/pom.xml"
+,"md5": "55b8e84ff16ad14f948e38898e9767e2",
+            "sha1": "3c54c0287bc88d99102d3ab07acb51248b7ade90",
+            "sha256": "88197f6bac007e53b3bcac286eb165b121a7834ec5aa6d6c010a9e8c75a78367","description": "IZ Gateway Hub"            ,"evidenceCollected": {
                 "vendorEvidence": [
 {
                             "type": "vendor",
@@ -108,36 +108,36 @@
                         "confidence": "LOW",
                         "source": "pom",
                         "name": "parent-version",
-                        "value": "99.0.0-IZGW-RELEASE"
+                        "value": "99.0.1-IZGW-RELEASE"
                     }
 ,                    {
                         "type": "version",
                         "confidence": "HIGHEST",
                         "source": "pom",
                         "name": "version",
-                        "value": "99.0.0-IZGW-RELEASE"
+                        "value": "99.0.1-IZGW-RELEASE"
                     }
                 ]
             }
                 ,"packages": [
                     {
-                        "id": "pkg:maven\/gov.cdc.izgw\/izgw-hub@99.0.0-IZGW-RELEASE"
+                        "id": "pkg:maven\/gov.cdc.izgw\/izgw-hub@99.0.1-IZGW-RELEASE"
 ,"confidence": "HIGH"                    }
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar"
-,"md5": "9fe1cd1faac175f6b4f139d3c2822de5",
-            "sha1": "5c5f407cbf470d4785290678564eeadf67cba659",
-            "sha256": "c083f32ab0c3bd313a4acab6122438d4bb000c9fa40698e27db1b1809d767138"            ,"evidenceCollected": {
+            "fileName": "99.0.1-RELEASE-3.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar"
+,"md5": "ce9139ce25ee69b4e84f538530dbee0c",
+            "sha1": "30b5d67df89db34109bc66f00963ed8f8cfe2a46",
+            "sha256": "0ea1c7cb5b7a42b7c0b33921ee50322181e8b5809686edfac857a70c210218d0"            ,"evidenceCollected": {
                 "vendorEvidence": [
 {
                             "type": "vendor",
                             "confidence": "HIGH",
                             "source": "file",
                             "name": "name",
-                            "value": "99.0.0-RELEASE-10"
+                            "value": "99.0.1-RELEASE-3"
                         }
 ,{
                             "type": "vendor",
@@ -202,7 +202,7 @@
                             "confidence": "HIGH",
                             "source": "file",
                             "name": "name",
-                            "value": "99.0.0-RELEASE-10"
+                            "value": "99.0.1-RELEASE-3"
                     }
 ,{
                             "type": "product",
@@ -288,14 +288,14 @@
                         "confidence": "MEDIUM",
                         "source": "file",
                         "name": "name",
-                        "value": "99.0.0-RELEASE-10"
+                        "value": "99.0.1-RELEASE-3"
                     }
 ,                    {
                         "type": "version",
                         "confidence": "HIGH",
                         "source": "file",
                         "name": "version",
-                        "value": "99.0.0.release"
+                        "value": "99.0.1.release"
                     }
 ,                    {
                         "type": "version",
@@ -337,8 +337,8 @@
 
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: HikariCP-6.3.3.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/HikariCP-6.3.3.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: HikariCP-6.3.3.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/HikariCP-6.3.3.jar"
 ,"md5": "a5c7bb14f24a598a87118c9f73641466",
             "sha1": "7c5aec1e47a97ff40977e0193018865304ea9585",
             "sha256": "709f378c05756280939ce50fc1b1f1a53bb8e1899dc1b249f21f12703640b48b","description": "Ultimate JDBC Connection Pool","license": "The Apache Software License, Version 2.0: https:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -608,8 +608,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: angus-activation-2.0.3.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/angus-activation-2.0.3.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: angus-activation-2.0.3.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/angus-activation-2.0.3.jar"
 ,"md5": "ad20392145690b36b4f950fe31a31a2a",
             "sha1": "7f80607ea5014fef0b1779e6c33d63a88a45a563",
             "sha256": "a6bd35c538cf90fff941ad6258c40c08fca0b5c9c3f536c657114f27ce0527a7","description": " Implementation","license": "http:\/\/www.eclipse.org\/org\/documents\/edl-v10.php"            ,"evidenceCollected": {
@@ -865,8 +865,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: annotations-2.54.14.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/annotations-2.54.14.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: annotations-2.54.14.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/annotations-2.54.14.jar"
 ,"md5": "3c329b45977b975cf9c435ad941a487a",
             "sha1": "b24e6cb1ca3073a405843887f35ba4b15e4fffde",
             "sha256": "448594beafa4aa38a50335470cac9d2a344d6d9619fb7f2f4f551677e23d250c"            ,"evidenceCollected": {
@@ -1056,8 +1056,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: annotations-24.0.1.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/annotations-24.0.1.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: annotations-24.0.1.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/annotations-24.0.1.jar"
 ,"md5": "63ebd6140ac340babaf89a754c359596",
             "sha1": "13c5c75c4206580aa4d683bffee658caae6c9f43",
             "sha256": "61666dbce7e42e6c85b43c04fcfb8293a21dcb55b3c80e869270ce42c01a6b35"            ,"evidenceCollected": {
@@ -1134,8 +1134,8 @@
 
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: antlr4-runtime-4.13.2.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/antlr4-runtime-4.13.2.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: antlr4-runtime-4.13.2.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/antlr4-runtime-4.13.2.jar"
 ,"md5": "eecf1908f0cfff10f8bb82878b5ca401",
             "sha1": "fc3db6d844df652a3d5db31c87fa12757f13691d",
             "sha256": "dd3e8a13a2d669bf84fb8d834de35ce4875f27157698d206241ec8488aadcaf7","description": "The ANTLR 4 Runtime","license": "https:\/\/www.antlr.org\/license.html"            ,"evidenceCollected": {
@@ -1356,8 +1356,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: apache5-client-2.54.14.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/apache5-client-2.54.14.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: apache5-client-2.54.14.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/apache5-client-2.54.14.jar"
 ,"md5": "d0f13d437bb3181d52bad1513166ede4",
             "sha1": "f85b0fce63ae59563aba3208ea47a0fd80fd215c",
             "sha256": "a722220cb7185d72961af8ed60008bddb9c53132e2ea099896db7cdda50c8bf2"            ,"evidenceCollected": {
@@ -1547,8 +1547,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: auth-2.54.14.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/auth-2.54.14.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: auth-2.54.14.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/auth-2.54.14.jar"
 ,"md5": "c32a9f9cccdd816d6a647f481a07a733",
             "sha1": "c7a6fb5402be5d1facfd172461bbe7c0845d5f33",
             "sha256": "eeb76c97a4c272f3ad0c853cf8d32a6479b44a24392a78dcc0e9920af5f40f2f","description": "\n        The AWS SDK for Java - Auth module holds the classes that are used for authentication with services\n    "            ,"evidenceCollected": {
@@ -1752,15 +1752,15 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: aws-core-2.54.14.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/aws-core-2.54.14.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: aws-core-2.54.14.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/aws-core-2.54.14.jar"
 ,"md5": "7d49bd673438820fec6fa869de607e1c",
             "sha1": "fbdd597c72e2f0377c4f1f0e865622f5809039d8",
             "sha256": "fe48ba48c39d9567a877ecbdd940d57e2ae2a33e24a767192ab5ac6bd0778648","description": "The AWS SDK for Java - Core runtime module holds the classes that are used by the individual service\n        clients to interact with\n        Amazon Web Services. Users need to depend on aws-java-sdk artifact for accessing individual client classes.\n    "            ,"relatedDependencies": [
   {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: aws-json-protocol-2.54.14.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/aws-json-protocol-2.54.14.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: aws-json-protocol-2.54.14.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/aws-json-protocol-2.54.14.jar"
 ,"sha256": "7420968a0a20875ee9abbd3c48439b089cdda5bc10986c2c929ef9232b557088",
                     "sha1": "2498e0265b815892426df8d1f572a039777ed6e0",
                     "md5": "b1206db2c6dca758d194a3e72f76f1f5",
@@ -1972,8 +1972,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: bc-fips-2.1.3.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/bc-fips-2.1.3.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: bc-fips-2.1.3.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/bc-fips-2.1.3.jar"
 ,"md5": "fcd318de6b3707f37ef0f4f2c5195737",
             "sha1": "8cc7775e117fa5affb2f4bf8860fcef154a0def1",
             "sha256": "f55fc476ede820d5c03fe87e6ced5bb0095e1dc30b387445846a3ff0274f8c0e"            ,"evidenceCollected": {
@@ -2257,8 +2257,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: bcpkix-fips-2.1.9.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/bcpkix-fips-2.1.9.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: bcpkix-fips-2.1.9.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/bcpkix-fips-2.1.9.jar"
 ,"md5": "e295dcb91f2cab6403dc434013aa5cf9",
             "sha1": "722eaefa83fd8c53e1fc019bde25e353258ed22b",
             "sha256": "c31a4aeeda18f98b06deab50f6c5fa972eb87555ef134268be28eed95fadece7"            ,"evidenceCollected": {
@@ -2521,8 +2521,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: bctls-fips-2.1.20.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/bctls-fips-2.1.20.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: bctls-fips-2.1.20.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/bctls-fips-2.1.20.jar"
 ,"md5": "f81962ca7e492deb4d65f165c38e96de",
             "sha1": "9c0632a6c5ca09a86434cf5e02e72c221e1c930f",
             "sha256": "c058a438442ea46d8abdefc95e581ebf2834e50504bda925a945b1f4ceb48d86"            ,"evidenceCollected": {
@@ -2799,8 +2799,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: bcutil-fips-2.1.7.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/bcutil-fips-2.1.7.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: bcutil-fips-2.1.7.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/bcutil-fips-2.1.7.jar"
 ,"md5": "8292a996f5eb514d007c7e02b8b5ebad",
             "sha1": "c6b5c948e154766f1c4df54e0e2359537c43358a",
             "sha256": "a30e550f06dcfa0fd7da1e9a501f111421406fa237467522b3ca05187429832d"            ,"evidenceCollected": {
@@ -3077,8 +3077,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: byte-buddy-1.17.8.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/byte-buddy-1.17.8.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: byte-buddy-1.17.8.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/byte-buddy-1.17.8.jar"
 ,"md5": "ac7292226046cb7206b349e21affecfe",
             "sha1": "af5735f63d00ca47a9375fae5c7471a36331c6ed",
             "sha256": "2b5ddc8c1f4234bdb7cb45338a8e10a13e0e3ca473e91d5d821d681127ea8ba1","description": "\n        Byte Buddy is a Java library for creating Java classes at run time.\n        This artifact is a build of Byte Buddy with all ASM dependencies repackaged into its own name space.\n    ","license": "https:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -3292,8 +3292,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: caffeine-3.2.4.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/caffeine-3.2.4.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: caffeine-3.2.4.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/caffeine-3.2.4.jar"
 ,"md5": "04d655feb58be297a86fa2814a1f1ef8",
             "sha1": "c63b303adf59c733d2a96125ad6670e938a2c15d",
             "sha256": "9d9d2cfd681fd9272ded3d27c9930db12f89f732345975aa113ebc223bbf1224","description": "A high performance caching library","license": "https:\/\/www.apache.org\/licenses\/LICENSE-2.0"            ,"evidenceCollected": {
@@ -3447,15 +3447,15 @@
 
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: checksums-2.54.14.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/checksums-2.54.14.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: checksums-2.54.14.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/checksums-2.54.14.jar"
 ,"md5": "46b69ad898c0970f516b3975b875d674",
             "sha1": "3f6ac1b4960d745a6a68c2c12d59f10ee9442aa4",
             "sha256": "12b9c384ad4ac362b33944b8832b258627497fda51b12acbd93154f6a8dc482a","description": "\n        The AWS SDK for Java - Checksums module contains checksums and related items that are used by other modules in\n            the library.\n    "            ,"relatedDependencies": [
   {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: checksums-spi-2.54.14.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/checksums-spi-2.54.14.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: checksums-spi-2.54.14.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/checksums-spi-2.54.14.jar"
 ,"sha256": "25414e0705a8e922601000e19c0a95b6d3b5d8fbbf473f87d1cb63ad89bb8656",
                     "sha1": "31a5d7a34f7c27320d32d67fc4f0dbd09f9c2924",
                     "md5": "aac89f471cb75054f02fc77fcc7176bf",
@@ -3667,8 +3667,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: classmate-1.7.3.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/classmate-1.7.3.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: classmate-1.7.3.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/classmate-1.7.3.jar"
 ,"md5": "d1a4a85ab782827adfa82772e3b5f483",
             "sha1": "f61c7e7b81e9249b0f6a05914eff9d54fb09f4a0",
             "sha256": "75fbda45456f123fb6e2028a6189442d8d0730b357adce4c0a6d7e789f70669b","description": "Library for introspecting types with full generic information\n        including resolving of field and method types.\n    ","license": "Apache License, Version 2.0: https:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -4043,8 +4043,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: commons-beanutils-1.11.0.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/commons-beanutils-1.11.0.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: commons-beanutils-1.11.0.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/commons-beanutils-1.11.0.jar"
 ,"md5": "32ed51f196dfda19e0dc1ce53eeed29e",
             "sha1": "ac03ea606d13de04c2e4508227680faff151f491",
             "sha256": "9e44ba68ec9a3f21286fa2a8bbb003b735c0f69101bb43144b79f4f8aaa74709","description": "Apache Commons BeanUtils provides an easy-to-use but flexible wrapper around reflection and introspection.","license": "https:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -5249,8 +5249,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: commons-codec-1.18.0.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/commons-codec-1.18.0.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: commons-codec-1.18.0.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/commons-codec-1.18.0.jar"
 ,"md5": "2abf189633424b9292fd57a3192c0ed5",
             "sha1": "ee45d1cf6ec2cc2b809ff04b4dc7aec858e0df8f",
             "sha256": "ba005f304cef92a3dede24a38ad5ac9b8afccf0d8f75839d6c1338634cf7f6e4","description": "\n     The Apache Commons Codec component contains encoders and decoders for\n     formats such as Base16, Base32, Base64, digest, and Hexadecimal. In addition to these\n     widely used encoders and decoders, the codec package also maintains a\n     collection of phonetic encoding utilities.\n  ","license": "https:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -6108,8 +6108,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: commons-collections-3.2.2.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/commons-collections-3.2.2.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: commons-collections-3.2.2.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/commons-collections-3.2.2.jar"
 ,"md5": "f54a8510f834a1a57166970bfc982e94",
             "sha1": "8ad72fe39fa8c91eaaf12aadb21e0c3661fe26d5",
             "sha256": "eeeae917917144a68a741d4c0dff66aa5c5c5fd85593ff217bced3fc8ca783b8","description": "Types that extend and augment the Java Collections Framework.","license": "http:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -6712,8 +6712,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: commons-collections4-4.4.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/commons-collections4-4.4.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: commons-collections4-4.4.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/commons-collections4-4.4.jar"
 ,"md5": "4a37023740719b391f10030362c86be6",
             "sha1": "62ebe7544cb7164d87e0637a2a6a2bdc981395e8",
             "sha256": "1df8b9430b5c8ed143d7815e403e33ef5371b2400aadbe9bda0883762e0846d1","description": "The Apache Commons Collections package contains types that extend and augment the Java Collections Framework.","license": "https:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -7463,8 +7463,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: commons-compiler-3.1.12.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/commons-compiler-3.1.12.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: commons-compiler-3.1.12.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/commons-compiler-3.1.12.jar"
 ,"md5": "ef93103e6aa8e9255a38351ebb51ecc2",
             "sha1": "0501779107b06a981ff359eab7369ff7a2bf077e",
             "sha256": "17ea25d860225f4b59d0a512b4995f2e4711bdae5e15736cbcd5f6ce4dda8f7c","description": "The \"commons-compiler\" API, including the \"IExpressionEvaluator\", \"IScriptEvaluator\", \"IClassBodyEvaluator\" and \"ISimpleCompiler\" interfaces.","license": "https:\/\/spdx.org\/licenses\/BSD-3-Clause.html"            ,"evidenceCollected": {
@@ -7710,8 +7710,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: commons-fileupload-1.6.0.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/commons-fileupload-1.6.0.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: commons-fileupload-1.6.0.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/commons-fileupload-1.6.0.jar"
 ,"md5": "c10bfd8952ec31282fffd3b2625d87ce",
             "sha1": "2392704cccb4632b3ccd9b8cfbe2943cca6fc455",
             "sha256": "9383272c93569afeabedb16923a94a6dc8a5bd7a2f9f83bf326af4ee68434629","description": "\n    The Apache Commons FileUpload component provides a simple yet flexible means of adding support for multipart\n    file upload functionality to servlets and web applications.\n  ","license": "https:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -8566,8 +8566,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: commons-io-2.22.0.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/commons-io-2.22.0.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: commons-io-2.22.0.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/commons-io-2.22.0.jar"
 ,"md5": "f91d54bd47c42456b4a5ae62eed85565",
             "sha1": "5b1e18bc0ad651ed878029d83f88d9c8189fd51e",
             "sha256": "2b9a7b1f726fb86216dbd2c8321eabe0221dbd5b1be81c18e1cb53811b104758","description": "\nThe Apache Commons IO library contains utility classes, stream implementations, file filters,\nfile comparators, endian transformation classes, and much more.\n  ","license": "https:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -9471,8 +9471,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: commons-lang3-3.20.0.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/commons-lang3-3.20.0.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: commons-lang3-3.20.0.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/commons-lang3-3.20.0.jar"
 ,"md5": "4b29562ded527aa074e1d44f8646dac5",
             "sha1": "65897b3e5731220962e659e001904af3c3cbeba9",
             "sha256": "69e5c9fa35da7a51a5fd2099dfe56a2d8d32cf233e2f6d770e796146440263f4","description": "\n  Apache Commons Lang, a package of Java utility classes for the\n  classes that are in java.lang's hierarchy, or are considered to be so\n  standard as to justify existence in java.lang.\n\n  The code is tested using the latest revision of the JDK for supported\n  LTS releases: 8, 11, 17, 21 and 25 currently.\n  See https:\/\/github.com\/apache\/commons-lang\/blob\/master\/.github\/workflows\/maven.yml\n  \n  Please ensure your build environment is up-to-date and kindly report any build issues.\n  ","license": "https:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -10502,8 +10502,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: commons-logging-1.3.5.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/commons-logging-1.3.5.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: commons-logging-1.3.5.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/commons-logging-1.3.5.jar"
 ,"md5": "9ca067b073153c86c2da350c0f2cdf70",
             "sha1": "a3fcc5d3c29b2b03433aa2d2f2d2c1b1638924a1",
             "sha256": "6d7a744e4027649fbb50895df9497d109f98c766a637062fe8d2eabbb3140ba4","description": "Apache Commons Logging is a thin adapter allowing configurable bridging to other,\n    well-known logging systems.","license": "https:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -11417,8 +11417,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: commons-text-1.15.0.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/commons-text-1.15.0.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: commons-text-1.15.0.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/commons-text-1.15.0.jar"
 ,"md5": "756b7c5438d89a0c311d811c1a06d19a",
             "sha1": "9899093aa40f0199d6c39b131b8f087cdb37e399",
             "sha256": "58d2da30f058512a1e7f914e39241deca4dff5c27a085b4ed2faa9e7208067f6","description": "Apache Commons Text is a set of utility functions and reusable components for processing\n    and manipulating text in a Java environment.\n  ","license": "https:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -11944,15 +11944,15 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: dynamodb-2.54.14.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/dynamodb-2.54.14.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: dynamodb-2.54.14.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/dynamodb-2.54.14.jar"
 ,"md5": "24036accbc5403a8da7811a646668c42",
             "sha1": "b632a994ab563abede434ced65fb27c483e3c1bf",
             "sha256": "82a16797b096500a6a45f07a4355d53acd153aea22477e55d365f944294bfc54","description": "The AWS Java SDK for Amazon DynamoDB module holds the client classes that are used for communicating\n        with Amazon DynamoDB\n        Service\n    "            ,"relatedDependencies": [
   {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: dynamodb-enhanced-2.54.14.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/dynamodb-enhanced-2.54.14.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: dynamodb-enhanced-2.54.14.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/dynamodb-enhanced-2.54.14.jar"
 ,"sha256": "1ee9e2a4644857d5aff2fbe6e8f67c0e4d4c7236c862959d15485f15602bcca6",
                     "sha1": "b73c5ccf2f784cb5886ea3fd1a9004d10169da61",
                     "md5": "983a96fbeb805b9a9b2922bce4f5bce1",
@@ -12164,8 +12164,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: endpoints-spi-2.54.14.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/endpoints-spi-2.54.14.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: endpoints-spi-2.54.14.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/endpoints-spi-2.54.14.jar"
 ,"md5": "9dccec23f666aacdcf882d8a91267ae1",
             "sha1": "b382bdf5235f0fa6be0d09e67a696e65decbd2fb",
             "sha256": "383c5b3e1fab44243e6ef247650d38229533629324e173a95c139cdc2342fbb9"            ,"evidenceCollected": {
@@ -12355,8 +12355,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: error_prone_annotations-2.49.0.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/error_prone_annotations-2.49.0.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: error_prone_annotations-2.49.0.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/error_prone_annotations-2.49.0.jar"
 ,"md5": "f15f20dc5df752e2c0f8e37f7cdd9b1d",
             "sha1": "8b42a2e3865f6e0576da3fad51dbb96732ff0f14",
             "sha256": "3b1003e51b8ae56fdbd7c71073e81d1683b97e6c4dff5a9151164d59b769d13c","description": "Error Prone is a static analysis tool for Java that catches common programming mistakes at compile-time.","license": "Apache 2.0: http:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -12570,8 +12570,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: eventstream-1.0.1.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/eventstream-1.0.1.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: eventstream-1.0.1.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/eventstream-1.0.1.jar"
 ,"md5": "864488626f50477cfd786d1c80e3b39e",
             "sha1": "6ff8649dffc5190366ada897ba8525a836297784",
             "sha256": "0c37d8e696117f02c302191b8110b0d0eb20fa412fce34c3a269ec73c16ce822","description": "The AWS Event Stream decoder library.","license": "Apache License, Version 2.0: https:\/\/aws.amazon.com\/apache2.0"            ,"evidenceCollected": {
@@ -12775,8 +12775,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: hapi-base-2.6.0.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/hapi-base-2.6.0.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: hapi-base-2.6.0.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/hapi-base-2.6.0.jar"
 ,"md5": "85c6a4edb0f22c6bc69e495f55c078f0",
             "sha1": "b0c5c93826e4c4b27e66021c8fcc0c53df7f6777",
             "sha256": "8e91877df2d0d5a0bd3bb3b670f624fe060344fc74e618e24d80aa0e86b31259"            ,"evidenceCollected": {
@@ -12920,8 +12920,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: hapi-structures-v251-2.6.0.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/hapi-structures-v251-2.6.0.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: hapi-structures-v251-2.6.0.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/hapi-structures-v251-2.6.0.jar"
 ,"md5": "741b9753c4b6b1230782055ee30f4e53",
             "sha1": "a2305db6d618f93f2400eb1436347e1bc4721e59",
             "sha256": "5bfe9672f60b0d0a6a1455f2c173fb49b895dd17e19e675a2c932546defd5b01"            ,"evidenceCollected": {
@@ -13065,8 +13065,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: hibernate-commons-annotations-7.0.3.Final.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/hibernate-commons-annotations-7.0.3.Final.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: hibernate-commons-annotations-7.0.3.Final.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/hibernate-commons-annotations-7.0.3.Final.jar"
 ,"md5": "6698f99235fe6d36c42caaf2e6b52797",
             "sha1": "e183c4be8bb41d12e9f19b374e00c34a0a85f439",
             "sha256": "0db2fd57d5e43688ac6ed5cdf36deaf05d84340dcc24c2dd2a2114de38e5175d"            ,"evidenceCollected": {
@@ -13192,8 +13192,8 @@
 
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: hibernate-core-6.6.53.Final.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/hibernate-core-6.6.53.Final.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: hibernate-core-6.6.53.Final.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/hibernate-core-6.6.53.Final.jar"
 ,"md5": "c006c2c37498f2ee923dc8a71d4f0642",
             "sha1": "29bfa3d861a32774520b1d1aea61cccff57029d5",
             "sha256": "8df110bacf8f4fe72be585cc7fa0a1687c8d360210826bdd35b0fbcaa3e9c09a"            ,"evidenceCollected": {
@@ -13358,8 +13358,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: hibernate-validator-8.0.5.Final.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/hibernate-validator-8.0.5.Final.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: hibernate-validator-8.0.5.Final.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/hibernate-validator-8.0.5.Final.jar"
 ,"md5": "138ad15cdabc8c618c4d4f79a8ae8211",
             "sha1": "7431d3a055b74abeba729a2039ba68d26bbf0d76",
             "sha256": "4b2b502dbdc271887a5fa1669c5a8bf85910da9483f3fa0713d38e273f159e4f","description": "Hibernate's Jakarta Bean Validation reference implementation.","license": "Apache License 2.0: https:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -13937,15 +13937,15 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: http-auth-2.54.14.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/http-auth-2.54.14.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: http-auth-2.54.14.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/http-auth-2.54.14.jar"
 ,"md5": "b40ddc130367d56cede106b753a90cad",
             "sha1": "b154a1b37dd46c877e6a57e96d92234d5e1f08de",
             "sha256": "202bd52202929600ec10662b3d6713e4fc676aaa68c29af4600f286b4e9d0c33","description": "\n        The AWS SDK for Java - HTTP Auth module contains interfaces and implementations\n        for generic HTTP authentication\n    "            ,"relatedDependencies": [
   {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: http-auth-aws-2.54.14.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/http-auth-aws-2.54.14.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: http-auth-aws-2.54.14.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/http-auth-aws-2.54.14.jar"
 ,"sha256": "2064cdb767c337a5d0bc5f5f590dc912e01faf8c8c4667bdee2001593c90dbc7",
                     "sha1": "84c5d9e22286dedbbd3292eef9b586e84ebee7ab",
                     "md5": "7de575fd512c2965a282d4b116ab533d",
@@ -13957,8 +13957,8 @@
                 }
  , {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: http-auth-aws-eventstream-2.54.14.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/http-auth-aws-eventstream-2.54.14.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: http-auth-aws-eventstream-2.54.14.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/http-auth-aws-eventstream-2.54.14.jar"
 ,"sha256": "dbc5593d15c807623840a4d0bee848f6d3329cef1f7100b85f369add13c60a01",
                     "sha1": "ba21f64441147b83ada8525d90ae49c30819c961",
                     "md5": "b1de9d2fd8f939a42c8e9c0b10f5c227",
@@ -13970,8 +13970,8 @@
                 }
  , {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: http-auth-spi-2.54.14.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/http-auth-spi-2.54.14.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: http-auth-spi-2.54.14.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/http-auth-spi-2.54.14.jar"
 ,"sha256": "884004e9e73d4560dc98c5269b46d58cfd226c5aa426c2a2c0c3320e4c113c01",
                     "sha1": "f3168a157e59d3116eea149a2d716285e5261036",
                     "md5": "9b54d8c6383574bce10c9d711737150c",
@@ -13983,8 +13983,8 @@
                 }
  , {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: http-client-spi-2.54.14.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/http-client-spi-2.54.14.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: http-client-spi-2.54.14.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/http-client-spi-2.54.14.jar"
 ,"sha256": "3e2eb65061861eba0aa1cab161255ad31404bce6b0a9aa94f2bdcadc29e2225a",
                     "sha1": "1a093be32a73c45681fcb9bc9e28605e61b7c6b0",
                     "md5": "f05530043722dfd7464f760c9175a3e9",
@@ -14196,8 +14196,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: httpclient-4.5.14.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/httpclient-4.5.14.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: httpclient-4.5.14.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/httpclient-4.5.14.jar"
 ,"md5": "2cb357c4b763f47e58af6cad47df6ba3",
             "sha1": "1194890e6f56ec29177673f2f12d0b8e627dec98",
             "sha256": "c8bc7e1c51a6d4ce72f40d2ebbabf1c4b68bfe76e732104b04381b493478e9d6","description": "\n   Apache HttpComponents Client\n  "            ,"evidenceCollected": {
@@ -14436,8 +14436,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: httpclient5-5.6.4.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/httpclient5-5.6.4.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: httpclient5-5.6.4.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/httpclient5-5.6.4.jar"
 ,"md5": "42f90ff32bc3f72cb8bdfdf235e28328",
             "sha1": "2a8ff1366303ac253e0ea64dab1e5abb5b7687bd",
             "sha256": "bdef5f8841145cd76c4c605ff301bc840eea0d5292332b7b892a93316c0d8ee1","description": "Apache HttpComponents Client"            ,"evidenceCollected": {
@@ -14662,8 +14662,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: httpcore-4.4.16.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/httpcore-4.4.16.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: httpcore-4.4.16.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/httpcore-4.4.16.jar"
 ,"md5": "28d2cd9bf8789fd2ec774fb88436ebd1",
             "sha1": "51cf043c87253c9f58b539c9f7e44c8894223850",
             "sha256": "6c9b3dd142a09dc468e23ad39aad6f75a0f2b85125104469f026e52a474e464f","description": "\n   Apache HttpComponents Core (blocking I\/O)\n  "            ,"evidenceCollected": {
@@ -14902,15 +14902,15 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: httpcore5-5.4.3.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/httpcore5-5.4.3.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: httpcore5-5.4.3.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/httpcore5-5.4.3.jar"
 ,"md5": "40cba87d4704bc9e1691f340fb8042cf",
             "sha1": "32a0699fbcb103f5621c00983ee8f5aac080e4a6",
             "sha256": "18bfbbabb478dfb67f31aeaf428c387f3c3df654582e1309f708ee1f3086830a","description": "Apache HttpComponents HTTP\/1.1 core components"            ,"relatedDependencies": [
   {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: httpcore5-h2-5.4.3.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/httpcore5-h2-5.4.3.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: httpcore5-h2-5.4.3.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/httpcore5-h2-5.4.3.jar"
 ,"sha256": "c7db7026b8e2dea39132b04a6069f6671e2858309b20a146ec5c7dd6ed73a0b6",
                     "sha1": "33bcd37d645539d27c65e17420843fd7f6c0ebf4",
                     "md5": "4b9da0d3e87ed769ef6a162223f2265c",
@@ -15143,8 +15143,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: identity-spi-2.54.14.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/identity-spi-2.54.14.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: identity-spi-2.54.14.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/identity-spi-2.54.14.jar"
 ,"md5": "d24b118f1bb156bfac2451d6698f8745",
             "sha1": "5d3c12bbd569828a94c31473a0a8485beb9ad8dc",
             "sha256": "eff2e8b22203e349e95ebc05861264738d960cda3aa27d711edf05fc53891dc7","description": "\n        The AWS SDK for Java - Identity SPI module contains the Identity interfaces that are used by other modules in\n            the library.\n    "            ,"evidenceCollected": {
@@ -15348,8 +15348,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: ipaddress-5.6.2.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/ipaddress-5.6.2.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: ipaddress-5.6.2.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/ipaddress-5.6.2.jar"
 ,"md5": "f161b347f6e211502d21dcfa171cd7b5",
             "sha1": "77d942fbc3ee903bd7b5e4cfdea576519f609e2c",
             "sha256": "b2258ec12ed1454d85dc199043d7df0ec464de1ab8f58c555d3cc63fe6237356"            ,"evidenceCollected": {
@@ -15458,8 +15458,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: istack-commons-runtime-4.1.2.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/istack-commons-runtime-4.1.2.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: istack-commons-runtime-4.1.2.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/istack-commons-runtime-4.1.2.jar"
 ,"md5": "535154ef647af2a52478c4debec93659",
             "sha1": "18ec117c85f3ba0ac65409136afa8e42bc74e739",
             "sha256": "7fd6792361f4dd00f8c56af4a20cecc0066deea4a8f3dec38348af23fc2296ee","description": "istack common utility code","license": "http:\/\/www.eclipse.org\/org\/documents\/edl-v10.php"            ,"evidenceCollected": {
@@ -15673,8 +15673,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: izgw-core-3.6.0.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/izgw-core-3.6.0.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: izgw-core-3.6.0.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/izgw-core-3.6.0.jar"
 ,"md5": "00c0fab67a89128f31d873eedb978f91",
             "sha1": "24b4e51f61db0fd7ba81c7255cf7c2f69bfbf91f",
             "sha256": "ef50482f21d6d3397834534ec940508a1077ea4a17a97ad9bf69e09a8d40649d","description": "IZ Gateway Core contains the core code for the IZ Gateway Hub and Transformation services"            ,"evidenceCollected": {
@@ -15825,8 +15825,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: jackson-annotations-2.22.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/jackson-annotations-2.22.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: jackson-annotations-2.22.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/jackson-annotations-2.22.jar"
 ,"md5": "04c11c456fd1e21b9a21c25c665109cc",
             "sha1": "15c67f9498d6934cff9510fc70c5a12e52290457",
             "sha256": "21ddb598807d3a51a876704eb979d9296e1c6a6f47ab1826ff88c6d6a127a2d0","description": "Core annotations used for value types, used by Jackson data binding package.\n  ","license": "The Apache Software License, Version 2.0: https:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -16096,8 +16096,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: jackson-core-2.22.2.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/jackson-core-2.22.2.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: jackson-core-2.22.2.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/jackson-core-2.22.2.jar"
 ,"md5": "f341c2ed9f8d995ac068841925cf34d1",
             "sha1": "13a748ea3e329fa220076e021b45c8391b32420c",
             "sha256": "ff167a6317be15895706c26668f45b898efe40ab8780970658210fe1393d52a6","description": "Core Jackson processing abstractions (aka Streaming API), implementation for JSON","license": "The Apache Software License, Version 2.0: https:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -16444,8 +16444,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: jackson-databind-2.22.2.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/jackson-databind-2.22.2.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: jackson-databind-2.22.2.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/jackson-databind-2.22.2.jar"
 ,"md5": "f67b45152b83310e3d75ffefc5b7ce32",
             "sha1": "921bd2092b0c539b2876de7063d55c72edcd05d3",
             "sha256": "d0da14c12b16b5d54719aa172d83b542ff4abeb8b0fb7db476fde8ceece760ca","description": "General data-binding functionality for Jackson: works on core streaming API","license": "The Apache Software License, Version 2.0: https:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -16753,8 +16753,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: jackson-dataformat-yaml-2.22.2.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/jackson-dataformat-yaml-2.22.2.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: jackson-dataformat-yaml-2.22.2.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/jackson-dataformat-yaml-2.22.2.jar"
 ,"md5": "9736da68f80d561d7bd2183d8b33f055",
             "sha1": "a4f075bf4cc1ee814ab98d69c1612786c2f42bc3",
             "sha256": "f5e52c7d8914f23c5fcc00d0afbef77e20557228a6200e184bb61f69ab03fc44","description": "Support for reading and writing YAML-encoded data via Jackson abstractions.\n  ","license": "https:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -17042,15 +17042,15 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: jackson-datatype-jdk8-2.21.4.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/jackson-datatype-jdk8-2.21.4.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: jackson-datatype-jdk8-2.21.4.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/jackson-datatype-jdk8-2.21.4.jar"
 ,"md5": "282ec253ef93128ef2df436f02971b98",
             "sha1": "0a1b9fe3b6e8d4418fe09a1ba9a8f6640137cfb5",
             "sha256": "2dde4a8f1aad3306c040f56ff40da81c6d58dcef3434c00849c9bce09f56a074","description": "Add-on module for Jackson (https:\/\/github.com\/FasterXML\/jackson) to support\nJDK 8 data types.\n  ","license": "http:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"relatedDependencies": [
   {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: jackson-datatype-jsr310-2.21.4.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/jackson-datatype-jsr310-2.21.4.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: jackson-datatype-jsr310-2.21.4.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/jackson-datatype-jsr310-2.21.4.jar"
 ,"sha256": "d1ac4b98b70304e56448423589fde5e775b100889643ad1ead62cc7811633684",
                     "sha1": "51f9ede30826b05cdf8a70b47bc68bd6271dfaaa",
                     "md5": "8d64e799458e78f5d46765da252270fa",
@@ -17062,8 +17062,8 @@
                 }
  , {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: jackson-module-parameter-names-2.21.4.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/jackson-module-parameter-names-2.21.4.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: jackson-module-parameter-names-2.21.4.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/jackson-module-parameter-names-2.21.4.jar"
 ,"sha256": "9510f91a4be2c700753ad244596b67424cb32c23659db1dc534219226e5df3a3",
                     "sha1": "5f1439ff7bebf7601e12a9ee7919b81ab9cb7c78",
                     "md5": "525a10fe688f472c821e5779155e6023",
@@ -17359,8 +17359,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: jakarta.activation-api-2.1.4.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/jakarta.activation-api-2.1.4.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: jakarta.activation-api-2.1.4.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/jakarta.activation-api-2.1.4.jar"
 ,"md5": "bc1602eee7bc61a0b86f14bbbb0cc794",
             "sha1": "9e5c2a0d75dde71a0bedc4dbdbe47b78a5dc50f8",
             "sha256": "c9db52100ce6c8aac95cc39075f95720d2e561b11f8051b81c121ad4effd7004","description": "  Specification","license": "EDL 1.0: http:\/\/www.eclipse.org\/org\/documents\/edl-v10.php"            ,"evidenceCollected": {
@@ -17686,8 +17686,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: jakarta.annotation-api-2.1.1.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/jakarta.annotation-api-2.1.1.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: jakarta.annotation-api-2.1.1.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/jakarta.annotation-api-2.1.1.jar"
 ,"md5": "5dac2f68e8288d0add4dc92cb161711d",
             "sha1": "48b9bda22b091b1f48b13af03fe36db3be6e1ae3",
             "sha256": "5f65fdaf424eee2b55e1d882ba9bb376be93fb09b37b808be6e22e8851c909fe","description": "Jakarta Annotations API","license": "EPL 2.0: http:\/\/www.eclipse.org\/legal\/epl-2.0\nGPL2 w\/ CPE: https:\/\/www.gnu.org\/software\/classpath\/license.html"            ,"evidenceCollected": {
@@ -17992,8 +17992,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: jakarta.inject-api-2.0.1.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/jakarta.inject-api-2.0.1.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: jakarta.inject-api-2.0.1.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/jakarta.inject-api-2.0.1.jar"
 ,"md5": "72003bf6efcc8455d414bbd7da86c11c",
             "sha1": "4c28afe1991a941d7702fe1362c365f0a8641d1e",
             "sha256": "f7dc98062fccf14126abb751b64fab12c312566e8cbdc8483598bffcea93af7c","description": "Jakarta Dependency Injection","license": "The Apache Software License, Version 2.0: http:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -18396,8 +18396,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: jakarta.persistence-api-3.1.0.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/jakarta.persistence-api-3.1.0.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: jakarta.persistence-api-3.1.0.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/jakarta.persistence-api-3.1.0.jar"
 ,"md5": "35a1b7dfb38cf44ff795be607b0e6b5b",
             "sha1": "66901fa1c373c6aff65c13791cc11da72060a8d6",
             "sha256": "475389446d35c6f46c565728b756dc508c284644ea2690644e0d8e7e339d42fd","description": "Jakarta Persistence 3.1 API jar","license": "Eclipse Public License v. 2.0: http:\/\/www.eclipse.org\/legal\/epl-2.0\nEclipse Distribution License v. 1.0: http:\/\/www.eclipse.org\/org\/documents\/edl-v10.php"            ,"evidenceCollected": {
@@ -18688,8 +18688,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: jakarta.servlet-api-6.0.0.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/jakarta.servlet-api-6.0.0.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: jakarta.servlet-api-6.0.0.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/jakarta.servlet-api-6.0.0.jar"
 ,"md5": "4bcb3175ed9b7aa3f038d082879ec2a8",
             "sha1": "abecc699286e65035ebba9844c03931357a6a963",
             "sha256": "c034eb1afb158987dbb53a5fea0cadf611c8dae8daadd59c44d9d5ab70129cef","description": "Jakarta Servlet 6.0","license": "EPL 2.0: http:\/\/www.eclipse.org\/legal\/epl-2.0\nGPL2 w\/ CPE: https:\/\/www.gnu.org\/software\/classpath\/license.html"            ,"evidenceCollected": {
@@ -19008,8 +19008,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: jakarta.transaction-api-2.0.1.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/jakarta.transaction-api-2.0.1.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: jakarta.transaction-api-2.0.1.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/jakarta.transaction-api-2.0.1.jar"
 ,"md5": "5315974a3935e342b40849478e1c9966",
             "sha1": "51a520e3fae406abb84e2e1148e6746ce3f80a1a",
             "sha256": "50c0a7c760c13ae6c042acf182b28f0047413db95b4636fb8879bcffab5ba875","description": "Jakarta Transactions","license": "EPL 2.0: http:\/\/www.eclipse.org\/legal\/epl-2.0\nGPL2 w\/ CPE: https:\/\/www.gnu.org\/software\/classpath\/license.html"            ,"evidenceCollected": {
@@ -19356,8 +19356,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: jakarta.validation-api-3.1.1.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/jakarta.validation-api-3.1.1.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: jakarta.validation-api-3.1.1.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/jakarta.validation-api-3.1.1.jar"
 ,"md5": "93ce96e77734f4280157edeffcae44e8",
             "sha1": "ec8622148afc5564235d17af80ea80288d0e7f92",
             "sha256": "63ce00156388c365f3ac1be71fcfaf114682fc0c452020b5df6e7ec236e142ab","description": "\n        Jakarta Validation API\n    ","license": "Apache License 2.0: http:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -19774,8 +19774,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: jakarta.xml.bind-api-4.0.5.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/jakarta.xml.bind-api-4.0.5.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: jakarta.xml.bind-api-4.0.5.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/jakarta.xml.bind-api-4.0.5.jar"
 ,"md5": "935053b2c792f34c7ea3a238ea96f3ac",
             "sha1": "161811f36cad3c65991502e80317f2f6703361df",
             "sha256": "5e489b6c874c4119e003ff1403db523ee3a8959ec499f3de29e77245efccf216","description": "Jakarta XML Binding API 4.0 Design Specification","license": "http:\/\/www.eclipse.org\/org\/documents\/edl-v10.php"            ,"evidenceCollected": {
@@ -20003,8 +20003,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: jandex-3.2.0.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/jandex-3.2.0.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: jandex-3.2.0.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/jandex-3.2.0.jar"
 ,"md5": "703254a1bd4c37efeebdc0a283c65565",
             "sha1": "f17ad860f62a08487b9edabde608f8ac55c62fa7",
             "sha256": "6da3e9ce8d0c0a433f3e7ce610a3c66accb00c71fee67aa0ff3e5a841395ac15","description": "SmallRye Build Parent POM","license": "https:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -20204,8 +20204,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: janino-3.1.12.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/janino-3.1.12.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: janino-3.1.12.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/janino-3.1.12.jar"
 ,"md5": "a580a272db2e7ac9fbbec85a0dd8993b",
             "sha1": "ffcd3dfa84057ef76092b6b66c53871a97ae40b8",
             "sha256": "5699878c31e71c9a94cf472f95a2dad52ca7b0449c099276b8bd7e992a43595b","description": "The \"JANINO\" implementation of the \"commons-compiler\" API: Super-small, super-fast, independent from the JDK's \"tools.jar\".","license": "https:\/\/spdx.org\/licenses\/BSD-3-Clause.html"            ,"evidenceCollected": {
@@ -20430,8 +20430,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: javax.activation-1.2.0.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/javax.activation-1.2.0.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: javax.activation-1.2.0.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/javax.activation-1.2.0.jar"
 ,"md5": "be7c430df50b330cffc4848a3abedbfb",
             "sha1": "bf744c1e2776ed1de3c55c8dac1057ec331ef744",
             "sha256": "993302b16cd7056f21e779cc577d175a810bb4900ef73cd8fbf2b50f928ba9ce","description": "JavaBeans Activation Framework","license": "https:\/\/github.com\/javaee\/activation\/blob\/master\/LICENSE.txt"            ,"evidenceCollected": {
@@ -20722,8 +20722,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: javax.activation-api-1.2.0.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/javax.activation-api-1.2.0.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: javax.activation-api-1.2.0.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/javax.activation-api-1.2.0.jar"
 ,"md5": "5e50e56bcf4a3ef3bc758f69f7643c3b",
             "sha1": "85262acf3ca9816f9537ca47d5adeabaead7cb16",
             "sha256": "43fdef0b5b6ceb31b0424b208b930c74ab58fac2ceeb7b3f6fd3aeb8b5ca4393","description": "JavaBeans Activation Framework API jar","license": "https:\/\/github.com\/javaee\/activation\/blob\/master\/LICENSE.txt"            ,"evidenceCollected": {
@@ -21007,8 +21007,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: javax.annotation-api-1.3.2.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/javax.annotation-api-1.3.2.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: javax.annotation-api-1.3.2.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/javax.annotation-api-1.3.2.jar"
 ,"md5": "2ab1973eefffaa2aeec47d50b9e40b9d",
             "sha1": "934c04d3cfef185a8008e7bf34331b79730a9d43",
             "sha256": "e04ba5195bcd555dc95650f7cc614d151e4bcd52d29a10b8aa2197f3ab89ab9b","description": "Common Annotations for the JavaTM Platform API","license": "CDDL + GPLv2 with classpath exception: https:\/\/github.com\/javaee\/javax.annotation\/blob\/master\/LICENSE"            ,"evidenceCollected": {
@@ -21341,8 +21341,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: javax.xml.soap-api-1.4.0.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/javax.xml.soap-api-1.4.0.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: javax.xml.soap-api-1.4.0.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/javax.xml.soap-api-1.4.0.jar"
 ,"md5": "fb8bbe2cdda8ff7bd945fcb9f0f6b61c",
             "sha1": "667ef2eee594ca7e05a1cbe0b37a428f7b57778f",
             "sha256": "141374e33be99768611a2d42b9d33571a0c5b9763beca9c2dc90900d8cc8f767","description": "SAAJ API","license": "CDDL + GPLv2 with classpath exception: https:\/\/github.com\/javaee\/javax.xml.soap\/blob\/master\/LICENSE"            ,"evidenceCollected": {
@@ -21689,8 +21689,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: jaxb-api-2.3.1.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/jaxb-api-2.3.1.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: jaxb-api-2.3.1.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/jaxb-api-2.3.1.jar"
 ,"md5": "bcf270d320f645ad19f5edb60091e87f",
             "sha1": "8531ad5ac454cc2deb9d4d32c40c4d7451939b5d",
             "sha256": "88b955a0df57880a26a74708bc34f74dcaf8ebf4e78843a28b50eae945732b06","description": "JAXB (JSR 222) API","license": "https:\/\/oss.oracle.com\/licenses\/CDDL+GPL-1.1, https:\/\/oss.oracle.com\/licenses\/CDDL+GPL-1.1"            ,"evidenceCollected": {
@@ -21946,8 +21946,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: jaxb-core-4.0.9.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/jaxb-core-4.0.9.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: jaxb-core-4.0.9.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/jaxb-core-4.0.9.jar"
 ,"md5": "cfe79c0de53d009f9b171d1320f7879a",
             "sha1": "3f32ec949d109d666fa30994223d1c25a47b105f",
             "sha256": "6b014df25d22c8446cc2df0a378c5b2137747f197a731d99eb24c756b26f7e8d","description": "JAXB Core module. Contains sources required by XJC, JXC and Runtime modules.","license": "http:\/\/www.eclipse.org\/org\/documents\/edl-v10.php"            ,"evidenceCollected": {
@@ -22224,8 +22224,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: jaxb-runtime-4.0.9.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/jaxb-runtime-4.0.9.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: jaxb-runtime-4.0.9.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/jaxb-runtime-4.0.9.jar"
 ,"md5": "5a09f7188a527773fc71f0ac8ca30652",
             "sha1": "500c199572538675d2819c938fbafe34935d8d6b",
             "sha256": "93e09b7316b6af68d6e2083e4c297daf28e8957f45d725077af812c0b12c39ab","description": "JAXB (JSR 222) Reference Implementation","license": "http:\/\/www.eclipse.org\/org\/documents\/edl-v10.php"            ,"evidenceCollected": {
@@ -22516,8 +22516,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: jaxws-api-2.3.1.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/jaxws-api-2.3.1.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: jaxws-api-2.3.1.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/jaxws-api-2.3.1.jar"
 ,"md5": "5a6f94e95cc2054bc840cc2f2fedc5d8",
             "sha1": "15e46dba25b1f767a3f517721badf6cce8dbb13d",
             "sha256": "a447f84f95658ea68b347acffe156f7700c62a37ede15d81e5298fb8e5fe6dcf","description": "JAX-WS (JSR 224) API","license": "CDDL + GPLv2 with classpath exception: https:\/\/github.com\/javaee\/jax-ws-spec\/blob\/master\/LICENSE.md"            ,"evidenceCollected": {
@@ -22917,8 +22917,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: jboss-logging-3.6.3.Final.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/jboss-logging-3.6.3.Final.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: jboss-logging-3.6.3.Final.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/jboss-logging-3.6.3.Final.jar"
 ,"md5": "b4cf5872f18b3e80e18769d51c7ae9b2",
             "sha1": "1cc9f976725720bb4a66f80af3e3aa6b9890d969",
             "sha256": "7c12ee575508f81e22b1db9334b969d0ec54ef0fd1dcba24eeab1a44235fc366","description": "The JBoss Logging Framework","license": "Apache License 2.0: https:\/\/repository.jboss.org\/licenses\/apache-2.0.txt"            ,"evidenceCollected": {
@@ -23216,8 +23216,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: jjwt-api-0.13.0.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/jjwt-api-0.13.0.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: jjwt-api-0.13.0.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/jjwt-api-0.13.0.jar"
 ,"md5": "a9a60d4e3c640348092beff5b4d88a6a",
             "sha1": "ce631a0342b08953355f333b488d2b03445b9f3e",
             "sha256": "5af8a971c7215acb6c3708794a3912c56eb7066ca3b1ee73f87988c9e0d6c067","description": "JSON Web Token support for the JVM and Android","license": "https:\/\/www.apache.org\/licenses\/LICENSE-2.0"            ,"evidenceCollected": {
@@ -23459,8 +23459,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: jjwt-impl-0.13.0.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/jjwt-impl-0.13.0.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: jjwt-impl-0.13.0.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/jjwt-impl-0.13.0.jar"
 ,"md5": "e3ca3f21f21b8a1c78cd3977adadfdf2",
             "sha1": "9e7c70dd7014909556755fb01c465dd184b4b1d9",
             "sha256": "b351baaa302889a416e83683f110948017cee671303262522d4ba477688ca89f","description": "JSON Web Token support for the JVM and Android","license": "https:\/\/www.apache.org\/licenses\/LICENSE-2.0"            ,"evidenceCollected": {
@@ -23730,8 +23730,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: jjwt-jackson-0.13.0.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/jjwt-jackson-0.13.0.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: jjwt-jackson-0.13.0.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/jjwt-jackson-0.13.0.jar"
 ,"md5": "da00e5b45c15207041a11488ce975c97",
             "sha1": "cfe37531887657716ec20b5ef22f22b32e8bf4a8",
             "sha256": "e5ca43b49deca1ad818b2572f0af4d902370205089bdcd15d5dbb6095d17416b","description": "JSON Web Token support for the JVM and Android","license": "https:\/\/www.apache.org\/licenses\/LICENSE-2.0"            ,"evidenceCollected": {
@@ -24001,8 +24001,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: joda-time-2.1.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/joda-time-2.1.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: joda-time-2.1.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/joda-time-2.1.jar"
 ,"md5": "3da033b9318e910a4e3d718a6b1f5b58",
             "sha1": "8f79e353ef77da6710e1f10d34fc3698eaaacbca",
             "sha256": "5bce965a5e1dc1add255f1791a18521a7a5ecf36e436acb7ce2e5eda9d1a8e10","description": "Date and time library to replace JDK date handling","license": "Apache 2: http:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -24314,8 +24314,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: json-utils-2.54.14.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/json-utils-2.54.14.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: json-utils-2.54.14.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/json-utils-2.54.14.jar"
 ,"md5": "a5b39fa67473c15341750c04b4c2160c",
             "sha1": "910bcd6f79df6fc7cac6f1940cf96de31a634781",
             "sha256": "e42c3fa135278e225838b631735514f883ba733087922aa14a84cb2f2a950fbe"            ,"evidenceCollected": {
@@ -24519,8 +24519,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: jspecify-1.0.0.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/jspecify-1.0.0.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: jspecify-1.0.0.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/jspecify-1.0.0.jar"
 ,"md5": "9133aba420d0ca3b001dbb6ae9992cf6",
             "sha1": "7425a601c1c7ec76645a78d22b8c6a627edee507",
             "sha256": "1fad6e6be7557781e4d33729d49ae1cdc8fdda6fe477bb0cc68ce351eafdfbab","description": "An artifact of well-specified annotations to power static analysis checks and JVM language interop.","license": "https:\/\/www.apache.org\/licenses\/LICENSE-2.0"            ,"evidenceCollected": {
@@ -24653,8 +24653,8 @@
 
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: jul-to-slf4j-2.0.19.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/jul-to-slf4j-2.0.19.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: jul-to-slf4j-2.0.19.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/jul-to-slf4j-2.0.19.jar"
 ,"md5": "e0221ada87fa670a95f314b1449348e9",
             "sha1": "8b5227598a10e12883a5d8ad863c28b582294ac9",
             "sha256": "a5764fbd2f0053399ef75d40653c4e7c97e733b45676946b0a072416fc56ff30","description": "JUL to SLF4J bridge","license": "https:\/\/opensource.org\/license\/mit"            ,"evidenceCollected": {
@@ -24882,15 +24882,15 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: log4j-api-2.26.1.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/log4j-api-2.26.1.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: log4j-api-2.26.1.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/log4j-api-2.26.1.jar"
 ,"md5": "8ed35fc9ea449bc9e21a8139842d6233",
             "sha1": "b9864ed8d0c01f65f3b0bf70f1447e5cc1b49c24",
             "sha256": "f1810a4704ccce019d02bba029dc02a4f2ac0c997f647b465e7d409c1927f822","description": "The logging API of the Log4j project.\n    Library and application code can log through this API.\n    It contains a simple built-in implementation (`SimpleLogger`) for trivial use cases.\n    Production applications are recommended to use Log4j API in combination with a fully-fledged implementation, such as Log4j Core.","license": "Apache-2.0: https:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"relatedDependencies": [
   {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: log4j-to-slf4j-2.26.1.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/log4j-to-slf4j-2.26.1.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: log4j-to-slf4j-2.26.1.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/log4j-to-slf4j-2.26.1.jar"
 ,"sha256": "6b10bc838a3c773b3fd02979c7ef4e7a443371fa89bda4415d89099bbee224df",
                     "sha1": "a5100727b898c513fda177a4f388299a5fe5955f",
                     "md5": "61ffbed0e2c7adae88871b0013b7a69f",
@@ -25214,15 +25214,15 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: logback-core-1.6.3.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/logback-core-1.6.3.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: logback-core-1.6.3.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/logback-core-1.6.3.jar"
 ,"md5": "6d741138bccf87bb512572c44cc7f43f",
             "sha1": "ae9a279c723035307735fc4daf527a9076ea3f77",
             "sha256": "a6967a28c8b086dee75a694d2f6fb8830c71153539866d7d8af065c9b6df91e0","description": "logback-core module","license": "https:\/\/www.eclipse.org\/legal\/epl-v20.html, https:\/\/www.gnu.org\/licenses\/old-licenses\/lgpl-2.1.html"            ,"relatedDependencies": [
   {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: logback-classic-1.6.3.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/logback-classic-1.6.3.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: logback-classic-1.6.3.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/logback-classic-1.6.3.jar"
 ,"sha256": "beebede8db065fe1b72909ecc66bb49acda618901635d86c25fce14a5915e37e",
                     "sha1": "a8fc332633a9da2e543afb20357b7a015437f0a9",
                     "md5": "c4c3210a25faea352ecfe9ea2c219c14",
@@ -25511,8 +25511,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: logstash-logback-encoder-8.1.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/logstash-logback-encoder-8.1.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: logstash-logback-encoder-8.1.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/logstash-logback-encoder-8.1.jar"
 ,"md5": "08a18cd6a4737221773acc1d2a5c9e3a",
             "sha1": "aca81cdb03c48f4e0213d3e351ab1befafa9991e",
             "sha256": "2716cb6a3e83ec2f296395b8752063f502d10a90de1a88f711f06ae5b6ecefb7","description": "Provides logback encoders, layouts, and appenders to log in JSON and other formats supported by Jackson","license": "Apache License, Version 2.0: http:\/\/www.apache.org\/licenses\/LICENSE-2.0\nMIT License: http:\/\/www.slf4j.org\/license.html"            ,"evidenceCollected": {
@@ -25887,8 +25887,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: lombok-1.18.48.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/lombok-1.18.48.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: lombok-1.18.48.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/lombok-1.18.48.jar"
 ,"md5": "1c6eba25072e06dd6dc539c1db0de929",
             "sha1": "6858f13541bab505384f07053c5a7b539bbfd3e3",
             "sha256": "85477a4655ebb2c074a9099cfb749be454449fee564d4282610df1b85f7c508b"            ,"evidenceCollected": {
@@ -25986,8 +25986,8 @@
 
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: lombok-1.18.48.jar: mavenEcjBootstrapAgent.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/lombok-1.18.48.jar\/lombok\/launch\/mavenEcjBootstrapAgent.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: lombok-1.18.48.jar: mavenEcjBootstrapAgent.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/lombok-1.18.48.jar\/lombok\/launch\/mavenEcjBootstrapAgent.jar"
 ,"md5": "4f7e8f61c3f49e987ea9a9c204b27287",
             "sha1": "2f16dbf07f3bc5a2febd947e3707c700086b4b96",
             "sha256": "93d29a47bf31f938dd913796791c691abbd194602fd418ee134e3f53b7231d92"            ,"evidenceCollected": {
@@ -26050,8 +26050,8 @@
 
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: metrics-spi-2.54.14.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/metrics-spi-2.54.14.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: metrics-spi-2.54.14.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/metrics-spi-2.54.14.jar"
 ,"md5": "45acf5aaa5ea6f0554177205bb6986d5",
             "sha1": "71a52709418d8e0e529385392117c484aadcb0d1",
             "sha256": "693f81737c37473dccc603d63dd468f38b9d2b4a6b21cb959d97ceeec20259e4","description": " This is the base module for SDK metrics feature. It contains the interfaces used for metrics feature\n        that are used by other modules in the library.\n    "            ,"evidenceCollected": {
@@ -26241,8 +26241,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: micrometer-commons-1.15.12.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/micrometer-commons-1.15.12.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: micrometer-commons-1.15.12.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/micrometer-commons-1.15.12.jar"
 ,"md5": "8172f342d797138ec7a1a20e0332568c",
             "sha1": "eb539638d48571fa6ce4ea3eb8417cab37a63438",
             "sha256": "4b779cf7acb0534bb1f8e964f25200037ecb3944368f859a630fa637d6d5d7c0"            ,"evidenceCollected": {
@@ -26606,8 +26606,8 @@
 
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: micrometer-observation-1.15.12.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/micrometer-observation-1.15.12.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: micrometer-observation-1.15.12.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/micrometer-observation-1.15.12.jar"
 ,"md5": "b6ea6ebf93debb874d7c10f3ae79a471",
             "sha1": "1d96fcaec8d2516236dfcb9914108e14bfd02238",
             "sha256": "54483e68ed44af1bb0c36d1df2235d36f233e459d52f5a3be3e69813827a6300"            ,"evidenceCollected": {
@@ -26985,8 +26985,8 @@
 
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: netty-common-4.2.17.Final.jar (shaded: org.jctools:jctools-core:4.0.6)",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/netty-common-4.2.17.Final.jar\/META-INF\/maven\/org.jctools\/jctools-core\/pom.xml"
+            "fileName": "99.0.1-RELEASE-3.jar: netty-common-4.2.17.Final.jar (shaded: org.jctools:jctools-core:4.0.6)",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/netty-common-4.2.17.Final.jar\/META-INF\/maven\/org.jctools\/jctools-core\/pom.xml"
 ,"md5": "8341fc089534412b4da254daf73fafc9",
             "sha1": "d7ad6a6097946fd431f78598315022370a402631",
             "sha256": "6a7d37edc57b6a2b90a05037013fcc0b5eeac5e3dbf1d7109f7639c71cde41e7","description": "Java Concurrency Tools Core Library","license": "Apache License, Version 2.0: http:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -27067,8 +27067,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: netty-nio-client-2.54.14.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/netty-nio-client-2.54.14.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: netty-nio-client-2.54.14.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/netty-nio-client-2.54.14.jar"
 ,"md5": "5729db8f5fd6901488a854a7400fb1aa",
             "sha1": "626096989db192dba6ddcc36959ec5186de7c1f2",
             "sha256": "1550d690b39dcf6689e3c2828ad65cafeded96f0f8a5110e1645c10526cc95e4"            ,"evidenceCollected": {
@@ -27258,15 +27258,15 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: netty-transport-4.2.17.Final.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/netty-transport-4.2.17.Final.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: netty-transport-4.2.17.Final.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/netty-transport-4.2.17.Final.jar"
 ,"md5": "81ff6c65c703d34a26599f435f858f75",
             "sha1": "34335dc106caa0aefc242900d38ade65c8de64f4",
             "sha256": "d2409ce3a735cbab4188d0ea5d82abed823a6a07a8389f49af4a9e1243a562bc","description": "Netty is an asynchronous event-driven network application framework for    rapid development of maintainable high performance protocol servers and    clients.","license": "https:\/\/www.apache.org\/licenses\/LICENSE-2.0"            ,"relatedDependencies": [
   {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: netty-buffer-4.2.17.Final.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/netty-buffer-4.2.17.Final.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: netty-buffer-4.2.17.Final.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/netty-buffer-4.2.17.Final.jar"
 ,"sha256": "0d249178ec0204b35a6ad3e5ac8a6c2ecb3eb496c6cdae40b8eca4fa3cb6a0c7",
                     "sha1": "daba397ff4ce7b22f6ac1e1f419e6e7754c135be",
                     "md5": "5ea817ded4fca341ad462486a8b45e64",
@@ -27278,8 +27278,8 @@
                 }
  , {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: netty-codec-4.2.17.Final.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/netty-codec-4.2.17.Final.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: netty-codec-4.2.17.Final.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/netty-codec-4.2.17.Final.jar"
 ,"sha256": "ac76f972446a2f72818441f746d0e73c58519a4687bf680d2b687d7dc5e28e2e",
                     "sha1": "87cf7956788d6cb451f5018fdd2b0973c9fdcc47",
                     "md5": "54f78650b7eef6d067419a6ceacf056e",
@@ -27291,8 +27291,8 @@
                 }
  , {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: netty-codec-base-4.2.17.Final.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/netty-codec-base-4.2.17.Final.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: netty-codec-base-4.2.17.Final.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/netty-codec-base-4.2.17.Final.jar"
 ,"sha256": "3b92bc3b7d231fa6f4889b2b9281cae6b634428b8121fb1b9b5fccba1543d352",
                     "sha1": "7034de26b574322f365c790b9d6eb0634edab854",
                     "md5": "12b3b00718ba067e304b12570a05314c",
@@ -27304,8 +27304,8 @@
                 }
  , {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: netty-codec-compression-4.2.17.Final.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/netty-codec-compression-4.2.17.Final.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: netty-codec-compression-4.2.17.Final.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/netty-codec-compression-4.2.17.Final.jar"
 ,"sha256": "425b287a1f36986a5c8edd76379a49decdf99d284f3454f3fa607a073bfb2c18",
                     "sha1": "ac6829387c962174e2efbcc94e833c9524ca1459",
                     "md5": "0a6333fdc827c129fc8836a3fc7ba887",
@@ -27317,8 +27317,8 @@
                 }
  , {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: netty-codec-http-4.2.17.Final.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/netty-codec-http-4.2.17.Final.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: netty-codec-http-4.2.17.Final.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/netty-codec-http-4.2.17.Final.jar"
 ,"sha256": "a5bde91ac82ab90579df6559c0bd7ea6ae37460e3f18116ab4122194283b3669",
                     "sha1": "67610763a8f351161a9bad705a83e9a96a49e92f",
                     "md5": "1439d80263b75e5d3b23c9c93518fe2d",
@@ -27330,8 +27330,8 @@
                 }
  , {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: netty-codec-http2-4.2.17.Final.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/netty-codec-http2-4.2.17.Final.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: netty-codec-http2-4.2.17.Final.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/netty-codec-http2-4.2.17.Final.jar"
 ,"sha256": "450af97424cf58d2d72ad4d476d9e290f2fdf69fa181c289a6e6dd176bb86a7b",
                     "sha1": "cf440d723f9679df95a1c5b89dbff8867deee41e",
                     "md5": "a73b8e1ad276ab4e4035fede45993235",
@@ -27343,8 +27343,8 @@
                 }
  , {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: netty-codec-marshalling-4.2.17.Final.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/netty-codec-marshalling-4.2.17.Final.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: netty-codec-marshalling-4.2.17.Final.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/netty-codec-marshalling-4.2.17.Final.jar"
 ,"sha256": "ee5ffed638da6b7e2b4567559bd5f78b18f635cdaa4f3b6d23aa27ccf6cb57c2",
                     "sha1": "168871f9f073d58cc5ff2fcac2d3bf9edd2eed82",
                     "md5": "ef2a0088ee304dac7922cadceaf0f481",
@@ -27356,8 +27356,8 @@
                 }
  , {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: netty-codec-protobuf-4.2.17.Final.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/netty-codec-protobuf-4.2.17.Final.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: netty-codec-protobuf-4.2.17.Final.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/netty-codec-protobuf-4.2.17.Final.jar"
 ,"sha256": "44b2fcc4bc1d6c01edafe6ae6c8a7de7c3c5bad59697a93b6b879a45a78a5387",
                     "sha1": "3390d16030c6e3bcc2ef8a31718222e45e1fb9a1",
                     "md5": "3805f0d2a076ed73bbf521aecbf8af50",
@@ -27369,8 +27369,8 @@
                 }
  , {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: netty-common-4.2.17.Final.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/netty-common-4.2.17.Final.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: netty-common-4.2.17.Final.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/netty-common-4.2.17.Final.jar"
 ,"sha256": "502aae2a6680e9bca3558a3fa098f06dc4d87340b8b714e925a6d690871c092a",
                     "sha1": "57fa9e9af0bf70530e2fe1c8c8d6138f9167cf7a",
                     "md5": "fe50eabfdf19b59022b133b7d5e7de8d",
@@ -27382,8 +27382,8 @@
                 }
  , {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: netty-handler-4.2.17.Final.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/netty-handler-4.2.17.Final.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: netty-handler-4.2.17.Final.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/netty-handler-4.2.17.Final.jar"
 ,"sha256": "4df11c7520b556c5e2c84b939182699d48fcbb09e97a6bb5e1c0b6835227d126",
                     "sha1": "ed53dae90d09306b42bc886fa292510abdf5c5dc",
                     "md5": "e32139e4772b66f72955f802bba2c699",
@@ -27395,8 +27395,8 @@
                 }
  , {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: netty-resolver-4.2.17.Final.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/netty-resolver-4.2.17.Final.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: netty-resolver-4.2.17.Final.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/netty-resolver-4.2.17.Final.jar"
 ,"sha256": "7a4b599b9c0c29a505d3b7311f142df883fb27d0f67495a7cbaf533b0e456623",
                     "sha1": "6cba9d93bb06297cef0b7ac34e3873b6a25b4e3b",
                     "md5": "ffc4fd6b3d092275c4b5f12e07eb733e",
@@ -27408,8 +27408,8 @@
                 }
  , {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: netty-transport-classes-epoll-4.2.17.Final.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/netty-transport-classes-epoll-4.2.17.Final.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: netty-transport-classes-epoll-4.2.17.Final.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/netty-transport-classes-epoll-4.2.17.Final.jar"
 ,"sha256": "4e21d8a2e3429d9de967a716d58119f57585786bd2f7213bf5b27770425269de",
                     "sha1": "ac30be5ef672aa7a213c7753ed803eeaf2943783",
                     "md5": "2bc8649641487007bb1f4ec9b8deac3e",
@@ -27421,8 +27421,8 @@
                 }
  , {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: netty-transport-native-unix-common-4.2.17.Final.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/netty-transport-native-unix-common-4.2.17.Final.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: netty-transport-native-unix-common-4.2.17.Final.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/netty-transport-native-unix-common-4.2.17.Final.jar"
 ,"sha256": "e01aa467b9104de54a57c08c290f70b22e53ec97cf5583c87c112170ef5832cc",
                     "sha1": "c404f2366b51136d4a2fde678eec95be6d10ca16",
                     "md5": "bc05fe306c299f5fa22a1f13aa81c288",
@@ -27779,8 +27779,8 @@
                     }                ]
                 }            ]        },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: nimbus-jose-jwt-10.9.1.jar (shaded: com.github.stephenc.jcip:jcip-annotations:1.0-1)",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/nimbus-jose-jwt-10.9.1.jar\/META-INF\/maven\/com.github.stephenc.jcip\/jcip-annotations\/pom.xml"
+            "fileName": "99.0.1-RELEASE-3.jar: nimbus-jose-jwt-10.9.1.jar (shaded: com.github.stephenc.jcip:jcip-annotations:1.0-1)",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/nimbus-jose-jwt-10.9.1.jar\/META-INF\/maven\/com.github.stephenc.jcip\/jcip-annotations\/pom.xml"
 ,"md5": "11f9647450c14ff9b341c68782ef071a",
             "sha1": "bdccebfbbbdd66fe56dcdf3bdee7b97a853cccc5",
             "sha256": "68c2a5aa6e8f345743093e52b5b9e0190ba4d5a5215c0a59b4d7d33647208cbb","description": "\n    A clean room implementation of the JCIP Annotations based entirely on the specification provided by the javadocs.\n  ","license": "Apache License, Version 2.0: http:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -27889,8 +27889,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: nimbus-jose-jwt-10.9.1.jar (shaded: com.google.code.gson:gson:2.13.1)",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/nimbus-jose-jwt-10.9.1.jar\/META-INF\/maven\/com.google.code.gson\/gson\/pom.xml"
+            "fileName": "99.0.1-RELEASE-3.jar: nimbus-jose-jwt-10.9.1.jar (shaded: com.google.code.gson:gson:2.13.1)",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/nimbus-jose-jwt-10.9.1.jar\/META-INF\/maven\/com.google.code.gson\/gson\/pom.xml"
 ,"md5": "dcd6122810df12e276edc375730f7a9b",
             "sha1": "75c68fafbbc6c1abc95a60a5953cac165e102d5a",
             "sha256": "c0f65722d75c0e58cd1835b3046046f606b5da699904161f8db6b78feb9b401a","license": "Apache-2.0: https:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -27975,8 +27975,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: nimbus-jose-jwt-10.9.1.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/nimbus-jose-jwt-10.9.1.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: nimbus-jose-jwt-10.9.1.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/nimbus-jose-jwt-10.9.1.jar"
 ,"md5": "2dcec009745fe5ba876b5c5d8ac71caf",
             "sha1": "82ab15c57686545d989dd2c82cbec5b6b6f1c860",
             "sha256": "33152ea83ec50d22706fdaf3b07acbcd716f9a68edcabdd7c4d02843cbdcdcf6","description": "\n        Java library for Javascript Object Signing and Encryption (JOSE) and\n        JSON Web Tokens (JWT)\n    ","license": "The Apache Software License, Version 2.0: https:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -28355,8 +28355,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: opencsv-5.12.0.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/opencsv-5.12.0.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: opencsv-5.12.0.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/opencsv-5.12.0.jar"
 ,"md5": "c7424a4784e6845911daf7ed7f3a4a23",
             "sha1": "bc55d53c0961f8b191c96276e778a9ec67f7dd58",
             "sha256": "f1c55d80a92c8ecfe3f15fb71785d5b156f3674cb5b9ad55dcfd378ffeed2960","description": "A simple library for reading and writing CSV in Java","license": "Apache 2: http:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -28612,8 +28612,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: profiles-2.54.14.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/profiles-2.54.14.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: profiles-2.54.14.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/profiles-2.54.14.jar"
 ,"md5": "c3f48274714b173382f35c0777be5452",
             "sha1": "1fccbb7d8b2fb31ef55b796e9e3dc22bc2fea58a",
             "sha256": "3d25cf8d320618f5613e70cf9b4b429c821d0c36424ff7ade574e7b81a70ab3e","description": "\n        Profile module allows loading information from AWS configuration and credentials files.\n    "            ,"evidenceCollected": {
@@ -28817,8 +28817,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: protocol-core-2.54.14.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/protocol-core-2.54.14.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: protocol-core-2.54.14.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/protocol-core-2.54.14.jar"
 ,"md5": "1d8e6d6b36e60ed0916f80deac815edb",
             "sha1": "8c36e816371b03d690b4b536a3299ce96134b2fb",
             "sha256": "377be8e0e5c2e5219239affc2b27e28cad60b2d4155ba1f473e34eabc9709f18","description": "The AWS SDK for Java - module holds the core protocol classes\n    "            ,"evidenceCollected": {
@@ -29022,8 +29022,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: reactive-streams-1.0.4.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/reactive-streams-1.0.4.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: reactive-streams-1.0.4.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/reactive-streams-1.0.4.jar"
 ,"md5": "eda7978509c32d99166745cc144c99cd",
             "sha1": "3864a1320d97d7b045f729a326e1e077661f31b7",
             "sha256": "f75ca597789b3dac58f61857b9ac2e1034a68fa672db35055a8fb4509e325f28","description": "Reactive Streams API"            ,"evidenceCollected": {
@@ -29142,8 +29142,8 @@
 
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: regions-2.54.14.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/regions-2.54.14.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: regions-2.54.14.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/regions-2.54.14.jar"
 ,"md5": "5c16aea18b2be6b9dac79d400e18b57f",
             "sha1": "d5a5c7f455ea3a53d3ae9b93060afc6d2f77011b",
             "sha256": "8baca24a45a20347ba536f2e266ffb49e5bdb509cdd50fba3ec04b03b80fc60b"            ,"evidenceCollected": {
@@ -29333,15 +29333,15 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: retries-2.54.14.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/retries-2.54.14.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: retries-2.54.14.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/retries-2.54.14.jar"
 ,"md5": "e73d55120285c4ddc1accd57b9649fa5",
             "sha1": "35064620073e5ddf8f65ed3553ce6681040ab81c",
             "sha256": "aa33de3c5e46a05fbdba8035f69f6bc26cd6ade6f7aa8f6de126f2c08a2ce0b3"            ,"relatedDependencies": [
   {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: retries-spi-2.54.14.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/retries-spi-2.54.14.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: retries-spi-2.54.14.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/retries-spi-2.54.14.jar"
 ,"sha256": "e378fc8def3a8222f92c860739533a5fa8360235fecada2171fc097b8bd69998",
                     "sha1": "30d9bf2f540db077fea2c763926ad65c1ca17f61",
                     "md5": "814a7cc3963a0fd5f936edeeddee6664",
@@ -29539,8 +29539,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: sdk-core-2.54.14.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/sdk-core-2.54.14.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: sdk-core-2.54.14.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/sdk-core-2.54.14.jar"
 ,"md5": "d53236b936454dfca62eca700b1bb523",
             "sha1": "5ae6ece2a7f4451f46a63e50c4d5b86de0c92163",
             "sha256": "ba1a9c9a218a2a1e20c12ee81f687ccade6515bd5f2da3818aaa50e8c2ebf4c6","description": "The AWS SDK for Java - SDK Core runtime module holds the classes that are used by the individual service\n        clients to interact with\n        Amazon Web Services. Users need to depend on aws-java-sdk artifact for accessing individual client classes.\n    "            ,"evidenceCollected": {
@@ -29744,8 +29744,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: secretsmanager-2.54.14.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/secretsmanager-2.54.14.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: secretsmanager-2.54.14.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/secretsmanager-2.54.14.jar"
 ,"md5": "60a8c45f96bfb97d1dd7d02bd694ed35",
             "sha1": "fec7ac0100bd302bdd1e3c483d115b82fa67d607",
             "sha256": "1e773263747a5b709e983e990887609a0c7db0066b10242214dcc89bd2d3bc5d","description": "The AWS Java SDK for AWS Secrets Manager module holds the client classes that are used for\n        communicating with AWS Secrets Manager Service\n    "            ,"evidenceCollected": {
@@ -29949,8 +29949,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: slf4j-api-2.0.19.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/slf4j-api-2.0.19.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: slf4j-api-2.0.19.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/slf4j-api-2.0.19.jar"
 ,"md5": "1ca3a2acac3d5947b37d9b5536c55829",
             "sha1": "efad9817997b3a6ce9e058f92e612917a744c290",
             "sha256": "e91ff6d720609e7a194ffe758c3ed5c84e798617ae07b0a0f6a4fe229741b4bb","description": "The slf4j API","license": "https:\/\/opensource.org\/license\/mit"            ,"evidenceCollected": {
@@ -30164,8 +30164,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: snakeyaml-2.4.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/snakeyaml-2.4.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: snakeyaml-2.4.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/snakeyaml-2.4.jar"
 ,"md5": "29410ee3a987e3bff7b847933c591972",
             "sha1": "e0666b825b796f85521f02360e77f4c92c5a7a07",
             "sha256": "ef779af5d29a9dde8cc70ce0341f5c6f7735e23edff9685ceaa9d35359b7bb7f","description": "YAML 1.1 parser and emitter for Java","license": "Apache License, Version 2.0: http:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -30474,47 +30474,47 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: spring-aop-6.2.19.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/spring-aop-6.2.19.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: spring-aop-6.2.19.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/spring-aop-6.2.19.jar"
 ,"md5": "36ab0f0a76202a0f8cd077fd323372a5",
             "sha1": "86a538bb7b2be38a0afc4ef049784def10a86c62",
             "sha256": "a11b93539d80b02caf76171db2da96df39abebbfef49a2fadd6dda0779f2e20b"            ,"relatedDependencies": [
   {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: spring-beans-6.2.19.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/spring-beans-6.2.19.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: spring-beans-6.2.19.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/spring-beans-6.2.19.jar"
 ,"sha256": "846dc8f30a639a36eb551ee99a30469be4d11bd285ca9daf164d98321571b404",
                     "sha1": "6d6b4774db3b036df46be6332d93b09d70e5c147",
                     "md5": "ae0cf6f1e373577d322e17c350d0fb15"
                 }
  , {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: spring-context-6.2.19.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/spring-context-6.2.19.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: spring-context-6.2.19.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/spring-context-6.2.19.jar"
 ,"sha256": "ead4b645f94a7f665f00093eaafde634e97b34524294de653b51e43e0b3fc4a4",
                     "sha1": "e218e4c4ecad1e821905628b2c4ce8561d937baa",
                     "md5": "77c848b32f387021e0b690be9cd24de8"
                 }
  , {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: spring-expression-6.2.19.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/spring-expression-6.2.19.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: spring-expression-6.2.19.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/spring-expression-6.2.19.jar"
 ,"sha256": "d710a44417d890353895b341a722d7d08199e2b7da52f0a11c0e92571e1d6e19",
                     "sha1": "c7202d23797fa778c5ed55e502ac1a9f0d34012a",
                     "md5": "233e2f7ced4637cad68a9449844e9a6b"
                 }
  , {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: spring-jcl-6.2.19.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/spring-jcl-6.2.19.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: spring-jcl-6.2.19.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/spring-jcl-6.2.19.jar"
 ,"sha256": "9994478bcea1423b8892d4eb0db942c94da0090167c3c684050c1eaef04491d0",
                     "sha1": "39b9c7d631961f3649511b08ef167420b086184b",
                     "md5": "cd5278839172f3b30b1e90bc70d9b864"
                 }
  , {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: spring-webmvc-6.2.19.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/spring-webmvc-6.2.19.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: spring-webmvc-6.2.19.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/spring-webmvc-6.2.19.jar"
 ,"sha256": "134f42320cedd31f54f683d2ca9936a4e015c011fb1882a31fa7213e2d8c7e94",
                     "sha1": "836c68c8797106000e44153686b1cfa1a806a998",
                     "md5": "df1758cf3891705ec3bb290bf75f740e"
@@ -30626,8 +30626,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: spring-boot-3.5.16.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/spring-boot-3.5.16.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: spring-boot-3.5.16.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/spring-boot-3.5.16.jar"
 ,"md5": "7a7ad5afd579e7a5b871dd29bf3ff406",
             "sha1": "8e75e8d0d3cfbca088774df8d30b45bbd21e5d99",
             "sha256": "2d5b16632402b840b0425ed52610071890bf8cb24c6c49af343bbde574123265"            ,"evidenceCollected": {
@@ -30739,8 +30739,8 @@
 
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: spring-boot-autoconfigure-3.5.16.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/spring-boot-autoconfigure-3.5.16.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: spring-boot-autoconfigure-3.5.16.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/spring-boot-autoconfigure-3.5.16.jar"
 ,"md5": "456df6ce6ce9901dc7239a2ccd7b5eee",
             "sha1": "87db09240595b49b530b230252311836abd21df1",
             "sha256": "0198331231e9bf872a135741d59c6d1f9e9007ff207a1ca910179c550bb12bfc"            ,"evidenceCollected": {
@@ -30880,8 +30880,8 @@
 
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: spring-boot-jarmode-tools-3.5.16.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/spring-boot-jarmode-tools-3.5.16.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: spring-boot-jarmode-tools-3.5.16.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/spring-boot-jarmode-tools-3.5.16.jar"
 ,"md5": "07d4b402f2e97d72f50b4d86832e7146",
             "sha1": "ea45d27d78ca53b682f4b7b3e11a0974c4d2118e",
             "sha256": "d05beb46a7eac0f1a06733c75828b190a1cb250076ce03be2213aca4a5c0f03f"            ,"evidenceCollected": {
@@ -31042,8 +31042,8 @@
 
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: spring-core-6.2.19.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/spring-core-6.2.19.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: spring-core-6.2.19.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/spring-core-6.2.19.jar"
 ,"md5": "4afe3968028c2b743dbff2d79013e144",
             "sha1": "691459d4644894dae8e5c2d9550a4cfb8302f62f",
             "sha256": "52146689e71a911c92bac26677d73c692512a739893a57710cc233591756bff6"            ,"evidenceCollected": {
@@ -31966,8 +31966,8 @@
                     }                ]
                 }            ]        },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: spring-retry-2.0.13.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/spring-retry-2.0.13.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: spring-retry-2.0.13.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/spring-retry-2.0.13.jar"
 ,"md5": "f6728ef0613480cea473646d0480603e",
             "sha1": "4cf3f0ec5decf3c510c5331401ee55de209b454e",
             "sha256": "213785750007f90b067ba43036cbffdad2890f6bb98917e199f6b049cf810040","description": "Spring Retry provides an abstraction around retrying failed operations, with an\n\t\temphasis on declarative control of the process and policy-based behaviour that is\n\t\teasy to extend and customize. For instance, you can configure a plain POJO\n\t\toperation to retry if it fails, based on the type of exception, and with a fixed\n\t\tor exponential backoff.","license": "Apache 2.0: https:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -32360,31 +32360,31 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: spring-security-core-6.5.11.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/spring-security-core-6.5.11.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: spring-security-core-6.5.11.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/spring-security-core-6.5.11.jar"
 ,"md5": "697081575fdb870e6c77e4f489acb192",
             "sha1": "d57309ff65d122a2fa45a3a8f47b01e9183cb6e6",
             "sha256": "26ac26527cc015c5c71f3832add705a2410129a8f8de847054f2bc3b1d2e4465"            ,"relatedDependencies": [
   {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: spring-security-config-6.5.11.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/spring-security-config-6.5.11.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: spring-security-config-6.5.11.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/spring-security-config-6.5.11.jar"
 ,"sha256": "218685930013a2d1c126a896490ac3c44cf6fe90cf3d0286f2266bb877f916f7",
                     "sha1": "c698bc32f1f10f85b3ade54575077eaebc9b86c3",
                     "md5": "56a1f736ee4e6e8557ea360d0ae995c3"
                 }
  , {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: spring-security-crypto-6.5.11.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/spring-security-crypto-6.5.11.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: spring-security-crypto-6.5.11.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/spring-security-crypto-6.5.11.jar"
 ,"sha256": "dcdd2f3b2d5d2bb1531986b5cc1737b464a76d8b5831f93fc8da9cdd67e6797f",
                     "sha1": "2cbc07fa7650ef2f49bcc5ac35e7666c79614f55",
                     "md5": "d9fb7f74b14c2c049d46d0454f138247"
                 }
  , {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: spring-security-web-6.5.11.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/spring-security-web-6.5.11.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: spring-security-web-6.5.11.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/spring-security-web-6.5.11.jar"
 ,"sha256": "50df9fc76162d33cf8b5410cf7a7a969abd42a5ecddb284aab4f453cb5512306",
                     "sha1": "eeee13020ef81f290633e68fe062bccba062774e",
                     "md5": "9e6b94f61b08fe8d113a7835bb994576"
@@ -32933,23 +32933,23 @@
                     }                ]
                 }            ]        },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: spring-security-oauth2-resource-server-6.5.11.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/spring-security-oauth2-resource-server-6.5.11.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: spring-security-oauth2-resource-server-6.5.11.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/spring-security-oauth2-resource-server-6.5.11.jar"
 ,"md5": "4d60408110974b01a250f30fadfe7304",
             "sha1": "7f28ddc2ffb134af69da3f9efb3e27ac1e50db4f",
             "sha256": "735b0f1a98654f19778e8cfa7d78614395cce79e1d0acd73f95b2e4b98ca5cf3"            ,"relatedDependencies": [
   {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: spring-security-oauth2-core-6.5.11.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/spring-security-oauth2-core-6.5.11.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: spring-security-oauth2-core-6.5.11.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/spring-security-oauth2-core-6.5.11.jar"
 ,"sha256": "6c6a0c5d8c4ddcedd85d70a9c7230851df9cf6fa7b760fa0bcb156b5b73285ea",
                     "sha1": "8701577c05dc5e2345f96753046e724367c7b870",
                     "md5": "b1d8cd71a64d6644a1880b710849d1fd"
                 }
  , {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: spring-security-oauth2-jose-6.5.11.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/spring-security-oauth2-jose-6.5.11.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: spring-security-oauth2-jose-6.5.11.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/spring-security-oauth2-jose-6.5.11.jar"
 ,"sha256": "7c24798eb6759979457c7ab30c913af41c5233e2fd4f3ff3f81064fcf3201f2b",
                     "sha1": "d9f717cf74d3544e71fc0feaa2ba272d11030180",
                     "md5": "09dfef7e4995320cc23b57e8178a3602"
@@ -33539,8 +33539,8 @@
                     }                ]
                 }            ]        },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: spring-security-web-6.5.11.jar: spring-security-webauthn.js",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/spring-security-web-6.5.11.jar\/org\/springframework\/security\/spring-security-webauthn.js"
+            "fileName": "99.0.1-RELEASE-3.jar: spring-security-web-6.5.11.jar: spring-security-webauthn.js",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/spring-security-web-6.5.11.jar\/org\/springframework\/security\/spring-security-webauthn.js"
 ,"md5": "d8d90d854a23d021c2e758b3eebce213",
             "sha1": "7814ccd3adc2388f52b2658bf5fc30b457949ab6",
             "sha256": "044a2b8d7e995bff815565678631a2d3a5cc0aa96ef8ac35cfacb579307f77a9"            ,"evidenceCollected": {
@@ -33554,8 +33554,8 @@
 
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: spring-web-6.2.19.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/spring-web-6.2.19.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: spring-web-6.2.19.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/spring-web-6.2.19.jar"
 ,"md5": "1d5ca2b445acea292d5787536c069a36",
             "sha1": "f1dc7b238611aeaf9e256a230aa089057cf0e5b3",
             "sha256": "ca88e364ecebee61163e2260e8a20584138eca74e28a050d6a2ef6302bad2f2d"            ,"evidenceCollected": {
@@ -33660,8 +33660,8 @@
 
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: springdoc-openapi-starter-common-2.9.1.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/springdoc-openapi-starter-common-2.9.1.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: springdoc-openapi-starter-common-2.9.1.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/springdoc-openapi-starter-common-2.9.1.jar"
 ,"md5": "eb3b313d535fd391de0a552997ff55e1",
             "sha1": "7e5ca7c89e4b3f437379992e6db87654fae84654",
             "sha256": "5ac01a1008aaf320706b38ddf1530441b41b9588c6bf76b2e209f6af8465c132"            ,"evidenceCollected": {
@@ -33805,8 +33805,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: springdoc-openapi-starter-webmvc-api-2.9.1.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/springdoc-openapi-starter-webmvc-api-2.9.1.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: springdoc-openapi-starter-webmvc-api-2.9.1.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/springdoc-openapi-starter-webmvc-api-2.9.1.jar"
 ,"md5": "df5d49973803fe6367439cb4dbd12cbf",
             "sha1": "1e47f42e7740a5edb7427e24f743005a47f658b8",
             "sha256": "65604aae006f10c1e181fc6c31f70b0762d11478758a9bfd96c2de9be257a049"            ,"evidenceCollected": {
@@ -33978,8 +33978,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: springdoc-openapi-starter-webmvc-ui-2.9.1.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/springdoc-openapi-starter-webmvc-ui-2.9.1.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: springdoc-openapi-starter-webmvc-ui-2.9.1.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/springdoc-openapi-starter-webmvc-ui-2.9.1.jar"
 ,"md5": "e6e1be4471932995c35cf81689c7cb2c",
             "sha1": "bb1bb545a2b2005fff342dc6978513674de55ef7",
             "sha256": "86267fa3c69b6abafee8e44b1f8fdfab2274a79dbbd01b718acce59613178603"            ,"evidenceCollected": {
@@ -34151,8 +34151,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: sqs-2.54.14.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/sqs-2.54.14.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: sqs-2.54.14.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/sqs-2.54.14.jar"
 ,"md5": "26d6753ce64c7bf1284fce63ed71544c",
             "sha1": "c943b221dbcb5b3c28e9693d380464342f5a2568",
             "sha256": "81938a71c2be329ed77ad1c812b4ace6ef2b773dc83a597e5afafc131c6c7a36","description": "The AWS Java SDK for Amazon SQS module holds the client classes that are used for communicating with\n        Amazon Simple Queue\n        Service\n    "            ,"evidenceCollected": {
@@ -34356,8 +34356,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: stax2-api-4.3.0.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/stax2-api-4.3.0.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: stax2-api-4.3.0.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/stax2-api-4.3.0.jar"
 ,"md5": "6eec6c1cb7f63d8a8098cc5569a47e99",
             "sha1": "59251773c44122e8d1366f68884e29dd784e141b",
             "sha256": "7c805f36129ea9fa42b696093b7ae1eb20bb6ccec65c8280d6f33db5609ca5e1","description": "Stax2 API is an extension to basic Stax 1.0 API that adds significant new functionality, such as full-featured bi-direction validation interface and high-performance Typed Access API.\n  ","license": "The BSD 2-Clause License: http:\/\/www.opensource.org\/licenses\/bsd-license.php"            ,"evidenceCollected": {
@@ -34732,15 +34732,15 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: swagger-core-jakarta-2.2.55.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/swagger-core-jakarta-2.2.55.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: swagger-core-jakarta-2.2.55.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/swagger-core-jakarta-2.2.55.jar"
 ,"md5": "12f5e4a252cc99db79a3f0af60f7158b",
             "sha1": "5fab7a2e1df29cfe3ae569f8b96a3534f5ca15a3",
             "sha256": "3d72786a7133dbf8569dda19549e0ef3e0d68d01d3b4dd221a96eb1b29263d5f","description": "swagger-core-jakarta","license": "\"Apache License 2.0\";link=\"http:\/\/www.apache.org\/licenses\/LICENSE-2.0.html\""            ,"relatedDependencies": [
   {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: swagger-annotations-jakarta-2.2.55.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/swagger-annotations-jakarta-2.2.55.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: swagger-annotations-jakarta-2.2.55.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/swagger-annotations-jakarta-2.2.55.jar"
 ,"sha256": "d464521aac0e9ae2cfead9d2f56e9e8c110ef4b15ad9c046408a087a4c58952b",
                     "sha1": "a8af2e7fdca945d8871316e84a9b3154694e26ba",
                     "md5": "576a29f3692ccc16ec3161faf1af6b47",
@@ -34752,8 +34752,8 @@
                 }
  , {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: swagger-models-jakarta-2.2.55.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/swagger-models-jakarta-2.2.55.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: swagger-models-jakarta-2.2.55.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/swagger-models-jakarta-2.2.55.jar"
 ,"sha256": "f83577d4090301a49342dd73708ace743ea46fe382e922a9e892368c45cc6a8d",
                     "sha1": "1c0f2d4ce28c69ad62a5e4de705aa67e1c55e935",
                     "md5": "505e268edc57c851d9f636e3ab4f91fd",
@@ -35042,8 +35042,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: swagger-ui-5.32.14.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/swagger-ui-5.32.14.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: swagger-ui-5.32.14.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/swagger-ui-5.32.14.jar"
 ,"md5": "cc0e2a3215e54231bbbafe59ff0b2315",
             "sha1": "edcbecf8e026eefcd401dcc04b71cd9f96ee7600",
             "sha256": "d17ca6b09c60518574c14d4a40318dc58a11ea92a962e94f30e5a286e1efa4a6","description": "WebJar for Swagger UI","license": "Apache-2.0"            ,"evidenceCollected": {
@@ -35205,8 +35205,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: swagger-ui-5.32.14.jar: oauth2-redirect.js",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/swagger-ui-5.32.14.jar\/META-INF\/resources\/webjars\/swagger-ui\/5.32.14\/oauth2-redirect.js"
+            "fileName": "99.0.1-RELEASE-3.jar: swagger-ui-5.32.14.jar: oauth2-redirect.js",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/swagger-ui-5.32.14.jar\/META-INF\/resources\/webjars\/swagger-ui\/5.32.14\/oauth2-redirect.js"
 ,"md5": "d170ff78b648354d9005ff7dce2b141d",
             "sha1": "d9df3eb79cf8ab7d1bd9df14d3264350c270b51b",
             "sha256": "a5c8a34e09e49737382cc5019446eec7c3db3461963fc5bfe448361d3c5549e9"            ,"evidenceCollected": {
@@ -35220,8 +35220,8 @@
 
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: swagger-ui-5.32.14.jar: swagger-initializer.js",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/swagger-ui-5.32.14.jar\/META-INF\/resources\/webjars\/swagger-ui\/5.32.14\/swagger-initializer.js"
+            "fileName": "99.0.1-RELEASE-3.jar: swagger-ui-5.32.14.jar: swagger-initializer.js",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/swagger-ui-5.32.14.jar\/META-INF\/resources\/webjars\/swagger-ui\/5.32.14\/swagger-initializer.js"
 ,"md5": "ff995915f51c051c59fed883f5d7be28",
             "sha1": "c434dd8fbfa625a10351681d3037ee79d5682207",
             "sha256": "a895034f24f12d7cd81ec47c98da4f15721d9d9a8d2405f22f21704821f81d02"            ,"evidenceCollected": {
@@ -35235,8 +35235,8 @@
 
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: swagger-ui-5.32.14.jar: swagger-ui-bundle.js",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/swagger-ui-5.32.14.jar\/META-INF\/resources\/webjars\/swagger-ui\/5.32.14\/swagger-ui-bundle.js"
+            "fileName": "99.0.1-RELEASE-3.jar: swagger-ui-5.32.14.jar: swagger-ui-bundle.js",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/swagger-ui-5.32.14.jar\/META-INF\/resources\/webjars\/swagger-ui\/5.32.14\/swagger-ui-bundle.js"
 ,"md5": "9482119f8854a72fbda620655be169c0",
             "sha1": "3796bbc04a47deb1c29ad7363e60b485a9681516",
             "sha256": "16d93d5cc19e54c98fb0b81157dbb3bd90780aa36b914e128a643b31e54a93f4"            ,"evidenceCollected": {
@@ -35250,8 +35250,8 @@
 
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: swagger-ui-5.32.14.jar: swagger-ui-es-bundle-core.js",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/swagger-ui-5.32.14.jar\/META-INF\/resources\/webjars\/swagger-ui\/5.32.14\/swagger-ui-es-bundle-core.js"
+            "fileName": "99.0.1-RELEASE-3.jar: swagger-ui-5.32.14.jar: swagger-ui-es-bundle-core.js",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/swagger-ui-5.32.14.jar\/META-INF\/resources\/webjars\/swagger-ui\/5.32.14\/swagger-ui-es-bundle-core.js"
 ,"md5": "8d6a017f60a36fe225d03f4bf7a7c37e",
             "sha1": "90cabc7f0a80bc50362ff35d6e1fd71d62e7004f",
             "sha256": "4c86932555c419ca780d4ad220e5d02b1a9632da7af14d961ca02d0ade8b0f75"            ,"evidenceCollected": {
@@ -35265,8 +35265,8 @@
 
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: swagger-ui-5.32.14.jar: swagger-ui-es-bundle.js",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/swagger-ui-5.32.14.jar\/META-INF\/resources\/webjars\/swagger-ui\/5.32.14\/swagger-ui-es-bundle.js"
+            "fileName": "99.0.1-RELEASE-3.jar: swagger-ui-5.32.14.jar: swagger-ui-es-bundle.js",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/swagger-ui-5.32.14.jar\/META-INF\/resources\/webjars\/swagger-ui\/5.32.14\/swagger-ui-es-bundle.js"
 ,"md5": "33067e26bb185c04beb6d720186b2dbc",
             "sha1": "3b02ac61c8d8e246161161d2ad3dd5e358b2476f",
             "sha256": "890638378b1e73061b8332469ef07a30f0865b4b5577f09d0b34a190d7fb5953"            ,"evidenceCollected": {
@@ -35280,8 +35280,8 @@
 
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: swagger-ui-5.32.14.jar: swagger-ui-standalone-preset.js",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/swagger-ui-5.32.14.jar\/META-INF\/resources\/webjars\/swagger-ui\/5.32.14\/swagger-ui-standalone-preset.js"
+            "fileName": "99.0.1-RELEASE-3.jar: swagger-ui-5.32.14.jar: swagger-ui-standalone-preset.js",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/swagger-ui-5.32.14.jar\/META-INF\/resources\/webjars\/swagger-ui\/5.32.14\/swagger-ui-standalone-preset.js"
 ,"md5": "5b0b90efe858260e05aff19a7e35b236",
             "sha1": "0baa33a08b5b748f964d6ccd420f90893a74a40f",
             "sha256": "b6c3e519a7b920b9bfd48eb92521a768da1bc86343b926ef74ba6d481da6844b"            ,"evidenceCollected": {
@@ -35295,8 +35295,8 @@
 
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: swagger-ui-5.32.14.jar: swagger-ui.js",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/swagger-ui-5.32.14.jar\/META-INF\/resources\/webjars\/swagger-ui\/5.32.14\/swagger-ui.js"
+            "fileName": "99.0.1-RELEASE-3.jar: swagger-ui-5.32.14.jar: swagger-ui.js",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/swagger-ui-5.32.14.jar\/META-INF\/resources\/webjars\/swagger-ui\/5.32.14\/swagger-ui.js"
 ,"md5": "966a9ccca4dc3c2567fe49d4987ee26c",
             "sha1": "6ac1effdab49a721797f015f06e1c2be9e5aadd0",
             "sha256": "d37a2590d5f53c32ae3608282d118ab34d528c21237e9f24d9ddb642e82a1122"            ,"evidenceCollected": {
@@ -35310,8 +35310,8 @@
 
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: third-party-jackson-core-2.54.14.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/third-party-jackson-core-2.54.14.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: third-party-jackson-core-2.54.14.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/third-party-jackson-core-2.54.14.jar"
 ,"md5": "fc3ccf020a44e964e3efbbb40738fc39",
             "sha1": "8a69edafe89e86e9433fea4ca76d04c4e406499f",
             "sha256": "764ea60a1222b42f747a2bd0a2fb905395bbf67058bbab21366c06fb1abec525"            ,"evidenceCollected": {
@@ -35465,8 +35465,8 @@
 
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: tomcat-annotations-api-10.1.55.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/tomcat-annotations-api-10.1.55.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: tomcat-annotations-api-10.1.55.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/tomcat-annotations-api-10.1.55.jar"
 ,"md5": "710a2d62e7b0b45d7cee07dd7ada71fa",
             "sha1": "57dd500982f9bbf9c6a06ecf8d1361f35d6ab870",
             "sha256": "f011b4438e0b949ed9a5a5782aa01e81fd831b939c13b48292bee43522dca9d7","license": "https:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -35701,15 +35701,15 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: tomcat-embed-core-10.1.59.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/tomcat-embed-core-10.1.59.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: tomcat-embed-core-10.1.59.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/tomcat-embed-core-10.1.59.jar"
 ,"md5": "24fc336350ac0d06ebf9cc2fc3d40eda",
             "sha1": "db93f5e8e37e48a13319301e5daed600609aaa25",
             "sha256": "afc4ea11f79b3ade0851539703a2358b8f1b6c2d47abf21bfed6aaba1aecc947","license": "https:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"relatedDependencies": [
   {
                     "isVirtual": false,
-                    "fileName": "99.0.0-RELEASE-10.jar: tomcat-embed-websocket-10.1.59.jar",
-                    "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/tomcat-embed-websocket-10.1.59.jar"
+                    "fileName": "99.0.1-RELEASE-3.jar: tomcat-embed-websocket-10.1.59.jar",
+                    "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/tomcat-embed-websocket-10.1.59.jar"
 ,"sha256": "8be40b8a06ad2ed1675a5833aef247def11948ce68b79991a16271382507dc65",
                     "sha1": "58abf35d0fc44c726d427474a4fbccbd0e5f94bc",
                     "md5": "4b48b479655ccb742606b2acd8e2821b"
@@ -36118,8 +36118,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: tomcat-embed-el-10.1.59.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/tomcat-embed-el-10.1.59.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: tomcat-embed-el-10.1.59.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/tomcat-embed-el-10.1.59.jar"
 ,"md5": "28c0e735abef87c7278743e790a93fc3",
             "sha1": "7c6003eb15df8ce73d30c8754d084ec2206226ff",
             "sha256": "a6ce5e204631a91b718fd22697c633ead2315f38506945944ebea3b17b39301e","license": "https:\/\/www.apache.org\/licenses\/LICENSE-2.0.txt"            ,"evidenceCollected": {
@@ -36326,8 +36326,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: tus-java-client-0.5.0.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/tus-java-client-0.5.0.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: tus-java-client-0.5.0.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/tus-java-client-0.5.0.jar"
 ,"md5": "f9d1ff7b75fe8fa292c27077b3f2d9bd",
             "sha1": "c355c4f19d055aa0eeb3b2fc6b51f2cb1d597ce9",
             "sha256": "2ac39e94c51cb10ad29b9e912e5bf10fbfdc479bb77ff92b5a1cf2c38659a126"            ,"evidenceCollected": {
@@ -36411,8 +36411,8 @@
 
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: tus-java-server-1.0.0-3.0.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/tus-java-server-1.0.0-3.0.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: tus-java-server-1.0.0-3.0.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/tus-java-server-1.0.0-3.0.jar"
 ,"md5": "8160e9faccdc59020722ebfd07d19416",
             "sha1": "5d3f5d7a475f6f593bfb14434ebc4c453aa66df5",
             "sha256": "dd85d85c694e7b83546f1d13a13fd3d433179c9b5916dde2c42fd111dcd4816f","description": "\n        Server-side implementation of the open file upload protocol tus (https:\/\/tus.io\/)\n        that supports resumable file uploads for small and very large files\n    ","license": "MIT License: http:\/\/www.opensource.org\/licenses\/mit-license.php"            ,"evidenceCollected": {
@@ -36619,8 +36619,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: txw2-4.0.9.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/txw2-4.0.9.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: txw2-4.0.9.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/txw2-4.0.9.jar"
 ,"md5": "09ca7799e2d1a5b484e1290db7bb9344",
             "sha1": "70325ebdebca3e7aae1dfa395fd41fc25d8a6f4e",
             "sha256": "d6343e5945d87266ca4e8974a0a2a876e1bd147a00fb65ed3f2e1a3a00f3a82a","description": "\n        TXW is a library that allows you to write XML documents.\n    "            ,"evidenceCollected": {
@@ -36834,8 +36834,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: utils-2.54.14.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/utils-2.54.14.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: utils-2.54.14.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/utils-2.54.14.jar"
 ,"md5": "e72c7447cd8313aa2bba59974a920b57",
             "sha1": "9eb370bed57febad87e7a76d06ef781d82f786b8",
             "sha256": "001f0f29d8536688a5abd768df4837a8d25bc82d7ae6a5d4cf31728a48e2b05a"            ,"evidenceCollected": {
@@ -37028,8 +37028,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: utils-lite-2.54.14.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/utils-lite-2.54.14.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: utils-lite-2.54.14.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/utils-lite-2.54.14.jar"
 ,"md5": "4de71461a9ed72c45dd8565f5bb07a17",
             "sha1": "0ec44d09b72f4f546b7c836dddf87ea8785904d3",
             "sha256": "23f7d62f82a80d3136c770b26e4fd263f339e1fab928d0b73b473703acd149aa","description": "\n        A package providing minimal external utils.\n    "            ,"evidenceCollected": {
@@ -37233,8 +37233,8 @@
             ]
         },{
             "isVirtual": false,
-            "fileName": "99.0.0-RELEASE-10.jar: webjars-locator-lite-1.1.3.jar",
-            "filePath": "\/github\/workspace\/target\/99.0.0-RELEASE-10.jar\/BOOT-INF\/lib\/webjars-locator-lite-1.1.3.jar"
+            "fileName": "99.0.1-RELEASE-3.jar: webjars-locator-lite-1.1.3.jar",
+            "filePath": "\/github\/workspace\/target\/99.0.1-RELEASE-3.jar\/BOOT-INF\/lib\/webjars-locator-lite-1.1.3.jar"
 ,"md5": "649d9b39a79b284f9646d37b9b3f5b79",
             "sha1": "217ce590453251b39b72c4a9af3986998f6fdbd9",
             "sha256": "7b67c4e69437a9c32b9c901bfaa056c7e2f1db62401757f02387c1f014bd00c4","description": "WebJars Locator Lite","license": "MIT: https:\/\/github.com\/webjars\/webjars-locator-lite\/blob\/main\/LICENSE.md"            ,"evidenceCollected": {
