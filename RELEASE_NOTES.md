@@ -1,3 +1,10 @@
+# IZ Gateway Release 99.0.0
+
+Released 2026-09-18.
+
+- fix: malformed ApiKeyCredential timestamp abort fix ([#191](https://github.com/IZGateway/izgw-hub/pull/191))
+- Fix TC_MOCK_04c ([#193](https://github.com/IZGateway/izgw-hub/pull/193))
+
 # IZ Gateway Release 2.16.0
 
 - IGDD-2679 — Fix unexpected exception detected in izgw-hub (shared with Xform Service)
