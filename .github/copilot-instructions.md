@@ -177,14 +177,21 @@ Two-job pipeline: `build` then `verify`.
   ECS cluster `izgateway-dev-izgateway-services` (service `izgateway-devalb-service`).
 - **verify**: Waits for ECS stability, then runs Newman integration tests against
   `dev.izgateway.org`. On success, tags the image `:good` in ECR.
-- **push-to-aphl**: Release-branch pushes only — promotes image to APHL environment.
 
-Triggers: push/PR to `Release*` branches, push/PR to `develop`, scheduled nightly.
+Triggers: push/PR to `develop`, scheduled weekdays, and manual dispatch. `Release*`
+branches no longer trigger anything: they are frozen and reference-only.
+
+### Releases
+
+Releases are manually dispatched: `.github/workflows/release.yml` (standard) and
+`.github/workflows/hotfix.yml` (hotfix), both calling `_release_common.yml`.
+`main.yml` is retired. Development CI publishes no release and no APHL image.
+See `docs/release-automation.md`.
 
 ### Versioning
 
 SNAPSHOT builds: `{version}-IZGW-SNAPSHOT`  
-Release builds: `{version}-IZGW-RELEASE` (set automatically when pushing to a `Release*` branch)
+Release builds: `{version}-IZGW-RELEASE` (set by the release workflow, not by a branch push)
 
 Image tags include the run number: `{version}-SNAPSHOT-{run_number}`
 

@@ -18,7 +18,10 @@ context: |
     Logging: SLF4J + Logback; logstash-logback-encoder for structured JSON; Elasticsearch/Kibana; in-memory MemoryAppender
     Infrastructure: AWS ECS/Docker (Alpine + OpenJDK 21), AWS Secrets Manager, Elasticsearch
     Build: Maven 3.9+, Maven Wrapper (mvnw), JaCoCo for coverage, OWASP Dependency-Check (fail CVSS ≥ 7)
-    CI/CD: GitHub Actions (.github/workflows/maven.yml for develop/Release*, main.yml for main)
+    CI/CD: GitHub Actions. maven.yml is development CI for develop only (no release publication).
+      Releases are manually dispatched: release.yml and hotfix.yml call _release_common.yml.
+      main.yml is retired. Release* branches are frozen and reference-only.
+      Operator runbook: docs/release-automation.md
     Security: BouncyCastle FIPS (bc-fips, bcpkix-fips, bctls-fips); BCFKS keystore format; mTLS (client-auth=need); TLS 1.2/1.3 only; OAuth2/JWT (spring-security-oauth2-resource-server, jjwt); IP denylist; OCSP (optional)
 
   Architecture:

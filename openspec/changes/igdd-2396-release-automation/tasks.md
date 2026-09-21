@@ -228,7 +228,7 @@ Keep the shell inline in each composite action.
 
 ## 6. Development CI Integration
 
-- [ ] 6.1 Refactor `.github/workflows/maven.yml` to call `verify-hub` with
+- [x] 6.1 Refactor `.github/workflows/maven.yml` to call `verify-hub` with
   build-time metadata and the exact candidate digest, and to promote its verified
   `good` tag by digest. Retain develop push and PR triggers, the schedule, manual
   CI, and the existing development scan policy. Remove the legacy release and
@@ -249,7 +249,7 @@ Keep the shell inline in each composite action.
 
 ## 7. Documentation and Pre-rehearsal Review
 
-- [ ] 7.1 Create `docs/release-automation.md`, link it from `README.md`, and
+- [x] 7.1 Create `docs/release-automation.md`, link it from `README.md`, and
   update `.github/copilot-instructions.md`, `.claude/CLAUDE.md`, and
   `openspec/config.yaml` for the new CI and branching model. Document dependency
   preparation, input examples, App and secret names, side-effecting dry-runs,
