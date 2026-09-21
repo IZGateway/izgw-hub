@@ -299,11 +299,22 @@ APHL image identity with the candidate. APHL credentials are configured only for
 real delivery. Restore dev-account credentials before any subsequent AWS
 diagnostics that require them.
 
-Find the preceding version tag on the candidate's ancestry, rather than choosing
-the largest version tag anywhere in the repository. Use only the source change
-range captured before this run's generated commits. Resolve associated merged
-PRs and deduplicate their numbers; use commit descriptions only for a genuine
-no-PR result. A GitHub read failure is not an empty change list.
+Define the change set as the commits on the candidate that the trunk does not
+have: `origin/<trunk>..HEAD`, or the whole history when the trunk does not
+exist yet. The trunk is, by definition, what was last released. For a standard
+release this is the work merged to the base since the last release; for a
+hotfix it is the operator's commits. Use only the source change range captured
+before this run's generated commits. Resolve associated merged PRs and
+deduplicate their numbers; use commit descriptions only for a genuine no-PR
+result. A GitHub read failure is not an empty change list.
+
+Do not derive the range from a version tag. Neither tag-based method works
+with this merge topology. The tag lands on the trunk merge commit, and the
+back-merge carries the release branch into the base rather than the trunk, so
+the tag never becomes an ancestor of the base: `git describe` from the next
+candidate finds an older tag and re-lists the previous release. Transform's
+alternative, the largest version tag in the repository, would select a
+rehearsal tag such as `v99.0.0` and truncate the range to nothing.
 
 Use Hub's `# IZ Gateway Release X.Y.Z` heading and preserve historical entries.
 On a retry from a retained hotfix branch, replace the current unpublished

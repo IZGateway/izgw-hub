@@ -89,13 +89,15 @@ maintainer supplies. If evidence is absent, the task stays unchecked.
 ## 2. Candidate Preparation and Build
 
 - [x] 2.1 Add release-notes generation to `_release_common.yml`. Use the
-  preceding reachable version tag and the source range captured before this run's
-  generated commits. Resolve and deduplicate merged PR titles and links. Use
-  commit descriptions only for a genuine no-PR result.
+  commits the trunk does not have, `origin/<trunk>..HEAD`, captured before this
+  run's generated commits; the whole history when no trunk exists. Do not derive
+  the range from a version tag. Resolve and deduplicate merged PR titles and
+  links. Use commit descriptions only for a genuine no-PR result.
   **Done when:** review confirms Hub's `# IZ Gateway Release X.Y.Z` heading,
   preserved historical entries, replacement of a retried unpublished entry
-  instead of a duplicate heading, and that a GitHub read failure fails the step
-  rather than selecting the commit fallback.
+  instead of a duplicate heading, that a GitHub read failure fails the step
+  rather than selecting the commit fallback, and that a second standard release
+  does not re-list the previous release's pull requests.
 - [x] 2.2 Add `docs/release` staging to `_release_common.yml`. Build it from
   tracked root Markdown, preserving Hub's existing selection: omit the root
   `README.md` and use the generated current-release notes in place of the whole
