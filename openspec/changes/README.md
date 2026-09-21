@@ -93,3 +93,4 @@ modify.
 | Change | Jira | Notes |
 |--------|------|-------|
 | `fix-ndlp-folder-paths` | — | Has no `specs/` deltas, so `openspec validate` reports it as failing. Pre-existing; unrelated to the API-key work. |
+| `igdd-3294-hmac-secret-rotation` | IGDD-3294 | Spike deliverable only (decision record + runbook, no `specs/` delta) — `kid`-based secret rotation already ships as part of the API-key stack above; this documents the operational procedure and a real gap (AWS auto-deletes unlabeled secret versions within ~24h, but tokens live up to 366 days). |
