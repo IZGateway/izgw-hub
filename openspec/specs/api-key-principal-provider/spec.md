@@ -20,7 +20,9 @@ authentication; `AuthenticationEnforcementFilter` ensures a client must authenti
 one path or the other when Tomcat runs with `client-auth=want`. Revocations propagate
 through `/rest/refresh` and SQS, ALB-forwarded client certificates receive an OCSP
 check through the existing `RevocationChecker`, and `jwt.test-secret` provides a
-local-development bypass of Secrets Manager.
+local-development bypass of Secrets Manager. JWT clients are authorized by `upn`
+through the same DynamoDB AccessGroup lookup that authorizes mTLS clients by
+certificate CN; roles are never taken from JWT claims.
 
 ---
 
@@ -151,13 +153,13 @@ After signature and standard claims verification, Hub SHALL extract the `upn` cl
 
 ### Requirement: DynamoDB credential status check
 When the credential cache misses, Hub SHALL read the `ApiKeyCredential` record and act on its `status`:
-- **active**: validate that the request's target environment (`SystemUtils.getDestType()`) is contained in the credential's server-side `environments` list; if it is not, record the `jti` in the absent cache (so an `environments` edit takes effect within the credential-cache TTL) and throw `ApiKeyAuthenticationException`. Otherwise construct an `ApiKeyPrincipal` from JWT claims (`upn` → `name` (IzgPrincipal.getName()), `sub` → `organization` (a numeric string jurisdiction ID, e.g., `"42"`), `roles` → roles, `jti` → jti), store in credential cache with `jwt.credential-cache-ttl` (default 5 minutes), and return the principal.
+- **active** or **grace_period**: validate that the request's target environment (`SystemUtils.getDestType()`) is contained in the credential's server-side `environments` list; if it is not, record the `jti` in the absent cache (so an `environments` edit takes effect within the credential-cache TTL) and throw `ApiKeyAuthenticationException`. Otherwise construct an `ApiKeyPrincipal` from JWT claims (`upn` → `name` (IzgPrincipal.getName()), `sub` → `organization` (a numeric string jurisdiction ID, e.g., `"42"`), `jti` → jti), store in credential cache with `jwt.credential-cache-ttl` (default 5 minutes), and return the principal. The `roles` field on the returned principal SHALL be empty; JWT claims SHALL NOT be used to populate roles.
 - **revoked** (any non-usable status): store a REVOKED sentinel in the revoked cache with TTL equal to the maximum possible token lifetime (366 days), and throw `ApiKeyAuthenticationException`.
 - **record absent**: record the `jti` in the absent cache with TTL equal to `jwt.credential-cache-ttl` (default 5 minutes), and throw `ApiKeyAuthenticationException`. The shorter TTL lets a credential record created after a cold-cache miss take effect without a permanent lockout.
 
 #### Scenario: Active credential
 - **WHEN** DynamoDB returns `status = active` for the `jti` and the request's target environment is in the credential's `environments` list
-- **THEN** an `ApiKeyPrincipal` is constructed from JWT claims with `name = upn` and cached with 5-minute TTL, then returned
+- **THEN** an `ApiKeyPrincipal` is constructed from JWT claims with `name = upn`, empty `roles`, and cached with 5-minute TTL, then returned
 
 #### Scenario: Credential not valid for the target environment
 - **WHEN** DynamoDB returns `status = active` for the `jti` but the request's target environment (`SystemUtils.getDestType()`) is NOT in the credential's `environments` list
@@ -248,3 +250,18 @@ When the `jwt.test-secret` configuration property is set, Hub SHALL use that val
 #### Scenario: Local dev with test-secret set
 - **WHEN** `jwt.test-secret` is configured and a valid HS256 JWT signed with that secret is presented
 - **THEN** validation succeeds without any Secrets Manager call
+
+### Requirement: JWT client authorization via DynamoDB AccessGroup lookup
+Hub SHALL authorize JWT clients using the `upn` value as the identity key in DynamoDB AccessGroup lookups, identical to how mTLS cert clients are authorized using the certificate CN. `AccessControlService.isUserInRole()` SHALL NOT contain a special fallback for `ApiKeyPrincipal` instances that reads roles from the JWT token. The DynamoDB AccessGroup table is the sole source of role assignments for both JWT and cert principals.
+
+#### Scenario: JWT client UPN present in AccessGroup
+- **WHEN** a JWT client presents a valid token with `upn = immunize.example.gov` AND that UPN is a member of an AccessGroup with role `soap`
+- **THEN** the JWT client is authorized to call SOAP endpoints, identical to a cert client with CN `immunize.example.gov` in the same group
+
+#### Scenario: JWT client UPN absent from all AccessGroups
+- **WHEN** a JWT client presents a valid token with a `upn` that is not in any AccessGroup
+- **THEN** access is denied with 401, identical to a cert client whose CN is not in any group
+
+#### Scenario: JWT client UPN in admin AccessGroup
+- **WHEN** a JWT client presents a valid token with a `upn` that is in an AccessGroup with role `admin`
+- **THEN** `AccessControlValve.updateRoles()` adds `ADMIN` to `RequestContext.getRoles()`, granting admin privileges identical to an mTLS admin cert client
