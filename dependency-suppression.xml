@@ -12,11 +12,16 @@
         This rule replaces five earlier sha1-pinned rules for the same CVE. Those hashes
         were for older spring-security jars, so they stopped matching after the Spring
         upgrade (IGDD-2353) and the finding resurfaced on spring-security-core and
-        spring-security-oauth2-resource-server 6.5.11 in CI run 35600127560. A packageUrl
-        match survives dependency upgrades; a sha1 match does not.
+        spring-security-oauth2-resource-server 6.5.11 in CI run 35600127560.
+
+        Match on filePath, not packageUrl. The scan target is the Spring Boot fat jar,
+        and dependency-check records no packages and no identifiers for the jars nested
+        under BOOT-INF/lib, so a packageUrl rule matches nothing. Verified in CI run
+        35603999288, where the packageUrl form reported "Suppression Rule had zero
+        matches". A filePath regex survives dependency upgrades; a sha1 does not.
         Rewritten: 2026-09-21 (IGDD-2396)
         ]]></notes>
-        <packageUrl regex="true">^pkg:maven/org\.springframework\.security/spring\-security\-.*@.*$</packageUrl>
+        <filePath regex="true">.*/BOOT-INF/lib/spring-security-.*\.jar</filePath>
         <cve>CVE-2018-1258</cve>
     </suppress>
     <suppress>
@@ -38,7 +43,7 @@
         unnecessary (harmless if left in place - it will simply stop matching).
         Added: 2026-08-08 (IGDD-3254)
         ]]></notes>
-        <packageUrl regex="true">^pkg:maven/org\.apache\.tomcat\.embed/tomcat\-embed\-core@.*$</packageUrl>
+        <filePath regex="true">.*/BOOT-INF/lib/tomcat-embed-core-.*\.jar</filePath>
         <cve>CVE-2026-66299</cve>
     </suppress>
 </suppressions>
