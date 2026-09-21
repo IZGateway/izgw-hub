@@ -1,4 +1,26 @@
-## MODIFIED Requirements
+# Spec: Access Control
+
+**Component:** `BaseGatewayController`, `AccessControlService` (IGDD-2805)  
+**Implemented in:** `gov.cdc.izgateway.hub.BaseGatewayController`, `gov.cdc.izgateway.hub.service.accesscontrol.AccessControlService`  
+**Related specs:** `../source-attack-exception-config/spec.md`  
+
+---
+
+## Purpose
+
+Hub's inbound SOAP access control. This spec currently covers only the source-attack
+auto-lockout path (IGDD-2805): when `SoapMessageReader` (izgw-core) raises a `SecurityFault`
+with code `61` on an inbound request, `BaseGatewayController.handleFault()` adds the
+authenticated sender (`RequestContext.getSourceInfo().getCommonName()`) to the DynamoDB deny
+list via `AccessControlService.handleSourceAttack()`, gated by
+`hub.source-attack-lockout.enabled` (default `false`), discriminating on fault code and
+`endpoint == null`, and honouring per-sender exceptions; the fault returned to the caller is
+unchanged. The broader access-control behaviour (AccessGroup/AllowedUser checks and deny-list
+enforcement in `AccessControlValve`) predates OpenSpec and is not yet captured here.
+
+---
+
+## Requirements
 
 ### Requirement: Auto-lockout on detected source attack
 When Hub catches a `SecurityFault` (`gov.cdc.izgateway.soap.fault.SecurityFault`) with fault code

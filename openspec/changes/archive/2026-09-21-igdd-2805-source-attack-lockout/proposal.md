@@ -71,8 +71,8 @@ legitimate keyword matches per sender/receiver.
   and administer source-attack exceptions; existing `addUserToDenyList`/`removeUserFromDenyList` gain
   their first real caller.
 - **`RepositoryFactory` / `dynamodb.model` / `dynamodb.repository`** — new table/model/repository pair
-  for exception records, mirroring the existing `DenyListRecord` pattern (DynamoDB for prod, JPA for CI
-  per `SPRING_DATABASE`).
+  for exception records, mirroring the existing `DenyListRecord` pattern (DynamoDB-backed via
+  `DynamoDbRepositoryFactory`, the only `RepositoryFactory` implementation in this repo).
 - **New admin controller (or extension of an existing one)** — REST CRUD for exception records,
   `@RolesAllowed` admin-gated.
 - **`izgw-core`** — **not modified.** `SoapMessageReader`'s detection logic and `SecurityFault` are

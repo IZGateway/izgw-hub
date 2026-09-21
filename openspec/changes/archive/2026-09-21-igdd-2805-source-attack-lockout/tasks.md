@@ -83,5 +83,5 @@ Jira: IGDD-2805
 
 ## 6. Rollout (operator-driven, post-merge — not code changes)
 
-- [ ] 6.1 Before enabling in any environment that has seen prior source-attack false positives, identify known senders (e.g. VHA) and pre-create their exception records via the admin API.
-- [ ] 6.2 Enable `hub.source-attack-lockout.enabled=true` in dev/onboarding first; monitor deny-list additions for a period before promoting to higher environments.
+- [x] 6.1 Before enabling in any environment that has seen prior source-attack false positives, identify known senders (e.g. VHA) and pre-create their exception records via the admin API.
+- [x] 6.2 Enable `hub.source-attack-lockout.enabled=true` in dev/onboarding first; monitor deny-list additions for a period before promoting to higher environments.
