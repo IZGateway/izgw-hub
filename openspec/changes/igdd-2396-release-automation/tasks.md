@@ -280,7 +280,7 @@ Keep the shell inline in each composite action.
   in-scope findings are recorded in
   `openspec/changes/igdd-2396-release-automation/rehearsal-results.json`, and no
   runtime FIPS, TLS, or authorization weakening is needed.
-- [ ] 7.3 Run the static checks and complete a workflow contract review.
+- [x] 7.3 Run the static checks and complete a workflow contract review.
   `actionlint` 1.7.12 is available locally and bundles `shellcheck`.
   Apply this standard, which avoids unrelated cleanup in existing files:
   - `actionlint` must report zero findings for `release.yml`, `hotfix.yml`, and

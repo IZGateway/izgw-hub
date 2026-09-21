@@ -1,29 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <suppressions
 	xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
-	<suppress>
-		<notes>IZ Gateway Uses Spring Framework 6.2.x, so this CVE is not applicable</notes>
-		<sha1>d4c20ad2818e954344c0293bd6460ee2b030180d</sha1>
-		<cve>CVE-2018-1258</cve>
-	</suppress>
-	<suppress>
-        <notes>IZ Gateway Uses Spring Framework 6.2.x, so this CVE is not applicable</notes>
-	    <sha1>a1bc1afabfab5cbee9179c134f41d10b4351a001</sha1>
-	    <cve>CVE-2018-1258</cve>
-	</suppress>
-	<suppress>
-        <notes>IZ Gateway Uses Spring Framework 6.2.x, so this CVE is not applicable</notes>
-	    <sha1>b120779667b42a1a412aa0e4426dfab5287f2d5a</sha1>
-	    <cve>CVE-2018-1258</cve>
-	</suppress>
-	<suppress>
-        <notes>IZ Gateway Uses Spring Framework 6.2.x, so this CVE is not applicable</notes>
-        <sha1>8d94263c074debf8ad4f0ebaa807dd3ba3c9c0a7</sha1>
-        <cve>CVE-2018-1258</cve>
-    </suppress>
     <suppress>
-        <notes>IZ Gateway Uses Spring Framework 6.2.x, so this CVE is not applicable</notes>
-        <sha1>29e50540ef987241f13ece8aa4297c524cdca5ed</sha1>
+        <notes><![CDATA[
+        spring-security-*: CVE-2018-1258 is a false positive. The vulnerability is in
+        Spring Framework 5.0.5 (a method-security authorization bypass when used with
+        Spring Security), fixed in Spring Framework 5.0.6. The scanner matches it against
+        the spring_security CPE because the NVD entry lists Spring Security as affected.
+        IZ Gateway uses Spring Framework 6.2.x, which is not affected.
+
+        This rule replaces five earlier sha1-pinned rules for the same CVE. Those hashes
+        were for older spring-security jars, so they stopped matching after the Spring
+        upgrade (IGDD-2353) and the finding resurfaced on spring-security-core and
+        spring-security-oauth2-resource-server 6.5.11 in CI run 35600127560. A packageUrl
+        match survives dependency upgrades; a sha1 match does not.
+        Rewritten: 2026-09-21 (IGDD-2396)
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.springframework\.security/spring\-security\-.*@.*$</packageUrl>
         <cve>CVE-2018-1258</cve>
     </suppress>
     <suppress>
