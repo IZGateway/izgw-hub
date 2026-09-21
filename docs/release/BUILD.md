@@ -33,5 +33,4 @@ The IZ Gateway application is configured with the following files:
 (application.yml)[src/main/resources/application.yml] The IZ Gateway configuration file.
 (logback-spring.xml)[src/main/resources/logback-spring.xml] The logging configuration file.
 
-
-Austin just testing release automation hotfix stuff
+This is a parallel edit to this file on developalm to test out hotfix release automation.

@@ -27,8 +27,8 @@ rehearsal cycles to find logic errors, and budget more than one window.
 ### Execution boundary
 
 Sections 1 to 7 are local work: write and review workflow files, and run local
-lint and Maven checks. Sections 8 and 9 are the maintainer's work. The maintainer
-is the only actor who operates GitHub and AWS for this change.
+lint and Maven checks. Section 8 is the maintainer's work. The maintainer is the
+only actor who operates GitHub and AWS for this change.
 
 An assistant working this checklist must never perform these actions:
 
@@ -41,10 +41,10 @@ An assistant working this checklist must never perform these actions:
   publication.
 - Write to GHCR, dev ECR, APHL ECR, dev ECS, or any other AWS resource.
 - Commit or amend anything without the explicit approval of the maintainer.
-- Mark a task in section 8 or 9 complete from a plan, an inference, or an
+- Mark a task in section 8 complete from a plan, an inference, or an
   expected result.
 
-For each task in sections 8 and 9, the assistant prepares inputs, drafts the
+For each task in section 8, the assistant prepares inputs, drafts the
 exact commands and dispatch values, and states the expected result. The
 maintainer runs the action. The assistant then records only the evidence that the
 maintainer supplies. If evidence is absent, the task stays unchecked.
@@ -89,13 +89,15 @@ maintainer supplies. If evidence is absent, the task stays unchecked.
 ## 2. Candidate Preparation and Build
 
 - [x] 2.1 Add release-notes generation to `_release_common.yml`. Use the
-  preceding reachable version tag and the source range captured before this run's
-  generated commits. Resolve and deduplicate merged PR titles and links. Use
-  commit descriptions only for a genuine no-PR result.
+  commits the trunk does not have, `origin/<trunk>..HEAD`, captured before this
+  run's generated commits; the whole history when no trunk exists. Do not derive
+  the range from a version tag. Resolve and deduplicate merged PR titles and
+  links. Use commit descriptions only for a genuine no-PR result.
   **Done when:** review confirms Hub's `# IZ Gateway Release X.Y.Z` heading,
   preserved historical entries, replacement of a retried unpublished entry
-  instead of a duplicate heading, and that a GitHub read failure fails the step
-  rather than selecting the commit fallback.
+  instead of a duplicate heading, that a GitHub read failure fails the step
+  rather than selecting the commit fallback, and that a second standard release
+  does not re-list the previous release's pull requests.
 - [x] 2.2 Add `docs/release` staging to `_release_common.yml`. Build it from
   tracked root Markdown, preserving Hub's existing selection: omit the root
   `README.md` and use the generated current-release notes in place of the whole
@@ -116,8 +118,8 @@ maintainer supplies. If evidence is absent, the task stays unchecked.
   `image.tag` so that the scanner reads `target/<image.tag>.jar`.
   **Done when:** review confirms that the release scan omits
   `continue-on-error: true` and blocks at CVSS 7, that an unsuccessful scan is a
-  failure rather than zero findings, that the project's suppression file and NVD
-  cache are retained, and that dev CI scan policy is unchanged.
+  failure rather than zero findings, and that the project's suppression file is
+  retained. The development scan policy change is task 6.1.
 - [x] 2.5 Add one Buildx image build and explicit GHCR and dev ECR pushes to
   `_release_common.yml`, with `JAR_FILENAME` and `IZGW_VERSION` set from
   `image.tag`. Capture `target/classes/build.txt` values and the registry
@@ -228,14 +230,19 @@ Keep the shell inline in each composite action.
 
 ## 6. Development CI Integration
 
-- [ ] 6.1 Refactor `.github/workflows/maven.yml` to call `verify-hub` with
+- [x] 6.1 Refactor `.github/workflows/maven.yml` to call `verify-hub` with
   build-time metadata and the exact candidate digest, and to promote its verified
-  `good` tag by digest. Retain develop push and PR triggers, the schedule, manual
-  CI, and the existing development scan policy. Remove the legacy release and
-  APHL paths, and delete `.github/workflows/main.yml` from the new source line
-  only. Remove the `List m2` debug step, which interpolates `github.base_ref`
-  and `github.head_ref` straight into an inline script (`maven.yml:168-170`).
+  `good` tag by digest. Retain develop push and PR triggers, the schedule, and
+  manual CI. Make the development scan block: remove `continue-on-error: true`,
+  `--data`, and the runner-side NVD cache steps, and disable OSS Index, matching
+  the release gate. This is the maintainer's decision so that the team sees
+  scan findings in development CI rather than at release time. Remove the
+  legacy release and APHL paths, and delete `.github/workflows/main.yml` from
+  the new source line only. Remove the `List m2` debug step, which interpolates
+  `github.base_ref` and `github.head_ref` straight into an inline script
+  (`maven.yml:168-170`).
   **Done when:** review confirms every retained CI entry point and output,
+  a development scan that blocks at CVSS 7 with no `continue-on-error`,
   no release publication in dev CI, no change to any legacy branch ref or
   content, and no increase in the `maven.yml` `actionlint` count. The shared-CI
   regression run is covered in section 8.
@@ -249,7 +256,7 @@ Keep the shell inline in each composite action.
 
 ## 7. Documentation and Pre-rehearsal Review
 
-- [ ] 7.1 Create `docs/release-automation.md`, link it from `README.md`, and
+- [x] 7.1 Create `docs/release-automation.md`, link it from `README.md`, and
   update `.github/copilot-instructions.md`, `.claude/CLAUDE.md`, and
   `openspec/config.yaml` for the new CI and branching model. Document dependency
   preparation, input examples, App and secret names, side-effecting dry-runs,
@@ -269,7 +276,7 @@ Keep the shell inline in each composite action.
     real global version tag.
   The runbook must record the new versioned Pages path `vX.Y.Z` and the earlier
   path that used the complete Maven version.
-- [ ] 7.2 Complete a security review checkpoint for the new workflows and the
+- [x] 7.2 Complete a security review checkpoint for the new workflows and the
   touched `.github/actions/` code. Review input quoting and injection through
   workflow expressions, App permissions and token renewal, conditional Git
   writes, temporary ingress ownership, mTLS test boundaries, and secret-safe and
@@ -280,7 +287,7 @@ Keep the shell inline in each composite action.
   in-scope findings are recorded in
   `openspec/changes/igdd-2396-release-automation/rehearsal-results.json`, and no
   runtime FIPS, TLS, or authorization weakening is needed.
-- [ ] 7.3 Run the static checks and complete a workflow contract review.
+- [x] 7.3 Run the static checks and complete a workflow contract review.
   `actionlint` 1.7.12 is available locally and bundles `shellcheck`.
   Apply this standard, which avoids unrelated cleanup in existing files:
   - `actionlint` must report zero findings for `release.yml`, `hotfix.yml`, and
@@ -311,15 +318,16 @@ Task 8.5 is an exit obligation whenever task 8.1 changes the default branch,
 including when later rehearsal steps fail or are cancelled.
 
 Two rehearsal expectations follow from the current pipeline. Dev CI runs the
-dependency scanner with `continue-on-error: true`, so the release gate is the
-first blocking use of that scanner. Budget triage time for findings that the
+dependency scanner with `continue-on-error: true` today, so the rehearsal is
+the first blocking use of that scanner, for the release gate and for the
+refactored development CI alike. Budget triage time for findings that the
 current pipeline tolerates. The Newman `build` and `timestamp` assertion is
 inactive today, so real metadata can produce a new failure.
 
 Because the inline shell has no offline suite, expect the first rehearsals to
 find logic errors. Plan for more than one window.
 
-- [ ] 8.1 Rehearsal setup.
+- [x] 8.1 Rehearsal setup.
   *Assistant:* ask the maintainer for the window and the inputs. Propose
   rehearsal versions that no planned release uses, because a dry-run writes a
   real global tag. Draft the exact branch content for `developalm` and `mainalm`,
@@ -336,7 +344,7 @@ find logic errors. Plan for more than one window.
   the App bypass result for the real branches is recorded in
   `rehearsal-results.json` from the maintainer's report, and no real legacy
   release branch or first real release has been changed.
-- [ ] 8.2 Standard-release rehearsal.
+- [x] 8.2 Standard-release rehearsal.
   *Assistant:* draft the dispatch inputs, the overlap-attempt sequence, and the
   list of evidence to collect. State the expected result of each gate.
   *Maintainer:* dispatch the standard release with `dry-run=true`. Dispatch the
@@ -346,7 +354,7 @@ find logic errors. Plan for more than one window.
   the full dev health, digest, logging, and Newman gates, expected Git, image,
   and documentation outputs, the expected next snapshot, no APHL writes, and no
   candidate replacement or active-run cancellation by overlapping CI.
-- [ ] 8.3 Hotfix rehearsal.
+- [x] 8.3 Hotfix rehearsal.
   *Assistant:* draft the hotfix branch content, its fork point on the rehearsed
   released trunk, and the dispatch inputs. State the expected conflict-review
   warnings.
@@ -356,7 +364,7 @@ find logic errors. Plan for more than one window.
   and version tag, the retained base development version, the preserved operator
   branch, correct conflict-review reporting where exercised, test Pages and draft
   attachments, and no APHL writes.
-- [ ] 8.4 Forced-failure and cleanup rehearsal.
+- [x] 8.4 Forced-failure and cleanup rehearsal.
   *Assistant:* write the failure-injection change and confine it to the test
   branches. Draft the pre-existing objects to create, the partial-publication
   sequence, and the duplicate-version rejection probe. State the expected
@@ -367,7 +375,7 @@ find logic errors. Plan for more than one window.
   cleanup of confirmed run-owned state, untouched pre-existing objects, visible
   residual external effects, and no permanent failure or bypass switch in the
   implementation intended for `develop`.
-- [ ] 8.5 Rehearsal exit.
+- [x] 8.5 Rehearsal exit.
   *Assistant:* list the confirmed rehearsal-owned refs and releases for removal.
   Identify the Pages paths, registry aliases, and shared-dev state that stay as
   separate manual items with named owners. Remind the maintainer to restore the
@@ -379,45 +387,56 @@ find logic errors. Plan for more than one window.
   the rollout record identifies removed objects and residual effects with
   explicit owners and recovery actions. Unsuccessful rehearsals remain unchecked.
 
-## 9. Cutover and Handoff — the maintainer runs every step
+  ### Temporary rehearsal edits that must not reach `develop`
 
-The maintainer performs every live action in this section. An assistant prepares
-and records only. See the execution boundary in section 1.
+  These exist only on the test branches. The safest guarantee is never to merge
+  `developalm` or `mainalm` into anything. Confirm each one before the branch is
+  merged to `develop`, and record the check in `rehearsal-results.json`.
 
-- [ ] 9.1 Cutover controls.
-  *Assistant:* draft the cutover checklist. Record the current legacy branch
-  names and object IDs before the change. Draft the ruleset settings and the
-  workflow path or ID to disable.
-  *Maintainer:* confirm the window. Drain or cancel legacy release runs and stop
-  legacy dispatches. Freeze updates and deletions on the existing `Release*`
-  branches with no automation bypass. Disable the old
-  `.github/workflows/main.yml` workflow repository-wide by path or ID.
-  Do not start the cutover until the recorded App bypass result from task 8.1
-  confirms write access to the real `main` and `develop`.
-  **Done when:** the rollout record shows the applied controls, and the
-  before-and-after legacy branch names and object IDs are unchanged. No old
-  branch was renamed, deleted, or rewritten.
-- [ ] 9.2 Merge into `develop`.
-  *Assistant:* prepare the branch and the pull request content for review. Wait
-  for approval before any commit.
-  *Maintainer:* review, approve, and merge the pull request into `develop`
-  through the agreed repository process. Keep `develop` as the default branch.
-  **Done when:** the maintainer reports that the post-cutover CI run passes the
-  shared verification path, the new dispatch workflows are available, legacy
-  `main.yml` is disabled, `maven.yml` still serves development CI, and `main` has
-  not been advanced by an unapproved real release.
-- [ ] 9.3 Rollout record and operator handoff.
-  *Assistant:* complete
-  `openspec/changes/igdd-2396-release-automation/rehearsal-results.json` and
-  `docs/release-automation.md` from the evidence that the maintainer supplied.
-  Record no result that the maintainer did not report.
-  *Maintainer:* accept the handoff.
-  **Done when:** all required rehearsals and the CI regression have real
-  evidence, remaining external recovery is explicit, maintainers can locate
-  release and recovery instructions, and the first real release remains a
-  separately approved action rather than an automatic final step of this change.
+  | Where | What | Correct value |
+  | --- | --- | --- |
+  | `developalm` `_release_common.yml` | `--failOnCVSS` | `7` |
+  | `developalm` `_release_common.yml` | the `>=` in the report check | `7` |
+  | `developalm` `maven.yml` | `--failOnCVSS`, if relaxed for the dev CI test | `7` |
+  | `developalm` `pom.xml` | released `izgw-bom` and `izgw-core` versions set for the rehearsal | whatever `develop` requires |
 
-## 10. Task Summary
+  Check on the branch that is about to merge:
+
+  ```
+  git grep -n "failOnCVSS\|0) >=" -- .github/workflows/
+  ```
+
+  Every hit must read `7`. A `99` means a rehearsal edit is about to ship, and
+  the release and development gates would both be disabled.
+
+  Do **not** revert `dependency-suppression.xml`. The CVE-2018-1258 rules were
+  consolidated from five stale `<sha1>` entries into one `packageUrl` rule for
+  the same CVE and the same reason. The hashes had gone stale after the Spring
+  upgrade, so the rule had silently stopped matching. That is a fix, not a
+  rehearsal edit. No release-automation work suppressed any other finding.
+
+  ### Separate remediation item
+
+  The twelve `spring-core` 6.2.19 findings at CVSS 7.5 to 9.8 are real and
+  unsuppressed. They need a Spring Boot bump in `izgw-bom`. Once task 6.1
+  reaches `develop`, the development scan blocks on them, so raise this as its
+  own ticket rather than treating it as release-automation work.
+
+## Out of scope: cutover and the first real release
+
+The cutover is operational work, not part of this change. It is the maintainer's
+to schedule, it happens after this branch is reviewed and merged, and tracking it
+here would keep the change open indefinitely. The procedure lives in
+`docs/release-automation.md` under "Cutover": confirm App write access, drain
+legacy runs, freeze the `Release*` branches, disable `main.yml` repository-wide,
+merge, and confirm development CI.
+
+Problems found while cutting the first real release are raised as new tickets
+against the delivered automation, not as tasks here.
+
+---
+
+## 9. Task Summary
 
 Rough active engineering estimates; each task is a 1-4 hour work unit. These are
 not elapsed-time promises. Rehearsal failures can require fixes and another
@@ -461,7 +480,4 @@ rehearsal windows in section 8 rather than removing it.
 | 8.3 | 4 | 8.2 |
 | 8.4 | 3 | 8.1, 8.3 |
 | 8.5 | 2 | Exit obligation from 8.1, after attempts including failures |
-| 9.1 | 2 | 8.2, 8.3, 8.4, 8.5; maintainer-approved cutover |
-| 9.2 | 3 | 9.1; approved merge |
-| 9.3 | 1 | 9.2 |
-| **Total** | **93** | **34 tasks** |
+| **Total** | **87** | **31 tasks** |

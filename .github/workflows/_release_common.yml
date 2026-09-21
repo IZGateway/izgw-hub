@@ -362,25 +362,36 @@ jobs:
           fi
 
           # Conflicting release identities stop the run and are left untouched.
-          if [ "$(remote_ref_state "refs/tags/v${RELEASE_VERSION}")" = present ]; then
+          #
+          # Each state is assigned to a variable before it is tested. Inside an
+          # `if` condition, set -e is suspended, so a lookup failure in the
+          # command substitution would yield an empty string and read as
+          # "absent". The assignment form fails the step instead.
+          TAG_STATE="$(remote_ref_state "refs/tags/v${RELEASE_VERSION}")"
+          if [ "${TAG_STATE}" = present ]; then
             fail "Tag v${RELEASE_VERSION} already exists on origin. Choose an unreleased version. This run has not changed that tag."
           fi
 
           if [ "${RELEASE_TYPE}" = standard ]; then
-            if [ "$(remote_ref_state "refs/heads/${RELEASE_BRANCH}")" = present ]; then
+            RELEASE_BRANCH_STATE="$(remote_ref_state "refs/heads/${RELEASE_BRANCH}")"
+            if [ "${RELEASE_BRANCH_STATE}" = present ]; then
               fail "Release branch ${RELEASE_BRANCH} already exists on origin. Remove it deliberately or choose another version. This run has not changed that branch."
             fi
           fi
 
+          # List and match on tag_name rather than calling /releases/tags/.
+          # That endpoint returns 404 for a draft release even when the git tag
+          # exists, so it cannot see the draft that every dry-run leaves behind.
           set +e
-          RELEASE_LOOKUP="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/v${RELEASE_VERSION}" 2>&1)"
+          RELEASE_LOOKUP="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases" \
+            --jq ".[] | select(.tag_name == \"v${RELEASE_VERSION}\") | \"\(.id) draft=\(.draft)\"" 2>&1)"
           RELEASE_STATUS=$?
           set -e
-          if [ "${RELEASE_STATUS}" -eq 0 ]; then
-            fail "A GitHub Release already exists for v${RELEASE_VERSION}. Choose an unreleased version. This run has not changed that release."
-          fi
-          if ! printf '%s' "${RELEASE_LOOKUP}" | grep -q 'HTTP 404'; then
+          if [ "${RELEASE_STATUS}" -ne 0 ]; then
             fail "Could not determine whether a GitHub Release exists for v${RELEASE_VERSION} (gh exit ${RELEASE_STATUS}). Treating this as a lookup failure, not as an absent release. Output: ${RELEASE_LOOKUP}"
+          fi
+          if [ -n "${RELEASE_LOOKUP}" ]; then
+            fail "A GitHub Release already exists for v${RELEASE_VERSION} ($(printf '%s' "${RELEASE_LOOKUP}" | tr '\n' ' ')). A draft counts: a previous dry-run leaves one behind. Choose an unreleased version, or remove that release. This run has not changed it."
           fi
 
           # Recorded before any write, so that cleanup can compare against it.
@@ -484,6 +495,8 @@ jobs:
         id: notes
         env:
           RELEASE_VERSION: ${{ steps.inputs.outputs.release_version }}
+          TRUNK_BRANCH: ${{ steps.inputs.outputs.trunk_branch }}
+          TRUNK_STATE: ${{ steps.context.outputs.trunk_state }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
@@ -493,16 +506,30 @@ jobs:
 
           HEADING_PREFIX='# IZ Gateway Release'
 
-          # The preceding release tag on this candidate's own ancestry. Do not
-          # take the largest tag in the repository: a later release on another
-          # branch would truncate this range.
-          if PREV_TAG="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' HEAD 2>/dev/null)"; then
-            RANGE_ARGS=("${PREV_TAG}..HEAD")
-            echo "Collecting changes since ${PREV_TAG}."
+          # The change set is every commit on the candidate that the trunk does
+          # not have yet. The trunk is, by definition, what was last released.
+          #
+          # This is not tag-based, for two reasons. The version tag lands on the
+          # trunk merge commit, and the back-merge carries the release branch
+          # into the base, not the trunk, so that tag never becomes an ancestor
+          # of the base: `git describe` from the next candidate finds an older
+          # tag and re-lists the previous release. And the largest tag in the
+          # repository, which Transform uses, would be a rehearsal tag such as
+          # v99.0.0 and would truncate the range to nothing.
+          #
+          # Standard: trunk..base, the merged work since the last release.
+          # Hotfix: trunk..hotfix, the operator's commits. First release with
+          # no trunk: the whole history.
+          if [ "${TRUNK_STATE}" = present ]; then
+            RANGE_BASE="origin/${TRUNK_BRANCH}"
+            git rev-parse --verify --quiet "${RANGE_BASE}^{commit}" >/dev/null ||
+              fail "${RANGE_BASE} is not in the local checkout although origin reports it. The change range cannot be computed."
+            RANGE_ARGS=("${RANGE_BASE}..HEAD")
+            echo "Collecting changes on HEAD that ${RANGE_BASE} does not have."
           else
-            PREV_TAG=""
+            RANGE_BASE=""
             RANGE_ARGS=()
-            echo "No preceding version tag on this history. Collecting all changes."
+            echo "Trunk ${TRUNK_BRANCH} does not exist yet. Collecting all changes."
           fi
 
           # Hub merges most PRs as merge commits and squashes some, so read
@@ -599,7 +626,7 @@ jobs:
           rm -f CURRENT_NOTES_BODY.md
 
           {
-            echo "previous_tag=${PREV_TAG}"
+            echo "range_base=${RANGE_BASE}"
             echo "notes_source=${NOTES_SOURCE}"
             echo "resolved_prs=${RESOLVED}"
             echo "skipped_numbers=${NOT_FOUND}"
@@ -1073,15 +1100,25 @@ jobs:
           regions: ${{ vars.AWS_REGIONS }}
           desired_count: ${{ vars.ECS_DESIRED_COUNT }}
 
+      # Runs after a failed deploy too. ecs-deploy rewrites deployment_ids
+      # after each region, so a failure in a later region still leaves the
+      # earlier regions' ids, and shared dev is partly replaced. Without this
+      # condition the step is skipped on that failure, the flag is never set,
+      # and cleanup cannot report it. The job still fails on the deploy step.
       - name: Record the deployment receipt
+        if: ${{ !cancelled() && (steps.deploy.outcome == 'success' || steps.deploy.outputs.deployment_ids != '') }}
         shell: bash
         env:
           DEPLOYMENT_IDS: ${{ steps.deploy.outputs.deployment_ids }}
+          DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
         run: |
           set -euo pipefail
           if [ -z "${DEPLOYMENT_IDS}" ]; then
             echo "::error::The deploy step reported no deployment ids."
             exit 1
+          fi
+          if [ "${DEPLOY_OUTCOME}" != "success" ]; then
+            echo "::warning::The deploy step failed after recording ${DEPLOYMENT_IDS}. Those regions are running the candidate."
           fi
           {
             echo "THIS_RUN_DEPLOYED_DEV=1"
@@ -1609,7 +1646,8 @@ jobs:
           # 1. The base branch update, reverted first because it came last.
           if [ "${THIS_RUN_PUSHED_BASE:-}" = "1" ]; then
             if remote_matches "refs/heads/${THIS_RUN_BASE_BRANCH}" "${THIS_RUN_BASE_SHA}"; then
-              if git push origin "+${THIS_RUN_BASE_PREVIOUS}:refs/heads/${THIS_RUN_BASE_BRANCH}"; then
+              if git push origin --force-with-lease="refs/heads/${THIS_RUN_BASE_BRANCH}:${THIS_RUN_BASE_SHA}" \
+                  "${THIS_RUN_BASE_PREVIOUS}:refs/heads/${THIS_RUN_BASE_BRANCH}"; then
                 echo "Restored ${THIS_RUN_BASE_BRANCH} to ${THIS_RUN_BASE_PREVIOUS}."
               else
                 note_unresolved "Could not restore ${THIS_RUN_BASE_BRANCH} to ${THIS_RUN_BASE_PREVIOUS}."
@@ -1633,7 +1671,8 @@ jobs:
             fi
           elif [ "${THIS_RUN_PUSHED_TRUNK:-}" = "1" ]; then
             if remote_matches "refs/heads/${THIS_RUN_TRUNK_BRANCH}" "${THIS_RUN_TRUNK_SHA}"; then
-              if git push origin "+${THIS_RUN_TRUNK_PREVIOUS}:refs/heads/${THIS_RUN_TRUNK_BRANCH}"; then
+              if git push origin --force-with-lease="refs/heads/${THIS_RUN_TRUNK_BRANCH}:${THIS_RUN_TRUNK_SHA}" \
+                  "${THIS_RUN_TRUNK_PREVIOUS}:refs/heads/${THIS_RUN_TRUNK_BRANCH}"; then
                 echo "Restored ${THIS_RUN_TRUNK_BRANCH} to ${THIS_RUN_TRUNK_PREVIOUS}."
               else
                 note_unresolved "Could not restore ${THIS_RUN_TRUNK_BRANCH} to ${THIS_RUN_TRUNK_PREVIOUS}."
@@ -1657,11 +1696,9 @@ jobs:
             # fails. Resolving by tag is safe here: the identity check at the
             # start of this run proved that no release existed for this tag, and
             # the shared dev lock prevents a concurrent release run.
-            set +e
             LOOKUP="$(gh api "repos/${REPOSITORY}/releases" \
               --jq ".[] | select(.tag_name == \"${THIS_RUN_GH_RELEASE_TAG}\") | .id" 2>&1)"
             LOOKUP_STATUS=$?
-            set -e
             if [ "${LOOKUP_STATUS}" -ne 0 ]; then
               note_unresolved "Could not determine whether a GitHub Release exists for ${THIS_RUN_GH_RELEASE_TAG}. Check it by hand. Output: ${LOOKUP}"
             elif [ -z "${LOOKUP}" ]; then

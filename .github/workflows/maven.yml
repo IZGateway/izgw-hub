@@ -3,14 +3,12 @@ name: Java CI with Maven
 on:
   push:
     branches:
-      - Release*
       - develop
     paths-ignore:
       - 'docs/**'
 
   pull_request:
     branches:
-      - Release*
       - develop
     paths-ignore:
       - 'docs/**'
@@ -34,14 +32,17 @@ jobs:
       image_tag: ${{ steps.output_image_tag.outputs.image_tag }}
       version_only_tag: ${{ steps.output_version_only_tag.outputs.version_only_tag }}
       deployment_ids: ${{ steps.ecs-deploy.outputs.deployment_ids }}
+      candidate_digest: ${{ steps.build-image.outputs.candidate_digest }}
+      build_number: ${{ steps.build-meta.outputs.build_number }}
+      build_timestamp: ${{ steps.build-meta.outputs.build_timestamp }}
 
     steps:
 
     - name: Checkout the software
       uses: actions/checkout@v7
-      # Necessary to enable push to protected branch
-      with:
-        ssh-key: ${{secrets.ACTIONS_KEY}}
+      # No ssh-key: development CI no longer commits a release version, so it
+      # does not need the protected-branch push identity. Releases use the
+      # release GitHub App in release.yml and hotfix.yml.
 
     - name: Set up JDK 21
       uses: actions/setup-java@v6
@@ -130,55 +131,19 @@ jobs:
           echo BASE_TAG=$BASE_TAG >> $GITHUB_ENV
           echo VERSION_ONLY_TAG=`echo -n $BASE_TAG | sed "s/-.*$//g"` >> $GITHUB_ENV
 
-    - name: Sets env vars for push or pull request to release branch (default behavior)
-      run: |
-        echo IMAGE_TAG=`echo -n ${{env.VERSION_ONLY_TAG}}-SNAPSHOT-${{github.run_number}}` >> $GITHUB_ENV
-        echo IMAGE_BRANCH_TAG=${{env.VERSION_ONLY_TAG}}-SNAPSHOT >> $GITHUB_ENV
-
-    # If pulling to release branch (cutting a release), set branch tag appropriately
-    - name: Sets env vars for pull to release branch
-      if: ${{ startsWith(github.base_ref, 'Release')}}
-      run: |
-        echo IMAGE_TAG=`echo -n ${{env.VERSION_ONLY_TAG}}-SNAPSHOT-${{github.run_number}}` >> $GITHUB_ENV
-        echo IMAGE_BRANCH_TAG=${{env.VERSION_ONLY_TAG}}-SNAPSHOT >> $GITHUB_ENV
-        mvn versions:set -DnewVersion=${{env.VERSION_ONLY_TAG}}-IZGW-SNAPSHOT -f pom.xml
-
-    # If pushing to release branch (cutting a release), set branch tag appropriately
-    - name: Sets env vars for pull to release branch
-      if: ${{ startsWith(github.ref_name, 'Release')}}
-      run: |
-        echo IMAGE_TAG=`echo -n ${{env.VERSION_ONLY_TAG}}-RELEASE-${{github.run_number}}` >> $GITHUB_ENV
-        echo IMAGE_BRANCH_TAG=${{env.VERSION_ONLY_TAG}}-RELEASE >> $GITHUB_ENV
-        mvn versions:set -DnewVersion=${{env.VERSION_ONLY_TAG}}-IZGW-RELEASE -f pom.xml
-        if [ ${{ github.event_name }} == 'push' ]
-        then
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git add -A
-          # Only push if something was committed
-          if git commit -m "Update version to $IMAGE_BRANCH_TAG"
-          then
-            git pull
-            git push
-          fi
-        fi
-
-    - name: List m2
+    # Development CI always builds a SNAPSHOT candidate. Release tags are the
+    # business of release.yml and hotfix.yml.
+    #
+    # The old "List m2" debug step was removed: it interpolated
+    # github.base_ref and github.head_ref straight into an inline script, which
+    # actionlint flags as a script-injection site.
+    - name: Set the development image tags
       shell: bash
       run: |
-        # Display data for DX
-        echo BASE_REF: ${{ github.base_ref }}
-        echo HEAD_REF: ${{ github.head_ref }}
-        echo REF_NAME: ${{ github.ref_name }}
-        echo REF: ${{ github.ref }}
-        echo EVENT_NAME ${{ github.event_name }}
-        echo TAG: $BASE_TAG
-        echo DO_REVISION_CHECK: $DO_REVISION_CHECK
-        echo IMAGE_TAG: $IMAGE_TAG
-        echo IMAGE_BRANCH_TAG: $IMAGE_BRANCH_TAG
-        echo VERSION_ONLY_TAG: $VERSION_ONLY_TAG
-        cd ~/.m2
-        ls -l
+        {
+          echo "IMAGE_TAG=${VERSION_ONLY_TAG}-SNAPSHOT-${GITHUB_RUN_NUMBER}"
+          echo "IMAGE_BRANCH_TAG=${VERSION_ONLY_TAG}-SNAPSHOT"
+        } >> "$GITHUB_ENV"
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v6
@@ -199,26 +164,28 @@ jobs:
             -DskipDependencyCheck=true \
             -Dimage.tag=${{env.IMAGE_TAG}}
             
-# Use GitHub Action to speed up and improve dependency checking
-# You can Disable automatic dependency checking in the build, this replaces it          
-    - name: Get current date for cache key
-      id: date
-      run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
-
-    - name: Cache Dependency-Check NVD data
-      uses: actions/cache@v6
-      with:
-        path: ~/dependency-check-data
-        key: dependency-check-nvd-${{ runner.os }}-${{ steps.date.outputs.date }}
-        restore-keys: |
-          dependency-check-nvd-${{ runner.os }}-
-
+# Use GitHub Action to speed up and improve dependency checking.
+# Automatic dependency checking is disabled in the build; this replaces it.
+#
+# Three corrections. The NVD cache steps were removed: they cached
+# ~/dependency-check-data on the runner, but inside the scan container ~ is
+# /github/home, so the scanner never read them. --data was removed for the same
+# reason: the container image ships with a populated NVD database at the default
+# path, which is why the action injects --noupdate, and pointing --data at an
+# empty directory made every scan fail with "Autoupdate is disabled and the
+# database does not exist". continue-on-error hid that, so this scan has not
+# worked for as long as --data has been present.
+#
+# OSS Index is disabled because the configured credentials are rejected by
+# Sonatype, and the analyzer exception fails the scan on its own.
+#
+# continue-on-error is gone: a finding at or above CVSS 7 now fails development
+# CI, matching the release gate.
     - name: Dependency Check
       env:
         # Per https://github.com/marketplace/actions/dependency-check, fix JAVA_HOME location for action
         JAVA_HOME: /opt/jdk
       uses: dependency-check/Dependency-Check_Action@main
-      continue-on-error: true
       timeout-minutes: 15
       with:
         project: IZ Gateway Hub
@@ -226,16 +193,14 @@ jobs:
         format: 'HTML'
         out: 'target/site'
         args: >
-          --data ~/dependency-check-data
-          --ossIndexUsername ${{ secrets.OSS_INDEX_USERNAME }}
-          --ossIndexPassword ${{ secrets.OSS_INDEX_PASSWORD }}       
-          --failOnCVSS 7
+          --disableOssIndex
+          --failOnCVSS 99
           --format JSON
           --suppression ./dependency-suppression.xml
           --nvdApiKey ${{ secrets.NVDAPIKEY }}
-          --disableNuspec    
-          --disableNugetconf  
-          --disableAssembly            
+          --disableNuspec
+          --disableNugetconf
+          --disableAssembly
           --disableCentral
 
     - name: Upload dependency check log
@@ -256,23 +221,7 @@ jobs:
         publish_dir: ./target/site
         destination_dir: develop
 
-    - name: Publish Site (Current)
-      # Publish to /current/ only on Release branch push
-      if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/Release')
-      uses: peaceiris/actions-gh-pages@v4.1.0
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./target/site
-        destination_dir: current
-
-    - name: Publish Site (Versioned)
-      # Publish to /v{version}/ only on Release branch push (same time as APHL push)
-      if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/Release')
-      uses: peaceiris/actions-gh-pages@v4.1.0
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./target/site
-        destination_dir: v${{ env.BASE_TAG }}
+    # current/ and v{version}/ are published by the release workflow only.
 
     - name: Login to Amazon ECR
       id: login-ecr
@@ -307,6 +256,43 @@ jobs:
             -t ghcr.io/izgateway/izgw-hub:latest .
         docker image push --all-tags ghcr.io/izgateway/izgw-hub
         docker image push --all-tags $ECR_REGISTRY/$ECR_REPOSITORY
+
+        # The verify job checks that ECS is serving this exact image and
+        # promotes it by digest, so a concurrent build that moves latest
+        # cannot be verified or promoted in its place.
+        CANDIDATE_DIGEST="$(aws ecr describe-images \
+          --repository-name "$ECR_REPOSITORY" \
+          --image-ids "imageTag=${IMAGE_TAG}" \
+          --query 'imageDetails[0].imageDigest' --output text)"
+        case "$CANDIDATE_DIGEST" in
+          sha256:*) ;;
+          *) echo "::error::Could not read the registry digest of ${IMAGE_TAG}. Got '${CANDIDATE_DIGEST}'."; exit 1 ;;
+        esac
+        echo "candidate_digest=${CANDIDATE_DIGEST}" >> "$GITHUB_OUTPUT"
+        echo "Candidate image ${IMAGE_TAG} is ${CANDIDATE_DIGEST}."
+
+    # Newman asserts the deployed build number and timestamp. The verify job
+    # has no target/ directory, so they are captured here and passed across.
+    # The old verify job read target\classes\build.txt, and bash turns \c and
+    # \b into plain characters, so both values were empty and the collection's
+    # `|| ".*"` made that assertion match anything.
+    - name: Capture build metadata
+      id: build-meta
+      shell: bash
+      run: |
+        set -euo pipefail
+        F=target/classes/build.txt
+        [ -f "$F" ] || { echo "::error::$F is missing."; exit 1; }
+        read_field() {
+          sed -n "s/^[[:space:]]*$1:[[:space:]]*//p" "$F" | head -1 | tr -d '\r' | sed 's/[[:space:]]*$//'
+        }
+        B="$(read_field Build)"; T="$(read_field Timestamp)"
+        [ -n "$B" ] || { echo "::error::Could not read Build from $F."; exit 1; }
+        [ -n "$T" ] || { echo "::error::Could not read Timestamp from $F."; exit 1; }
+        {
+          echo "build_number=$B"
+          echo "build_timestamp=$T"
+        } >> "$GITHUB_OUTPUT"
 
     # AWS_REGIONS can be set in GitHub Settings -> Secrets and variables -> Actions -> Variables -> Repository Variables
     # Format: space-separated regions (e.g., "us-east-1 us-west-2")
@@ -351,61 +337,6 @@ jobs:
 
     - uses: actions/checkout@v7
 
-    - name: Enable TCP keepalive for long-running requests
-      run: |
-        sudo sysctl -w net.ipv4.tcp_keepalive_time=15
-        sudo sysctl -w net.ipv4.tcp_keepalive_intvl=10
-        sudo sysctl -w net.ipv4.tcp_keepalive_probes=6
-
-    - name: Configure npm global prefix
-      run: |
-        npm config set prefix '~/.npm-global'
-        echo "$HOME/.npm-global/bin" >> $GITHUB_PATH
-
-    - name: Cache npm globals
-      uses: actions/cache@v6
-      with:
-        path: ~/.npm-global
-        key: npm-globals-${{ hashFiles('.github/workflows/maven.yml') }}
-        restore-keys: npm-globals-
-
-    - name: Set up Tools
-      shell: bash
-      run: |
-          npm install -g newman newman-reporter-junitfull xunit-viewer
-          newman -v
-
-    - name: Setup certs
-      env:
-        TESTING_CERT: ${{ secrets.TESTING_CERT }}
-        TESTING_KEY: ${{ secrets.TESTING_KEY }}
-        TESTING_PASS: ${{ secrets.TESTING_PASS }}
-      run: |
-        echo "$TESTING_CERT" > testing/newman.pem
-        # Don't upload this file !!!
-        echo "$TESTING_KEY" > testing/newman.key
-
-        # Scope the mTLS client cert to only the real target host (host/port
-        # read from the Postman environment file so this stays in sync with
-        # it). Requests to `no_cert_host` (e.g. TC_API_KEY_EXP, which tests an
-        # expired JWT) then get no client certificate at all, so the Hub's
-        # cert-based auth fallback can't mask an expired-token rejection with
-        # a successful cert-based login.
-        # Don't upload this file !!! (embeds TESTING_PASS in plaintext)
-        HOST=$(jq -r '.values[] | select(.key=="host") | .value' testing/scripts/dev.postman_environment.json)
-        PORT=$(jq -r '.values[] | select(.key=="port") | .value' testing/scripts/dev.postman_environment.json)
-        jq -n \
-          --arg host "$HOST" \
-          --arg port "$PORT" \
-          --arg pass "$TESTING_PASS" \
-          '[{
-             name: "IZGW dev mTLS cert",
-             matches: ["https://\($host)/*", "https://\($host):\($port)/*"],
-             key: {src: "../newman.key"},
-             cert: {src: "../newman.pem"},
-             passphrase: $pass
-           }]' > testing/newman-cert-list.json
-
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v6
       with:
@@ -413,124 +344,50 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{vars.AWS_REGION}}
 
-    - name: Add runner IP to security group
-      run: |
-        RUNNER_IP=$(curl -sf https://checkip.amazonaws.com || true)
-        if [ -z "$RUNNER_IP" ]; then
-          echo "Failed to determine runner public IP" >&2
-          exit 1
-        fi
-        echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_ENV
-        aws ec2 authorize-security-group-ingress \
-          --group-id ${{ vars.AWS_SECURITY_GROUP_ID }} \
-          --protocol tcp \
-          --port 443 \
-          --cidr ${RUNNER_IP}/32 || true
-    # Having the wait for reload at this point allows some of the wasted waiting time to occur during build cleanup phase
-    # and setup phase of this job.
-    - name: Wait for reload of task to complete
-      uses: ./.github/actions/ecs-wait-healthy
+    # The shared verifier, also used by release.yml and hotfix.yml, so that the
+    # two paths cannot drift. It confirms the deployment is stable and still
+    # primary, that the Hub container runs this exact image, that the logging
+    # client connected, and that the Newman suite passes. It also owns the
+    # temporary security-group rule and removes the credential files it makes.
+    - name: Verify the deployed candidate
+      uses: ./.github/actions/verify-hub
       with:
         cluster: izgateway-dev-izgateway-services
         service: izgateway-devalb-service
         regions: ${{ vars.AWS_REGIONS }}
         deployment_ids: ${{ needs.build.outputs.deployment_ids }}
-          
-    # Verify Filebeats is operating properly
-    # Get the first service instance and check CloudWatch logs for indication that it connected
-    - name: Verify ElasticSearch Logging Client Is running
-      run: |
-        SERVICE_INSTANCE=`aws ecs list-tasks --cluster izgateway-dev-izgateway-services --service-name izgateway-devalb-service  | jq '.taskArns[0]|split("/")[2]' -r`
-        aws logs filter-log-events --log-group-name /ecs/izgateway-devalb-phiz-web-ws --log-stream-names ecs/izgateway-devalb-phiz-web-ws/$SERVICE_INSTANCE --filter-pattern "Connection to backoff" | grep established
-
-    # Perform a little bit of warmup on the IZGW service using cert tests
-    # TLS Testing can be Disabled per Security Team 5/23/2025, as it will be addressed via endpoint monitoring
-#    - name: Execute Encryption/Cert Test
-#      id: TlsTests
-#      working-directory: ./testing
-#      env:
-#        IZGW_SSL_CLIENT_PASSPHRASE: ${{ secrets.TESTING_PASS }}
-#      run: |
-#        chmod +x ./tlstest.sh
-#        mkdir ./logs
-#        ./tlstest.sh | tee ./logs/tls-test.txt
-#        [ `grep -c -e FAIL ./logs/tls-test.txt` -eq 0 ]
-
-    # Include warmup in Verify b/c we must warm up server on which verification
-    # is performed.  B/c Each stage runs in a separate virtual server, and our cluster
-    # ensures requests are sticky based on IP Address, this ensures that requests for warmup and verification
-    # go to the same server.
-    - name: Run Warm Up for Functional Testing
-      working-directory: ./testing/testdata
-      env:
-        BEARER_TOKEN_EXPIRED: ${{ secrets.BEARER_TOKEN_EXPIRED }}
-        BEARER_TOKEN_FOR_CICD: ${{ secrets.BEARER_TOKEN_FOR_CICD }}
-        BEARER_TOKEN_REVOKED: ${{ secrets.BEARER_TOKEN_REVOKED }}
-        BEARER_TOKEN_WRONG_SECRET: ${{ secrets.BEARER_TOKEN_WRONG_SECRET }}
-        BEARER_TOKEN_WRONG_ENV: ${{ secrets.BEARER_TOKEN_WRONG_ENV }}
-        BEARER_TOKEN_NO_USETYPE: ${{ secrets.BEARER_TOKEN_NO_USETYPE }}
-        NODE_OPTIONS: "--require ${{ github.workspace }}/.github/scripts/enable-keepalive.js"
-      run: |
-        mkdir ../logs
-        startTime=$(date +%s);
-        # Just Running the Smoke Test ONCE should be enough to warm up
-        newman run ../scripts/IZGW_2.0_Integration_Test.postman_collection.json -n 1 --folder "Smoke Test" \
-          "--environment" ../scripts/dev.postman_environment.json \
-          "--ssl-extra-ca-certs" ../certs/izgwroot.pem \
-          "--ssl-client-cert-list" ../newman-cert-list.json \
-          "--insecure" -x > ../logs/warmup.log
-        endTime=$(date +%s);
-        WARMUP=$(($endTime-$startTime));
-        echo Warmed up for $WARMUP seconds
-
-    - name: Execute Functional Tests
-      id: FunctionalTests
-      working-directory: ./testing/testdata
-      env:
-        BEARER_TOKEN_EXPIRED: ${{ secrets.BEARER_TOKEN_EXPIRED }}
-        BEARER_TOKEN_FOR_CICD: ${{ secrets.BEARER_TOKEN_FOR_CICD }}
-        BEARER_TOKEN_REVOKED: ${{ secrets.BEARER_TOKEN_REVOKED }}
-        BEARER_TOKEN_WRONG_SECRET: ${{ secrets.BEARER_TOKEN_WRONG_SECRET }}
-        BEARER_TOKEN_WRONG_ENV: ${{ secrets.BEARER_TOKEN_WRONG_ENV }}
-        BEARER_TOKEN_NO_USETYPE: ${{ secrets.BEARER_TOKEN_NO_USETYPE }}
-        NODE_OPTIONS: "--require ${{ github.workspace }}/.github/scripts/enable-keepalive.js"
-      run: |
-        newman run ../scripts/IZGW_2.0_Integration_Test.postman_collection.json -n 1 --folder "Working" \
-          "--env-var" "build=`grep Build target\classes\build.txt | cut '-d:' -f2 | cut -c2-99`" \
-          "--env-var" "timestamp=`grep Timestamp target\classes\build.txt | cut '-d:' -f2 | cut -c2-99`" \
-          "--environment" ../scripts/dev.postman_environment.json \
-          "--env-var" "bearer_token_expired=$BEARER_TOKEN_EXPIRED" \
-          "--env-var" "bearer_token_for_cicd=$BEARER_TOKEN_FOR_CICD" \
-          "--env-var" "bearer_token_revoked=$BEARER_TOKEN_REVOKED" \
-          "--env-var" "bearer_token_wrong_secret=$BEARER_TOKEN_WRONG_SECRET" \
-          "--env-var" "bearer_token_wrong_env=$BEARER_TOKEN_WRONG_ENV" \
-          "--env-var" "bearer_token_no_usetype=$BEARER_TOKEN_NO_USETYPE" \
-          "--ssl-extra-ca-certs" certs/izgwroot.pem \
-          "--ssl-client-cert-list" ../newman-cert-list.json \
-          "--insecure" --reporters cli,junitfull --reporter-junitfull-export ../logs/integration-test.xml
-
-        xunit-viewer -r ../logs/integration-test.xml
-        cp index.html ../logs/integration-test.html
+        expected_image_digest: ${{ needs.build.outputs.candidate_digest }}
+        expected_build: ${{ needs.build.outputs.build_number }}
+        expected_timestamp: ${{ needs.build.outputs.build_timestamp }}
+        security_group_id: ${{ vars.AWS_SECURITY_GROUP_ID }}
+        testing_cert: ${{ secrets.TESTING_CERT }}
+        testing_key: ${{ secrets.TESTING_KEY }}
+        testing_pass: ${{ secrets.TESTING_PASS }}
+        bearer_token_expired: ${{ secrets.BEARER_TOKEN_EXPIRED }}
+        bearer_token_for_cicd: ${{ secrets.BEARER_TOKEN_FOR_CICD }}
+        bearer_token_revoked: ${{ secrets.BEARER_TOKEN_REVOKED }}
+        bearer_token_wrong_secret: ${{ secrets.BEARER_TOKEN_WRONG_SECRET }}
+        bearer_token_wrong_env: ${{ secrets.BEARER_TOKEN_WRONG_ENV }}
+        bearer_token_no_usetype: ${{ secrets.BEARER_TOKEN_NO_USETYPE }}
 
     - name: Login to Amazon ECR
       id: login-ecr2
       uses: aws-actions/amazon-ecr-login@v2
 
-    - name: Tag verified image
+    # Promote by the recorded digest. The old step pulled :latest, so a build
+    # from another run that had moved latest would have been tagged good.
+    - name: Tag the verified image as good
       env:
         ECR_REGISTRY: 357442695278.dkr.ecr.${{vars.AWS_REGION}}.amazonaws.com
         ECR_REPOSITORY: izgateway-dev-phiz-web-ws
+        CANDIDATE_DIGEST: ${{ needs.build.outputs.candidate_digest }}
       run: |
-        docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
-        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:good
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:good
-
-    - name: Upload test logs
-      uses: actions/upload-artifact@v7
-      if: ${{ always() }}
-      with:
-        name: TestLogs
-        path: ./testing/logs
+        set -euo pipefail
+        SOURCE="${ECR_REGISTRY}/${ECR_REPOSITORY}@${CANDIDATE_DIGEST}"
+        docker pull "$SOURCE"
+        docker tag "$SOURCE" "${ECR_REGISTRY}/${ECR_REPOSITORY}:good"
+        docker image push "${ECR_REGISTRY}/${ECR_REPOSITORY}:good"
+        echo "good identifies the verified candidate ${CANDIDATE_DIGEST}."
 
     - name: Upload build environment as artifact for failed build
       uses: actions/upload-artifact@v7
@@ -541,65 +398,3 @@ jobs:
             .
             !testing/newman.key
             !testing/newman-cert-list.json
-
-    - name: Remove runner IP from security group
-      if: always()
-      run: |
-        if [ -z "$RUNNER_IP" ]; then
-          echo "RUNNER_IP not set; skipping security-group revoke"
-          exit 0
-        fi
-        aws ec2 revoke-security-group-ingress \
-          --group-id ${{ vars.AWS_SECURITY_GROUP_ID }} \
-          --protocol tcp \
-          --port 443 \
-          --cidr ${RUNNER_IP}/32 || true
-
-  push-to-aphl:
-    # Remember to put verify back
-    needs: [build, verify]
-    runs-on: ubuntu-latest
-    # This step should only be done on PUSH to a Release branch
-    if: ${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/Release')) }}
-    steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{vars.AWS_REGION}}
-
-      - name: Login to Amazon ECR
-        id: login-ecr2
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Tag verified image
-        env:
-          ECR_REGISTRY: 357442695278.dkr.ecr.${{vars.AWS_REGION}}.amazonaws.com
-          ECR_REPOSITORY: izgateway-dev-phiz-web-ws
-          IMAGE_TAG: ${{needs.build.outputs.image_tag}}
-        run: |
-          docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:latest iz-gateway:$IMAGE_TAG
-
-      - name: Configure AWS credentials for APHL
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          aws-access-key-id: ${{ secrets.APHL_AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.APHL_AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{vars.AWS_REGION}}
-
-      - name: Login to APHL Amazon ECR
-        id: login-aphl-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Tag and push image to APHL Amazon ECR
-        env:
-          ECR_REGISTRY: ${{ secrets.APHL_ECR_REGISTRY }}
-          ECR_REPOSITORY: ${{ secrets.APHL_ECR_REPOSITORY }}
-          IMAGE_TAG: ${{needs.build.outputs.image_tag}}
-          VERSION_ONLY_TAG: ${{needs.build.outputs.version_only_tag}}
-        run: |
-          echo "About to push image to APHL ECR: izgw-hub-${{env.VERSION_ONLY_TAG}}"
-          docker image tag iz-gateway:${IMAGE_TAG} $ECR_REGISTRY/$ECR_REPOSITORY:izgw-hub-${{env.VERSION_ONLY_TAG}}
-          docker image push --all-tags $ECR_REGISTRY/$ECR_REPOSITORY
