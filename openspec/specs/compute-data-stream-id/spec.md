@@ -1,8 +1,7 @@
 # Spec: `computeDataStreamId(fileTypeName)`
 
-**Component:** `IAccessControlService` (static method, `izgw-core`)  
-**Implemented in:** `gov.cdc.izgateway.service.IAccessControlService`  
-**Related task:** Task 2 (AccessControlService), Task 8 (Tests)
+**Component:** `MetadataBuilder` (package-private static method, `izgw-hub`)  
+**Implemented in:** `gov.cdc.izgateway.ads.MetadataBuilder`  
 
 ---
 
@@ -90,7 +89,7 @@ incorrect.
 |---|---|---|
 | `routineImmunization` | `I` at 7: prev=`e`(lower) → hyphen | `routine-immunization` |
 | `influenzaVaccination` | `V` at 9: prev=`a`(lower) → hyphen | `influenza-vaccination` |
-| `farmerFlu` | `F` at 6: prev=`r`(lower) → hyphen | `farmer-flu` |
+| `farmerFlu` | `F` at 6: prev=`r`(lower) → hyphen. **Raw-function result only** — in production the input is `meta_ext_event` (`farmerFluVaccination`), so `farmerFlu` never reaches this function and the emitted `data_stream_id` is `farmer-flu-vaccination` (see [`ads-folder-path-computation`](../ads-folder-path-computation/spec.md)) | `farmer-flu` |
 | `farmerFluVaccination` | two transitions | `farmer-flu-vaccination` |
 | `covidAllMonthlyVaccination` | three transitions | `covid-all-monthly-vaccination` |
 | `covidBridgeVaccination` | two transitions | `covid-bridge-vaccination` |
@@ -125,7 +124,7 @@ incorrect.
 
 ---
 
-## Test Cases
+## Requirements
 
 The following requirements are the normative acceptance criteria.  All scenarios must pass.
 
@@ -263,8 +262,10 @@ The system SHALL treat digit characters as lowercase when determining Rule 1 bou
 ## Implementation Location
 
 ```
-izgw-core/src/main/java/gov/cdc/izgateway/service/IAccessControlService.java
+izgw-hub/src/main/java/gov/cdc/izgateway/ads/MetadataBuilder.java
   └── static String computeDataStreamId(String fileTypeName)
+      (called from Metadata.getDataStreamId() with getExtEvent() as input — see
+       ../ads-folder-path-computation/spec.md)
 
 izgw-hub/src/test/java/gov/cdc/izgateway/ads/ComputeDataStreamIdTests.java
   └── parameterised JUnit 5 tests covering all cases above
@@ -278,3 +279,4 @@ izgw-hub/src/test/java/gov/cdc/izgateway/ads/ComputeDataStreamIdTests.java
 |---|---|
 | 2026-03-16 | Initial algorithm: hyphen before every uppercase (simple) |
 | 2026-03-27 | Corrected to acronym-aware algorithm (Rule 2 added); `RIQuarterlyAggregate` → `ri-quarterly-aggregate`, `ABCReport` → `abc-report`, `COVID19Vaccine` → `covid19-vaccine` |
+| 2026-09-21 | IGDD-2775: input is now `meta_ext_event` (via `Metadata.getDataStreamId()`), not the raw `reportType`; implementation location corrected to `MetadataBuilder` |

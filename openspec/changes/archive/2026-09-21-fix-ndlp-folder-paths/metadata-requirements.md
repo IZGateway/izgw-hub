@@ -71,9 +71,14 @@ The `meta_ext_event` field (NDLP scope) drives storage container routing.
 > `MetadataBuilder.computeDataStreamId()` to produce hyphenated `data_stream_id` strings —
 > incorrect casing produces incorrect hyphenation (e.g. `"covidallmonthly-vaccination"` instead
 > of `"covid-all-monthly-vaccination"`). The external DMI spec document uses inconsistent
-> casing; always defer to the registry values. The case-insensitive normalization in Decision 3
-> of the design ensures that any casing variant submitted by a client resolves to the correct
-> canonical form before computation.
+> casing; always defer to the registry values. The three-tier normalization in Decisions 3
+> and 6 of the design ensures that any casing variant or legacy alias submitted by a client
+> resolves to the correct canonical form before computation.
+>
+> The registry's canonical entry for Farmer Flu is `farmerFluVaccination` — confirmed by the
+> Newman `farmerFlu` integration test, which asserts `meta_ext_event_type = farmerFluVaccination`
+> against the live dev registry. The `farmerFlu` value in the deprecated Event Type Values
+> table below is the external DMI value, not the registry name.
 
 | Report Type | `meta_ext_event` (canonical registry value) |
 |---|---|

@@ -3,11 +3,11 @@
 The authoritative source for all NDLP metadata field names and required values is the
 CDC DMI specification:
 
-> **[`specs/DMI_IZGW_to_NDLP_Routine_Immunizations_Spec.xlsx`](specs/DMI_IZGW_to_NDLP_Routine_Immunizations_Spec.xlsx)**
+> **[`DMI_IZGW_to_NDLP_Routine_Immunizations_Spec.xlsx`](DMI_IZGW_to_NDLP_Routine_Immunizations_Spec.xlsx)**
 > — "Metadata Fields For Submission" tab
 
 A human-readable extract of that tab is maintained at
-[`specs/metadata-requirements.md`](specs/metadata-requirements.md).
+[`metadata-requirements.md`](metadata-requirements.md).
 This spec is the source of truth for `data_stream_id` values, `meta_ext_event` values,
 and submission period formats used in the computation algorithms below.
 
@@ -72,7 +72,6 @@ known types and gives wrong output for unknown types.
 
 **Non-Goals:**
 - No changes to `ADSUtils.getPath()`, `AzureBlobStorageSender`, or `MetadataImpl`.
-- No changes to `NewModelHelper.getFileType()` — it already does case-insensitive lookup.
 - No new file type names.
 
 ## Decisions
@@ -136,9 +135,9 @@ if (accessControlService != null) {
 }
 ```
 
-**Rationale:** `NewModelHelper.getFileType()` already performs a case-insensitive scan,
-so `"covidall"`, `"COVIDALL"`, and `"covidAllMonthlyVaccination"` all resolve to the same
-`IFileType`. Using the canonical name from `getFileTypeName()` ensures all downstream
+**Rationale:** `NewModelHelper.getFileType()` performs a case-insensitive scan (and, per
+Decision 6, a noise-word-stripped scan), so `"covidall"`, `"COVIDALL"`, and
+`"covidAllMonthlyVaccination"` all resolve to the same `IFileType`. Using the canonical name from `getFileTypeName()` ensures all downstream
 computation (`computeMetaExtEvent`, `computeDataStreamId`) operates on the correctly-cased
 camelCase string that the algorithms expect. Without this, a submitter who passes
 `"covidall"` would get `extEvent = "covidall"` and `dataStreamId = "covidall"` (wrong).
@@ -149,7 +148,7 @@ correct camelCase spelling. The external DMI spec document uses inconsistent cas
 hyphenation (`"covidallmonthly-vaccination"`, `"farmerflu-vaccination"`) if used directly.
 Normalizing through the registry ensures `computeDataStreamId()` always receives the
 correctly-cased input and produces the correct kebab output regardless of what casing the
-caller supplies. See [`specs/metadata-requirements.md`](specs/metadata-requirements.md)
+caller supplies. See [`metadata-requirements.md`](metadata-requirements.md)
 for the canonical values.
 
 **Note:** When no service is injected (or the type is unrecognised), the raw submitted
@@ -164,11 +163,6 @@ primary regression case.
 **Rationale:** The bug existed because the only tests for `computeDataStreamId()` tested
 the algorithm in isolation. End-to-end tests through `setReportType()` would have caught
 the short-circuit immediately.
-
-### Decision 4: Manual resubmission to NDLP onboarding container
-
-No automated redelivery mechanism exists. The two affected test files are resubmitted
-manually to CDC contact (Juan Alvarado, wok1@cdc.gov) after deployment.
 
 ## Risks / Trade-offs
 
@@ -227,9 +221,38 @@ using the existing `getEventTypes()` method closes the gap with no new DTO.
 `ReportTypeInfo` (originally designed with `fileTypeName`, `dataStreamId`, and `periodType`
 fields) was removed from scope — the plain string list is sufficient for the discovery use case.
 
+### Decision 6: Three-tier registry matching with noise-word stripping
+
+**Chosen:** Extend `NewModelHelper.getFileType()` from a case-insensitive scan to a
+three-tier match: (1) exact, (2) case-insensitive, (3) noise-word stripped — where the
+words `vaccination`, `immunization`, `prevention`, `monthly`, and `quarterly` are removed
+(case-insensitively) from both the submitted value and each registry key before comparing.
+The noise-word list and the matching algorithm live in `ADSUtils` (`NOISE_WORDS`,
+`stripNoiseWords()`, `matchReportType()`) so that `ADSController.normalizeReportType()`
+can apply the same logic at the REST boundary against `getEventTypes()`.
+
+**Rationale:** The registry's canonical names are the full forms (`farmerFluVaccination`,
+`covidAllMonthlyVaccination`). Existing submitters send the legacy short aliases
+(`farmerFlu`, `covidall`), which a case-insensitive match alone cannot resolve. Tier 3
+preserves backward compatibility without adding alias records to the registry.
+
+**Boundary behaviour:** `MetadataBuilder.setReportType()` warns and continues on no-match;
+`ADSController` adds a validation error on no-match, so REST submissions with an
+unregistered type are rejected. See `specs/report-type-normalization/spec.md`.
+
+**Known drift:** the Javadoc on `NewModelHelper.getFileType()` lists only three noise
+words; the authoritative list is `ADSUtils.NOISE_WORDS` (five words). Javadoc-only
+inconsistency, tracked here rather than fixed in this change.
+
+### Decision 7: Manual resubmission to NDLP onboarding container
+
+No automated redelivery mechanism exists. The two affected test files are resubmitted
+manually to CDC contact (Juan Alvarado, wok1@cdc.gov) after deployment.
+
 ## Open Questions
 
-1. Was the `covidAllMonthlyVaccination` submission made with `reportType = "covidAllMonthly"`
-   (shorter alias) or the full name? With this fix the answer doesn't change the
-   implementation, but it determines whether resubmission of that file is necessary.
+1. ~~Was the `covidAllMonthlyVaccination` submission made with `reportType = "covidAllMonthly"`
+   (shorter alias) or the full name?~~ **Closed** — the fix is deployed and both test files
+   were resubmitted (tasks 6.1–6.3); with Decision 6 either alias resolves to the canonical
+   entry.
 

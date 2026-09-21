@@ -3,7 +3,6 @@
 **Component:** `CsvFilenameValidator` utility class  
 **Implemented in:** `gov.cdc.izgateway.ads.util.CsvFilenameValidator`  
 **Related DTOs:** `CsvFilenameComponents`  
-**Related task:** Task 3 (FilenameValidator), Task 9 (Tests)
 
 ---
 
@@ -116,7 +115,7 @@ function parseFilename(filename):
 
 ---
 
-## Validation Rules
+## Requirements
 
 `validate()` applies three checks.  **Check 1 is fail-fast**: if parsing fails,
 an error is returned immediately and checks 2–3 are skipped.  Checks 2–3 both run

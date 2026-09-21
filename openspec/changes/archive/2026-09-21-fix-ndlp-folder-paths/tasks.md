@@ -33,11 +33,18 @@ Jira: IGDD-2775
 ## 4. Postman
 
 - [x] 4.1 Update Postman collection line asserting `data_stream_id` for farmerFlu test: change `"farmer-flu"` → `"farmer-flu-vaccination"`.
+- [x] 4.2 Update `openspec/specs/compute-data-stream-id/spec.md` and `openspec/specs/compute-meta-ext-event/spec.md` to reflect that `data_stream_id` is derived from `meta_ext_event`, so `farmerFlu` yields `farmer-flu-vaccination`.
 
 ## 5. Report types discovery endpoint
 
 - [x] 5.1 Add `GET /rest/ads/reportTypes` to `ADSController` returning `config.getAccessControls().getEventTypes()` as `List<String>`.
 - [x] 5.2 Confirm the existing `@Schema` description on `reportType` parameter already references this URL (no change needed).
+
+## 6. NDLP resubmission (operational)
+
+- [x] 6.1 After deployment to onboarding environment, resubmit `farmerFlu` test file targeting path `ext-immunization-izgw/farmer-flu-vaccination/`.
+- [x] 6.2 Confirm `covidAllMonthlyVaccination` path and resubmit if affected.
+- [x] 6.3 Confirm receipt with Juan Alvarado (wok1@cdc.gov).
 
 ## 7. Noise-word registry matching (backward compatibility)
 
@@ -51,8 +58,4 @@ Jira: IGDD-2775
   no-match cases.
 - [x] 7.4 Run `mvn test` and confirm all tests green.
 - [x] 7.5 Run `mvn compile -q` — confirm zero errors.
-- [x] 7.6 Update spec `report-type-normalization.md` to document three-tier matching.
-
-- [ ] 6.1 After deployment to onboarding environment, resubmit `farmerFlu` test file targeting path `ext-immunization-izgw/farmer-flu-vaccination/`.
-- [ ] 6.2 Confirm `covidAllMonthlyVaccination` path and resubmit if affected.
-- [ ] 6.3 Confirm receipt with Juan Alvarado (wok1@cdc.gov).
+- [x] 7.6 Update spec `report-type-normalization/spec.md` to document three-tier matching.
