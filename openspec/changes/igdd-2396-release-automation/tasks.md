@@ -211,13 +211,14 @@ Keep the shell inline in each composite action.
   immediately after each confirmed write, and capture the expected remote tips
   before the first write. On failure, delete a standard-release branch, a version
   tag, and a GitHub Release only when the recorded object still matches the
-  remote, and revert recorded trunk and base commits in reverse order when that
-  is safe. Preserve the operator's hotfix branch.
+  remote, and restore recorded trunk and base branches to their recorded
+  previous tips with `--force-with-lease` against the SHA this run pushed, in
+  reverse order. Preserve the operator's hotfix branch.
   **Done when:** review confirms compare-and-delete conditions in place of an
   unguarded existence check, deletion of a GitHub Release by recorded ID rather
-  than by tag name, no forced reset of shared history, no automatic rollback of
-  images, Pages, or dev, and that cleanup errors stay visible without replacing
-  the original failure.
+  than by tag name, no branch reset without a lease on this run's own SHA, no
+  automatic rollback of images, Pages, or dev, and that cleanup errors stay
+  visible without replacing the original failure.
 - [x] 5.2 Add the run summary and an allowlisted artifact set to
   `_release_common.yml`. Report release type, version, source, branches, dry-run
   mode, completed gates, candidate digest, published outputs, the next
@@ -284,8 +285,7 @@ Keep the shell inline in each composite action.
   `maven.yml:168`. Confirm that no new step interpolates an operator-supplied
   input or a ref name into a script body; pass such values through `env` and
   quote them. **Done when:** the reviewed revision and the resolved
-  in-scope findings are recorded in
-  `openspec/changes/igdd-2396-release-automation/rehearsal-results.json`, and no
+  in-scope findings are recorded in the rollout record (section 9), and no
   runtime FIPS, TLS, or authorization weakening is needed.
 - [x] 7.3 Run the static checks and complete a workflow contract review.
   `actionlint` 1.7.12 is available locally and bundles `shellcheck`.
@@ -298,8 +298,7 @@ Keep the shell inline in each composite action.
   - `actionlint` reads workflows only. It rejects a composite action file for a
     missing `on` and `jobs` section, so check each action's shell by extracting
     its `run:` bodies and passing them to `shellcheck` directly.
-  **Done when:** results are recorded in
-  `openspec/changes/igdd-2396-release-automation/rehearsal-results.json`, the
+  **Done when:** results are recorded in the rollout record (section 9), the
   review covers early failure, every gate, both conflict preferences,
   digest-based promotion, cleanup ownership, and failure summaries, and no
   runtime outcome is claimed from inspection alone.
@@ -310,9 +309,8 @@ The maintainer performs every live action in this section. An assistant prepares
 and records only. See the execution boundary in section 1.
 
 These steps use shared dev and create real remote state. Record actual run IDs,
-ref and object IDs, digests, sites, approvals, and residual actions in
-`openspec/changes/igdd-2396-release-automation/rehearsal-results.json`, without
-credentials. Estimates cover assistant preparation and record work. They exclude
+ref and object IDs, digests, sites, approvals, and residual actions in the
+rollout record (section 9), without credentials. Estimates cover assistant preparation and record work. They exclude
 maintainer time, unattended cloud runtime, and approval delays.
 Task 8.5 is an exit obligation whenever task 8.1 changes the default branch,
 including when later rehearsal steps fail or are cancelled.
@@ -341,8 +339,8 @@ find logic errors. Plan for more than one window.
   cannot prove this access.
   **Done when:** the maintainer reports that the dispatch workflows are
   available, the maintainer acknowledges the scheduled-CI and PR-target impacts,
-  the App bypass result for the real branches is recorded in
-  `rehearsal-results.json` from the maintainer's report, and no real legacy
+  the App bypass result for the real branches is recorded in the rollout
+  record (section 9) from the maintainer's report, and no real legacy
   release branch or first real release has been changed.
 - [x] 8.2 Standard-release rehearsal.
   *Assistant:* draft the dispatch inputs, the overlap-attempt sequence, and the
@@ -391,7 +389,7 @@ find logic errors. Plan for more than one window.
 
   These exist only on the test branches. The safest guarantee is never to merge
   `developalm` or `mainalm` into anything. Confirm each one before the branch is
-  merged to `develop`, and record the check in `rehearsal-results.json`.
+  merged to `develop`, and record the check in the rollout record (section 9).
 
   | Where | What | Correct value |
   | --- | --- | --- |
@@ -422,6 +420,79 @@ find logic errors. Plan for more than one window.
   reaches `develop`, the development scan blocks on them, so raise this as its
   own ticket rather than treating it as release-automation work.
 
+## 9. Rollout record
+
+Evidence for tasks 7.2, 7.3, and 8.1 to 8.5. Every run is a real GitHub Actions
+run dispatched by the maintainer; nothing here is inferred. No credentials.
+
+**Static checks (7.3).** `actionlint` 1.7.12: zero findings on `release.yml`,
+`hotfix.yml`, and `_release_common.yml`; `maven.yml` 71 before, 19 after, all
+pre-existing style warnings in untouched steps. `shellcheck` 0.11.0 clean on the
+extracted `run:` bodies of `ecs-deploy`, `ecs-wait-healthy`, and `verify-hub`.
+
+**Security review (7.2).** Reviewed revision `14f748d7c`. Scope: the three
+release workflows, the three composite actions, and `maven.yml`. All items pass:
+no workflow expression is interpolated into a script body (inputs, ref names,
+and step outputs arrive through `env`); the release App token is generated
+three times (checkout, post-gate writes, cleanup), is written into the Git
+remote URL rather than a command line, and is never echoed or output; no
+`ACTIONS_KEY` or `ssh-key` remains; branch advancement is a non-forced push
+after an expected-tip check, and cleanup uses `--force-with-lease` against the
+SHA this run pushed, so the compare-and-reset is atomic at the remote; a
+GitHub Release is deleted by recorded id, or by tag only when creation was
+attempted but unconfirmed; the ingress rule is revoked only if this run created
+it, and a revoke failure is reported; the client certificate list is scoped to
+the Postman environment's host and port; the key and passphrase-bearing list
+are written `0600` and deleted with `if: always()`; release-path artifacts are
+allowlisted. One accepted exception: `maven.yml` keeps `path: .` on failure by
+maintainer decision, the repository being public and the workspace holding no
+credential file. One accepted weakening: OSS Index is disabled in both scans
+because the configured Sonatype credentials are rejected.
+
+**Setup (8.1).** Test branches `developalm` and `mainalm`; rehearsal versions
+`99.0.0` and `99.0.1`, chosen because a dry-run writes a real global tag;
+released dependencies `izgw-bom` 1.15.0 and `izgw-core` 3.6.0. Default branch
+switched to `developalm` for each window and restored to `develop` after. The
+maintainer confirmed on 2026-09-21 that the release App can write the real
+`main` and `develop`; test branches carry no rulesets, so no rehearsal can
+prove this.
+
+| Task | Run | Result |
+| --- | --- | --- |
+| 8.2 standard | 35356230756 | success. `mainalm` at `99.0.0-IZGW-RELEASE`, `developalm` at `99.1.0-IZGW-SNAPSHOT` by auto-increment, annotated `v99.0.0` on the `mainalm` tip, notes from PRs 191 and 193, five `docs/release` files with the stale `HELP.md` gone, draft non-prerelease release with five assets, Pages under `test/current` and `test/v99.0.0`, no APHL delivery |
+| 8.3 hotfix | 35369509764 | success. `mainalm` at `99.0.1-IZGW-RELEASE`, `developalm` unchanged at `99.1.0-IZGW-SNAPSHOT`, one file resolved in opposite directions in one run (`-X theirs` to trunk, `-X ours` to base), review warning for `BUILD.md` and `RELEASE_NOTES.md` did not fail the run, `hotfix/99.0.1` preserved, no-op candidate preparation and the bounded ECS task wait both exercised |
+| 8.4 duplicate probes | — | existing tag refused: "Tag v99.0.0 already exists on origin"; draft release with the tag deleted refused: "A GitHub Release already exists for v99.0.0 (391554784 draft=true)". Both refused before any write and altered nothing. The draft case previously slipped through; fixed in `04132a513` |
+| 8.4 cleanup | 35270878061 | failed at the GitHub Release asset upload after full trunk, tag, base, and Pages publication. Cleanup restored `developalm` and `mainalm`, removed `v99.0.0` and `release/99.0.0`, and reported the images, `good`, test Pages, and shared dev for manual recovery. Found one defect: the draft release was stranded because its flag was recorded a step too late; fixed in `733ab2c02` |
+| 8.4 other cleanup | 35228971055, 35236485022, 35260319014, 35263359599, 35363253938 | organic failures during the rehearsal windows; cleanup ran correctly on each |
+| 6.1 dev CI | 35606822099 | success on `developalm`. Newman 6,984 assertions, 0 failures. The build job's digest `sha256:5eebc5ef…` was the digest `verify-hub` checked and the digest promoted to `good`; this cross-job handoff cannot be tested by the single-job release |
+| re-run after fixes | 35624644404 | failed in Newman: 50 of 8,200 assertions, all reading `/rest/logs` content that the test did not produce (extra transactions, a mock connection to `127.0.0.1` in place of a DNS failure). Same collection as the passing run above; outside traffic on shared dev. Cleanup removed `release/99.0.0`; no tag had been written |
+| re-run after fixes | 35627120689 | success with the fixes from `4b59434b3`: identity checks assign before testing, notes range `origin/mainalm..HEAD` took the commit fallback with its warning because PRs 191 and 193 were already on `mainalm`, deployment receipt recorded. Candidate `99.0.0-RELEASE-14` `sha256:d7538ddb…`, `mainalm` `dc3776c3` tagged `v99.0.0`, `developalm` `cf81c75a` at `99.1.0-IZGW-SNAPSHOT`, draft release 393137848, Pages under `test/` |
+
+No deliberately injected failure was run. Cleanup ran on six real failures,
+including one after full publication, and the duplicate probes showed
+pre-existing objects untouched. A further shared-dev window for an injected
+failure was judged low value.
+
+**Exit (8.5).** `develop` restored as the default branch. Removed after each
+window: the `v99.0.0` and `v99.0.1` releases and tags and `release/99.0.0`.
+Retained: `hotfix/99.0.1` (the automation never deletes an operator branch),
+`developalm`, and `mainalm`. Residual effects: shared dev is overwritten by the
+next development CI run; `latest` and `good` on dev ECR and GHCR point at
+rehearsal images until the next build; `test/current` and `test/v99.0.0` remain
+published and are cosmetic. Objects from run 35627120689 are still in place
+until that window closes.
+
+**Temporary edits still on `developalm`.** `--failOnCVSS 99` and the report
+check `>= 99` in `_release_common.yml`, `--failOnCVSS 99` in `maven.yml`, and
+the released BOM/core versions in `pom.xml`. Correct values are `7` and
+whatever `develop` requires. The guard is in section 8.
+
+**Open items.** Twelve `spring-core` 6.2.19 findings at CVSS 7.5 to 9.8 are
+real and unsuppressed; both scans block on them until `izgw-bom` ships a Spring
+Boot bump, which is its own ticket. The OSS Index credentials are rejected by
+Sonatype: obtain working ones or remove the secrets. The first real release
+requires separate maintainer approval.
+
 ## Out of scope: cutover and the first real release
 
 The cutover is operational work, not part of this change. It is the maintainer's
@@ -436,7 +507,7 @@ against the delivered automation, not as tasks here.
 
 ---
 
-## 9. Task Summary
+## 10. Task Summary
 
 Rough active engineering estimates; each task is a 1-4 hour work unit. These are
 not elapsed-time promises. Rehearsal failures can require fixes and another

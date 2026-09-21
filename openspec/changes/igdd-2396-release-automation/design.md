@@ -368,16 +368,21 @@ the runner is available.
 | Standard-release branch created | Delete only if the remote ref still matches the recorded run-owned ref |
 | Version tag created | Compare its exact tag object before conditional deletion |
 | GitHub Release created | Delete by its recorded release ID, not merely a matching tag name |
-| Trunk/base commits pushed | Revert the recorded commits in reverse order when safe; push the revert normally |
+| Trunk/base commits pushed | Restore the recorded previous tip with `--force-with-lease` against the SHA this run pushed, base first, then trunk |
 | Trunk created for an initial release | Remove only the run-created branch at its recorded tip; do not try to revert a nonexistent merge parent |
 | Hotfix branch prepared | Keep it for investigation and retry |
 | Images, Pages, or dev deployment changed | No automatic rollback; report locations, identities, and manual recovery |
 | No flag, or the remote no longer matches the recorded object | Leave it intact and report manual recovery |
 
 Branch/tag deletion uses a compare-and-delete condition against the recorded
-object, not an unguarded check followed by a potentially racing deletion. Do not
-force-reset shared history. If unrelated work has intervened or reversion cannot
-complete safely, stop that recovery operation and identify it explicitly.
+object, not an unguarded check followed by a potentially racing deletion. A
+branch restore is a `--force-with-lease` whose lease is the SHA this run
+pushed, so the remote rejects it if anything else has moved the branch; there
+is no unconditional force push. If unrelated work has intervened or the
+restore cannot complete safely, stop that recovery operation and identify it
+explicitly. The release App must therefore be permitted to make a
+non-fast-forward push on the real trunk and base; test branches carry no
+rulesets, so this is confirmed at cutover, not by rehearsal.
 
 Keep the original release failure even when cleanup succeeds. Capture cleanup
 errors individually so later safe cleanup attempts and the summary can still
