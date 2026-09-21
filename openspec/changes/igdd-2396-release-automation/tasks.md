@@ -280,7 +280,7 @@ Keep the shell inline in each composite action.
   in-scope findings are recorded in
   `openspec/changes/igdd-2396-release-automation/rehearsal-results.json`, and no
   runtime FIPS, TLS, or authorization weakening is needed.
-- [ ] 7.3 Run the static checks and complete a workflow contract review.
+- [x] 7.3 Run the static checks and complete a workflow contract review.
   `actionlint` 1.7.12 is available locally and bundles `shellcheck`.
   Apply this standard, which avoids unrelated cleanup in existing files:
   - `actionlint` must report zero findings for `release.yml`, `hotfix.yml`, and
@@ -378,6 +378,41 @@ find logic errors. Plan for more than one window.
   **Done when:** the maintainer confirms that the actual default is restored, and
   the rollout record identifies removed objects and residual effects with
   explicit owners and recovery actions. Unsuccessful rehearsals remain unchecked.
+
+  ### Temporary rehearsal edits that must not reach `develop`
+
+  These exist only on the test branches. The safest guarantee is never to merge
+  `developalm` or `mainalm` into anything. Confirm each one before the cutover
+  in task 9.2, and record the check in `rehearsal-results.json`.
+
+  | Where | What | Correct value |
+  | --- | --- | --- |
+  | `developalm` `_release_common.yml` | `--failOnCVSS` | `7` |
+  | `developalm` `_release_common.yml` | the `>=` in the report check | `7` |
+  | `developalm` `maven.yml` | `--failOnCVSS`, if relaxed for the dev CI test | `7` |
+  | `developalm` `pom.xml` | released `izgw-bom` and `izgw-core` versions set for the rehearsal | whatever `develop` requires |
+
+  Check on the branch that is about to merge:
+
+  ```
+  git grep -n "failOnCVSS\|0) >=" -- .github/workflows/
+  ```
+
+  Every hit must read `7`. A `99` means a rehearsal edit is about to ship, and
+  the release and development gates would both be disabled.
+
+  Do **not** revert `dependency-suppression.xml`. The CVE-2018-1258 rules were
+  consolidated from five stale `<sha1>` entries into one `packageUrl` rule for
+  the same CVE and the same reason. The hashes had gone stale after the Spring
+  upgrade, so the rule had silently stopped matching. That is a fix, not a
+  rehearsal edit. No release-automation work suppressed any other finding.
+
+  ### Separate remediation item
+
+  The twelve `spring-core` 6.2.19 findings at CVSS 7.5 to 9.8 are real and
+  unsuppressed. They need a Spring Boot bump in `izgw-bom`. Once task 6.1
+  reaches `develop`, the development scan blocks on them, so raise this as its
+  own ticket rather than treating it as release-automation work.
 
 ## 9. Cutover and Handoff — the maintainer runs every step
 
