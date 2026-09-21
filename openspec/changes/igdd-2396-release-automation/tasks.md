@@ -249,7 +249,7 @@ Keep the shell inline in each composite action.
 
 ## 7. Documentation and Pre-rehearsal Review
 
-- [ ] 7.1 Create `docs/release-automation.md`, link it from `README.md`, and
+- [x] 7.1 Create `docs/release-automation.md`, link it from `README.md`, and
   update `.github/copilot-instructions.md`, `.claude/CLAUDE.md`, and
   `openspec/config.yaml` for the new CI and branching model. Document dependency
   preparation, input examples, App and secret names, side-effecting dry-runs,
