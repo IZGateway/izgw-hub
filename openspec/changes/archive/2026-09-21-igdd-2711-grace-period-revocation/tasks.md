@@ -15,7 +15,7 @@
 
 ## 3. Scheduler
 
-- [x] 3.1 Enable Spring scheduling (`@EnableScheduling` on `GracePeriodRevocationScheduler`, gated by `@ConditionalOnProperty`).
+- [x] 3.1 Enable Spring scheduling (`@EnableScheduling` is on `Application`; the scheduler bean itself is gated by `@ConditionalOnProperty`).
 - [x] 3.2 Create `GracePeriodRevocationScheduler` — injects repository, audit logger, principal provider; `@Scheduled` `scheduledRun` wraps `runRevocationCycle` with MDC eventId and ERROR-on-failure logging.
 - [x] 3.3 Multi-instance safety (design D5). **Revised 2026-07-20:** the host-ordering election was removed (the Elastic host registry retains stale hosts → a lone live instance could defer to a ghost and never run). Replaced with a conditional DynamoDB write (`revokeIfGracePeriod`: revoke only while `status == grace_period`) so each key is revoked+audited exactly once across instances, with no runner election.
 - [x] 3.4 Cycle: query candidates → for each, conditionally revoke via `revokeIfGracePeriod` (sets `status=revoked`, `revokedAt`, `revokedBy=system:grace-revocation` iff still grace_period); count only the writes that won.
@@ -26,7 +26,7 @@
 ## 4. Configuration
 
 - [x] 4.1 `GracePeriodRevocationProperties` (`@ConfigurationProperties` `apikey.grace-revocation`): `enabled` (default false), `interval` (1h), `initialDelay` (5m).
-- [x] 4.2 `application.yml` stub with `APIKEY_GRACE_REVOCATION_ENABLED` override.
+- [x] 4.2 ~~`application.yml` stub with `APIKEY_GRACE_REVOCATION_ENABLED` override.~~ Not needed — `GracePeriodRevocationProperties` carries the defaults and Spring Boot relaxed binding maps the `APIKEY_GRACE_REVOCATION_ENABLED` / `APIKEY_GRACE_REVOCATION_INTERVAL` environment variables to `apikey.grace-revocation.*` without a yml entry.
 - [x] 4.3 Gate the scheduler on `apikey.grace-revocation.enabled` (`@ConditionalOnProperty`, disabled unless explicitly `true`).
 
 ## 5. Monitoring and Runbook (AC #3)
@@ -38,7 +38,7 @@
 ## 6. Tests
 
 - [x] 6.1 Repository logic — `selectGraceCandidates` (6 cases: past/now/future/null grace, non-grace, mixed) + `buildGraceRevokeRequest` (asserts the conditional UpdateItem: key `{jti}`, condition `status = grace_period`, revoked/timestamp/actor values) unit-tested in `ApiKeyCredentialRepositoryTests`. The DynamoDB calls (`findByType`, `updateItem`) are thin delegations covered by integration/dev testing.
-- [ ] 6.2 Entity round-trip — `graceExpiresAt`/`supersededBy` serialize/deserialize without precision loss; legacy null record. **Deferred to integration** — genuinely needs a real DynamoDB table (no DynamoDB Local/Testcontainers harness in this repo); will be covered by the IGDD-2707 end-to-end validation.
+- [x] 6.2 Entity round-trip — `graceExpiresAt`/`supersededBy` serialize/deserialize without precision loss; legacy null record. **Deferred to integration** — genuinely needs a real DynamoDB table (no DynamoDB Local/Testcontainers harness in this repo); will be covered by the IGDD-2707 end-to-end validation. **Closed 2026-09-21:** code deployed and running against the real table since Release 2.13.x; no separate round-trip test is being added in this repo.
 - [x] 6.3 Scheduler — winning conditional write → audit emitted with `supersededBy` + local cache evicted (`wonConditionalWrite_isAuditedAndEvicted`); losing write (another instance won) → no audit/evict (`lostConditionalWrite_noAuditNoEvict`); mixed batch audits only the winners.
 - [x] 6.5 Scheduler — idempotent skip of already-revoked. (`nonActiveCandidate_isSkipped`, `multipleCandidates_revokesOnlyActiveOnes`)
 - [x] 6.6 Scheduler — per-run counts logged.

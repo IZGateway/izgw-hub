@@ -1,13 +1,13 @@
 ## MODIFIED Requirements
 
 ### Requirement: ApiKeyCredential entity structure
-`ApiKeyCredential` SHALL be a DynamoDB entity following Hub's single-table design. It SHALL extend `DynamoDbAudit` and be annotated with `@DynamoDbBean`. Its sort key SHALL be `{jti}` — the credential's UUID token identifier alone, with no environment prefix.
+`ApiKeyCredential` SHALL be a DynamoDB entity following Hub's single-table design. It SHALL extend `DynamoDbAudit` and be annotated with `@DynamoDbBean`. Its sort key SHALL be `{jti}` — the credential's UUID token identifier alone, with no environment prefix. The entity class name (`ApiKeyCredential`) is the `entityType` attribute, per Hub's single-table convention.
 
 Required fields:
 - `jti` — String; the JWT `jti` claim; unique credential identifier
-- `environments` — DynamoDB **Number Set (`NS`)** of environment IDs, read into `Set<Integer>`; the environments in which the credential is valid. Checked by Hub at authentication time on a credential-cache miss — NOT carried in the JWT.
+- `environments` — DynamoDB **Number Set (`NS`)** of environment IDs (values 1–6 per the IZG `Environment` enumeration), read into `Set<Integer>`; the environments in which the credential is valid. A DynamoDB List (`L`) will NOT deserialize into this property, and no DynamoDB set may be empty, so "no environments" is represented by the attribute being absent (which reads as `null`). Standard credentials contain exactly one ID; admin/operational credentials MAY contain several. Environment authorization is a server-side property read from this list — it is NOT carried in the JWT.
 - `status` — String; one of `active`, `grace_period`, `revoked`, `expired` (a renewed key sits in `grace_period` during its grace window and still authenticates; `expired` is a terminal state written by the sweep per IGDD-3167 when the key's own `expiresAt` capped its validity before the grace window ended)
-- `jurisdictionId` — String; the jurisdiction the credential was issued to (from JWT `sub`)
+- `jurisdictionId` — String; the jurisdiction the credential was issued to (from JWT `sub`); stored as a string representation of an integer to match the legacy IZG jurisdiction identifier scheme (e.g., `"42"`)
 - `issuedAt` — `Instant`; when the credential was issued (serialized via `InstantAsStringAttributeConverter`)
 - `expiresAt` — `Instant`; when the credential expires (serialized via `InstantAsStringAttributeConverter`)
 - `revokedAt` — `Instant` (nullable); when the credential was revoked

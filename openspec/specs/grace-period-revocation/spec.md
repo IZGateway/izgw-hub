@@ -1,4 +1,25 @@
-## ADDED Requirements
+# Spec: Grace-Period Revocation
+
+**Component:** `GracePeriodRevocationScheduler`, `ApiKeyCredentialRepository`, `ApiKeyAuditLogger` (IGDD-2711 / IGDD-3167)  
+**Implemented in:** `gov.cdc.izgateway.hub.security.GracePeriodRevocationScheduler`, `gov.cdc.izgateway.hub.security.GracePeriodRevocationProperties`, `gov.cdc.izgateway.dynamodb.repository.ApiKeyCredentialRepository`  
+**Related specs:** `../api-key-credential/spec.md`, `../api-key-principal-provider/spec.md`  
+
+---
+
+## Purpose
+
+Hub runs an in-process scheduled sweep (IGDD-2711), gated on
+`apikey.grace-revocation.enabled`, that finds superseded API-key credentials in
+`grace_period` whose `graceExpiresAt` has passed and terminates each with a conditional
+DynamoDB write: to `expired` if the key's own `expiresAt` came first, otherwise to
+`revoked` (IGDD-3167). Each termination emits an audit event, evicts the acting
+instance's credential cache, and every cycle logs a STARTED/RUN/FAILED event trio with
+per-run counts. Every Hub instance runs the sweep; the conditional write gives
+exactly-once termination across the fleet, and alarms are deferred to the runbook.
+
+---
+
+## Requirements
 
 ### Requirement: Scheduled grace-period revocation sweep
 Hub SHALL run a scheduled, in-process job that periodically terminates superseded API-key credentials whose grace period has expired. On each cycle the job SHALL query for candidates (`status == grace_period`, non-null `graceExpiresAt`, `graceExpiresAt <= now`) across all `ApiKeyCredential` records and, for each candidate, transition it to its resolved **terminal status** (IGDD-3167):
@@ -8,7 +29,7 @@ Hub SHALL run a scheduled, in-process job that periodically terminates supersede
 
 Exactly one timestamp/actor pair SHALL be written, leaving the other `null`.
 
-The run interval SHALL be configurable (`apikey.grace-revocation.*`), and the job SHALL be guarded so that, in a multi-instance Hub deployment, a single instance performs revocation per cycle.
+The run interval SHALL be configurable (`apikey.grace-revocation.*`) and the job SHALL be disabled unless `apikey.grace-revocation.enabled=true`. In a multi-instance Hub deployment every enabled instance runs the sweep each cycle; each candidate SHALL be terminated with a conditional DynamoDB write (`status = grace_period` as the condition) so that a given candidate is terminated — and audited — exactly once across the fleet, with no dependency on runner election or host coordination.
 
 #### Scenario: Grace period has passed and the grace window ended first
 - **GIVEN** a renewed key in `status = grace_period` whose `graceExpiresAt` timestamp has passed
@@ -29,9 +50,14 @@ The run interval SHALL be configurable (`apikey.grace-revocation.*`), and the jo
 - **THEN** the key is not revoked and remains `grace_period` (and continues to authenticate)
 
 #### Scenario: Idempotent re-run
-- **GIVEN** a key was already revoked by a previous cycle
+- **GIVEN** a key was already terminated (to `expired` or `revoked`) by a previous cycle
 - **WHEN** the scheduled job runs again
-- **THEN** the key is not re-written and no duplicate revocation audit event is emitted for it
+- **THEN** the key is not re-written and no duplicate audit event is emitted for it
+
+#### Scenario: Concurrent instances terminate a key exactly once
+- **GIVEN** two Hub instances run the sweep in the same cycle and both select the same `grace_period` candidate
+- **WHEN** both attempt the conditional write
+- **THEN** exactly one write succeeds and only that instance emits the audit event and evicts its local cache; the other observes a conditional-check failure and emits nothing
 
 ### Requirement: Revocation audit event
 When the job revokes a superseded credential it SHALL emit an `API_KEY_REVOKED` audit event via `ApiKeyAuditLogger`, containing at least: event type `API_KEY_REVOKED`, `keyId` (the `jti`), `jurisdictionId`, `revokedBy` (`system:grace-revocation`), `supersededBy` (the renewing key's `jti`), and `timestamp`. The event SHALL NOT contain any token string or secret material.
@@ -55,9 +81,16 @@ Each execution of the job SHALL log, at a level visible in CloudWatch, the numbe
 - **THEN** the run logs a structured record indicating 5 evaluated and 2 revoked
 
 ### Requirement: Failure detection and manual remediation
-The job's execution SHALL be observable such that a failure to run (unhandled error, or a missed run within the expected window) can raise an alert in the monitoring system. A CloudWatch log-based alarm SHALL be defined for this condition, and the operations runbook SHALL document a manual remediation procedure for revoking expired-grace keys when the job is not running.
+The job's execution SHALL be observable from structured logs so that a failure to run (unhandled error, or a missed run within the expected window) can be detected. Each cycle SHALL emit a `GRACE_REVOCATION_STARTED` event at the start and either a `GRACE_REVOCATION_RUN` event (success, with counts) or a `GRACE_REVOCATION_FAILED` event (ERROR level, with the exception) at the end. A failure in one candidate SHALL NOT abort the rest of the sweep.
 
-#### Scenario: Job failure raises an alert
-- **GIVEN** the scheduled job fails to run or errors
-- **WHEN** the failure is detected via logs/heartbeat
-- **THEN** a CloudWatch alarm is raised and the operations runbook specifies the manual remediation procedure
+Automated alarms on these events are deferred: the operations runbook (`runbook.md`) documents the CloudWatch metric-filter/alarm definitions for the environment owner (APHL) to provision, and SHALL document a manual remediation procedure (revoke via Config Console) for expired-grace keys when the job is not running.
+
+#### Scenario: Job failure is logged for detection
+- **GIVEN** the scheduled job throws during a cycle
+- **WHEN** the exception reaches `scheduledRun()`
+- **THEN** a `GRACE_REVOCATION_FAILED` event is logged at ERROR with the exception, no `GRACE_REVOCATION_RUN` event is emitted for that cycle, and the scheduler thread survives to run the next cycle
+
+#### Scenario: Missed run is detectable
+- **GIVEN** the job is enabled with a 1-hour interval
+- **WHEN** no `GRACE_REVOCATION_RUN` event has been logged within the expected window
+- **THEN** the runbook's "missed run" condition applies and the documented manual remediation procedure is followed
