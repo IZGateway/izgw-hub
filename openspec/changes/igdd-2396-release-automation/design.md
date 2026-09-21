@@ -175,8 +175,17 @@ build/site lifecycle, Java 21 toolchain, package settings, `SPRING_DATABASE=jpa`
 and test environment. Set `COMPUTERNAME` as current Hub CI does. Use
 `X.Y.Z-RELEASE-<run>` as `image.tag`, so the scanner and Docker build consume
 `target/<image.tag>.jar`. Run the existing external dependency scanner with
-blocking results and errors for releases, retaining the project's suppressions
-and NVD cache. Do not broaden this into an unrelated dev-CI scan-policy change.
+blocking results and errors for releases, retaining the project's suppressions.
+
+Apply the same blocking policy to development CI. This is a deliberate
+maintainer decision, not a side effect: a finding that only a release can
+surface is invisible to the team until release day, so `maven.yml` drops
+`continue-on-error: true` and blocks at CVSS 7 like the release gate. The
+scan also drops `--data` and the runner-side NVD cache steps, which pointed
+the scanner at an empty directory inside the scan container and made every
+scan fail silently; the bundled NVD database is used instead. The known
+`spring-core` findings therefore turn `develop` CI red at the merge, and they
+stay red until `izgw-bom` ships a Spring Boot bump. That is accepted.
 
 Build the Docker image once with Hub's Buildx arguments:
 `JAR_FILENAME=<image.tag>.jar` and `IZGW_VERSION=<image.tag>`. Capture Maven's
@@ -458,8 +467,11 @@ lists, Maven credentials, or token-bearing Git configuration.
   carry no rulesets, so rehearsals cannot prove this. Confirm App bypass on the
   real `main` and `develop` rulesets before cutover.
 - **The first blocking scan reveals tolerated findings** -> Dev CI uses
-  `continue-on-error: true` today. Budget suppression triage inside the rehearsal
-  window, and evaluate each finding rather than widening the suppression file.
+  `continue-on-error: true` today, and this change makes both the release and
+  the development scan block. Evaluate each finding rather than widening the
+  suppression file. `develop` CI is red from the merge until the `spring-core`
+  findings are resolved in `izgw-bom`; the maintainer accepts that so the team
+  sees them. No release can be cut until the same findings are resolved.
 - **Real Newman build metadata activates a dormant assertion** -> The current
   empty value matches any build. Confirm the expected build and timestamp values
   against the deployed candidate before treating a new failure as a regression.

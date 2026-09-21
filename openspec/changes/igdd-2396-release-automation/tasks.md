@@ -118,8 +118,8 @@ maintainer supplies. If evidence is absent, the task stays unchecked.
   `image.tag` so that the scanner reads `target/<image.tag>.jar`.
   **Done when:** review confirms that the release scan omits
   `continue-on-error: true` and blocks at CVSS 7, that an unsuccessful scan is a
-  failure rather than zero findings, that the project's suppression file and NVD
-  cache are retained, and that dev CI scan policy is unchanged.
+  failure rather than zero findings, and that the project's suppression file is
+  retained. The development scan policy change is task 6.1.
 - [x] 2.5 Add one Buildx image build and explicit GHCR and dev ECR pushes to
   `_release_common.yml`, with `JAR_FILENAME` and `IZGW_VERSION` set from
   `image.tag`. Capture `target/classes/build.txt` values and the registry
@@ -232,12 +232,17 @@ Keep the shell inline in each composite action.
 
 - [x] 6.1 Refactor `.github/workflows/maven.yml` to call `verify-hub` with
   build-time metadata and the exact candidate digest, and to promote its verified
-  `good` tag by digest. Retain develop push and PR triggers, the schedule, manual
-  CI, and the existing development scan policy. Remove the legacy release and
-  APHL paths, and delete `.github/workflows/main.yml` from the new source line
-  only. Remove the `List m2` debug step, which interpolates `github.base_ref`
-  and `github.head_ref` straight into an inline script (`maven.yml:168-170`).
+  `good` tag by digest. Retain develop push and PR triggers, the schedule, and
+  manual CI. Make the development scan block: remove `continue-on-error: true`,
+  `--data`, and the runner-side NVD cache steps, and disable OSS Index, matching
+  the release gate. This is the maintainer's decision so that the team sees
+  scan findings in development CI rather than at release time. Remove the
+  legacy release and APHL paths, and delete `.github/workflows/main.yml` from
+  the new source line only. Remove the `List m2` debug step, which interpolates
+  `github.base_ref` and `github.head_ref` straight into an inline script
+  (`maven.yml:168-170`).
   **Done when:** review confirms every retained CI entry point and output,
+  a development scan that blocks at CVSS 7 with no `continue-on-error`,
   no release publication in dev CI, no change to any legacy branch ref or
   content, and no increase in the `maven.yml` `actionlint` count. The shared-CI
   regression run is covered in section 8.
@@ -313,8 +318,9 @@ Task 8.5 is an exit obligation whenever task 8.1 changes the default branch,
 including when later rehearsal steps fail or are cancelled.
 
 Two rehearsal expectations follow from the current pipeline. Dev CI runs the
-dependency scanner with `continue-on-error: true`, so the release gate is the
-first blocking use of that scanner. Budget triage time for findings that the
+dependency scanner with `continue-on-error: true` today, so the rehearsal is
+the first blocking use of that scanner, for the release gate and for the
+refactored development CI alike. Budget triage time for findings that the
 current pipeline tolerates. The Newman `build` and `timestamp` assertion is
 inactive today, so real metadata can produce a new failure.
 
