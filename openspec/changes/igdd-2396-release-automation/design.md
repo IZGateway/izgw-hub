@@ -175,8 +175,17 @@ build/site lifecycle, Java 21 toolchain, package settings, `SPRING_DATABASE=jpa`
 and test environment. Set `COMPUTERNAME` as current Hub CI does. Use
 `X.Y.Z-RELEASE-<run>` as `image.tag`, so the scanner and Docker build consume
 `target/<image.tag>.jar`. Run the existing external dependency scanner with
-blocking results and errors for releases, retaining the project's suppressions
-and NVD cache. Do not broaden this into an unrelated dev-CI scan-policy change.
+blocking results and errors for releases, retaining the project's suppressions.
+
+Apply the same blocking policy to development CI. This is a deliberate
+maintainer decision, not a side effect: a finding that only a release can
+surface is invisible to the team until release day, so `maven.yml` drops
+`continue-on-error: true` and blocks at CVSS 7 like the release gate. The
+scan also drops `--data` and the runner-side NVD cache steps, which pointed
+the scanner at an empty directory inside the scan container and made every
+scan fail silently; the bundled NVD database is used instead. The known
+`spring-core` findings therefore turn `develop` CI red at the merge, and they
+stay red until `izgw-bom` ships a Spring Boot bump. That is accepted.
 
 Build the Docker image once with Hub's Buildx arguments:
 `JAR_FILENAME=<image.tag>.jar` and `IZGW_VERSION=<image.tag>`. Capture Maven's
@@ -299,11 +308,22 @@ APHL image identity with the candidate. APHL credentials are configured only for
 real delivery. Restore dev-account credentials before any subsequent AWS
 diagnostics that require them.
 
-Find the preceding version tag on the candidate's ancestry, rather than choosing
-the largest version tag anywhere in the repository. Use only the source change
-range captured before this run's generated commits. Resolve associated merged
-PRs and deduplicate their numbers; use commit descriptions only for a genuine
-no-PR result. A GitHub read failure is not an empty change list.
+Define the change set as the commits on the candidate that the trunk does not
+have: `origin/<trunk>..HEAD`, or the whole history when the trunk does not
+exist yet. The trunk is, by definition, what was last released. For a standard
+release this is the work merged to the base since the last release; for a
+hotfix it is the operator's commits. Use only the source change range captured
+before this run's generated commits. Resolve associated merged PRs and
+deduplicate their numbers; use commit descriptions only for a genuine no-PR
+result. A GitHub read failure is not an empty change list.
+
+Do not derive the range from a version tag. Neither tag-based method works
+with this merge topology. The tag lands on the trunk merge commit, and the
+back-merge carries the release branch into the base rather than the trunk, so
+the tag never becomes an ancestor of the base: `git describe` from the next
+candidate finds an older tag and re-lists the previous release. Transform's
+alternative, the largest version tag in the repository, would select a
+rehearsal tag such as `v99.0.0` and truncate the range to nothing.
 
 Use Hub's `# IZ Gateway Release X.Y.Z` heading and preserve historical entries.
 On a retry from a retained hotfix branch, replace the current unpublished
@@ -447,8 +467,11 @@ lists, Maven credentials, or token-bearing Git configuration.
   carry no rulesets, so rehearsals cannot prove this. Confirm App bypass on the
   real `main` and `develop` rulesets before cutover.
 - **The first blocking scan reveals tolerated findings** -> Dev CI uses
-  `continue-on-error: true` today. Budget suppression triage inside the rehearsal
-  window, and evaluate each finding rather than widening the suppression file.
+  `continue-on-error: true` today, and this change makes both the release and
+  the development scan block. Evaluate each finding rather than widening the
+  suppression file. `develop` CI is red from the merge until the `spring-core`
+  findings are resolved in `izgw-bom`; the maintainer accepts that so the team
+  sees them. No release can be cut until the same findings are resolved.
 - **Real Newman build metadata activates a dormant assertion** -> The current
   empty value matches any build. Confirm the expected build and timestamp values
   against the deployed candidate before treating a new failure as a regression.
@@ -463,6 +486,12 @@ GitHub and AWS actions, and the maintainer performs all of them. An assistant
 prepares inputs, drafts the exact commands and dispatch values, and records the
 evidence that the maintainer supplies. The task checklist carries the binding
 form of this boundary.
+
+Steps 1 to 4 are delivered by this change. Steps 5 to 8, the cutover, are
+operational work that happens after this branch is reviewed and merged, so they
+are not tracked as tasks here. The procedure lives in
+`docs/release-automation.md`. Problems found while cutting the first real
+release are raised as new tickets against the delivered automation.
 
 1. Implement the wrappers, the common workflow, and the shared verifier on the
    change branch, with the shell inline. Run the available static checks and

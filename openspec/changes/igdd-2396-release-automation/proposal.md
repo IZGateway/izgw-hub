@@ -112,11 +112,19 @@ of all external publications and deployments is outside the agreed scope.
   shared-library implementation changes. No changes are planned to `hub`, `ads`,
   `soap`, or `dynamodb` runtime behavior, database schemas, SOAP WSDL contracts, or
   REST APIs. Existing consumers retain Hub's Maven and container naming formats.
-- **Rehearsal expectations:** Two current-state facts change the first rehearsal.
-  Dev CI runs the dependency scanner with `continue-on-error: true`, so the
-  release gate is the first blocking use of that scanner. The Newman `build` and
-  `timestamp` assertion is inactive today, because the values are empty and the
-  collection applies `|| ".*"`. Real metadata makes that assertion active.
+- **Development scan becomes blocking, deliberately:** Dev CI runs the
+  dependency scanner with `continue-on-error: true` today, and its `--data`
+  argument pointed the scanner at an empty directory, so the scan has not
+  produced a result in some time. This change removes both. The maintainer
+  chose a blocking development scan so that the team sees the findings, rather
+  than leaving them visible only to a release. Twelve unsuppressed `spring-core`
+  findings at CVSS 7.5 to 9.8 exist at the time of writing, so `develop` CI
+  fails from the merge until `izgw-bom` ships a Spring Boot bump. That is the
+  intended outcome and is tracked as a separate ticket, not a defect of this
+  change.
+- **Rehearsal expectations:** The Newman `build` and `timestamp` assertion is
+  inactive today, because the values are empty and the collection applies
+  `|| ".*"`. Real metadata makes that assertion active.
 - **Security and performance:** No runtime cryptography, TLS, or authentication
   changes are planned; Bouncy Castle FIPS and mTLS behavior remain unchanged.
   Workflow logs and artifacts must retain existing PHI masking and secret-file
