@@ -11,7 +11,7 @@
 	</parent>
 	<artifactId>izgw-hub</artifactId>
 	<packaging>jar</packaging>
-	<version>99.1.0-IZGW-SNAPSHOT</version>
+	<version>99.0.0-IZGW-RELEASE</version>
 	<!-- Derived from the version so that it cannot go stale when the release
 	     automation bumps <version>. -->
 	<name>IZ Gateway Hub ${project.version}</name>
