@@ -12,7 +12,7 @@
       else `revoked` (covers the null-`expiresAt` guard case too, defaulting to current behavior).
       Public (not package-private) so the scheduler, in a different package, can resolve the same
       label independently.
-- [x] 2.3 Replace `buildGraceRevokeRequest` with `buildGraceTerminationRequest(tableName, env, jti,
+- [x] 2.3 Replace `buildGraceRevokeRequest` with `buildGraceTerminationRequest(tableName, jti,
       terminalStatus, terminatedAt, terminatedBy)` — same conditional write shape (`status =
       grace_period`), but sets `expiredAt`/`expiredBy` when `terminalStatus == expired`, otherwise
       `revokedAt`/`revokedBy`, plus the `status` value itself and `updatedOn`/`updatedBy` as before.

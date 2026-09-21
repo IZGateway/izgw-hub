@@ -59,12 +59,24 @@ The run interval SHALL be configurable (`apikey.grace-revocation.*`) and the job
 - **WHEN** both attempt the conditional write
 - **THEN** exactly one write succeeds and only that instance emits the audit event and evicts its local cache; the other observes a conditional-check failure and emits nothing
 
-### Requirement: Revocation audit event
-When the job revokes a superseded credential it SHALL emit an `API_KEY_REVOKED` audit event via `ApiKeyAuditLogger`, containing at least: event type `API_KEY_REVOKED`, `keyId` (the `jti`), `jurisdictionId`, `revokedBy` (`system:grace-revocation`), `supersededBy` (the renewing key's `jti`), and `timestamp`. The event SHALL NOT contain any token string or secret material.
+### Requirement: Termination audit events
+When the job terminates a superseded credential it SHALL emit exactly one audit event via `ApiKeyAuditLogger`, matching the terminal status assigned:
+- `API_KEY_EXPIRED`, containing at least: event type `API_KEY_EXPIRED`, `keyId` (the `jti`), `jurisdictionId`, `expiredBy` (`system:grace-expiration`), `supersededBy` (the renewing key's `jti`), and `timestamp`; or
+- `API_KEY_REVOKED`, containing at least: event type `API_KEY_REVOKED`, `keyId` (the `jti`), `jurisdictionId`, `revokedBy` (`system:grace-revocation`), `supersededBy` (the renewing key's `jti`), and `timestamp`.
+
+Neither event SHALL contain any token string or secret material. The event emitted SHALL correspond to the terminal status actually written by the conditional update; an instance whose conditional write fails SHALL emit no event.
+
+#### Scenario: Expired audit event emitted
+- **WHEN** the job marks a credential expired with `jti = K1`, `jurisdictionId = MA`, `supersededBy = K2`
+- **THEN** an `API_KEY_EXPIRED` event is emitted with `keyId = K1`, `jurisdictionId = MA`, `expiredBy = system:grace-expiration`, `supersededBy = K2`, and a timestamp, and no token or secret material
 
 #### Scenario: Audit event emitted on revocation
 - **WHEN** the job revokes a credential with `jti = K1`, `jurisdictionId = MA`, `supersededBy = K2`
 - **THEN** an `API_KEY_REVOKED` event is emitted with `keyId = K1`, `jurisdictionId = MA`, `revokedBy = system:grace-revocation`, `supersededBy = K2`, and a timestamp, and no token or secret material
+
+#### Scenario: Lost conditional write emits no event
+- **WHEN** the job's conditional update for `jti = K1` fails because another instance already terminated it
+- **THEN** neither an `API_KEY_EXPIRED` nor an `API_KEY_REVOKED` event is emitted by this instance
 
 ### Requirement: Local cache eviction on revocation
 After revoking a credential in DynamoDB, the job SHALL evict the credential from the acting instance's credential cache so that instance stops serving it immediately. The job SHALL NOT broadcast the eviction to other instances: grace revocation is non-urgent, and other instances converge when their credential-cache entries expire (≤ `jwt.credential-cache-ttl`) and re-validate against DynamoDB. Immediate fleet-wide eviction is the concern of Config Console's manual revoke path (IGDD-2707), not this scheduled sweep.
@@ -74,11 +86,11 @@ After revoking a credential in DynamoDB, the job SHALL evict the credential from
 - **THEN** the acting instance evicts `K1` from its credential cache, and other instances cease to serve `K1` within the credential-cache TTL when they re-validate against DynamoDB
 
 ### Requirement: Operational visibility — per-run counts
-Each execution of the job SHALL log, at a level visible in CloudWatch, the number of candidate keys evaluated and the number revoked in that run.
+Each execution of the job SHALL log, at a level visible in CloudWatch, the number of candidate keys evaluated, the number marked `expired`, and the number marked `revoked` in that run, as `evaluated`, `expired`, and `revoked` fields on the `GRACE_REVOCATION_RUN` event.
 
 #### Scenario: Counts logged each run
-- **WHEN** a cycle evaluates 5 candidate keys and revokes 2
-- **THEN** the run logs a structured record indicating 5 evaluated and 2 revoked
+- **WHEN** a cycle evaluates 5 candidate keys, marks 2 `expired`, and revokes 1
+- **THEN** the run logs a structured `GRACE_REVOCATION_RUN` record indicating 5 evaluated, 2 expired, and 1 revoked
 
 ### Requirement: Failure detection and manual remediation
 The job's execution SHALL be observable from structured logs so that a failure to run (unhandled error, or a missed run within the expected window) can be detected. Each cycle SHALL emit a `GRACE_REVOCATION_STARTED` event at the start and either a `GRACE_REVOCATION_RUN` event (success, with counts) or a `GRACE_REVOCATION_FAILED` event (ERROR level, with the exception) at the end. A failure in one candidate SHALL NOT abort the rest of the sweep.
