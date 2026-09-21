@@ -38,6 +38,11 @@ Hub currently authenticates callers exclusively via mTLS client certificates (mT
 The original design described a single `credentialCache` with a `Boolean.TRUE` REVOKED sentinel for all non-active cases. During implementation this was split into four caches to give absent and revoked cases different TTLs and to keep negative SM results separate from credential state.
 
 ### D3 — `ApiKeyPrincipal` carries `upn`, `jti`, and `jurisdictionId` from JWT claims
+
+> **Superseded in part by `jwt-upn-authorization`:** roles are no longer read from JWT claims; the
+> DynamoDB AccessGroup table is the sole source of role assignments for JWT and cert principals alike.
+> The `upn`/`jti`/`sub` handling below is unchanged.
+
 `jurisdictionId` (from `sub`) and `roles` come from JWT claims — not from DynamoDB. DynamoDB is checked only for `status` (active/revoked/absent). `upn` (User Principal Name — the DNS domain validated at issuance) is the **stable sender identity**: it is set as `IzgPrincipal.name` and flows into `SourceInfo.commonName`, making it directly equivalent to the CN extracted from an mTLS certificate. `jti` is carried so the principal can be targeted for revocation without re-parsing the token and is exposed via `getSerialNumberHex()` only.
 
 The `sub` claim carries the jurisdictionId as a **string representation of an integer** (e.g., `"42"`), consistent with the legacy IZG jurisdiction identifier scheme. It is stored as a `String` throughout — no numeric parsing is performed — and is used for informational/audit purposes only. Authorization decisions use `upn`, not `sub`.
@@ -102,6 +107,18 @@ delta layer to it.
 authentication can route to any destination its `AllowedUser` entries permit, with no use-type
 restriction. Jurisdictions relying on use-type scoping as an access control are not yet
 protected by it.
+
+### D11 — A presented API key that fails authentication hard-fails; no certificate fallback
+
+Originally every rejection path in `ApiKeyPrincipalProvider` returned `null`, which made
+`HubPrincipalService` fall through to `CertificatePrincipalProvider`. That let a caller who presented a
+bad, expired, or revoked API key be silently re-authenticated by a client certificate it also happened
+to present — and made "API key rejected" indistinguishable from "no API key" in the auth chain.
+
+Changed (commit `1da09a3fe`): `null` is returned **only** when no Bearer-scheme `Authorization` header
+is present. Every other failure throws `ApiKeyAuthenticationException`; `HubPrincipalService` catches
+it, logs a warning, and resolves to `UnauthenticatedPrincipal` without evaluating the certificate.
+See the "Presented API key that fails authentication is not retried as a certificate" requirement.
 
 ### D6 — `jwt.test-secret` property bypasses Secrets Manager for local dev
 When `jwt.test-secret` is set, `ApiKeyPrincipalProvider` uses that secret for all `kid` values instead of calling Secrets Manager. This allows local testing without AWS credentials. The property must not be set in non-local profiles.

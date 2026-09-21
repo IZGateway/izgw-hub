@@ -1,6 +1,6 @@
 ## 1. DynamoDB Entity and Repository
 
-- [x] 1.1 Create `ApiKeyCredential.java` in `gov.cdc.izgateway.dynamodb.model` — `@DynamoDbBean` extending `DynamoDbAudit`; fields: `jti`, `environments` (List of numeric env IDs), `status`, `jurisdictionId`, `issuedAt` (`Instant`), `expiresAt` (`Instant`), `revokedAt` (`Instant`, nullable), `revokedBy` (String, nullable); sort key `{jti}`
+- [x] 1.1 Create `ApiKeyCredential.java` in `gov.cdc.izgateway.dynamodb.model` — `@DynamoDbBean` extending `DynamoDbAudit`; fields: `jti`, `environments` (Number Set of numeric env IDs, read as `Set<Integer>`), `status`, `jurisdictionId`, `issuedAt` (`Instant`), `expiresAt` (`Instant`), `revokedAt` (`Instant`, nullable), `revokedBy` (String, nullable); sort key `{jti}`
 - [x] 1.2 Create `ApiKeyCredentialRepository.java` in `gov.cdc.izgateway.dynamodb.repository` — extends `DynamoDbRepository<ApiKeyCredential>`; implement `findByJti(String jti)` returning `Optional<ApiKeyCredential>` via `DynamoDbEnhancedClient` GetItem on sort key `{jti}`
 - [x] 1.3 Register `ApiKeyCredential` in `DynamoDbRepositoryFactory` so it is included in table scanning and repository wiring
 
