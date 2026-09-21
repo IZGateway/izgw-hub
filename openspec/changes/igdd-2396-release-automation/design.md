@@ -464,6 +464,12 @@ prepares inputs, drafts the exact commands and dispatch values, and records the
 evidence that the maintainer supplies. The task checklist carries the binding
 form of this boundary.
 
+Steps 1 to 4 are delivered by this change. Steps 5 to 8, the cutover, are
+operational work that happens after this branch is reviewed and merged, so they
+are not tracked as tasks here. The procedure lives in
+`docs/release-automation.md`. Problems found while cutting the first real
+release are raised as new tickets against the delivered automation.
+
 1. Implement the wrappers, the common workflow, and the shared verifier on the
    change branch, with the shell inline. Run the available static checks and
    complete a workflow contract review. Behavior is proved in the rehearsals

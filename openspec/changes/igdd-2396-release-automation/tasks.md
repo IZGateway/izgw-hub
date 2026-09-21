@@ -27,8 +27,8 @@ rehearsal cycles to find logic errors, and budget more than one window.
 ### Execution boundary
 
 Sections 1 to 7 are local work: write and review workflow files, and run local
-lint and Maven checks. Sections 8 and 9 are the maintainer's work. The maintainer
-is the only actor who operates GitHub and AWS for this change.
+lint and Maven checks. Section 8 is the maintainer's work. The maintainer is the
+only actor who operates GitHub and AWS for this change.
 
 An assistant working this checklist must never perform these actions:
 
@@ -41,10 +41,10 @@ An assistant working this checklist must never perform these actions:
   publication.
 - Write to GHCR, dev ECR, APHL ECR, dev ECS, or any other AWS resource.
 - Commit or amend anything without the explicit approval of the maintainer.
-- Mark a task in section 8 or 9 complete from a plan, an inference, or an
+- Mark a task in section 8 complete from a plan, an inference, or an
   expected result.
 
-For each task in sections 8 and 9, the assistant prepares inputs, drafts the
+For each task in section 8, the assistant prepares inputs, drafts the
 exact commands and dispatch values, and states the expected result. The
 maintainer runs the action. The assistant then records only the evidence that the
 maintainer supplies. If evidence is absent, the task stays unchecked.
@@ -269,7 +269,7 @@ Keep the shell inline in each composite action.
     real global version tag.
   The runbook must record the new versioned Pages path `vX.Y.Z` and the earlier
   path that used the complete Maven version.
-- [ ] 7.2 Complete a security review checkpoint for the new workflows and the
+- [x] 7.2 Complete a security review checkpoint for the new workflows and the
   touched `.github/actions/` code. Review input quoting and injection through
   workflow expressions, App permissions and token renewal, conditional Git
   writes, temporary ingress ownership, mTLS test boundaries, and secret-safe and
@@ -319,7 +319,7 @@ inactive today, so real metadata can produce a new failure.
 Because the inline shell has no offline suite, expect the first rehearsals to
 find logic errors. Plan for more than one window.
 
-- [ ] 8.1 Rehearsal setup.
+- [x] 8.1 Rehearsal setup.
   *Assistant:* ask the maintainer for the window and the inputs. Propose
   rehearsal versions that no planned release uses, because a dry-run writes a
   real global tag. Draft the exact branch content for `developalm` and `mainalm`,
@@ -336,7 +336,7 @@ find logic errors. Plan for more than one window.
   the App bypass result for the real branches is recorded in
   `rehearsal-results.json` from the maintainer's report, and no real legacy
   release branch or first real release has been changed.
-- [ ] 8.2 Standard-release rehearsal.
+- [x] 8.2 Standard-release rehearsal.
   *Assistant:* draft the dispatch inputs, the overlap-attempt sequence, and the
   list of evidence to collect. State the expected result of each gate.
   *Maintainer:* dispatch the standard release with `dry-run=true`. Dispatch the
@@ -346,7 +346,7 @@ find logic errors. Plan for more than one window.
   the full dev health, digest, logging, and Newman gates, expected Git, image,
   and documentation outputs, the expected next snapshot, no APHL writes, and no
   candidate replacement or active-run cancellation by overlapping CI.
-- [ ] 8.3 Hotfix rehearsal.
+- [x] 8.3 Hotfix rehearsal.
   *Assistant:* draft the hotfix branch content, its fork point on the rehearsed
   released trunk, and the dispatch inputs. State the expected conflict-review
   warnings.
@@ -356,7 +356,7 @@ find logic errors. Plan for more than one window.
   and version tag, the retained base development version, the preserved operator
   branch, correct conflict-review reporting where exercised, test Pages and draft
   attachments, and no APHL writes.
-- [ ] 8.4 Forced-failure and cleanup rehearsal.
+- [x] 8.4 Forced-failure and cleanup rehearsal.
   *Assistant:* write the failure-injection change and confine it to the test
   branches. Draft the pre-existing objects to create, the partial-publication
   sequence, and the duplicate-version rejection probe. State the expected
@@ -367,7 +367,7 @@ find logic errors. Plan for more than one window.
   cleanup of confirmed run-owned state, untouched pre-existing objects, visible
   residual external effects, and no permanent failure or bypass switch in the
   implementation intended for `develop`.
-- [ ] 8.5 Rehearsal exit.
+- [x] 8.5 Rehearsal exit.
   *Assistant:* list the confirmed rehearsal-owned refs and releases for removal.
   Identify the Pages paths, registry aliases, and shared-dev state that stay as
   separate manual items with named owners. Remind the maintainer to restore the
@@ -382,8 +382,8 @@ find logic errors. Plan for more than one window.
   ### Temporary rehearsal edits that must not reach `develop`
 
   These exist only on the test branches. The safest guarantee is never to merge
-  `developalm` or `mainalm` into anything. Confirm each one before the cutover
-  in task 9.2, and record the check in `rehearsal-results.json`.
+  `developalm` or `mainalm` into anything. Confirm each one before the branch is
+  merged to `develop`, and record the check in `rehearsal-results.json`.
 
   | Where | What | Correct value |
   | --- | --- | --- |
@@ -414,45 +414,21 @@ find logic errors. Plan for more than one window.
   reaches `develop`, the development scan blocks on them, so raise this as its
   own ticket rather than treating it as release-automation work.
 
-## 9. Cutover and Handoff — the maintainer runs every step
+## Out of scope: cutover and the first real release
 
-The maintainer performs every live action in this section. An assistant prepares
-and records only. See the execution boundary in section 1.
+The cutover is operational work, not part of this change. It is the maintainer's
+to schedule, it happens after this branch is reviewed and merged, and tracking it
+here would keep the change open indefinitely. The procedure lives in
+`docs/release-automation.md` under "Cutover": confirm App write access, drain
+legacy runs, freeze the `Release*` branches, disable `main.yml` repository-wide,
+merge, and confirm development CI.
 
-- [ ] 9.1 Cutover controls.
-  *Assistant:* draft the cutover checklist. Record the current legacy branch
-  names and object IDs before the change. Draft the ruleset settings and the
-  workflow path or ID to disable.
-  *Maintainer:* confirm the window. Drain or cancel legacy release runs and stop
-  legacy dispatches. Freeze updates and deletions on the existing `Release*`
-  branches with no automation bypass. Disable the old
-  `.github/workflows/main.yml` workflow repository-wide by path or ID.
-  Do not start the cutover until the recorded App bypass result from task 8.1
-  confirms write access to the real `main` and `develop`.
-  **Done when:** the rollout record shows the applied controls, and the
-  before-and-after legacy branch names and object IDs are unchanged. No old
-  branch was renamed, deleted, or rewritten.
-- [ ] 9.2 Merge into `develop`.
-  *Assistant:* prepare the branch and the pull request content for review. Wait
-  for approval before any commit.
-  *Maintainer:* review, approve, and merge the pull request into `develop`
-  through the agreed repository process. Keep `develop` as the default branch.
-  **Done when:** the maintainer reports that the post-cutover CI run passes the
-  shared verification path, the new dispatch workflows are available, legacy
-  `main.yml` is disabled, `maven.yml` still serves development CI, and `main` has
-  not been advanced by an unapproved real release.
-- [ ] 9.3 Rollout record and operator handoff.
-  *Assistant:* complete
-  `openspec/changes/igdd-2396-release-automation/rehearsal-results.json` and
-  `docs/release-automation.md` from the evidence that the maintainer supplied.
-  Record no result that the maintainer did not report.
-  *Maintainer:* accept the handoff.
-  **Done when:** all required rehearsals and the CI regression have real
-  evidence, remaining external recovery is explicit, maintainers can locate
-  release and recovery instructions, and the first real release remains a
-  separately approved action rather than an automatic final step of this change.
+Problems found while cutting the first real release are raised as new tickets
+against the delivered automation, not as tasks here.
 
-## 10. Task Summary
+---
+
+## 9. Task Summary
 
 Rough active engineering estimates; each task is a 1-4 hour work unit. These are
 not elapsed-time promises. Rehearsal failures can require fixes and another
@@ -496,7 +472,4 @@ rehearsal windows in section 8 rather than removing it.
 | 8.3 | 4 | 8.2 |
 | 8.4 | 3 | 8.1, 8.3 |
 | 8.5 | 2 | Exit obligation from 8.1, after attempts including failures |
-| 9.1 | 2 | 8.2, 8.3, 8.4, 8.5; maintainer-approved cutover |
-| 9.2 | 3 | 9.1; approved merge |
-| 9.3 | 1 | 9.2 |
-| **Total** | **93** | **34 tasks** |
+| **Total** | **87** | **31 tasks** |
