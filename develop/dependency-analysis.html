@@ -74,7 +74,7 @@
 <tr class="b">
 <td style="text-align: left;">gov.cdc.izgw</td>
 <td>izgw-core</td>
-<td>3.8.0-20260921.062012-5</td>
+<td>3.8.0-20260922.061515-6</td>
 <td>compile</td>
 <td>-</td>
 <td>jar</td>
@@ -98,7 +98,7 @@
 <tr class="a">
 <td style="text-align: left;">software.amazon.awssdk</td>
 <td>dynamodb-enhanced</td>
-<td>2.55.1</td>
+<td>2.55.2</td>
 <td>compile</td>
 <td>-</td>
 <td>jar</td>
@@ -106,7 +106,7 @@
 <tr class="b">
 <td style="text-align: left;">software.amazon.awssdk</td>
 <td>sqs</td>
-<td>2.55.1</td>
+<td>2.55.2</td>
 <td>compile</td>
 <td>-</td>
 <td>jar</td>
@@ -122,7 +122,7 @@
 <tr class="b">
 <td style="text-align: left;">com.fasterxml.jackson.core</td>
 <td>jackson-core</td>
-<td>2.22.2</td>
+<td>2.22.3</td>
 <td>compile</td>
 <td>-</td>
 <td>jar</td>
@@ -130,7 +130,7 @@
 <tr class="a">
 <td style="text-align: left;">com.fasterxml.jackson.core</td>
 <td>jackson-databind</td>
-<td>2.22.2</td>
+<td>2.22.3</td>
 <td>compile</td>
 <td>-</td>
 <td>jar</td>
@@ -290,7 +290,7 @@
 <tr class="a">
 <td style="text-align: left;">software.amazon.awssdk</td>
 <td>secretsmanager</td>
-<td>2.55.1</td>
+<td>2.55.2</td>
 <td>compile</td>
 <td>-</td>
 <td>jar</td>
@@ -330,18 +330,18 @@
 <td>jar</td>
 <td>false</td></tr>
 <tr class="a">
-<td style="text-align: left;">software.amazon.awssdk</td>
-<td>regions</td>
-<td>2.55.1</td>
-<td>compile</td>
-<td>-</td>
-<td>jar</td>
-<td>false</td></tr>
-<tr class="b">
 <td style="text-align: left;">org.springframework.boot</td>
 <td>spring-boot-test</td>
 <td>4.1.1</td>
 <td>test</td>
+<td>-</td>
+<td>jar</td>
+<td>false</td></tr>
+<tr class="b">
+<td style="text-align: left;">software.amazon.awssdk</td>
+<td>utils</td>
+<td>2.55.2</td>
+<td>compile</td>
 <td>-</td>
 <td>jar</td>
 <td>false</td></tr>
@@ -411,8 +411,8 @@
 <td>false</td></tr>
 <tr class="a">
 <td style="text-align: left;">software.amazon.awssdk</td>
-<td>aws-core</td>
-<td>2.55.1</td>
+<td>dynamodb</td>
+<td>2.55.2</td>
 <td>compile</td>
 <td>-</td>
 <td>jar</td>
@@ -434,25 +434,9 @@
 <td>jar</td>
 <td>false</td></tr>
 <tr class="b">
-<td style="text-align: left;">software.amazon.awssdk</td>
-<td>dynamodb</td>
-<td>2.55.1</td>
-<td>compile</td>
-<td>-</td>
-<td>jar</td>
-<td>false</td></tr>
-<tr class="a">
 <td style="text-align: left;">com.nimbusds</td>
 <td>nimbus-jose-jwt</td>
 <td>10.10</td>
-<td>compile</td>
-<td>-</td>
-<td>jar</td>
-<td>false</td></tr>
-<tr class="b">
-<td style="text-align: left;">software.amazon.awssdk</td>
-<td>utils</td>
-<td>2.55.1</td>
 <td>compile</td>
 <td>-</td>
 <td>jar</td>
@@ -466,6 +450,14 @@
 <td>jar</td>
 <td>false</td></tr>
 <tr class="b">
+<td style="text-align: left;">software.amazon.awssdk</td>
+<td>regions</td>
+<td>2.55.2</td>
+<td>compile</td>
+<td>-</td>
+<td>jar</td>
+<td>false</td></tr>
+<tr class="a">
 <td style="text-align: left;">jakarta.activation</td>
 <td>jakarta.activation-api</td>
 <td>2.1.4</td>
@@ -473,7 +465,7 @@
 <td>-</td>
 <td>jar</td>
 <td>false</td></tr>
-<tr class="a">
+<tr class="b">
 <td style="text-align: left;">org.springframework</td>
 <td>spring-test</td>
 <td>7.0.9</td>
@@ -481,7 +473,7 @@
 <td>-</td>
 <td>jar</td>
 <td>false</td></tr>
-<tr class="b">
+<tr class="a">
 <td style="text-align: left;">org.springframework</td>
 <td>spring-context</td>
 <td>7.0.9</td>
@@ -489,7 +481,7 @@
 <td>-</td>
 <td>jar</td>
 <td>false</td></tr>
-<tr class="a">
+<tr class="b">
 <td style="text-align: left;">org.opentest4j</td>
 <td>opentest4j</td>
 <td>1.3.0</td>
@@ -497,7 +489,7 @@
 <td>-</td>
 <td>jar</td>
 <td>false</td></tr>
-<tr class="b">
+<tr class="a">
 <td style="text-align: left;">org.apache.tomcat</td>
 <td>tomcat-annotations-api</td>
 <td>11.0.24</td>
@@ -505,11 +497,19 @@
 <td>-</td>
 <td>jar</td>
 <td>false</td></tr>
-<tr class="a">
+<tr class="b">
 <td style="text-align: left;">org.junit.jupiter</td>
 <td>junit-jupiter-api</td>
 <td>6.0.3</td>
 <td>test</td>
+<td>-</td>
+<td>jar</td>
+<td>false</td></tr>
+<tr class="a">
+<td style="text-align: left;">software.amazon.awssdk</td>
+<td>aws-core</td>
+<td>2.55.2</td>
+<td>compile</td>
 <td>-</td>
 <td>jar</td>
 <td>false</td></tr>
