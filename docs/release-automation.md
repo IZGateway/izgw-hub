@@ -99,6 +99,10 @@ version must match exactly, and a version tag must be an ancestor of the branch.
 A hotfix keeps the base branch's development version. If `develop` is on
 `2.18.0-IZGW-SNAPSHOT`, it stays there.
 
+A hotfix runs the release workflows from its own branch, which you cut from
+`main`. A change to the release workflows on `develop` does not apply to
+hotfixes until a standard release merges it into `main`.
+
 ## What the gates are
 
 A release completes only after all of these pass:
@@ -250,6 +254,11 @@ the branch scheduled CI runs on.
    workflows share a display name, so identify it by path or id.
 5. Merge the automation into `develop` and keep `develop` as the default branch.
 6. Confirm development CI still passes.
+7. Do the first standard release soon after the merge. Until a standard release
+   merges the automation into `main`, you cannot dispatch a hotfix. A branch
+   that you cut from `main` does not contain `hotfix.yml` or
+   `_release_common.yml`. Step 4 disables the legacy workflow, so no automated
+   hotfix path exists in this period.
 
 **The first real release needs separate approval.** Successful rehearsals do not
 authorise it.
