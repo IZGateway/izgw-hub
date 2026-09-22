@@ -3,25 +3,44 @@
 	xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
     <suppress>
         <notes><![CDATA[
-        spring-security-*: CVE-2018-1258 is a false positive. The vulnerability is in
-        Spring Framework 5.0.5 (a method-security authorization bypass when used with
-        Spring Security), fixed in Spring Framework 5.0.6. The scanner matches it against
-        the spring_security CPE because the NVD entry lists Spring Security as affected.
-        IZ Gateway uses Spring Framework 6.2.x, which is not affected.
+        Copied from izgw-bom dependency-suppression.xml (develop, 1fc1f1a) on
+        2026-09-22 (IGDD-2396). Keep the two copies the same. The text that follows
+        is the izgw-bom note, unchanged: "pom.xml" and "the protobuf-java note
+        below" refer to izgw-bom. In izgw-hub this rule replaces five sha1-pinned
+        rules for the same CVE, which stopped matching after the Spring Boot 4 upgrade.
 
-        This rule replaces five earlier sha1-pinned rules for the same CVE. Those hashes
-        were for older spring-security jars, so they stopped matching after the Spring
-        upgrade (IGDD-2353) and the finding resurfaced on spring-security-core and
-        spring-security-oauth2-resource-server 6.5.11 in CI run 35600127560.
+        spring-security-* (all versions): CVE-2018-1258 is an authorization bypass in
+        method security that requires Spring Framework 5.0.5 specifically. NVD pins the
+        vulnerable framework as cpe:2.3:a:vmware:spring_framework:5.0.5 — an exact
+        version, not a range — while encoding the Spring Security side as
+        cpe:2.3:a:pivotal_software:spring_security:*:*:*:*:*:*:*:* with no version bounds
+        at all, because the CVE text reads "when used in combination with any versions of
+        Spring Security". Dependency-Check therefore flags every spring-security JAR ever
+        published, and no upgrade can clear it. This project ships spring-framework 7.0.9
+        (see spring-framework.version in pom.xml), so the vulnerable condition cannot
+        occur.
 
-        Match on filePath, not packageUrl. The scan target is the Spring Boot fat jar,
-        and dependency-check records no packages and no identifiers for the jars nested
-        under BOOT-INF/lib, so a packageUrl rule matches nothing. Verified in CI run
-        35603999288, where the packageUrl form reported "Suppression Rule had zero
-        matches". A filePath regex survives dependency upgrades; a sha1 does not.
-        Rewritten: 2026-09-21 (IGDD-2396)
+        GUARD: this suppression is valid only while spring-framework.version is not 5.0.5.
+        If the framework is ever pinned to 5.0.5, remove this rule — the finding would be
+        real.
+
+        Replaces six <sha1>-pinned rules covering spring-security-core/crypto at 6.5.9,
+        6.5.10 and 6.5.11 (added 2026-04-17 through 2026-06-11). Because the CPE is
+        version-wildcard, each Spring Security release produced a fresh false positive and
+        needed a new sha1 rule; all six went stale at once on the Boot 4 upgrade and logged
+        "Suppression Rule had zero matches" in publish run 35104733706, letting the finding
+        fail the --failOnCVSS 7 gate. Matching by filePath regex ends that treadmill and
+        covers sibling artifacts (web, config, oauth2, ...) that carry the same
+        product-level CPE. Scope stays narrow in the dimension that matters: only
+        CVE-2018-1258 is suppressed, so any other CVE on any spring-security JAR still
+        fails the build.
+
+        filePath+cve is the matcher shape known to work in this configuration; <packageUrl>
+        and version-agnostic <cpe> were both verified not to match here (see the
+        protobuf-java note below re: --disableCentral and PURL-less JARs).
+        Added: 2026-09-16 (IGDD-2353)
         ]]></notes>
-        <filePath regex="true">.*/BOOT-INF/lib/spring-security-.*\.jar</filePath>
+        <filePath regex="true">.*spring-security-.*\.jar</filePath>
         <cve>CVE-2018-1258</cve>
     </suppress>
     <suppress>
@@ -43,7 +62,7 @@
         unnecessary (harmless if left in place - it will simply stop matching).
         Added: 2026-08-08 (IGDD-3254)
         ]]></notes>
-        <filePath regex="true">.*/BOOT-INF/lib/tomcat-embed-core-.*\.jar</filePath>
+        <packageUrl regex="true">^pkg:maven/org\.apache\.tomcat\.embed/tomcat\-embed\-core@.*$</packageUrl>
         <cve>CVE-2026-66299</cve>
     </suppress>
 </suppressions>
