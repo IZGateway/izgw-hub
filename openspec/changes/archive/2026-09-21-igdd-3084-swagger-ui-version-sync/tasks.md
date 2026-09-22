@@ -74,17 +74,17 @@ Jira: IGDD-3084
 
 ## 4. Postman / CI
 
-- [ ] 4.1 No collection changes expected — `TC_92a Get Documentation` and `TC_92b Get Api Document` in
+- [x] 4.1 No collection changes expected — `TC_92a Get Documentation` and `TC_92b Get Api Document` in
   `testing/scripts/IZGW_2.0_Integration_Test.postman_collection.json` already assert `200`/`text/html`;
   this change is what makes them pass against a real deployment again. Confirm they pass in CI once this
-  PR's build reaches the dev-deploy verify stage in `.github/workflows/maven.yml`.
+  PR's build reaches the dev-deploy verify stage in `.github/workflows/maven.yml`. **Confirmed 2026-09-21:** commit `bf04cb449` is on `develop`; the Java CI (incl. Newman verify) and nightly runs on `develop` are green.
 
 ## 5. Documentation / spec sync
 
-- [ ] 5.1 Verify `specs/api-documentation/spec.md` in this change directory accurately describes the
+- [x] 5.1 Verify `specs/api-documentation/spec.md` in this change directory accurately describes the
   shipped behavior (paths, version-detection mechanism, admin-only access-control preservation) before
   archiving.
-- [ ] 5.2 Run `openspec validate igdd-3084-swagger-ui-version-sync` and resolve any reported issues.
+- [x] 5.2 Run `openspec validate igdd-3084-swagger-ui-version-sync` and resolve any reported issues. Clean as of 2026-09-21 (verified during `/opsx:verify`; no spec edits needed).
 
 ## 6. Follow-up (tracked separately — not part of this change, does not block it)
 
