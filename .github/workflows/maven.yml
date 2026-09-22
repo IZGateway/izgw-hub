@@ -38,6 +38,23 @@ jobs:
 
     steps:
 
+    # Name a missing credential.
+    # Initially check for NVDAPIKEY so that we fail here instead
+    # of later in the flow when we try dependency-checker.
+    # Only the presence of each value is reported, never a value.
+    - name: Check necessary credentials are configured
+      env:
+        NVDAPIKEY: ${{ secrets.NVDAPIKEY }}
+      shell: bash
+      run: |
+        missing=""
+        if [ -z "${NVDAPIKEY}" ]; then missing="${missing} NVDAPIKEY"; fi
+        if [ -n "${missing}" ]; then
+          echo "::error::Missing necessary credential(s):${missing}. The release will not fall back to another identity."
+          exit 1
+        fi
+        echo "Necessary credentials are configured."
+
     - name: Checkout the software
       uses: actions/checkout@v7
       # No ssh-key: development CI no longer commits a release version, so it

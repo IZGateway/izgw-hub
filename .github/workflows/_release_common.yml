@@ -52,21 +52,25 @@ jobs:
 
     steps:
       # Name a missing credential before create-github-app-token produces a
-      # cryptic error. Only the presence of each value is reported, never a value.
-      - name: Check release App credentials are configured
+      # cryptic error. Also check for NVDAPIKEY so that we fail here instead
+      # of later in the flow when we try dependency-checker.
+      # Only the presence of each value is reported, never a value.
+      - name: Check necessary credentials are configured
         env:
           APP_ID: ${{ secrets.RELEASE_AUTOMATION_APP_ID }}
           APP_KEY: ${{ secrets.RELEASE_AUTOMATION_APP_KEY }}
+          NVDAPIKEY: ${{ secrets.NVDAPIKEY }}
         shell: bash
         run: |
           missing=""
           if [ -z "${APP_ID}" ]; then missing="${missing} RELEASE_AUTOMATION_APP_ID"; fi
           if [ -z "${APP_KEY}" ]; then missing="${missing} RELEASE_AUTOMATION_APP_KEY"; fi
+          if [ -z "${NVDAPIKEY}" ]; then missing="${missing} NVDAPIKEY"; fi
           if [ -n "${missing}" ]; then
-            echo "::error::Missing release App credential(s):${missing}. The release will not fall back to another identity."
+            echo "::error::Missing necessary credential(s):${missing}. The release will not fall back to another identity."
             exit 1
           fi
-          echo "Both release App credentials are configured."
+          echo "Necessary credentials are configured."
 
       # Repository writes use the release App, never ACTIONS_KEY or an SSH key.
       # Later post-gate write steps refresh this token, because one token does
