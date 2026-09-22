@@ -18,7 +18,10 @@ context: |
     Logging: SLF4J + Logback; logstash-logback-encoder for structured JSON; Elasticsearch/Kibana; in-memory MemoryAppender
     Infrastructure: AWS ECS/Docker (Alpine + OpenJDK 21), AWS Secrets Manager, Elasticsearch
     Build: Maven 3.9+, Maven Wrapper (mvnw), JaCoCo for coverage, OWASP Dependency-Check (fail CVSS ≥ 7)
-    CI/CD: GitHub Actions (.github/workflows/maven.yml for develop/Release*, main.yml for main)
+    CI/CD: GitHub Actions. maven.yml is development CI for develop only (no release publication).
+      Releases are manually dispatched: release.yml and hotfix.yml call _release_common.yml.
+      main.yml is retired. Release* branches are frozen and reference-only.
+      Operator runbook: docs/release-automation.md
     Security: BouncyCastle FIPS (bc-fips, bcpkix-fips, bctls-fips); BCFKS keystore format; mTLS (client-auth=need); TLS 1.2/1.3 only; OAuth2/JWT (spring-security-oauth2-resource-server, jjwt); IP denylist; OCSP (optional)
 
   Architecture:
@@ -73,7 +76,8 @@ rules:
   specs:
     - State every normative requirement as a named "### Requirement:" section using RFC 2119 keywords
       (SHALL / SHALL NOT / MUST / MUST NOT / SHOULD / SHOULD NOT / MAY); never use "must" or "should" in lowercase for normative statements
-    - Follow each requirement with one or more "#### Scenario:" sections using strict GIVEN-WHEN-THEN format:
+    - |
+        Follow each requirement with one or more "#### Scenario:" sections using strict GIVEN-WHEN-THEN format:
         ### Requirement: <name>
         The system SHALL <requirement statement>.
         #### Scenario: <name>
@@ -86,7 +90,7 @@ rules:
     - Provide validation rules with positive (valid) and negative (invalid) HL7 or JSON examples
     - Include retry strategy classification (NORMAL / CHECK_IIS_STATUS / CORRECT_MESSAGE / CONTACT_SUPPORT)
     - Reference existing CDC WSDL schemas (2011/2014) and ADS versioning (V2023-09-01) when relevant
-    - Document edge cases: empty destinationId, message-too-large, circuit breaker thrown, FIPS key errors
+    - "Document edge cases: empty destinationId, message-too-large, circuit breaker thrown, FIPS key errors"
 
   design:
     - Include ASCII sequence diagrams for SOAP routing flows and ADS submission flows
@@ -95,14 +99,14 @@ rules:
     - Address FIPS provider usage — specify which BouncyCastle APIs are used and why
     - Document structured log marker strategy (Markers2.*) for any new auditable events
     - Specify circuit breaker and retry behavior for new destination types
-    - Include error handling mapping: exception type → SOAP fault type → HTTP status → retry strategy
-    - Address access control: admin-only vs. role-based vs. destination-specific group membership
+    - "Include error handling mapping: exception type → SOAP fault type → HTTP status → retry strategy"
+    - "Address access control: admin-only vs. role-based vs. destination-specific group membership"
 
   tasks:
     - Break into 1–4 hour chunks with explicit acceptance criteria (checkboxes)
     - Specify exact file paths to create or modify (use gov.cdc.izgateway.* package conventions)
     - Include a task for adding/updating package-info.java if a new package is introduced
-    - Include test tasks: unit test in src/test/java/**/*Tests.java and Spring Boot integration test if needed
+    - "Include test tasks: unit test in src/test/java/**/*Tests.java and Spring Boot integration test if needed"
     - Flag any task requiring BCFIPS provider changes or keystore format updates
     - Include a documentation task if CONFIGURATION.md or RELEASE_NOTES.md must be updated
     - Note DynamoDB table schema changes separately — coordinate with infrastructure team

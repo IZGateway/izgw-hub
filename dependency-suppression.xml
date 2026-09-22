@@ -1,29 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <suppressions
 	xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
-	<suppress>
-		<notes>IZ Gateway Uses Spring Framework 6.2.x, so this CVE is not applicable</notes>
-		<sha1>d4c20ad2818e954344c0293bd6460ee2b030180d</sha1>
-		<cve>CVE-2018-1258</cve>
-	</suppress>
-	<suppress>
-        <notes>IZ Gateway Uses Spring Framework 6.2.x, so this CVE is not applicable</notes>
-	    <sha1>a1bc1afabfab5cbee9179c134f41d10b4351a001</sha1>
-	    <cve>CVE-2018-1258</cve>
-	</suppress>
-	<suppress>
-        <notes>IZ Gateway Uses Spring Framework 6.2.x, so this CVE is not applicable</notes>
-	    <sha1>b120779667b42a1a412aa0e4426dfab5287f2d5a</sha1>
-	    <cve>CVE-2018-1258</cve>
-	</suppress>
-	<suppress>
-        <notes>IZ Gateway Uses Spring Framework 6.2.x, so this CVE is not applicable</notes>
-        <sha1>8d94263c074debf8ad4f0ebaa807dd3ba3c9c0a7</sha1>
-        <cve>CVE-2018-1258</cve>
-    </suppress>
     <suppress>
-        <notes>IZ Gateway Uses Spring Framework 6.2.x, so this CVE is not applicable</notes>
-        <sha1>29e50540ef987241f13ece8aa4297c524cdca5ed</sha1>
+        <notes><![CDATA[
+        Copied from izgw-bom dependency-suppression.xml (develop, 1fc1f1a) on
+        2026-09-22 (IGDD-2396). Keep the two copies the same. The text that follows
+        is the izgw-bom note, unchanged: "pom.xml" and "the protobuf-java note
+        below" refer to izgw-bom. In izgw-hub this rule replaces five sha1-pinned
+        rules for the same CVE, which stopped matching after the Spring Boot 4 upgrade.
+
+        spring-security-* (all versions): CVE-2018-1258 is an authorization bypass in
+        method security that requires Spring Framework 5.0.5 specifically. NVD pins the
+        vulnerable framework as cpe:2.3:a:vmware:spring_framework:5.0.5 — an exact
+        version, not a range — while encoding the Spring Security side as
+        cpe:2.3:a:pivotal_software:spring_security:*:*:*:*:*:*:*:* with no version bounds
+        at all, because the CVE text reads "when used in combination with any versions of
+        Spring Security". Dependency-Check therefore flags every spring-security JAR ever
+        published, and no upgrade can clear it. This project ships spring-framework 7.0.9
+        (see spring-framework.version in pom.xml), so the vulnerable condition cannot
+        occur.
+
+        GUARD: this suppression is valid only while spring-framework.version is not 5.0.5.
+        If the framework is ever pinned to 5.0.5, remove this rule — the finding would be
+        real.
+
+        Replaces six <sha1>-pinned rules covering spring-security-core/crypto at 6.5.9,
+        6.5.10 and 6.5.11 (added 2026-04-17 through 2026-06-11). Because the CPE is
+        version-wildcard, each Spring Security release produced a fresh false positive and
+        needed a new sha1 rule; all six went stale at once on the Boot 4 upgrade and logged
+        "Suppression Rule had zero matches" in publish run 35104733706, letting the finding
+        fail the --failOnCVSS 7 gate. Matching by filePath regex ends that treadmill and
+        covers sibling artifacts (web, config, oauth2, ...) that carry the same
+        product-level CPE. Scope stays narrow in the dimension that matters: only
+        CVE-2018-1258 is suppressed, so any other CVE on any spring-security JAR still
+        fails the build.
+
+        filePath+cve is the matcher shape known to work in this configuration; <packageUrl>
+        and version-agnostic <cpe> were both verified not to match here (see the
+        protobuf-java note below re: --disableCentral and PURL-less JARs).
+        Added: 2026-09-16 (IGDD-2353)
+        ]]></notes>
+        <filePath regex="true">.*spring-security-.*\.jar</filePath>
         <cve>CVE-2018-1258</cve>
     </suppress>
     <suppress>
