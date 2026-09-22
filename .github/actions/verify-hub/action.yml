@@ -374,7 +374,7 @@ runs:
         fi
         if [ -z "${VERIFY_HUB_RUNNER_IP:-}" ]; then
           echo "::error::An ingress rule was added but its address was not recorded. Remove it by hand from ${SECURITY_GROUP_ID}."
-          exit 0
+          exit 1
         fi
         if aws ec2 revoke-security-group-ingress \
             --group-id "$SECURITY_GROUP_ID" \
@@ -383,6 +383,7 @@ runs:
           echo "Removed ingress for ${VERIFY_HUB_RUNNER_IP}/32."
         else
           echo "::error::Could not remove ingress for ${VERIFY_HUB_RUNNER_IP}/32 from ${SECURITY_GROUP_ID}. Remove it by hand."
+          exit 1
         fi
 
     - name: Remove credential-bearing test files
