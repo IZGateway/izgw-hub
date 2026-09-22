@@ -118,7 +118,10 @@ undocumented version-count cleanup threshold. That procedure is documented in th
 
 These are gaps in *ownership and verification*, not in the mechanism, surfaced while
 tracing this end-to-end. Flagging here per the ticket's "follow-on tasks or spikes are
-created and linked" deliverable — not yet ticketed, pending confirmation.
+created and linked" deliverable. Both are now ticketed:
+[IGDD-3489](https://izgateway.atlassian.net/browse/IGDD-3489) (Terraform management, covering the
+first and third bullets) and [IGDD-3490](https://izgateway.atlassian.net/browse/IGDD-3490)
+(alerting on `kid`-resolution failures, covering the second).
 
 - **The JWT signing secret is not in Terraform at all.** Every other Hub-managed secret
   (e.g. `password_encrypt_key` in `iz-gateway-terraform/hub/service/secrets.tf`) has an
@@ -150,7 +153,7 @@ created and linked" deliverable — not yet ticketed, pending confirmation.
 |---|---|
 | `kid` = Secrets Manager VersionId, set at signing | `izg-configuration-console/src/lib/apikeys/jwt.ts:14,24-33` |
 | Hub resolves secret by exact `kid`/VersionId | `izgw-hub/src/main/java/gov/cdc/izgateway/hub/security/ApiKeyPrincipalProvider.java:125-133,249-274` |
-| Mechanism is documented intentional design, already merged | `izgw-hub/openspec/changes/igdd-2705-api-key-principal-provider/design.md:10-11,32-33`; commit `506b38f58` |
+| Mechanism is documented intentional design, already merged | `izgw-hub/openspec/changes/archive/2026-09-21-igdd-2705-api-key-principal-provider/design.md:10-11,32-33`; commit `506b38f58` |
 | Token lifetime ~366 days | `ApiKeyPrincipalProvider.java:33` (`MAX_TOKEN_LIFETIME`); `izg-configuration-console/src/pages/api/apikeys/index.ts:221`, `token.ts:74` |
 | Secret path, not in Terraform as a managed resource | `iz-gateway-terraform/hub/service/{ecs.tf:179-181, variables.tf:175, terraform.tfvars:24}`; absence confirmed against `hub/service/secrets.tf` |
 | AWS Secrets Manager deletes deprecated versions only past a 100-version count threshold (never <24h old) — corrects this doc's earlier ~24h claim | AWS Secrets Manager documentation (`UpdateSecretVersionStage` / staging label lifecycle); flagged in PR #194 code review |
