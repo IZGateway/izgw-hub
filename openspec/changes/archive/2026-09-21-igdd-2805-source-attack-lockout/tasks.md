@@ -77,7 +77,7 @@ Jira: IGDD-2805
 
 ## 5. Documentation (acceptance criteria: exception config must be documented)
 
-- [x] 5.1 Operator runbook (new `openspec/changes/igdd-2805-source-attack-lockout/runbook.md`, mirroring `igdd-2711-grace-period-revocation/runbook.md`'s structure; relocate to the canonical ops-docs location if one exists, per that same precedent): how to enable `hub.source-attack-lockout.enabled`, how to create/list/remove a sender exception via the new `/rest/sourceAttackExceptions` API, the sender-only limitation (no per-receiver scoping, and why), and the multi-instance cache-propagation-lag note (≤ `refreshPeriod`, default 300s).
+- [x] 5.1 Operator runbook — published to Confluence (2026-09-22): [Runbook: Source-Attack Lockout and Exceptions](https://izgateway.atlassian.net/wiki/spaces/IGDD/pages/1010958340/Runbook+Source-Attack+Lockout+and+Exceptions). It is not kept in this repo; a runbook is an operating procedure, not an OpenSpec artifact. Contents: how to enable `hub.source-attack-lockout.enabled`, how to create/list/remove a sender exception via the new `/rest/sourceAttackExceptions` API, the sender-only limitation (no per-receiver scoping, and why), and the multi-instance cache-propagation-lag note (≤ `refreshPeriod`, default 300s).
 - [x] 5.2 `RELEASE_NOTES.md`: entry for IGDD-2805 under the next release section, in the style of the existing "Security Features" entries (see IGDD-1109/IGDD-1185 precedent).
 - [x] 5.3 `CONFIGURATION.md` — this repo's canonical env-var registry ("Task Configuration Properties") and CLAUDE.md's "Key Configuration Variables" table are where operators actually look for env vars, not just the runbook. Add `HUB_SOURCE_ATTACK_LOCKOUT_ENABLED` to `CONFIGURATION.md` in the same style as neighboring entries.
 

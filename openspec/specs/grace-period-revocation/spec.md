@@ -95,7 +95,7 @@ Each execution of the job SHALL log, at a level visible in CloudWatch, the numbe
 ### Requirement: Failure detection and manual remediation
 The job's execution SHALL be observable from structured logs so that a failure to run (unhandled error, or a missed run within the expected window) can be detected. Each cycle SHALL emit a `GRACE_REVOCATION_STARTED` event at the start and either a `GRACE_REVOCATION_RUN` event (success, with counts) or a `GRACE_REVOCATION_FAILED` event (ERROR level, with the exception) at the end. A failure in one candidate SHALL NOT abort the rest of the sweep.
 
-Automated alarms on these events are deferred: the operations runbook (`runbook.md`) documents the CloudWatch metric-filter/alarm definitions for the environment owner (APHL) to provision, and SHALL document a manual remediation procedure (revoke via Config Console) for expired-grace keys when the job is not running.
+Automated alarms on these events are deferred: the [operations runbook](https://izgateway.atlassian.net/wiki/spaces/IGDD/pages/1011417090/Runbook+Grace-Period+Revocation+Job) documents the CloudWatch metric-filter/alarm definitions for the environment owner (APHL) to provision, and SHALL document a manual remediation procedure (revoke via Config Console) for expired-grace keys when the job is not running.
 
 #### Scenario: Job failure is logged for detection
 - **GIVEN** the scheduled job throws during a cycle

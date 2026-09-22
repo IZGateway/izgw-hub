@@ -290,7 +290,7 @@ behavior.
   assumption) — see the negative test in D1's Testing note.
 - **Per-receiver exceptions are not supported at all (D5/D6)** — an operator who wants to exempt a
   sender only for a specific destination cannot express that; they can only exempt the sender entirely.
-  Mitigated by treating this as a known, documented gap (runbook) rather than a partially-working
+  Mitigated by treating this as a known gap documented in the [operations runbook](https://izgateway.atlassian.net/wiki/spaces/IGDD/pages/1010958340/Runbook+Source-Attack+Lockout+and+Exceptions) rather than a partially-working
   feature; a future izgw-core change is the tracked path to closing it.
 - **Enabling `hub.source-attack-lockout.enabled` for the first time will retroactively start
   deny-listing sender/keyword collisions that were previously silent** — mitigated by requiring
@@ -311,7 +311,7 @@ behavior.
   lockout this lag is acceptable — the same convergence-over-broadcast trade-off already accepted for
   API-key grace-period revocation (IGDD-2711) — but it means a sender can still reach a *different*
   instance for up to that window after being deny-listed, and a freshly-created exception can take up to
-  that same window to suppress lockout fleet-wide. Worth a one-line callout in the runbook.
+  that same window to suppress lockout fleet-wide. Called out in the [operations runbook](https://izgateway.atlassian.net/wiki/spaces/IGDD/pages/1010958340/Runbook+Source-Attack+Lockout+and+Exceptions).
 
 ### PHI verification (confirmed, not just asserted)
 

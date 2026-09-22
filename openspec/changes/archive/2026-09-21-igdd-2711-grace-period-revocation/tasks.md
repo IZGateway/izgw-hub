@@ -32,8 +32,8 @@
 ## 5. Monitoring and Runbook (AC #3)
 
 - [x] 5.0 Emit the started/succeeded/failed log trio — `GRACE_REVOCATION_STARTED` (cycle start), `GRACE_REVOCATION_RUN` (success, with evaluated/revoked counts), `GRACE_REVOCATION_FAILED` (error), all structured on `$.eventType`.
-- [x] 5.1 Alert setup — **decided (2026-07-01, Paul): log messages only for now; automated alarms deferred.** APHL manages the AWS environment/CloudWatch, so alarms (if added later) are handed to APHL against these log events. Platform chosen for the future = CloudWatch. The alarm spec + a ready Terraform draft are preserved (runbook "Alert conditions" section; the draft `grace_revocation_alarms.tf` was removed from the working tree — regenerate from the spec when revisited).
-- [x] 5.2 Operations runbook drafted (`runbook.md`) — log signals, (future) alert conditions, and manual remediation via Config Console `DELETE /api/apikeys/:jti`. Relocate to canonical ops-docs location when finalized.
+- [x] 5.1 Alert setup — **decided (2026-07-01, Paul): log messages only for now; automated alarms deferred.** APHL manages the AWS environment/CloudWatch, so alarms (if added later) are handed to APHL against these log events. Platform chosen for the future = CloudWatch. The alarm spec + a ready Terraform draft are preserved ([runbook](https://izgateway.atlassian.net/wiki/spaces/IGDD/pages/1011417090/Runbook+Grace-Period+Revocation+Job) "Alert conditions" section; the draft `grace_revocation_alarms.tf` was removed from the working tree — regenerate from the spec when revisited).
+- [x] 5.2 Operations runbook — log signals, (future) alert conditions, and manual remediation via Config Console `DELETE /api/apikeys/:jti`. Published to Confluence (2026-09-22): [Runbook: Grace-Period Revocation Job](https://izgateway.atlassian.net/wiki/spaces/IGDD/pages/1011417090/Runbook+Grace-Period+Revocation+Job). It is not kept in this repo; a runbook is an operating procedure, not an OpenSpec artifact.
 
 ## 6. Tests
 
@@ -52,4 +52,4 @@
 - **6.2 entity round-trip** integration test — needs a real DynamoDB table; folds into the IGDD-2707 end-to-end validation.
 - **End-to-end** verification waits on IGDD-2707's renewal write-path landing on `origin` with the agreed contract — as of 2026-07-01 that branch still writes `status='superseded'` (should be `grace_period`) and persists `supersededByJti` (Hub reads `supersededBy`). Once fixed + merged, re-verify and adjust only if the contract changed.
 
-Alerting is intentionally out of scope for now (Paul, 2026-07-01): the job emits started/succeeded/failed log messages; automated CloudWatch alarms are deferred to APHL as future work (spec in `runbook.md`). All Hub-side code, logging, and unit-testable logic for IGDD-2711 is complete.
+Alerting is intentionally out of scope for now (Paul, 2026-07-01): the job emits started/succeeded/failed log messages; automated CloudWatch alarms are deferred to APHL as future work (spec in the [runbook](https://izgateway.atlassian.net/wiki/spaces/IGDD/pages/1011417090/Runbook+Grace-Period+Revocation+Job)). All Hub-side code, logging, and unit-testable logic for IGDD-2711 is complete.

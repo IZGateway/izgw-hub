@@ -2,7 +2,7 @@
 
 **Type:** Spike deliverable — decision record. No Hub or Console code/schema changes are
 required. Rotation is purely operational (label the outgoing secret version at rotation
-time); see `runbook.md` for the procedure.
+time); see the [operations runbook](https://izgateway.atlassian.net/wiki/spaces/IGDD/pages/1011253250/Runbook+Rotating+the+API-Key+JWT+HMAC+Signing+Secret) for the procedure.
 
 **Epic:** IGDD-2702 (API Key use)
 
@@ -51,7 +51,7 @@ versions.
 
 **Console needs nothing either.** The operational safety net — an explicit staging label
 on the outgoing version at rotation time — is an action taken against Secrets Manager at
-rotation time, not application code. See `runbook.md`.
+rotation time, not application code. See the [operations runbook](https://izgateway.atlassian.net/wiki/spaces/IGDD/pages/1011253250/Runbook+Rotating+the+API-Key+JWT+HMAC+Signing+Secret).
 
 *Correction (2026-09-16, per code review on PR #194):* an earlier draft of this document
 claimed AWS auto-deletes a deprecated (unlabeled) secret version within ~24h of losing its
@@ -91,7 +91,7 @@ step, not a code change. See "Decision" below.
 
 ### What does the rotation procedure look like operationally?
 
-See `runbook.md` in this same directory: identify the version being retired, label it,
+See the [operations runbook](https://izgateway.atlassian.net/wiki/spaces/IGDD/pages/1011253250/Runbook+Rotating+the+API-Key+JWT+HMAC+Signing+Secret): identify the version being retired, label it,
 write the new secret value, verify, and release the label after ~366 days once no live
 token can still reference it. Purely operational — no deploy, no restart, no code
 involved on either Hub or Console.
@@ -111,8 +111,8 @@ Console code changes are required.** The only action needed is operational: whoe
 performs a rotation must explicitly label the outgoing secret version (via
 `UpdateSecretVersionStage`) so it stays resolvable for as long as a token signed with it
 could still be valid (up to 366 days), rather than relying on Secrets Manager's
-undocumented version-count cleanup threshold. That procedure is documented in
-`runbook.md`.
+undocumented version-count cleanup threshold. That procedure is documented in the
+[operations runbook](https://izgateway.atlassian.net/wiki/spaces/IGDD/pages/1011253250/Runbook+Rotating+the+API-Key+JWT+HMAC+Signing+Secret).
 
 ## Follow-on work
 
@@ -137,7 +137,7 @@ created and linked" deliverable — not yet ticketed, pending confirmation.
 - **No monitoring exists for kid-resolution failures.** `ApiKeyPrincipalProvider` already
   logs the exact signal that would show a botched rotation (`"unable to resolve signing
   secret for kid"` / `"no version found for kid"`), but nothing watches for it — same
-  situation the IGDD-2711 runbook describes for its own job, where alerting was
+  situation the [IGDD-2711 runbook](https://izgateway.atlassian.net/wiki/spaces/IGDD/pages/1011417090/Runbook+Grace-Period+Revocation+Job) describes for its own job, where alerting was
   deliberately deferred. Worth deciding whether this warrants a CloudWatch metric filter
   now, given a miss here means live traffic getting 401s.
 - **Consider bringing the secret under Terraform management** so its existence,

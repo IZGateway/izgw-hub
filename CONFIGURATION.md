@@ -77,7 +77,7 @@ Turns on automatic deny-listing of a sender when a source attack is detected (a 
 code 61, e.g. content matching `script`/`javascript` patterns in an inbound SOAP message). When enabled,
 the sender is added to the deny list unless a source-attack exception has been configured for it via the
 `/rest/sourceAttackExceptions` admin API (see
-`openspec/changes/archive/2026-09-21-igdd-2805-source-attack-lockout/runbook.md`).
+[Runbook: Source-Attack Lockout and Exceptions](https://izgateway.atlassian.net/wiki/spaces/IGDD/pages/1010958340/Runbook+Source-Attack+Lockout+and+Exceptions)).
 
 Distinct from any deny-list *enforcement* setting — this only controls whether a detected attack
 automatically adds the sender to the deny list. The triggering message is always rejected regardless of

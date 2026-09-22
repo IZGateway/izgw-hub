@@ -12,8 +12,9 @@ Nothing in code, configuration, or schema. The spike found that the mechanism al
 Config Console stamps the Secrets Manager `VersionId` into the JWT `kid` header, and Hub's
 `ApiKeyPrincipalProvider.resolveSecret(kid)` reads that exact version, so any number of secret
 versions can be valid at once. The only action rotation needs is operational — label the outgoing
-secret version so it stays resolvable for up to 366 days. See `design.md` for the analysis and
-`runbook.md` for the procedure.
+secret version so it stays resolvable for up to 366 days. See `design.md` for the analysis; the
+procedure is published to Confluence as [Runbook: Rotating the API-Key JWT HMAC Signing Secret](https://izgateway.atlassian.net/wiki/spaces/IGDD/pages/1011253250/Runbook+Rotating+the+API-Key+JWT+HMAC+Signing+Secret)
+and is not kept in this repo, because a runbook is an operating procedure rather than an OpenSpec artifact.
 
 ## Capabilities
 
