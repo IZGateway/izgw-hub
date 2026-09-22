@@ -9,10 +9,13 @@ import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
@@ -41,8 +44,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import gov.cdc.izgateway.common.BadRequestException;
 import gov.cdc.izgateway.common.ResourceNotFoundException;
+import gov.cdc.izgateway.configuration.DynamoDbConfig;
 import gov.cdc.izgateway.hub.security.ApiKeyPrincipalProvider;
 import gov.cdc.izgateway.db.RefreshQueueService.RefreshRequest;
 import gov.cdc.izgateway.dynamodb.model.Destination;
@@ -69,6 +75,14 @@ import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+
+import software.amazon.awssdk.enhanced.dynamodb.document.EnhancedDocument;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
+import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
+import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 
 import javax.net.ssl.HttpsURLConnection;
 
@@ -138,6 +152,52 @@ public class DbController {
 	private final ApiKeyPrincipalProvider apiKeyPrincipalProvider;
 	/** Cached region for THIS host */
 	private final RefreshQueueService refreshQueueService;
+	private final DynamoDbClient ddbClient;
+	private final String tableName;
+
+	// Local instance rather than an autowired bean: LogController already defines its own
+	// specialized ObjectMapper @Bean (Logstash serialization), and this endpoint's raw-item-to-
+	// JSON conversion has no need to share it -- matches ADSController's existing local
+	// `new ObjectMapper()` precedent for ad hoc JSON handling.
+	private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+	/**
+	 * Entity types servable via {@link #getDataByType(String)}/{@link #getDataByTypeAndKey(String, String)}.
+	 * An allowlist rather than a denylist of excluded types, so a new entity type introduced later
+	 * (in either this codebase or izg-configuration-console, which shares this table) is 404'd by
+	 * default instead of silently becoming servable.
+	 *
+	 * <p>Includes the 13 types with a Java model in this codebase, plus three written directly by
+	 * izg-configuration-console's TypeScript code with no Java model at all ({@code ApiKeyDomain},
+	 * {@code ApiKeyDomainOwner}, {@code Sender}) -- these are exactly the entity types this endpoint
+	 * exists to make inspectable, since the migration-verification test harness in
+	 * {@code izgw-db-migration} otherwise has no way to check Hub-side data for them.</p>
+	 *
+	 * <p>Deliberately excludes every audit/change-request entity type sharing this table
+	 * ({@code DestinationChangeRequest}, {@code DestinationAudit}, {@code AllowedUserAudit},
+	 * {@code AccessGroupAudit}, {@code DenyListAudit}, {@code AdsFileTypeAudit}) -- these must never
+	 * be servable via this endpoint.</p>
+	 */
+	private static final Set<String> ALLOWED_ENTITY_TYPES = Set.of(
+		"AccessControl", "AccessGroup", "AllowedUser", "ApiKeyCredential", "CertificateStatus",
+		"Destination", "DenyListRecord", "Event", "EndpointStatus", "FileType", "Jurisdiction",
+		"MessageHeader", "OrganizationRecord", "SourceAttackExceptionRecord",
+		"ApiKeyDomain", "ApiKeyDomainOwner", "Sender"
+	);
+
+	/**
+	 * Field names to strip from a raw item before it is returned, keyed by entityType. Extend this
+	 * map when a new sensitive field is found, rather than adding new redact-by-type branches.
+	 *
+	 * <p>{@code Destination.password} is redacted per explicit requirement.
+	 * {@code ApiKeyDomain.challengeUuid} is also redacted: it is the DNS TXT domain-ownership
+	 * challenge token issued while a domain is {@code pending_challenge}, and leaking it would let
+	 * someone who does not own the domain complete that domain's ownership verification.</p>
+	 */
+	private static final Map<String, Set<String>> REDACTED_FIELDS = Map.of(
+		"Destination", Set.of("password"),
+		"ApiKeyDomain", Set.of("challengeUuid")
+	);
 
 	/**
 	 * Construct a new DBController class.
@@ -146,18 +206,24 @@ public class DbController {
 	 * @param config	The configuration providing access to db services
 	 * @param registry	The access control registry managing these APIs
 	 * @param apiKeyPrincipalProvider  The API key principal provider for credential cache eviction
+	 * @param ddbClient	The raw DynamoDB client, used for the generic entity-type read endpoint
+	 * @param ddbConfig	The DynamoDB configuration, used to resolve the table name
 	 */
 	@Autowired
 	public DbController(
 		IHostRepository hostService,
 		DbControllerConfiguration config,
 		AccessControlRegistry registry,
-		ApiKeyPrincipalProvider apiKeyPrincipalProvider
+		ApiKeyPrincipalProvider apiKeyPrincipalProvider,
+		DynamoDbClient ddbClient,
+		DynamoDbConfig ddbConfig
 	) {
 		this.hostService = hostService;
 		this.configuration = config;
 		this.apiKeyPrincipalProvider = apiKeyPrincipalProvider;
 		this.refreshQueueService = new RefreshQueueService(REGION, this, apiKeyPrincipalProvider);
+		this.ddbClient = ddbClient;
+		this.tableName = ddbConfig.getDynamodbTable();
 		registry.register(this);
 	}
 	
@@ -621,6 +687,98 @@ public class DbController {
 
 	private ResourceNotFoundException notFound(String what, String id) {
 		return new ResourceNotFoundException(String.format("%s %s not found.", what, id));
+	}
+
+	@Operation(summary = "Report all entities of the specified type",
+			description = "Returns every DynamoDB item of the given entity type, keyed by sortKey. "
+					+ "Only entity types in a fixed allowlist are servable; audit/change-request "
+					+ "entity types are never returned. Destination items never include password.")
+	@ApiResponse(responseCode = "200", description = "A map of sortKey to the item at that key.",
+		content = @Content(mediaType = "application/json"))
+	@ApiResponse(responseCode = "404", description = "The entity type is unknown or not servable via this API.",
+		content = @Content)
+	@GetMapping("/data/{entityType}")
+	@RolesAllowed(Roles.ADMIN)
+	public Map<String, Object> getDataByType(
+			@Schema(description = "The DynamoDB entity type to retrieve, e.g. AllowedUser or ApiKeyDomain")
+			@PathVariable String entityType) {
+		requireAllowedType(entityType);
+		Map<String, Object> result = new LinkedHashMap<>();
+		QueryRequest request = QueryRequest.builder()
+				.tableName(tableName)
+				.keyConditionExpression("entityType = :et")
+				.expressionAttributeValues(Map.of(":et", AttributeValue.fromS(entityType)))
+				.build();
+		// queryPaginator transparently walks every LastEvaluatedKey continuation -- no manual
+		// pagination loop needed (see ApiKeyCredentialRepository#findAll for the same pattern).
+		for (QueryResponse page : ddbClient.queryPaginator(request)) {
+			for (Map<String, AttributeValue> item : page.items()) {
+				result.put(item.get("sortKey").s(), toJsonObject(redact(entityType, item)));
+			}
+		}
+		return result;
+	}
+
+	@Operation(summary = "Report the specified entity",
+			description = "Returns the single DynamoDB item for the given entity type and sortKey. "
+					+ "Only entity types in a fixed allowlist are servable; audit/change-request "
+					+ "entity types are never returned. A Destination item never includes password.")
+	@ApiResponse(responseCode = "200", description = "The item at the specified entity type and sortKey.",
+		content = @Content(mediaType = "application/json"))
+	@ApiResponse(responseCode = "404", description = "The entity type is unknown/not servable, "
+			+ "or no item exists at that sortKey.", content = @Content)
+	@GetMapping("/data/{entityType}/{sortKey}")
+	@RolesAllowed(Roles.ADMIN)
+	public Object getDataByTypeAndKey(
+			@Schema(description = "The DynamoDB entity type to retrieve, e.g. AllowedUser or ApiKeyDomain")
+			@PathVariable String entityType,
+			@Schema(description = "The sortKey of the specific item to retrieve")
+			@PathVariable String sortKey) {
+		requireAllowedType(entityType);
+		GetItemResponse resp = ddbClient.getItem(GetItemRequest.builder()
+				.tableName(tableName)
+				.key(Map.of(
+						"entityType", AttributeValue.fromS(entityType),
+						"sortKey", AttributeValue.fromS(sortKey)))
+				.build());
+		if (!resp.hasItem()) {
+			throw notFound(entityType, sortKey);
+		}
+		return toJsonObject(redact(entityType, resp.item()));
+	}
+
+	private void requireAllowedType(String entityType) {
+		if (!ALLOWED_ENTITY_TYPES.contains(entityType)) {
+			// Deliberately the same ResourceNotFoundException (404) used for a missing sortKey,
+			// rather than a 403 -- this avoids revealing which entity types are being deliberately
+			// hidden (e.g. the audit/change-request types) to a caller probing the endpoint.
+			throw new ResourceNotFoundException("Unknown or restricted entity type: " + entityType);
+		}
+	}
+
+	private Map<String, AttributeValue> redact(String entityType, Map<String, AttributeValue> item) {
+		Set<String> fields = REDACTED_FIELDS.get(entityType);
+		if (fields == null) {
+			return item;
+		}
+		Map<String, AttributeValue> copy = new HashMap<>(item);
+		fields.forEach(copy::remove);
+		return copy;
+	}
+
+	// Converts a raw DynamoDB item straight to a JSON-compatible Object (LinkedHashMap/List/
+	// primitives) via the SDK's own EnhancedDocument -- no per-entity-type Java model needed, which
+	// is what lets this endpoint serve types (ApiKeyDomain, ApiKeyDomainOwner, Sender) that have no
+	// Java model in this codebase at all.
+	private Object toJsonObject(Map<String, AttributeValue> item) {
+		try {
+			return OBJECT_MAPPER.readValue(EnhancedDocument.fromAttributeValueMap(item).toJson(), Object.class);
+		} catch (IOException e) {
+			// EnhancedDocument.toJson() always produces valid JSON for a valid AttributeValue map,
+			// so this is not expected in practice; fails the request rather than returning a
+			// silently-truncated or malformed body.
+			throw new IllegalStateException("Failed to convert DynamoDB item to JSON", e);
+		}
 	}
 
 }
