@@ -1604,7 +1604,7 @@ jobs:
       # those are reported for manual recovery instead.
       - name: Refresh the release App token for cleanup
         id: app-token-cleanup
-        if: ${{ failure() }}
+        if: ${{ failure() || cancelled() }}
         continue-on-error: true
         uses: actions/create-github-app-token@v3
         with:
@@ -1612,7 +1612,7 @@ jobs:
           private-key: ${{ secrets.RELEASE_AUTOMATION_APP_KEY }}
 
       - name: Clean up this run's Git writes
-        if: ${{ failure() }}
+        if: ${{ failure() || cancelled() }}
         shell: bash
         env:
           APP_TOKEN: ${{ steps.app-token-cleanup.outputs.token }}
