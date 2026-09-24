@@ -153,7 +153,7 @@ hub:
         # Distinct from security.enable-blacklist / security.blacklist.disabled, which govern
         # deny-list *enforcement* in general. This flag governs only whether a detected source
         # attack (SecurityFault code 61) automatically adds the sender to the deny list.
-        # See openspec/changes/igdd-2805-source-attack-lockout/design.md.
+        # See openspec/changes/archive/2026-09-21-igdd-2805-source-attack-lockout/design.md.
     status-check:
         period: 5
         testing-endpoints:
