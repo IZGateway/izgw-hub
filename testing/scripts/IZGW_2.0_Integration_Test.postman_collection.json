@@ -15751,7 +15751,7 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test('Audit/change-request/unknown entity types are never servable (404)', function () {",
+                      "pm.test('DestinationChangeRequest is a restricted/audit type -- not servable (404)', function () {",
                       "    pm.response.to.have.status(404);",
                       "});",
                       ""
@@ -15785,7 +15785,7 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test('Audit/change-request/unknown entity types are never servable (404)', function () {",
+                      "pm.test('DestinationAudit is a restricted/audit type -- not servable (404)', function () {",
                       "    pm.response.to.have.status(404);",
                       "});",
                       ""
@@ -15819,7 +15819,7 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test('Audit/change-request/unknown entity types are never servable (404)', function () {",
+                      "pm.test('AllowedUserAudit is a restricted/audit type -- not servable (404)', function () {",
                       "    pm.response.to.have.status(404);",
                       "});",
                       ""
@@ -15853,7 +15853,7 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test('Audit/change-request/unknown entity types are never servable (404)', function () {",
+                      "pm.test('AccessGroupAudit is a restricted/audit type -- not servable (404)', function () {",
                       "    pm.response.to.have.status(404);",
                       "});",
                       ""
@@ -15887,7 +15887,7 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test('Audit/change-request/unknown entity types are never servable (404)', function () {",
+                      "pm.test('DenyListAudit is a restricted/audit type -- not servable (404)', function () {",
                       "    pm.response.to.have.status(404);",
                       "});",
                       ""
@@ -15921,7 +15921,7 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test('Audit/change-request/unknown entity types are never servable (404)', function () {",
+                      "pm.test('AdsFileTypeAudit is a restricted/audit type -- not servable (404)', function () {",
                       "    pm.response.to.have.status(404);",
                       "});",
                       ""
@@ -15955,7 +15955,7 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test('Audit/change-request/unknown entity types are never servable (404)', function () {",
+                      "pm.test('NotARealEntityType is a restricted/audit type -- not servable (404)', function () {",
                       "    pm.response.to.have.status(404);",
                       "});",
                       ""
