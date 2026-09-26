@@ -15983,7 +15983,7 @@
               "response": []
             },
             {
-              "name": "GET /rest/data/Destination/2:dev (fixed test destination)",
+              "name": "GET /rest/data/Destination/2!dev (fixed test destination)",
               "event": [
                 {
                   "listen": "test",
@@ -16009,7 +16009,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{protocol}}://{{host}}:{{port}}{{prefix}}/data/Destination/2:dev",
+                  "raw": "{{protocol}}://{{host}}:{{port}}{{prefix}}/data/Destination/2!dev",
                   "protocol": "{{protocol}}",
                   "host": [
                     "{{host}}"
@@ -16018,14 +16018,14 @@
                   "path": [
                     "data",
                     "Destination",
-                    "2:dev"
+                    "2!dev"
                   ]
                 }
               },
               "response": []
             },
             {
-              "name": "GET /rest/data/AccessGroup/5:internal (access by known cert cicd.testing.izgateway.org)",
+              "name": "GET /rest/data/AccessGroup/5!internal (access by known cert cicd.testing.izgateway.org)",
               "event": [
                 {
                   "listen": "test",
@@ -16049,7 +16049,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{protocol}}://{{host}}:{{port}}{{prefix}}/data/AccessGroup/5:internal",
+                  "raw": "{{protocol}}://{{host}}:{{port}}{{prefix}}/data/AccessGroup/5!internal",
                   "protocol": "{{protocol}}",
                   "host": [
                     "{{host}}"
@@ -16058,7 +16058,7 @@
                   "path": [
                     "data",
                     "AccessGroup",
-                    "5:internal"
+                    "5!internal"
                   ]
                 }
               },

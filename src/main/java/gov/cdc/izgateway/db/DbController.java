@@ -730,10 +730,10 @@ public class DbController {
 	// Almost every real sortKey in this table is "#"-delimited (e.g. Destination's
 	// "{destTypeId}#{destId}", AllowedUser's "{environment}#{destinationId}#{principal}"), and an
 	// unencoded "#" in a URL path starts a fragment rather than being sent to the server, so a
-	// caller sends ":" in its place and this substitutes it back before building the DynamoDB key.
+	// caller sends "!" in its place and this substitutes it back before building the DynamoDB key.
 	// Chosen over "_"/"-" because those legitimately appear inside real key field values (e.g.
-	// domain names); ":" does not collide with anything currently stored.
-	private static final char SORT_KEY_PATH_SUBSTITUTE = ':';
+	// domain names); "!" does not collide with anything currently stored.
+	private static final char SORT_KEY_PATH_SUBSTITUTE = '!';
 	private static final char SORT_KEY_REAL_DELIMITER = '#';
 
 	@Operation(summary = "Report the specified entity",
@@ -752,7 +752,7 @@ public class DbController {
 			@PathVariable String entityType,
 			@Schema(description = "The sortKey of the specific item to retrieve. Most sortKeys are "
 					+ "\"#\"-delimited (e.g. \"2#dev\"), but \"#\" cannot appear literally in a URL "
-					+ "path -- send \":\" in its place (e.g. \"2:dev\"); it is substituted back to "
+					+ "path -- send \"!\" in its place (e.g. \"2!dev\"); it is substituted back to "
 					+ "\"#\" before querying.")
 			@PathVariable String sortKey) {
 		requireAllowedType(entityType);
