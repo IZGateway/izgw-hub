@@ -189,13 +189,20 @@ public class DbController {
 	 * Field names to strip from a raw item before it is returned, keyed by entityType. Extend this
 	 * map when a new sensitive field is found, rather than adding new redact-by-type branches.
 	 *
-	 * <p>{@code Destination.password} is redacted per explicit requirement.
-	 * {@code ApiKeyDomain.challengeUuid} is also redacted: it is the DNS TXT domain-ownership
-	 * challenge token issued while a domain is {@code pending_challenge}, and leaking it would let
-	 * someone who does not own the domain complete that domain's ownership verification.</p>
+	 * <p>{@code Destination.password} is the only field here that is actually secret, and is
+	 * redacted for that reason. {@code Destination.username} and {@code Destination.passExpiry}
+	 * are NOT secrets, but are redacted anyway purely for consistency with the rest of this
+	 * codebase's existing treatment of the three as a set ({@code AbstractDestination.maskCredentials()}
+	 * nulls all three; {@code AbstractDestination} marks all three {@code @JsonIgnore}) -- this
+	 * endpoint bypasses Jackson bean serialization entirely (raw {@code AttributeValue} ->
+	 * {@code EnhancedDocument.toJson()}), so those existing protections don't apply here on their
+	 * own. {@code ApiKeyDomain.challengeUuid} is also redacted, and this one IS a secret: it is the
+	 * DNS TXT domain-ownership challenge token issued while a domain is {@code pending_challenge},
+	 * and leaking it would let someone who does not own the domain complete that domain's ownership
+	 * verification.</p>
 	 */
 	private static final Map<String, Set<String>> REDACTED_FIELDS = Map.of(
-		"Destination", Set.of("password"),
+		"Destination", Set.of("password", "username", "passExpiry"),
 		"ApiKeyDomain", Set.of("challengeUuid")
 	);
 
@@ -692,7 +699,8 @@ public class DbController {
 	@Operation(summary = "Report all entities of the specified type",
 			description = "Returns every DynamoDB item of the given entity type, keyed by sortKey. "
 					+ "Only entity types in a fixed allowlist are servable; audit/change-request "
-					+ "entity types are never returned. Destination items never include password.")
+					+ "entity types are never returned. Destination items never include "
+					+ "password/username/passExpiry.")
 	@ApiResponse(responseCode = "200", description = "A map of sortKey to the item at that key.",
 		content = @Content(mediaType = "application/json"))
 	@ApiResponse(responseCode = "404", description = "The entity type is unknown or not servable via this API.",
@@ -719,10 +727,20 @@ public class DbController {
 		return result;
 	}
 
+	// Almost every real sortKey in this table is "#"-delimited (e.g. Destination's
+	// "{destTypeId}#{destId}", AllowedUser's "{environment}#{destinationId}#{principal}"), and an
+	// unencoded "#" in a URL path starts a fragment rather than being sent to the server, so a
+	// caller sends ":" in its place and this substitutes it back before building the DynamoDB key.
+	// Chosen over "_"/"-" because those legitimately appear inside real key field values (e.g.
+	// domain names); ":" does not collide with anything currently stored.
+	private static final char SORT_KEY_PATH_SUBSTITUTE = ':';
+	private static final char SORT_KEY_REAL_DELIMITER = '#';
+
 	@Operation(summary = "Report the specified entity",
 			description = "Returns the single DynamoDB item for the given entity type and sortKey. "
 					+ "Only entity types in a fixed allowlist are servable; audit/change-request "
-					+ "entity types are never returned. A Destination item never includes password.")
+					+ "entity types are never returned. A Destination item never includes "
+					+ "password/username/passExpiry.")
 	@ApiResponse(responseCode = "200", description = "The item at the specified entity type and sortKey.",
 		content = @Content(mediaType = "application/json"))
 	@ApiResponse(responseCode = "404", description = "The entity type is unknown/not servable, "
@@ -732,14 +750,18 @@ public class DbController {
 	public Object getDataByTypeAndKey(
 			@Schema(description = "The DynamoDB entity type to retrieve, e.g. AllowedUser or ApiKeyDomain")
 			@PathVariable String entityType,
-			@Schema(description = "The sortKey of the specific item to retrieve")
+			@Schema(description = "The sortKey of the specific item to retrieve. Most sortKeys are "
+					+ "\"#\"-delimited (e.g. \"2#dev\"), but \"#\" cannot appear literally in a URL "
+					+ "path -- send \":\" in its place (e.g. \"2:dev\"); it is substituted back to "
+					+ "\"#\" before querying.")
 			@PathVariable String sortKey) {
 		requireAllowedType(entityType);
+		String realSortKey = sortKey.replace(SORT_KEY_PATH_SUBSTITUTE, SORT_KEY_REAL_DELIMITER);
 		GetItemResponse resp = ddbClient.getItem(GetItemRequest.builder()
 				.tableName(tableName)
 				.key(Map.of(
 						"entityType", AttributeValue.fromS(entityType),
-						"sortKey", AttributeValue.fromS(sortKey)))
+						"sortKey", AttributeValue.fromS(realSortKey)))
 				.build());
 		if (!resp.hasItem()) {
 			throw notFound(entityType, sortKey);

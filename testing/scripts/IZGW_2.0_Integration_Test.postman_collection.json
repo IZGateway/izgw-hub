@@ -15265,12 +15265,13 @@
                       "    pm.expect(body).to.not.be.an('array');",
                       "});",
                       "",
-                      "pm.test('No item contains a restricted password field', function () {",
+                      "pm.test('No item contains a restricted password/username/passExpiry field', function () {",
                       "    const body = pm.response.json();",
+                      "    const restrictedFields = ['password', 'username', 'passExpiry'];",
                       "    const leaked = Object.values(body).filter(function (item) {",
-                      "        return item && typeof item === 'object' && 'password' in item;",
+                      "        return item && typeof item === 'object' && restrictedFields.some(function (f) { return f in item; });",
                       "    });",
-                      "    pm.expect(leaked.length, leaked.length + ' item(s) still contain password').to.equal(0);",
+                      "    pm.expect(leaked.length, leaked.length + ' item(s) still contain password/username/passExpiry').to.equal(0);",
                       "});",
                       ""
                     ]
@@ -15976,6 +15977,88 @@
                   "path": [
                     "data",
                     "NotARealEntityType"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "GET /rest/data/Destination/2:dev (fixed test destination)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Response status is 200', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('No restricted password/username/passExpiry field on the item', function () {",
+                      "    const item = pm.response.json();",
+                      "    const restrictedFields = ['password', 'username', 'passExpiry'];",
+                      "    const leaked = restrictedFields.filter(function (f) { return f in item; });",
+                      "    pm.expect(leaked.length, 'restricted field(s) still present: ' + JSON.stringify(leaked)).to.equal(0);",
+                      "});",
+                      ""
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{protocol}}://{{host}}:{{port}}{{prefix}}/data/Destination/2:dev",
+                  "protocol": "{{protocol}}",
+                  "host": [
+                    "{{host}}"
+                  ],
+                  "port": "{{port}}{{prefix}}",
+                  "path": [
+                    "data",
+                    "Destination",
+                    "2:dev"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "GET /rest/data/AccessGroup/5:internal (access by known cert cicd.testing.izgateway.org)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Response status is 200', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('cicd.testing.izgateway.org is a member of this access group', function () {",
+                      "    const item = pm.response.json();",
+                      "    pm.expect(item.users, 'users field').to.include('cicd.testing.izgateway.org');",
+                      "});",
+                      ""
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{protocol}}://{{host}}:{{port}}{{prefix}}/data/AccessGroup/5:internal",
+                  "protocol": "{{protocol}}",
+                  "host": [
+                    "{{host}}"
+                  ],
+                  "port": "{{port}}{{prefix}}",
+                  "path": [
+                    "data",
+                    "AccessGroup",
+                    "5:internal"
                   ]
                 }
               },
