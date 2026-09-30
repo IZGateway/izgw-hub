@@ -1213,6 +1213,11 @@ jobs:
         if: ${{ steps.gates.outputs.passed == 'true' && !inputs.dry-run }}
         uses: aws-actions/amazon-ecr-login@v2
 
+      # No read of the APHL registry follows the push, as izgw-transform also
+      # does not read it. The APHL push identity has no ecr:DescribeImages
+      # permission, so a read fails after the image is already delivered. The
+      # push itself is the confirmation: Docker fails the step if the registry
+      # rejects it.
       - name: Deliver the verified image to APHL
         if: ${{ steps.gates.outputs.passed == 'true' && !inputs.dry-run }}
         shell: bash
@@ -1239,19 +1244,15 @@ jobs:
           echo "Delivering ${CANDIDATE_DIGEST} to ${TARGET}"
           docker image push "${TARGET}"
 
-          APHL_DIGEST="$(aws ecr describe-images \
-            --repository-name "${APHL_REPOSITORY}" \
-            --image-ids "imageTag=${APHL_TAG}" \
-            --query 'imageDetails[0].imageDigest' --output text)"
-          if [ "${APHL_DIGEST}" != "${CANDIDATE_DIGEST}" ]; then
-            fail "The APHL image ${APHL_TAG} is ${APHL_DIGEST} but the verified candidate is ${CANDIDATE_DIGEST}."
-          fi
-
+          # Record the delivery as soon as the push returns. The image is in
+          # the APHL registry from this point, the APHL repository uses
+          # immutable tags, and no later step can withdraw it. Cleanup must
+          # report it, so nothing may run between the push and these flags.
           {
             echo "THIS_RUN_DELIVERED_APHL=1"
             echo "THIS_RUN_APHL_TAG=${APHL_TAG}"
           } >> "$GITHUB_ENV"
-          echo "APHL ${APHL_TAG} identifies the verified candidate."
+          echo "Delivered ${CANDIDATE_DIGEST} to APHL as ${APHL_TAG}."
 
       - name: Report that APHL delivery was skipped
         if: ${{ steps.gates.outputs.passed == 'true' && inputs.dry-run }}
