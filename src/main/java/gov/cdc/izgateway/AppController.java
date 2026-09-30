@@ -69,12 +69,18 @@ public class AppController {
 	}
 	
 	/**
-	 * Get the IP address and hostname of the caller.
+	 * Get the IP address and hostname of the caller as seen by the servlet container.
+	 * <p>
+	 * NOTE: {@code server.forward-headers-strategy} is pinned to {@code none} in
+	 * application.yml, so behind the ALB this reports the ALB's address rather than
+	 * the originating client's. See the comment on that property for the reason.
 	 * @param req the HTTP servlet request containing information about the caller
 	 * @return the IP address and hostname of the caller as seen by the application
 	 */
 	@Operation(summary = "Get the IP address and hostname of the caller",
-			description = "Returns the IP address and hostname of the caller as seen by the application")
+			description = "Returns the IP address and hostname of the caller as seen by the application. "
+					+ "Behind a load balancer this is the balancer's address, not the originating "
+					+ "client's, because server.forward-headers-strategy is set to none.")
 	  	@ApiResponse(responseCode = "200", description = "Success", 
 	  		content = @Content(mediaType = "application/json",
 	  			schema = @Schema(implementation=HostInfo.class)

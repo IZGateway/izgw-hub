@@ -1,0 +1,395 @@
+name: 'Verify Hub'
+description: >
+  Confirm that the dev service runs the expected Hub image, that its logging
+  client connected, and that the Newman integration suite passes. Verification
+  only: this action publishes no image tag and no release metadata.
+
+inputs:
+  cluster:
+    description: 'ECS cluster name'
+    required: true
+  service:
+    description: 'ECS service name'
+    required: true
+  regions:
+    description: 'Space-separated list of AWS regions'
+    default: 'us-east-1'
+  deployment_ids:
+    description: 'Space-separated region=deployment_id pairs (from ecs-deploy)'
+    required: true
+  expected_image_digest:
+    description: 'Registry digest the Hub container must run. Empty skips the check.'
+    default: ''
+  expected_build:
+    description: 'Build number from target/classes/build.txt of the deployed candidate'
+    required: true
+  expected_timestamp:
+    description: 'Timestamp from target/classes/build.txt of the deployed candidate'
+    required: true
+  security_group_id:
+    description: 'Security group that must allow this runner to reach the ALB'
+    required: true
+  log_pattern:
+    description: 'CloudWatch filter pattern proving the logging client connected'
+    default: 'Connection to backoff'
+  log_wait_attempts:
+    description: 'Bounded number of polls for the logging evidence'
+    default: '20'
+  log_wait_seconds:
+    description: 'Seconds between logging polls'
+    default: '15'
+  collection:
+    description: 'Postman collection path'
+    default: 'testing/scripts/IZGW_2.0_Integration_Test.postman_collection.json'
+  postman_environment:
+    description: 'Postman environment path'
+    default: 'testing/scripts/dev.postman_environment.json'
+  testing_cert:
+    description: 'Client certificate for mTLS test calls'
+    required: true
+  testing_key:
+    description: 'Client key for mTLS test calls'
+    required: true
+  testing_pass:
+    description: 'Passphrase for the client key'
+    required: true
+  bearer_token_expired:
+    description: 'JWT test input'
+    required: true
+  bearer_token_for_cicd:
+    description: 'JWT test input'
+    required: true
+  bearer_token_revoked:
+    description: 'JWT test input'
+    required: true
+  bearer_token_wrong_secret:
+    description: 'JWT test input'
+    required: true
+  bearer_token_wrong_env:
+    description: 'JWT test input'
+    required: true
+  bearer_token_no_usetype:
+    description: 'JWT test input'
+    required: true
+
+outputs:
+  verified_task_ids:
+    description: 'Space-separated region=task_id,task_id pairs that passed every check'
+    value: ${{ steps.health.outputs.verified_task_ids }}
+  hub_container:
+    description: 'Name of the load-balanced Hub container'
+    value: ${{ steps.health.outputs.hub_container }}
+
+runs:
+  using: 'composite'
+  steps:
+    # ----------------------------------------------------------------- setup
+    - name: Enable TCP keepalive for long-running requests
+      shell: bash
+      run: |
+        sudo sysctl -w net.ipv4.tcp_keepalive_time=15
+        sudo sysctl -w net.ipv4.tcp_keepalive_intvl=10
+        sudo sysctl -w net.ipv4.tcp_keepalive_probes=6
+
+    - name: Configure npm global prefix
+      shell: bash
+      run: |
+        # maven.yml quotes a literal ~ here and relies on npm expanding it.
+        # Expand it in the shell so the prefix is unambiguous.
+        npm config set prefix "$HOME/.npm-global"
+        echo "$HOME/.npm-global/bin" >> "$GITHUB_PATH"
+
+    - name: Cache npm globals
+      uses: actions/cache@v6
+      with:
+        path: ~/.npm-global
+        key: npm-globals-${{ hashFiles('.github/actions/verify-hub/action.yml') }}
+        restore-keys: npm-globals-
+
+    - name: Install Newman
+      shell: bash
+      run: |
+        npm install -g newman newman-reporter-junitfull xunit-viewer
+        newman -v
+
+    # Open access early so the wait below overlaps the deployment settling.
+    #
+    # Ownership matters for cleanup. maven.yml appends `|| true`, which hides
+    # both a real failure and the case where the rule already existed. Here a
+    # duplicate is recognized and left alone, and only a rule that this run
+    # created is revoked afterwards.
+    - name: Allow this runner to reach the ALB
+      id: ingress
+      shell: bash
+      env:
+        SECURITY_GROUP_ID: ${{ inputs.security_group_id }}
+      run: |
+        set -euo pipefail
+
+        fail() { echo "::error::$1" >&2; exit 1; }
+
+        RUNNER_IP="$(curl -sf https://checkip.amazonaws.com || true)"
+        [ -n "$RUNNER_IP" ] || fail "Could not determine the runner public address."
+        RUNNER_IP="$(printf '%s' "$RUNNER_IP" | tr -d '[:space:]')"
+        echo "VERIFY_HUB_RUNNER_IP=${RUNNER_IP}" >> "$GITHUB_ENV"
+
+        set +e
+        AUTH_OUT="$(aws ec2 authorize-security-group-ingress \
+          --group-id "$SECURITY_GROUP_ID" \
+          --protocol tcp --port 443 \
+          --cidr "${RUNNER_IP}/32" 2>&1)"
+        AUTH_STATUS=$?
+        set -e
+
+        if [ "$AUTH_STATUS" -eq 0 ]; then
+          echo "VERIFY_HUB_INGRESS_ADDED=1" >> "$GITHUB_ENV"
+          echo "Added ingress for ${RUNNER_IP}/32. This run owns that rule and will remove it."
+        elif printf '%s' "$AUTH_OUT" | grep -q 'InvalidPermission.Duplicate'; then
+          echo "::notice::Ingress for ${RUNNER_IP}/32 already existed. This run does not own it and will not remove it."
+        else
+          fail "Could not add ingress for ${RUNNER_IP}/32 (aws exit ${AUTH_STATUS}). Output: ${AUTH_OUT}"
+        fi
+
+    # ------------------------------------------------------- deployed image
+    - name: Wait for the deployment to be stable, healthy, and serving the candidate
+      id: health
+      uses: ./.github/actions/ecs-wait-healthy
+      with:
+        cluster: ${{ inputs.cluster }}
+        service: ${{ inputs.service }}
+        regions: ${{ inputs.regions }}
+        deployment_ids: ${{ inputs.deployment_ids }}
+        expected_image_digest: ${{ inputs.expected_image_digest }}
+
+    # Read the log location from each verified task's own definition rather
+    # than a hardcoded group, and check every verified task.
+    #
+    # maven.yml takes `taskArns[0]` from a service-wide query, which can be a
+    # task from the previous deployment, and it polls once with no waiting.
+    - name: Verify the logging client connected
+      shell: bash
+      env:
+        CLUSTER: ${{ inputs.cluster }}
+        VERIFIED_TASK_IDS: ${{ steps.health.outputs.verified_task_ids }}
+        HUB_CONTAINER: ${{ steps.health.outputs.hub_container }}
+        LOG_PATTERN: ${{ inputs.log_pattern }}
+        ATTEMPTS: ${{ inputs.log_wait_attempts }}
+        DELAY: ${{ inputs.log_wait_seconds }}
+      run: |
+        set -euo pipefail
+
+        fail() { echo "::error::$1" >&2; exit 1; }
+
+        [ -n "$VERIFIED_TASK_IDS" ] || fail "No verified task ids were reported. The health step must run first."
+
+        for pair in $VERIFIED_TASK_IDS; do
+          region="${pair%%=*}"
+          ids="${pair#*=}"
+          [ -n "$ids" ] || fail "[$region] No verified task ids for this region."
+
+          for task_id in $(printf '%s' "$ids" | tr ',' ' '); do
+            TASK_DEF="$(aws ecs describe-tasks --region "$region" \
+              --cluster "$CLUSTER" --tasks "$task_id" \
+              --query 'tasks[0].taskDefinitionArn' --output text)"
+            [ -n "$TASK_DEF" ] && [ "$TASK_DEF" != "None" ] ||
+              fail "[$region] Could not read the task definition of ${task_id}."
+
+            LOG_OPTS="$(aws ecs describe-task-definition --region "$region" \
+              --task-definition "$TASK_DEF" \
+              --query "taskDefinition.containerDefinitions[?name=='${HUB_CONTAINER}'].logConfiguration.options | [0]" \
+              --output json)"
+            LOG_GROUP="$(printf '%s' "$LOG_OPTS" | jq -r '."awslogs-group" // empty')"
+            LOG_PREFIX="$(printf '%s' "$LOG_OPTS" | jq -r '."awslogs-stream-prefix" // empty')"
+            [ -n "$LOG_GROUP" ] ||
+              fail "[$region] Container ${HUB_CONTAINER} has no awslogs group in its task definition, so its logs cannot be checked."
+            [ -n "$LOG_PREFIX" ] ||
+              fail "[$region] Container ${HUB_CONTAINER} has no awslogs stream prefix in its task definition, so its logs cannot be checked."
+
+            STREAM="${LOG_PREFIX}/${HUB_CONTAINER}/${task_id}"
+            echo "[$region] Checking ${LOG_GROUP} stream ${STREAM} for '${LOG_PATTERN}'"
+
+            FOUND=0
+            attempt=1
+            while [ "$attempt" -le "$ATTEMPTS" ]; do
+              MATCHES="$(aws logs filter-log-events --region "$region" \
+                --log-group-name "$LOG_GROUP" \
+                --log-stream-names "$STREAM" \
+                --filter-pattern "$LOG_PATTERN" \
+                --query 'events[].message' --output text 2>/dev/null || true)"
+              if printf '%s' "$MATCHES" | grep -q 'established'; then
+                FOUND=1
+                break
+              fi
+              echo "[$region] No logging evidence yet for ${task_id} (attempt ${attempt}/${ATTEMPTS})"
+              attempt=$((attempt + 1))
+              [ "$attempt" -le "$ATTEMPTS" ] && sleep "$DELAY"
+            done
+
+            if [ "$FOUND" -ne 1 ]; then
+              fail "[$region] Task ${task_id} never logged an established logging connection in ${LOG_GROUP}/${STREAM}. Missing logging evidence fails the gate."
+            fi
+            echo "[$region] Task ${task_id} logging client is connected."
+          done
+        done
+        echo "Every verified task reported a connected logging client."
+
+    # ------------------------------------------------------------- Newman
+    # Scope the client certificate to the real target host only. Requests to
+    # no_cert_host then carry no certificate, so the Hub's certificate-based
+    # fallback cannot mask an expired-token rejection with a successful login.
+    - name: Set up Newman certificates
+      shell: bash
+      env:
+        TESTING_CERT: ${{ inputs.testing_cert }}
+        TESTING_KEY: ${{ inputs.testing_key }}
+        TESTING_PASS: ${{ inputs.testing_pass }}
+        POSTMAN_ENV: ${{ inputs.postman_environment }}
+      run: |
+        set -euo pipefail
+
+        fail() { echo "::error::$1" >&2; exit 1; }
+
+        [ -n "$TESTING_CERT" ] || fail "testing_cert is empty. The mTLS suite cannot run without it."
+        [ -n "$TESTING_KEY" ] || fail "testing_key is empty. The mTLS suite cannot run without it."
+        [ -n "$TESTING_PASS" ] || fail "testing_pass is empty. The mTLS suite cannot run without it."
+        [ -f "$POSTMAN_ENV" ] || fail "Postman environment ${POSTMAN_ENV} does not exist."
+
+        printf '%s\n' "$TESTING_CERT" > testing/newman.pem
+        # Never upload this file.
+        printf '%s\n' "$TESTING_KEY" > testing/newman.key
+        chmod 600 testing/newman.key
+
+        HOST="$(jq -r '.values[] | select(.key=="host") | .value' "$POSTMAN_ENV")"
+        PORT="$(jq -r '.values[] | select(.key=="port") | .value' "$POSTMAN_ENV")"
+        [ -n "$HOST" ] && [ "$HOST" != "null" ] || fail "Could not read host from ${POSTMAN_ENV}."
+        [ -n "$PORT" ] && [ "$PORT" != "null" ] || fail "Could not read port from ${POSTMAN_ENV}."
+
+        # Never upload this file: it embeds the passphrase in plain text.
+        jq -n \
+          --arg host "$HOST" \
+          --arg port "$PORT" \
+          --arg pass "$TESTING_PASS" \
+          '[{
+             name: "IZGW dev mTLS cert",
+             matches: ["https://\($host)/*", "https://\($host):\($port)/*"],
+             key: {src: "../newman.key"},
+             cert: {src: "../newman.pem"},
+             passphrase: $pass
+           }]' > testing/newman-cert-list.json
+        chmod 600 testing/newman-cert-list.json
+        echo "Client certificate scoped to ${HOST} and ${HOST}:${PORT}."
+
+    # Warm up on the same runner that runs the suite. The cluster is sticky by
+    # source address, so warmup and verification must share an address.
+    - name: Run warm up for functional testing
+      shell: bash
+      working-directory: ./testing/testdata
+      env:
+        COLLECTION: ${{ inputs.collection }}
+        POSTMAN_ENV: ${{ inputs.postman_environment }}
+        NODE_OPTIONS: "--require ${{ github.workspace }}/.github/scripts/enable-keepalive.js"
+      run: |
+        set -euo pipefail
+        mkdir -p ../logs
+        START="$(date +%s)"
+        newman run "${GITHUB_WORKSPACE}/${COLLECTION}" -n 1 --folder "Smoke Test" \
+          "--environment" "${GITHUB_WORKSPACE}/${POSTMAN_ENV}" \
+          "--ssl-extra-ca-certs" "${GITHUB_WORKSPACE}/testing/certs/izgwroot.pem" \
+          "--ssl-client-cert-list" "${GITHUB_WORKSPACE}/testing/newman-cert-list.json" \
+          "--insecure" -x > ../logs/warmup.log
+        echo "Warmed up for $(( $(date +%s) - START )) seconds."
+
+    # The authoritative suite. Build and timestamp come from the build job:
+    # this step has no target/ directory of its own. maven.yml reads
+    # target\classes\build.txt, and bash turns \c and \b into plain characters,
+    # so both values are empty there and the collection's `|| ".*"` makes the
+    # assertion match anything.
+    - name: Execute functional tests
+      id: functional-tests
+      shell: bash
+      working-directory: ./testing/testdata
+      env:
+        COLLECTION: ${{ inputs.collection }}
+        POSTMAN_ENV: ${{ inputs.postman_environment }}
+        EXPECTED_BUILD: ${{ inputs.expected_build }}
+        EXPECTED_TIMESTAMP: ${{ inputs.expected_timestamp }}
+        BEARER_TOKEN_EXPIRED: ${{ inputs.bearer_token_expired }}
+        BEARER_TOKEN_FOR_CICD: ${{ inputs.bearer_token_for_cicd }}
+        BEARER_TOKEN_REVOKED: ${{ inputs.bearer_token_revoked }}
+        BEARER_TOKEN_WRONG_SECRET: ${{ inputs.bearer_token_wrong_secret }}
+        BEARER_TOKEN_WRONG_ENV: ${{ inputs.bearer_token_wrong_env }}
+        BEARER_TOKEN_NO_USETYPE: ${{ inputs.bearer_token_no_usetype }}
+        NODE_OPTIONS: "--require ${{ github.workspace }}/.github/scripts/enable-keepalive.js"
+      run: |
+        set -euo pipefail
+
+        fail() { echo "::error::$1" >&2; exit 1; }
+
+        [ -n "$EXPECTED_BUILD" ] || fail "expected_build is empty. An empty value matches any deployed build."
+        [ -n "$EXPECTED_TIMESTAMP" ] || fail "expected_timestamp is empty. An empty value matches any deployed build."
+
+        CA="${GITHUB_WORKSPACE}/testing/certs/izgwroot.pem"
+        [ -f "$CA" ] || fail "The repository CA ${CA} does not exist."
+
+        newman run "${GITHUB_WORKSPACE}/${COLLECTION}" -n 1 --folder "Working" \
+          "--env-var" "build=${EXPECTED_BUILD}" \
+          "--env-var" "timestamp=${EXPECTED_TIMESTAMP}" \
+          "--environment" "${GITHUB_WORKSPACE}/${POSTMAN_ENV}" \
+          "--env-var" "bearer_token_expired=${BEARER_TOKEN_EXPIRED}" \
+          "--env-var" "bearer_token_for_cicd=${BEARER_TOKEN_FOR_CICD}" \
+          "--env-var" "bearer_token_revoked=${BEARER_TOKEN_REVOKED}" \
+          "--env-var" "bearer_token_wrong_secret=${BEARER_TOKEN_WRONG_SECRET}" \
+          "--env-var" "bearer_token_wrong_env=${BEARER_TOKEN_WRONG_ENV}" \
+          "--env-var" "bearer_token_no_usetype=${BEARER_TOKEN_NO_USETYPE}" \
+          "--ssl-extra-ca-certs" "$CA" \
+          "--ssl-client-cert-list" "${GITHUB_WORKSPACE}/testing/newman-cert-list.json" \
+          "--insecure" --reporters cli,junitfull \
+          --reporter-junitfull-export ../logs/integration-test.xml
+
+        xunit-viewer -r ../logs/integration-test.xml
+        cp index.html ../logs/integration-test.html
+
+    # ---------------------------------------------------------- diagnostics
+    # An allowlist, not the whole workspace. testing/newman.key holds a private
+    # key and testing/newman-cert-list.json embeds the passphrase.
+    - name: Upload test logs
+      uses: actions/upload-artifact@v7
+      if: ${{ always() }}
+      with:
+        name: TestLogs
+        path: ./testing/logs
+        if-no-files-found: warn
+
+    # ------------------------------------------------------------- cleanup
+    - name: Remove the ingress rule this run added
+      if: ${{ always() }}
+      shell: bash
+      env:
+        SECURITY_GROUP_ID: ${{ inputs.security_group_id }}
+      run: |
+        set -uo pipefail
+        if [ "${VERIFY_HUB_INGRESS_ADDED:-}" != "1" ]; then
+          echo "This run did not add an ingress rule. Nothing to remove."
+          exit 0
+        fi
+        if [ -z "${VERIFY_HUB_RUNNER_IP:-}" ]; then
+          echo "::error::An ingress rule was added but its address was not recorded. Remove it by hand from ${SECURITY_GROUP_ID}."
+          exit 1
+        fi
+        if aws ec2 revoke-security-group-ingress \
+            --group-id "$SECURITY_GROUP_ID" \
+            --protocol tcp --port 443 \
+            --cidr "${VERIFY_HUB_RUNNER_IP}/32"; then
+          echo "Removed ingress for ${VERIFY_HUB_RUNNER_IP}/32."
+        else
+          echo "::error::Could not remove ingress for ${VERIFY_HUB_RUNNER_IP}/32 from ${SECURITY_GROUP_ID}. Remove it by hand."
+          exit 1
+        fi
+
+    - name: Remove credential-bearing test files
+      if: ${{ always() }}
+      shell: bash
+      run: |
+        set -uo pipefail
+        rm -f testing/newman.key testing/newman-cert-list.json testing/newman.pem
+        echo "Removed the generated certificate, key, and certificate list."

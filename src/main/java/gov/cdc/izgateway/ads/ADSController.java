@@ -63,7 +63,7 @@ import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
-import javax.xml.ws.http.HTTPException;
+import gov.cdc.izgateway.common.HttpStatusException;
 
 /**
  * Controller for Automated Data Submission to CDC
@@ -733,7 +733,7 @@ public class ADSController implements ADSChecker {
 		if (e instanceof ExternalTokenStore.OAuthReportedHttpException oex) {
 			error = IOUtils.toInputStream(oex.getErrorBody(), StandardCharsets.UTF_8);
 			statusCode = oex.getStatusCode();
-		} else if (e instanceof HTTPException hex) {
+		} else if (e instanceof HttpStatusException hex) {
 			statusCode = hex.getStatusCode();
 		}
 		if (statusCode != 0) {

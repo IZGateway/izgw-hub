@@ -1,5 +1,5 @@
 name: 'ECS Wait Healthy'
-description: 'Wait for ECS tasks to be running and healthy in the ALB'
+description: 'Wait for ECS tasks to be running, stable, and healthy in the ALB, and confirm the serving image'
 
 inputs:
   cluster:
@@ -14,59 +14,182 @@ inputs:
   deployment_ids:
     description: 'Space-separated region=deployment_id pairs (from ecs-deploy output)'
     required: true
+  task_wait_attempts:
+    description: 'Bounded number of polls for the new tasks to appear'
+    default: '30'
+  task_wait_seconds:
+    description: 'Seconds between task-appearance polls'
+    default: '10'
+  expected_image_digest:
+    description: >
+      Optional registry manifest digest (sha256:...) that the Hub container must
+      be running. When set, a task without digest evidence or with a different
+      digest fails. Leave empty to skip the check.
+    default: ''
+
+outputs:
+  verified_task_ids:
+    description: 'Space-separated region=task_id,task_id pairs that passed every check'
+    value: ${{ steps.wait.outputs.verified_task_ids }}
+  hub_container:
+    description: 'Name of the load-balanced Hub container'
+    value: ${{ steps.wait.outputs.hub_container }}
 
 runs:
   using: 'composite'
   steps:
-    - shell: bash
+    - id: wait
+      shell: bash
+      env:
+        CLUSTER: ${{ inputs.cluster }}
+        SERVICE: ${{ inputs.service }}
+        REGIONS_INPUT: ${{ inputs.regions }}
+        DEPLOYMENT_IDS: ${{ inputs.deployment_ids }}
+        EXPECTED_DIGEST: ${{ inputs.expected_image_digest }}
+        TASK_ATTEMPTS: ${{ inputs.task_wait_attempts }}
+        TASK_DELAY: ${{ inputs.task_wait_seconds }}
       run: |
-        REGIONS="${{ inputs.regions }}"
-        if [ -z "$REGIONS" ]; then REGIONS="us-east-1"; fi
+        set -euo pipefail
 
-        # Phase 1: wait for all tasks to reach RUNNING state (parallel across regions)
+        fail() { echo "::error::$1" >&2; exit 1; }
+
+        REGIONS="${REGIONS_INPUT:-us-east-1}"
+
+        # Phase 1: every task of the recorded deployment reaches RUNNING.
         declare -A REGION_TASKS
         for region in $REGIONS; do
-          DEPLOYMENT_ID=$(echo "${{ inputs.deployment_ids }}" | tr ' ' '\n' | grep "^${region}=" | cut -d= -f2)
-          echo "[$region] Primary deployment ID: $DEPLOYMENT_ID"
-          TASKS=$(aws ecs list-tasks --region $region \
-            --cluster ${{ inputs.cluster }} \
-            --started-by $DEPLOYMENT_ID \
-            --query 'taskArns' --output text)
-          echo "[$region] Tasks: $TASKS"
-          if [ -z "$TASKS" ]; then
-            echo "[$region] ERROR: No tasks found for deployment $DEPLOYMENT_ID"
-            exit 1
+          DEPLOYMENT_ID="$(printf '%s' "$DEPLOYMENT_IDS" | tr ' ' '\n' | grep "^${region}=" | cut -d= -f2 || true)"
+          if [ -z "$DEPLOYMENT_ID" ]; then
+            fail "[$region] No deployment id was recorded for this region. The deploy step did not report one."
           fi
+          echo "[$region] Recorded deployment: $DEPLOYMENT_ID"
+          # ECS does not create the replacement tasks the moment
+          # update-service returns, so an empty list is "not yet", not
+          # "never". Poll for them to appear.
+          TASKS=""
+          attempt=1
+          while [ "$attempt" -le "${TASK_ATTEMPTS:-30}" ]; do
+            TASKS="$(aws ecs list-tasks --region "$region" \
+              --cluster "$CLUSTER" \
+              --started-by "$DEPLOYMENT_ID" \
+              --query 'taskArns' --output text)"
+            if [ -n "$TASKS" ] && [ "$TASKS" != "None" ]; then
+              break
+            fi
+            TASKS=""
+            echo "[$region] No tasks for $DEPLOYMENT_ID yet (attempt ${attempt}/${TASK_ATTEMPTS:-30})"
+            attempt=$((attempt + 1))
+            [ "$attempt" -le "${TASK_ATTEMPTS:-30}" ] && sleep "${TASK_DELAY:-10}"
+          done
+          if [ -z "$TASKS" ]; then
+            fail "[$region] No tasks appeared for deployment $DEPLOYMENT_ID within the bounded wait. The deployment did not start any tasks."
+          fi
+          echo "[$region] Tasks: $TASKS"
           REGION_TASKS[$region]="$TASKS"
-          aws ecs wait tasks-running --region $region \
-            --cluster ${{ inputs.cluster }} \
-            --tasks $TASKS
+          # shellcheck disable=SC2086 # intentional word splitting: several ARNs
+          aws ecs wait tasks-running --region "$region" --cluster "$CLUSTER" --tasks $TASKS
         done
-        echo "All tasks running. Waiting for ALB health checks..."
+        echo "All tasks running."
 
-        # Phase 2: wait for each task to register and pass ALB health checks.
-        # Task ARNs are already known (no race); describe-tasks on a specific ARN
-        # is deterministic once the task is in RUNNING state.
+        # Phase 2: the service settles. Without this the old deployment can
+        # still be draining while the checks below run.
+        for region in $REGIONS; do
+          echo "[$region] Waiting for the service to become stable"
+          aws ecs wait services-stable --region "$region" \
+            --cluster "$CLUSTER" --services "$SERVICE" ||
+            fail "[$region] ${SERVICE} did not become stable. The deployment did not settle."
+        done
+
+        # Phase 3: the recorded deployment is still the primary one. A rollback
+        # or a replacement by another run must not be read as success.
+        for region in $REGIONS; do
+          DEPLOYMENT_ID="$(printf '%s' "$DEPLOYMENT_IDS" | tr ' ' '\n' | grep "^${region}=" | cut -d= -f2)"
+          CURRENT_PRIMARY="$(aws ecs describe-services --region "$region" \
+            --cluster "$CLUSTER" --services "$SERVICE" \
+            --query 'services[0].deployments[?status==`PRIMARY`].id | [0]' --output text)"
+          if [ "$CURRENT_PRIMARY" != "$DEPLOYMENT_ID" ]; then
+            fail "[$region] The primary deployment is now ${CURRENT_PRIMARY} but this run deployed ${DEPLOYMENT_ID}. The candidate was replaced or rolled back."
+          fi
+          echo "[$region] Primary deployment still ${DEPLOYMENT_ID}."
+        done
+
+        # Identify the Hub container through the service's load-balancer
+        # mapping rather than assuming the first container in the task. The
+        # mapping is the only authoritative statement of which container serves
+        # traffic, and it stays correct if the task definition gains a sidecar.
+        # Filebeat and Metricbeat run inside this same container today, started
+        # by run.sh, so its log stream also carries their messages.
+        HUB_CONTAINER=""
+        VERIFIED=""
         for region in $REGIONS; do
           TASKS="${REGION_TASKS[$region]}"
-          TG_ARN=$(aws ecs describe-services --region $region \
-            --cluster ${{ inputs.cluster }} \
-            --services ${{ inputs.service }} \
-            --query 'services[0].loadBalancers[0].targetGroupArn' --output text)
-          TG_PORT=$(aws ecs describe-services --region $region \
-            --cluster ${{ inputs.cluster }} \
-            --services ${{ inputs.service }} \
-            --query 'services[0].loadBalancers[0].containerPort' --output text)
+          TG_ARN="$(aws ecs describe-services --region "$region" \
+            --cluster "$CLUSTER" --services "$SERVICE" \
+            --query 'services[0].loadBalancers[0].targetGroupArn' --output text)"
+          TG_PORT="$(aws ecs describe-services --region "$region" \
+            --cluster "$CLUSTER" --services "$SERVICE" \
+            --query 'services[0].loadBalancers[0].containerPort' --output text)"
+          LB_CONTAINER="$(aws ecs describe-services --region "$region" \
+            --cluster "$CLUSTER" --services "$SERVICE" \
+            --query 'services[0].loadBalancers[0].containerName' --output text)"
+          if [ -z "$LB_CONTAINER" ] || [ "$LB_CONTAINER" = "None" ]; then
+            fail "[$region] ${SERVICE} has no load-balancer container mapping, so the Hub container cannot be identified."
+          fi
+          HUB_CONTAINER="$LB_CONTAINER"
+          echo "[$region] Hub container is ${LB_CONTAINER} on port ${TG_PORT}."
+
+          REGION_IDS=""
           for TASK_ARN in $TASKS; do
-            TASK_IP=$(aws ecs describe-tasks --region $region \
-              --cluster ${{ inputs.cluster }} \
-              --tasks $TASK_ARN \
-              --query 'tasks[0].attachments[0].details[?name==`privateIPv4Address`].value' \
-              --output text)
-            echo "[$region] Waiting for $TASK_IP:$TG_PORT to be healthy in ALB"
-            aws elbv2 wait target-in-service --region $region \
-              --target-group-arn $TG_ARN \
-              --targets Id=$TASK_IP,Port=$TG_PORT
+            TASK_ID="${TASK_ARN##*/}"
+            TASK_JSON="$(aws ecs describe-tasks --region "$region" \
+              --cluster "$CLUSTER" --tasks "$TASK_ARN" --output json)"
+
+            # Phase 4: the Hub container runs the expected image.
+            if [ -n "$EXPECTED_DIGEST" ]; then
+              # Exactly one container must carry the load-balanced name. Zero
+              # means the task definition no longer matches the service mapping.
+              MATCHES="$(printf '%s' "$TASK_JSON" | jq \
+                --arg c "$LB_CONTAINER" \
+                '[.tasks[0].containers[] | select(.name==$c)] | length')"
+              if [ "$MATCHES" -ne 1 ]; then
+                fail "[$region] Task ${TASK_ID} has ${MATCHES} containers named ${LB_CONTAINER}. Exactly one was expected, so the serving image cannot be identified."
+              fi
+              ACTUAL_DIGEST="$(printf '%s' "$TASK_JSON" | jq -r \
+                --arg c "$LB_CONTAINER" \
+                '[.tasks[0].containers[] | select(.name==$c) | .imageDigest // empty] | first // ""')"
+              if [ -z "$ACTUAL_DIGEST" ]; then
+                fail "[$region] Task ${TASK_ID} reports no image digest for container ${LB_CONTAINER}. Missing digest evidence cannot confirm the candidate."
+              fi
+              if [ "$ACTUAL_DIGEST" != "$EXPECTED_DIGEST" ]; then
+                fail "[$region] Task ${TASK_ID} runs ${ACTUAL_DIGEST} but the candidate is ${EXPECTED_DIGEST}."
+              fi
+              echo "[$region] Task ${TASK_ID} runs the candidate image."
+            fi
+
+            # Phase 5: the task passes ALB health checks.
+            TASK_IP="$(printf '%s' "$TASK_JSON" | jq -r \
+              '.tasks[0].attachments[0].details[] | select(.name=="privateIPv4Address") | .value')"
+            if [ -z "$TASK_IP" ]; then
+              fail "[$region] Task ${TASK_ID} has no private address, so its ALB health cannot be checked."
+            fi
+            echo "[$region] Waiting for ${TASK_IP}:${TG_PORT} to be healthy in the ALB"
+            aws elbv2 wait target-in-service --region "$region" \
+              --target-group-arn "$TG_ARN" \
+              --targets "Id=${TASK_IP},Port=${TG_PORT}" ||
+              fail "[$region] Task ${TASK_ID} at ${TASK_IP}:${TG_PORT} did not become healthy in the ALB."
+
+            REGION_IDS="${REGION_IDS:+${REGION_IDS},}${TASK_ID}"
           done
+          VERIFIED="${VERIFIED}${region}=${REGION_IDS} "
         done
-        echo "All tasks healthy in ALB."
+
+        {
+          echo "verified_task_ids=${VERIFIED}"
+          echo "hub_container=${HUB_CONTAINER}"
+        } >> "$GITHUB_OUTPUT"
+
+        if [ -n "$EXPECTED_DIGEST" ]; then
+          echo "All tasks are stable, healthy, and running the expected image."
+        else
+          echo "All tasks are stable and healthy. No expected digest was supplied, so the serving image was not checked."
+        fi

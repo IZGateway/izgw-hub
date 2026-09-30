@@ -1,0 +1,62 @@
+# Hotfix release - cuts a patch release from a pre-existing hotfix/X.Y.Z branch.
+# Dispatch it from a hotfix/* branch created manually from trunk-branch.
+# It dispatches into _release_common.yml with release-type=hotfix.
+
+name: Release - Hotfix
+
+on:
+  workflow_dispatch:
+    inputs:
+      release-version:
+        description: 'Hotfix version (X.Y.Z, e.g., 2.17.1). Must match the hotfix/X.Y.Z branch this is dispatched from.'
+        required: true
+        type: string
+      base-branch:
+        description: 'Branch that receives the back-merge after release (default: develop). Use developalm during testing.'
+        required: false
+        type: string
+        default: 'develop'
+      trunk-branch:
+        description: 'Branch that receives the merge + tag (default: main). Use mainalm during testing.'
+        required: false
+        type: string
+        default: 'main'
+      dry-run:
+        description: 'Rehearsal. Skips the APHL push, publishes Pages under /test/, and drafts the GitHub Release. It STILL deploys to shared dev and writes real vX.Y.Z tags and GHCR/dev ECR images. Pick a version no planned release uses.'
+        required: false
+        type: boolean
+        default: false
+
+# Same shared-dev group as release.yml and maven.yml. See release.yml.
+concurrency:
+  group: dev
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  packages: write
+  pull-requests: read
+
+jobs:
+  # Cheap early failure before the release job starts. _release_common.yml
+  # repeats this check with the exact branch/version match.
+  validate-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate hotfix branch
+        run: |
+          if [[ "${GITHUB_REF}" != refs/heads/hotfix/* ]]; then
+            echo "::error::This workflow must be dispatched from a hotfix/* branch. Current ref: ${GITHUB_REF}"
+            exit 1
+          fi
+
+  hotfix:
+    needs: validate-branch
+    uses: ./.github/workflows/_release_common.yml
+    secrets: inherit
+    with:
+      release-version: ${{ inputs.release-version }}
+      release-type: hotfix
+      base-branch: ${{ inputs.base-branch }}
+      trunk-branch: ${{ inputs.trunk-branch }}
+      dry-run: ${{ inputs.dry-run }}

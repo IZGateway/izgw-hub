@@ -44,3 +44,11 @@ Multijurisdictional providers can query IISs to obtain a patient’s full immuni
 ### Benefits
 - Automated submission process simplifies connection and communication of reports to CDC reporting endpoints
 - Simplifies the onboarding process to CDC for reporting
+
+## Releasing
+
+Releases are cut by two manually dispatched GitHub Actions workflows,
+**Release - Standard** and **Release - Hotfix**. See
+[docs/release-automation.md](docs/release-automation.md) for the operator
+runbook: prerequisites, inputs, the release gates, dry-run behaviour, and
+failure recovery.

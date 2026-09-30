@@ -1,0 +1,58 @@
+# Standard release - cuts a new minor/patch release from base-branch.
+# Run this from the develop branch (or developalm for testing) via the Actions
+# UI / gh workflow run. It dispatches into _release_common.yml.
+
+name: Release - Standard
+
+on:
+  workflow_dispatch:
+    inputs:
+      release-version:
+        description: 'Release version (X.Y.Z, e.g., 2.17.0). Must not already be released.'
+        required: true
+        type: string
+      next-snapshot-version:
+        description: 'Next development version (X.Y.Z or X.Y.Z-IZGW-SNAPSHOT). Leave blank to auto-increment the minor version and reset the patch.'
+        required: false
+        type: string
+      base-branch:
+        description: 'Branch to cut the release from (default: develop). Use developalm during testing.'
+        required: false
+        type: string
+        default: 'develop'
+      trunk-branch:
+        description: 'Branch that receives the merge + tag (default: main). Use mainalm during testing.'
+        required: false
+        type: string
+        default: 'main'
+      dry-run:
+        description: 'Rehearsal. Skips the APHL push, publishes Pages under /test/, and drafts the GitHub Release. It STILL deploys to shared dev and writes real vX.Y.Z tags and GHCR/dev ECR images. Pick a version no planned release uses.'
+        required: false
+        type: boolean
+        default: false
+
+# Only one run may change the shared dev environment at a time. maven.yml uses
+# the same group. cancel-in-progress must stay false: a release in flight must
+# never be cancelled to let another run acquire dev.
+concurrency:
+  group: dev
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  packages: write
+  pull-requests: read
+
+jobs:
+  release:
+    # The workflow must be dispatched from the chosen base-branch.
+    # _release_common.yml enforces that and fails before any write.
+    uses: ./.github/workflows/_release_common.yml
+    secrets: inherit
+    with:
+      release-version: ${{ inputs.release-version }}
+      next-snapshot-version: ${{ inputs.next-snapshot-version }}
+      release-type: standard
+      base-branch: ${{ inputs.base-branch }}
+      trunk-branch: ${{ inputs.trunk-branch }}
+      dry-run: ${{ inputs.dry-run }}

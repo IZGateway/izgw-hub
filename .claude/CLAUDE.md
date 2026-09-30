@@ -121,20 +121,37 @@ Includes Filebeat and Metricbeat for Elastic logging.
 
 ---
 
-## CI/CD Pipeline (`maven.yml`)
+## CI/CD Pipeline
 
-- **build**: Compile, unit tests, OWASP check, Docker image → ECR (`izgateway-dev-phiz-web-ws`) + GHCR → deploy to ECS `izgateway-dev-izgateway-services`
-- **verify**: Wait for ECS stability → Newman integration tests against `dev.izgateway.org` → tag `:good` on success
-- **push-to-aphl**: Release branches only — promotes image to APHL environment
+### Development CI (`maven.yml`)
 
-Triggers: push/PR to `Release*`, push/PR to `develop`, nightly.
+- **build**: Compile, unit tests, OWASP check (blocks at CVSS ≥ 7), Docker image → ECR (`izgateway-dev-phiz-web-ws`) + GHCR → deploy to ECS `izgateway-dev-izgateway-services`
+- **verify**: Calls the shared `.github/actions/verify-hub` — ECS stability, image digest match, logging check, Newman against `dev.izgateway.org` → tag `:good` **by digest** on success
+
+Triggers: push/PR to `develop`, weekdays on schedule, manual dispatch.
+Development CI publishes no release and delivers nothing to APHL.
+
+### Releases (`release.yml`, `hotfix.yml`)
+
+Manually dispatched only. Both call `_release_common.yml`, which runs the same
+gates as dev CI and then merges to the trunk, tags `vX.Y.Z`, back-merges, and
+publishes Pages and a GitHub Release. Repository writes use the release GitHub
+App (`RELEASE_AUTOMATION_APP_ID` / `_APP_KEY`).
+
+`main.yml` is retired. `Release*` branches are frozen and reference-only — they
+trigger nothing and must not be used to cut releases.
+
+Operator runbook: `docs/release-automation.md`.
+
+> A `dry-run` is a rehearsal, not a simulation. It still deploys to shared dev
+> and writes real `vX.Y.Z` tags and registry images.
 
 ---
 
 ## Versioning
 
 - SNAPSHOT: `{version}-IZGW-SNAPSHOT`
-- Release: `{version}-IZGW-RELEASE` (auto-set on `Release*` branch push)
+- Release: `{version}-IZGW-RELEASE` (set by the release workflow, not by a branch push)
 - Image tags include run number: `{version}-SNAPSHOT-{run_number}`
 
 ---
