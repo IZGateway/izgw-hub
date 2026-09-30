@@ -204,6 +204,13 @@ other items need a deliberate decision.
 Retrying is safe. Input, dependency, and duplicate checks all run again, and a
 retry never adopts a previous run's objects as its own.
 
+One exception: a failure at or after the APHL delivery. The APHL repository uses
+immutable tags, so `izgw-hub-X.Y.Z` cannot be replaced. A retry rebuilds and
+produces a different digest, and that digest cannot reach APHL under the same
+tag. If the run summary reports an image already delivered to APHL, do not
+retry that version. Complete the release from the original candidate commit, or
+ask APHL to remove the tag first.
+
 ## Branches
 
 - `develop` — the base branch and the repository default.
