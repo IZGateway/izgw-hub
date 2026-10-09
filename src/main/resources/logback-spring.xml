@@ -27,6 +27,8 @@
             class="net.logstash.logback.encoder.LogstashEncoder">
             <!-- LogStash file reporting must never be pretty -->
             <includeContext>false</includeContext>
+            <!-- IGDD-3562: suppress marker names; they collide with Filebeat's environment tag -->
+            <includeTags>false</includeTags>
         </encoder>
         <file>${logging.file.path}/${logging.file.name}</file>
         <rollingPolicy
@@ -48,6 +50,8 @@
                 <encoder class="net.logstash.logback.encoder.LogstashEncoder">
                     <jsonGeneratorDecorator class="net.logstash.logback.decorate.PrettyPrintingJsonGeneratorDecorator" />
                     <includeContext>false</includeContext>
+                    <!-- IGDD-3562: suppress marker names; they collide with Filebeat's environment tag -->
+                    <includeTags>false</includeTags>
                  </encoder>
              </appender>
         </then>
@@ -55,6 +59,8 @@
             <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
                 <encoder class="net.logstash.logback.encoder.LogstashEncoder">
                     <includeContext>false</includeContext>
+                    <!-- IGDD-3562: suppress marker names; they collide with Filebeat's environment tag -->
+                    <includeTags>false</includeTags>
                  </encoder>
              </appender>
          </else>
