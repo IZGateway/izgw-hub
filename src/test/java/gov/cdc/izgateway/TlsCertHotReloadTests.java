@@ -24,9 +24,12 @@ import javax.net.ssl.X509TrustManager;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
+import org.springframework.boot.tomcat.TomcatConnectorCustomizer;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -76,6 +79,9 @@ class TlsCertHotReloadTests {
 
 	@Value("${local.server.port}")
 	int port;
+
+	@Autowired
+	ApplicationContext context;
 
 	@DynamicPropertySource
 	static void registerSslProperties(DynamicPropertyRegistry registry) throws Exception {
@@ -133,6 +139,13 @@ class TlsCertHotReloadTests {
 
 	@Test
 	void certificateRotationIsPickedUpWithoutRestart() throws Exception {
+		// TEMPORARY diagnostic (IGDD-3582): confirm sslReloadConnectorCustomizer is actually
+		// registered as a Spring bean and picked up by name -- ClientTlsSupportTests only
+		// proves the method's own logic in isolation, not that Spring wires this @Bean (on a
+		// @Component, not a @Configuration class) into the real TomcatServletWebServerFactory.
+		System.out.println("DIAGNOSTIC: registered TomcatConnectorCustomizer beans = "
+				+ java.util.Arrays.toString(context.getBeanNamesForType(TomcatConnectorCustomizer.class)));
+
 		BigInteger baselineServing = capturePresentedCertSerial();
 		assertEquals(initialCert.getSerialNumber(), baselineServing,
 				"Server should initially present the generated baseline certificate");
