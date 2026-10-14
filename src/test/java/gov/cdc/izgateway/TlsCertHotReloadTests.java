@@ -203,6 +203,15 @@ class TlsCertHotReloadTests {
 		conx.setRequestMethod(method);
 		conx.setSSLSocketFactory(clientSslSocketFactory());
 		conx.setHostnameVerifier((hostname, session) -> true);
+		// Disabling keep-alive is necessary but not sufficient on its own: Java's
+		// HttpURLConnection connection pool can reuse an already-established TLS connection
+		// (and its already-negotiated certificate) for a subsequent request to the same
+		// host:port even with a brand-new SSLSocketFactory -- pooling happens at the socket
+		// level, below where the factory comes into play. Confirmed every other link in the
+		// fix's chain works correctly (diagnostic logging showed customizeConnector running on
+		// the real connector, SslReloader.setProtocol/reloadSsl both firing with a non-null,
+		// matching protocol instance) before finding this.
+		conx.setRequestProperty("Connection", "close");
 		return conx;
 	}
 
