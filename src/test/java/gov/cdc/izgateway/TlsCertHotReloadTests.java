@@ -97,18 +97,19 @@ class TlsCertHotReloadTests {
 
 		String path = keystoreFile.getAbsolutePath();
 		String password = new String(STORE_PASSWORD);
-		// One generated file serves all four roles (server key/trust, client key/trust) --
-		// same pattern the real awsdev_keystore.bcfks uses for server key==trust by default;
-		// here we also point the client's outbound trust-store (normally a separate
-		// izgw_client_trust.bcfks) at it, since this test makes no outbound destination calls.
+		// Only override the SERVER's own key/trust store -- that's the embedded Tomcat
+		// listener identity this test actually exercises, and server.ssl.trust-store is what
+		// decides whether the server accepts our generated admin client cert during the mTLS
+		// handshake. Deliberately NOT touching client.ssl.* : that governs the application's
+		// own *outbound* calls to other services (e.g. ElasticStatusRepository's background
+		// status check), which have nothing to do with this test and must keep using their
+		// real, CI-provided configuration. Overriding it broke that unrelated subsystem in an
+		// earlier version of this test (Elastic Cloud's cert wasn't trusted by our narrow
+		// test keystore, which the app treated as fatal and shut down on).
 		registry.add("server.ssl.key-store", () -> path);
 		registry.add("server.ssl.key-store-password", () -> password);
 		registry.add("server.ssl.trust-store", () -> path);
 		registry.add("server.ssl.trust-store-password", () -> password);
-		registry.add("client.ssl.key-store", () -> path);
-		registry.add("client.ssl.key-store-password", () -> password);
-		registry.add("client.ssl.trust-store", () -> path);
-		registry.add("client.ssl.trust-store-password", () -> password);
 		// Disable the fixed-port (9081) management connector: Application.java only adds it
 		// when additionalPort >= 1. WebEnvironment.RANDOM_PORT only randomizes server.port,
 		// not this second connector, so with Surefire's reuseForks=true, this test's
