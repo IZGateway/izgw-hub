@@ -109,6 +109,12 @@ class TlsCertHotReloadTests {
 		registry.add("client.ssl.key-store-password", () -> password);
 		registry.add("client.ssl.trust-store", () -> path);
 		registry.add("client.ssl.trust-store-password", () -> password);
+		// Disable the fixed-port (9081) management connector: Application.java only adds it
+		// when additionalPort >= 1. WebEnvironment.RANDOM_PORT only randomizes server.port,
+		// not this second connector, so with Surefire's reuseForks=true, this test's
+		// separately-configured context collides with ApplicationTests' already-bound 9081
+		// in the same JVM (BindException: Address already in use). Not needed for this test.
+		registry.add("server.local-port", () -> "0");
 	}
 
 	@Test
