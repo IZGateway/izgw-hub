@@ -24,6 +24,7 @@ import javax.net.ssl.X509TrustManager;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -49,6 +50,7 @@ import org.springframework.test.context.DynamicPropertySource;
  * to boot the real application context -- this is not a new environmental requirement introduced
  * by this test.
  */
+@Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT, useMainMethod = SpringBootTest.UseMainMethod.ALWAYS)
 @ComponentScan("gov.cdc.izgateway")
@@ -143,8 +145,8 @@ class TlsCertHotReloadTests {
 		// registered as a Spring bean and picked up by name -- ClientTlsSupportTests only
 		// proves the method's own logic in isolation, not that Spring wires this @Bean (on a
 		// @Component, not a @Configuration class) into the real TomcatServletWebServerFactory.
-		System.out.println("DIAGNOSTIC: registered TomcatConnectorCustomizer beans = "
-				+ java.util.Arrays.toString(context.getBeanNamesForType(TomcatConnectorCustomizer.class)));
+		log.info("DIAGNOSTIC: registered TomcatConnectorCustomizer beans = {}",
+				java.util.Arrays.toString(context.getBeanNamesForType(TomcatConnectorCustomizer.class)));
 
 		BigInteger baselineServing = capturePresentedCertSerial();
 		assertEquals(initialCert.getSerialNumber(), baselineServing,
