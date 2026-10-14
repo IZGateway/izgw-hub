@@ -135,7 +135,7 @@ class TlsCertHotReloadTests {
 		// Force immediate detection rather than waiting out the background scheduler's
 		// monitoring period -- this is the behavior under test: reload without a restart.
 		int status = callAdminReload();
-		assertEquals(HttpURLConnection.HTTP_OK, status, "POST /rest/trust?reload=true should succeed as ADMIN");
+		assertEquals(HttpURLConnection.HTTP_OK, status, "GET /rest/trust?reload=true should succeed as ADMIN");
 
 		BigInteger postRotationServing = capturePresentedCertSerial();
 		assertNotEquals(baselineServing, postRotationServing,
@@ -158,7 +158,9 @@ class TlsCertHotReloadTests {
 
 	/** Calls the admin reload endpoint and returns the HTTP status code. */
 	private int callAdminReload() throws Exception {
-		HttpsURLConnection conx = openAdminConnection("POST", true);
+		// TrustController.getTrust() is @GetMapping, not @PostMapping -- reload=true is just
+		// a query param on the same GET endpoint.
+		HttpsURLConnection conx = openAdminConnection("GET", true);
 		try {
 			conx.connect();
 			return conx.getResponseCode();
