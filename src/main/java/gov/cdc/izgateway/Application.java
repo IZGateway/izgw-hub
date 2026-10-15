@@ -23,8 +23,6 @@ import org.apache.catalina.connector.Connector;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.coyote.ProtocolHandler;
-import org.apache.coyote.http11.AbstractHttp11Protocol;
 import org.apache.tomcat.util.net.NioEndpoint;
 import org.bouncycastle.crypto.CryptoServicesRegistrar;
 import org.bouncycastle.crypto.EntropySourceProvider;
@@ -72,8 +70,6 @@ import gov.cdc.izgateway.logging.markers.Markers2;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.repository.DynamoDbRepository;
 import gov.cdc.izgateway.security.Roles;
-import gov.cdc.izgateway.security.SSLImplementation;
-import gov.cdc.izgateway.security.ocsp.RevocationChecker;
 import gov.cdc.izgateway.service.IDestinationService;
 import gov.cdc.izgateway.service.IMessageHeaderService;
 import gov.cdc.izgateway.soap.mock.perf.PerformanceSimulatorMultiton;
@@ -143,18 +139,8 @@ public class Application implements WebMvcConfigurer {
 		abortOnNoIIS = abort;
 	}
 	
-	private static AbstractHttp11Protocol<?> protocol;
 	private static boolean skipMigrations = false;
-	
-	/**
-	 * Reload the SSL configuration for the HTTPS connector.
-	 */
-	public static void reloadSsl() {
-		if (protocol != null) {
-			protocol.reloadSslHostConfigs();
-		}
-	}
-	
+
 	/**
 	 * The main entry point for the application.
 	 * @param args	The command line arguments parsed by Spring Boot.
@@ -478,25 +464,6 @@ public class Application implements WebMvcConfigurer {
       configurer.ignoreAcceptHeader(true).defaultContentType(MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON, MediaType.ALL);
     }
     
-    @Bean
-    TomcatConnectorCustomizer reloadConnectorCustomizer(@Autowired RevocationChecker checker) {
-    	return Application::customizeConnector;
-    }
-    
-    /**
-     * Customize the Tomcat connector to use our SSLImplementation.
-     * @param connector The connector to customize.
-     */
-    public static void customizeConnector(Connector connector) {
-    	if ("https".equals(connector.getScheme())) {
-	    	ProtocolHandler p = connector.getProtocolHandler();
-	    	if (p instanceof AbstractHttp11Protocol<?> jsse) {
-	    		Application.protocol = jsse;
-	    		jsse.setSslImplementationName(SSLImplementation.class.getName());
-	    	}
-    	}
-    }
-
     /**
      * Enable local server management port.
      * @param additionalPort	The port to add.

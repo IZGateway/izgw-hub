@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import java.io.File;
 import java.math.BigInteger;
-import java.net.HttpURLConnection;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
@@ -14,24 +13,20 @@ import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
+import java.time.Duration;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.tomcat.TomcatConnectorCustomizer;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -40,9 +35,13 @@ import org.springframework.test.context.DynamicPropertySource;
  * IGDD-3582 regression test: proves the Hub's embedded HTTPS listener picks up a rotated
  * TLS certificate without a process restart.
  *
- * <p>Before the fix in izgw-core ({@code ClientTlsSupport.SslReloader.setProtocol(...)} never
- * called), this test fails: the certificate served after rotation + {@code /rest/trust?reload=true}
- * still matches the pre-rotation serial. After the fix, it passes.
+ * <p>The fix relies entirely on Spring Boot's own {@code SslBundle} machinery: the server's
+ * keystore/truststore are configured as a named bundle ({@code spring.ssl.bundle.jks.izgw-server})
+ * with {@code reload-on-update: true}, so Spring's {@code FileWatcher} detects the rotated file
+ * and pushes a rebuilt bundle into the live Tomcat connector automatically -- no custom reload
+ * code is involved. Before this fix (legacy {@code server.ssl.key-store} properties, which never
+ * get any update-handler wiring from Spring Boot), this test fails: the certificate served after
+ * rotation still matches the pre-rotation serial, even after waiting out the watch quiet period.
  *
  * <p>All key material is generated fresh by {@link TlsTestKeystoreFactory} for this run only --
  * nothing is checked into the repository, so there is nothing here that can expire.
@@ -51,7 +50,6 @@ import org.springframework.test.context.DynamicPropertySource;
  * to boot the real application context -- this is not a new environmental requirement introduced
  * by this test.
  */
-@Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT, useMainMethod = SpringBootTest.UseMainMethod.ALWAYS)
 @ComponentScan("gov.cdc.izgateway")
@@ -59,6 +57,10 @@ class TlsCertHotReloadTests {
 	private static final char[] STORE_PASSWORD = "password".toCharArray();
 	private static final String SERVER_ALIAS = "dev.izgateway.org";
 	private static final String CLIENT_ALIAS = "admin-client";
+	// Short enough to keep the test fast; long enough to comfortably exceed the debounce window
+	// Spring's FileWatcher applies after it sees the ENTRY_MODIFY/ENTRY_CREATE event.
+	private static final Duration WATCH_QUIET_PERIOD = Duration.ofMillis(200);
+	private static final Duration AWAIT_RELOAD_TIMEOUT = Duration.ofSeconds(10);
 
 	// NOT a JUnit @TempDir: that field is injected by a JUnit extension that runs at normal
 	// test-instance setup time, but @DynamicPropertySource runs earlier, during Spring's
@@ -83,9 +85,6 @@ class TlsCertHotReloadTests {
 	@Value("${local.server.port}")
 	int port;
 
-	@Autowired
-	ApplicationContext context;
-
 	@DynamicPropertySource
 	static void registerSslProperties(DynamicPropertyRegistry registry) throws Exception {
 		sslDir = Files.createTempDirectory("tls-hot-reload-test-").toFile();
@@ -106,40 +105,18 @@ class TlsCertHotReloadTests {
 
 		String path = keystoreFile.getAbsolutePath();
 		String password = new String(STORE_PASSWORD);
-		// Override the SERVER's own key/trust store -- that's the embedded Tomcat listener
-		// identity this test actually exercises, and server.ssl.trust-store is what decides
-		// whether the server accepts our generated admin client cert during the mTLS
-		// handshake.
-		registry.add("server.ssl.key-store", () -> path);
-		registry.add("server.ssl.key-store-password", () -> password);
-		registry.add("server.ssl.trust-store", () -> path);
-		registry.add("server.ssl.trust-store-password", () -> password);
-		// Also override client.ssl.key-store (but deliberately NOT client.ssl.trust-store --
-		// see below) to the same rotating file. ClientTlsSupport.updateTrust(), which
-		// GET /rest/trust?reload=true triggers, gates entirely on
-		// checkForUpdates() == clientKeyStore.isOutOfDate() || clientTrustStore.isOutOfDate().
-		// It never looks at server.ssl.* at all. Rotating only the server file (as an earlier
-		// version of this test did) is therefore invisible to updateTrust() -- it never fires
-		// any trust-changed listener, so SslReloader.reloadSsl() is never called regardless of
-		// whether the fix itself works. Pointing client.ssl.key-store at the same file makes
-		// the rotation detectable via clientKeyStore.isOutOfDate().
-		// client.ssl.trust-store governs the application's own *outbound* calls to other
-		// services (e.g. ElasticStatusRepository's background status check) and must keep
-		// using its real, CI-provided configuration -- overriding it broke that unrelated
-		// subsystem in an earlier version of this test (Elastic Cloud's cert wasn't trusted by
-		// our narrow test keystore, which the app treated as fatal and shut down on).
-		// client.ssl.key-store is only the client's own outbound identity (not used to
-		// validate remote servers like Elastic Cloud), so overriding just this one is safe.
-		registry.add("client.ssl.key-store", () -> path);
-		registry.add("client.ssl.key-store-password", () -> password);
-		// Explicitly set the key alias. Without it, CI logs showed the *initial* load working
-		// (apparently falling back to "the only/first entry" when no alias is configured) but
-		// reloadSslHostConfigs() specifically looking for alias "tomcat" (Tomcat's own default)
-		// and finding nothing -- "Certificate details not available as the certificate chain
-		// returned from the SSLContext was empty". That left the reloaded SSLContext broken/
-		// empty, so the original SSLContext kept serving -- which is exactly what made this
-		// look like a hot-reload failure when every other part of the fix was already correct.
-		registry.add("server.ssl.key-alias", () -> SERVER_ALIAS);
+		// Point the izgw-server SslBundle (type/provider already set to bcfks/BCFIPS in
+		// application.yml) at this test's generated, ephemeral keystore file. This is the
+		// SERVER's own identity AND the truststore deciding whether the generated admin client
+		// cert is accepted during the mTLS handshake -- both live in the same bcfks file here.
+		registry.add("spring.ssl.bundle.jks.izgw-server.keystore.location", () -> "file:" + path);
+		registry.add("spring.ssl.bundle.jks.izgw-server.keystore.password", () -> password);
+		registry.add("spring.ssl.bundle.jks.izgw-server.truststore.location", () -> "file:" + path);
+		registry.add("spring.ssl.bundle.jks.izgw-server.truststore.password", () -> password);
+		registry.add("spring.ssl.bundle.jks.izgw-server.key.alias", () -> SERVER_ALIAS);
+		// Shorten Spring's FileWatcher debounce window (default 10s) so the test doesn't have to
+		// wait that long for the rotated file to be picked up.
+		registry.add("spring.ssl.bundle.watch.file.quiet-period", WATCH_QUIET_PERIOD::toString);
 		// Disable the fixed-port (9081) management connector: Application.java only adds it
 		// when additionalPort >= 1. WebEnvironment.RANDOM_PORT only randomizes server.port,
 		// not this second connector, so with Surefire's reuseForks=true, this test's
@@ -150,13 +127,6 @@ class TlsCertHotReloadTests {
 
 	@Test
 	void certificateRotationIsPickedUpWithoutRestart() throws Exception {
-		// TEMPORARY diagnostic (IGDD-3582): confirm sslReloadConnectorCustomizer is actually
-		// registered as a Spring bean and picked up by name -- ClientTlsSupportTests only
-		// proves the method's own logic in isolation, not that Spring wires this @Bean (on a
-		// @Component, not a @Configuration class) into the real TomcatServletWebServerFactory.
-		log.info("DIAGNOSTIC: registered TomcatConnectorCustomizer beans = {}",
-				java.util.Arrays.toString(context.getBeanNamesForType(TomcatConnectorCustomizer.class)));
-
 		BigInteger baselineServing = capturePresentedCertSerial();
 		assertEquals(initialCert.getSerialNumber(), baselineServing,
 				"Server should initially present the generated baseline certificate");
@@ -169,30 +139,38 @@ class TlsCertHotReloadTests {
 		TlsTestKeystoreFactory.writeKeyStore(rotated, tempFile, STORE_PASSWORD);
 		Files.move(tempFile.toPath(), keystoreFile.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
 
-		// Force immediate detection rather than waiting out the background scheduler's
-		// monitoring period -- this is the behavior under test: reload without a restart.
-		int status = callAdminReload();
-		assertEquals(HttpURLConnection.HTTP_OK, status, "GET /rest/trust?reload=true should succeed as ADMIN");
-
-		BigInteger postRotationServing = capturePresentedCertSerial();
+		// No manual trigger exists anymore (or is needed): Spring's own FileWatcher picks up the
+		// ENTRY_MODIFY event asynchronously, waits out its debounce window, then rebuilds and
+		// pushes the bundle into the live connector on its own. Poll until that has happened.
+		BigInteger postRotationServing = awaitRotatedCertificate(baselineServing);
 		assertNotEquals(baselineServing, postRotationServing,
 				"Server is still presenting the pre-rotation certificate -- hot reload did not happen");
 		assertEquals(rotatedCert.getSerialNumber(), postRotationServing,
 				"Server should now present the rotated certificate's exact serial");
 	}
 
+	/**
+	 * Polls the server's presented certificate until it differs from {@code baseline} or
+	 * {@link #AWAIT_RELOAD_TIMEOUT} elapses, returning whatever the last observed serial was.
+	 */
+	private BigInteger awaitRotatedCertificate(BigInteger baseline) throws Exception {
+		long deadline = System.nanoTime() + AWAIT_RELOAD_TIMEOUT.toNanos();
+		BigInteger lastSeen;
+		do {
+			lastSeen = capturePresentedCertSerial();
+			if (!lastSeen.equals(baseline)) {
+				return lastSeen;
+			}
+			Thread.sleep(100);
+		} while (System.nanoTime() < deadline);
+		return lastSeen;
+	}
+
 	/** Connects over TLS and returns the serial number of the certificate the server presents. */
 	private BigInteger capturePresentedCertSerial() throws Exception {
-		HttpsURLConnection conx = openAdminConnection("GET", false);
+		HttpsURLConnection conx = openAdminConnection();
 		try {
 			conx.connect();
-			// TEMPORARY diagnostic (IGDD-3582): log the negotiated session's ID and cipher to
-			// rule out (or confirm) TLS session resumption -- if two calls report the same
-			// session ID, the handshake was resumed rather than repeated, which would explain
-			// seeing the same certificate even if the server has genuinely already reloaded.
-			SSLSession session = conx.getSSLSession().orElseThrow();
-			log.info("DIAGNOSTIC: sessionId={}, cipherSuite={}, isValid={}",
-					bytesToHex(session.getId()), conx.getCipherSuite(), session.isValid());
 			Certificate[] serverCerts = conx.getServerCertificates();
 			return ((X509Certificate) serverCerts[0]).getSerialNumber();
 		} finally {
@@ -200,41 +178,17 @@ class TlsCertHotReloadTests {
 		}
 	}
 
-	private static String bytesToHex(byte[] bytes) {
-		StringBuilder sb = new StringBuilder();
-		for (byte b : bytes) {
-			sb.append(String.format("%02x", b));
-		}
-		return sb.toString();
-	}
-
-	/** Calls the admin reload endpoint and returns the HTTP status code. */
-	private int callAdminReload() throws Exception {
-		// TrustController.getTrust() is @GetMapping, not @PostMapping -- reload=true is just
-		// a query param on the same GET endpoint.
-		HttpsURLConnection conx = openAdminConnection("GET", true);
-		try {
-			conx.connect();
-			return conx.getResponseCode();
-		} finally {
-			conx.disconnect();
-		}
-	}
-
-	private HttpsURLConnection openAdminConnection(String method, boolean reload) throws Exception {
-		URI uri = URI.create("https://localhost:" + port + "/rest/trust?reload=" + reload);
+	private HttpsURLConnection openAdminConnection() throws Exception {
+		URI uri = URI.create("https://localhost:" + port + "/rest/trust");
 		HttpsURLConnection conx = (HttpsURLConnection) uri.toURL().openConnection();
-		conx.setRequestMethod(method);
+		conx.setRequestMethod("GET");
 		conx.setSSLSocketFactory(clientSslSocketFactory());
 		conx.setHostnameVerifier((hostname, session) -> true);
 		// Disabling keep-alive is necessary but not sufficient on its own: Java's
 		// HttpURLConnection connection pool can reuse an already-established TLS connection
 		// (and its already-negotiated certificate) for a subsequent request to the same
 		// host:port even with a brand-new SSLSocketFactory -- pooling happens at the socket
-		// level, below where the factory comes into play. Confirmed every other link in the
-		// fix's chain works correctly (diagnostic logging showed customizeConnector running on
-		// the real connector, SslReloader.setProtocol/reloadSsl both firing with a non-null,
-		// matching protocol instance) before finding this.
+		// level, below where the factory comes into play.
 		conx.setRequestProperty("Connection", "close");
 		return conx;
 	}

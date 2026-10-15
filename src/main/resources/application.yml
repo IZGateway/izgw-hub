@@ -18,6 +18,25 @@ spring:
         max-file-size: 15GB
         max-request-size: 15GB
 
+    ssl:
+        bundle:
+            jks:
+                izgw-server:
+                    # IGDD-3582: reload-on-update lets Spring Boot's own FileWatcher pick up
+                    # a rotated keystore file and push it into the live Tomcat connector
+                    # without a process restart.
+                    reload-on-update: true
+                    keystore:
+                        location: ${PHIZ_CRYPTO_STORE_KEY_TOMCAT_SERVER_FILE:${security.ssl-path}/awsdev_keystore.bcfks}
+                        password: ${COMMON_PASS:}
+                        provider: BCFIPS
+                        type: bcfks
+                    truststore:
+                        location: ${PHIZ_CRYPTO_STORE_TRUST_TOMCAT_SERVER_FILE:${security.ssl-path}/awsdev_keystore.bcfks}
+                        password: ${COMMON_PASS:}
+                        provider: BCFIPS
+                        type: bcfks
+
 # uncomment these lines to use local DynamoDb instance for testing 
 # amazon:
 #    dynamodb:
@@ -71,7 +90,11 @@ server:
     ssl:
         enabled: true
         client-auth: need
-        enabled-protocols: 
+        # Keystore/truststore come from the named bundle below (spring.ssl.bundle.jks.izgw-server),
+        # which Spring Boot's own FileWatcher hot-reloads on change -- see reload-on-update there.
+        # IGDD-3582: legacy key-store/trust-store properties here never get reload wiring at all.
+        bundle: izgw-server
+        enabled-protocols:
             - TLSv1.2
             - TLSv1.3
         ciphers:
@@ -85,18 +108,6 @@ server:
             - TLS_DHE_DSS_WITH_AES_256_GCM_SHA384
             - TLS_DHE_RSA_WITH_AES_128_GCM_SHA256
             - TLS_DHE_DSS_WITH_AES_128_GCM_SHA256
-
-
-        
-        key-store: ${PHIZ_CRYPTO_STORE_KEY_TOMCAT_SERVER_FILE:${security.ssl-path}/awsdev_keystore.bcfks}
-        key-store-password: ${COMMON_PASS:}
-        key-store-provider: BCFIPS
-        key-store-type: bcfks
-
-        trust-store: ${PHIZ_CRYPTO_STORE_TRUST_TOMCAT_SERVER_FILE:${security.ssl-path}/awsdev_keystore.bcfks}
-        trust-store-password: ${COMMON_PASS:}
-        trust-store-provider: BCFIPS
-        trust-store-type: bcfks
 
 client:
     contentType: text/xml
