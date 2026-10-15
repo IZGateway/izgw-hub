@@ -18,6 +18,7 @@ import java.security.cert.X509Certificate;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
@@ -185,11 +186,26 @@ class TlsCertHotReloadTests {
 		HttpsURLConnection conx = openAdminConnection("GET", false);
 		try {
 			conx.connect();
+			// TEMPORARY diagnostic (IGDD-3582): log the negotiated session's ID and cipher to
+			// rule out (or confirm) TLS session resumption -- if two calls report the same
+			// session ID, the handshake was resumed rather than repeated, which would explain
+			// seeing the same certificate even if the server has genuinely already reloaded.
+			SSLSession session = conx.getSSLSession().orElseThrow();
+			log.info("DIAGNOSTIC: sessionId={}, cipherSuite={}, isValid={}",
+					bytesToHex(session.getId()), conx.getCipherSuite(), session.isValid());
 			Certificate[] serverCerts = conx.getServerCertificates();
 			return ((X509Certificate) serverCerts[0]).getSerialNumber();
 		} finally {
 			conx.disconnect();
 		}
+	}
+
+	private static String bytesToHex(byte[] bytes) {
+		StringBuilder sb = new StringBuilder();
+		for (byte b : bytes) {
+			sb.append(String.format("%02x", b));
+		}
+		return sb.toString();
 	}
 
 	/** Calls the admin reload endpoint and returns the HTTP status code. */
