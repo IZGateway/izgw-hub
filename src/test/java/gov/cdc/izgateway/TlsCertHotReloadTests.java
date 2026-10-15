@@ -131,6 +131,14 @@ class TlsCertHotReloadTests {
 		// validate remote servers like Elastic Cloud), so overriding just this one is safe.
 		registry.add("client.ssl.key-store", () -> path);
 		registry.add("client.ssl.key-store-password", () -> password);
+		// Explicitly set the key alias. Without it, CI logs showed the *initial* load working
+		// (apparently falling back to "the only/first entry" when no alias is configured) but
+		// reloadSslHostConfigs() specifically looking for alias "tomcat" (Tomcat's own default)
+		// and finding nothing -- "Certificate details not available as the certificate chain
+		// returned from the SSLContext was empty". That left the reloaded SSLContext broken/
+		// empty, so the original SSLContext kept serving -- which is exactly what made this
+		// look like a hot-reload failure when every other part of the fix was already correct.
+		registry.add("server.ssl.key-alias", () -> SERVER_ALIAS);
 		// Disable the fixed-port (9081) management connector: Application.java only adds it
 		// when additionalPort >= 1. WebEnvironment.RANDOM_PORT only randomizes server.port,
 		// not this second connector, so with Surefire's reuseForks=true, this test's
