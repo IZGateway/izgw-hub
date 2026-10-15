@@ -160,7 +160,11 @@ class TlsCertHotReloadTests {
 			if (!lastSeen.equals(baseline)) {
 				return lastSeen;
 			}
-			Thread.sleep(100);
+			// Deliberate poll-with-sleep, not a lint oversight: Spring's FileWatcher reacts to
+			// the rotated file asynchronously on its own thread, so there is nothing to await()
+			// on directly from here (no CompletableFuture/latch is exposed), and pulling in a
+			// dedicated polling library for this one call isn't proportionate.
+			Thread.sleep(100); // NOSONAR java:S2925 -- see comment above
 		} while (System.nanoTime() < deadline);
 		return lastSeen;
 	}
@@ -187,8 +191,11 @@ class TlsCertHotReloadTests {
 		// connects via loopback ("localhost") to exercise the embedded listener directly -- the
 		// hostname mismatch is expected and intentional, not a validation gap. Which certificate
 		// is presented is validated against a pinned trust store (see clientSslSocketFactory()),
-		// not left open to "any" certificate.
-		conx.setHostnameVerifier((hostname, session) -> true); // lgtm[java/unsafe-hostname-verification]
+		// not left open to "any" certificate. CodeQL's inline `lgtm[rule-id]` suppression comment
+		// does not take effect under this repo's CodeQL setup (confirmed: the alert stayed open
+		// with the comment in place) -- dismissed via the code-scanning alerts API instead
+		// (reason: "used in tests"), not via a comment here.
+		conx.setHostnameVerifier((hostname, session) -> true);
 		// Disabling keep-alive is necessary but not sufficient on its own: Java's
 		// HttpURLConnection connection pool can reuse an already-established TLS connection
 		// (and its already-negotiated certificate) for a subsequent request to the same

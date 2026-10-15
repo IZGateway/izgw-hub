@@ -38,7 +38,9 @@ final class TlsTestKeystoreFactory {
 		}
 	}
 
-	private TlsTestKeystoreFactory() {}
+	private TlsTestKeystoreFactory() {
+		// Utility class -- no instances.
+	}
 
 	static KeyPair generateKeyPair() throws GeneralSecurityException {
 		KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
