@@ -19,8 +19,7 @@ import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
+import javax.net.ssl.TrustManagerFactory;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -183,7 +182,13 @@ class TlsCertHotReloadTests {
 		HttpsURLConnection conx = (HttpsURLConnection) uri.toURL().openConnection();
 		conx.setRequestMethod("GET");
 		conx.setSSLSocketFactory(clientSslSocketFactory());
-		conx.setHostnameVerifier((hostname, session) -> true);
+		// Hostname verification is deliberately disabled: the generated test certs use the
+		// real server DN (CN=dev.izgateway.org, matching design.md Decision 5) while this test
+		// connects via loopback ("localhost") to exercise the embedded listener directly -- the
+		// hostname mismatch is expected and intentional, not a validation gap. Which certificate
+		// is presented is validated against a pinned trust store (see clientSslSocketFactory()),
+		// not left open to "any" certificate.
+		conx.setHostnameVerifier((hostname, session) -> true); // lgtm[java/unsafe-hostname-verification]
 		// Disabling keep-alive is necessary but not sufficient on its own: Java's
 		// HttpURLConnection connection pool can reuse an already-established TLS connection
 		// (and its already-negotiated certificate) for a subsequent request to the same
@@ -195,8 +200,9 @@ class TlsCertHotReloadTests {
 
 	/**
 	 * Builds an in-memory (PKCS12, never written to disk) client SSLContext presenting the
-	 * generated admin test cert, and trusting any server certificate -- validating which
-	 * certificate the server presents is this test's job, not the test client's.
+	 * generated admin test cert, and trusting exactly the two certificates this run generated
+	 * (baseline + rotated) -- pinned, not a blanket trust-all TrustManager, since the point of
+	 * this test is to observe which of those two specific certificates the server presents.
 	 */
 	private SSLSocketFactory clientSslSocketFactory() throws Exception {
 		KeyStore clientKs = KeyStore.getInstance("PKCS12");
@@ -205,21 +211,15 @@ class TlsCertHotReloadTests {
 		KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
 		kmf.init(clientKs, STORE_PASSWORD);
 
-		TrustManager trustAll = new X509TrustManager() {
-			@Override
-			public void checkClientTrusted(X509Certificate[] chain, String authType) {}
-
-			@Override
-			public void checkServerTrusted(X509Certificate[] chain, String authType) {}
-
-			@Override
-			public X509Certificate[] getAcceptedIssuers() {
-				return new X509Certificate[0];
-			}
-		};
+		KeyStore trustKs = KeyStore.getInstance("PKCS12");
+		trustKs.load(null, null);
+		trustKs.setCertificateEntry("initial", initialCert);
+		trustKs.setCertificateEntry("rotated", rotatedCert);
+		TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+		tmf.init(trustKs);
 
 		SSLContext sslContext = SSLContext.getInstance("TLS");
-		sslContext.init(kmf.getKeyManagers(), new TrustManager[] { trustAll }, new SecureRandom());
+		sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), new SecureRandom());
 		return sslContext.getSocketFactory();
 	}
 }
