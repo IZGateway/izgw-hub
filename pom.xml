@@ -97,10 +97,6 @@
         <dependency>
             <groupId>gov.cdc.izgw</groupId>
             <artifactId>izgw-core</artifactId>
-            <!-- TEMPORARY, for IGDD-3582 verification only: pinned to the fix branch's
-                 snapshot (izgw-core#104) so this PR's CI can exercise the real fix
-                 end-to-end. Reset to a real released izgw-core version once that PR is
-                 merged. Do not let this ship as-is. -->
             <version>3.9.1-SNAPSHOT</version>
             <exclusions>
                 <!-- izgw-core includes both webflux-ui and webmvc-ui; hub is a Tomcat/MVC app.
