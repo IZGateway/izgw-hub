@@ -89,6 +89,10 @@ class TlsCertHotReloadTests {
 		sslDir = Files.createTempDirectory("tls-hot-reload-test-").toFile();
 		sslDir.deleteOnExit();
 		keystoreFile = new File(sslDir, "awsdev_keystore.bcfks");
+		// File.deleteOnExit() on a directory only succeeds if it is empty at shutdown, so the
+		// keystore file living inside sslDir needs its own registration too, or the directory
+		// (and this file) leak on every run.
+		keystoreFile.deleteOnExit();
 
 		clientKeyPair = TlsTestKeystoreFactory.generateKeyPair();
 		clientCert = TlsTestKeystoreFactory.selfSign(clientKeyPair, TlsTestKeystoreFactory.clientDn(), 30);
@@ -153,10 +157,13 @@ class TlsCertHotReloadTests {
 	 * {@link #AWAIT_RELOAD_TIMEOUT} elapses, returning whatever the last observed serial was.
 	 */
 	private BigInteger awaitRotatedCertificate(BigInteger baseline) throws Exception {
+		// Built once and reused for every poll: none of this client-side material changes
+		// between iterations, only the server's presented certificate does.
+		SSLSocketFactory clientFactory = clientSslSocketFactory();
 		long deadline = System.nanoTime() + AWAIT_RELOAD_TIMEOUT.toNanos();
 		BigInteger lastSeen;
 		do {
-			lastSeen = capturePresentedCertSerial();
+			lastSeen = capturePresentedCertSerial(clientFactory);
 			if (!lastSeen.equals(baseline)) {
 				return lastSeen;
 			}
@@ -171,7 +178,11 @@ class TlsCertHotReloadTests {
 
 	/** Connects over TLS and returns the serial number of the certificate the server presents. */
 	private BigInteger capturePresentedCertSerial() throws Exception {
-		HttpsURLConnection conx = openAdminConnection();
+		return capturePresentedCertSerial(clientSslSocketFactory());
+	}
+
+	private BigInteger capturePresentedCertSerial(SSLSocketFactory clientFactory) throws Exception {
+		HttpsURLConnection conx = openAdminConnection(clientFactory);
 		try {
 			conx.connect();
 			Certificate[] serverCerts = conx.getServerCertificates();
@@ -181,11 +192,11 @@ class TlsCertHotReloadTests {
 		}
 	}
 
-	private HttpsURLConnection openAdminConnection() throws Exception {
+	private HttpsURLConnection openAdminConnection(SSLSocketFactory clientFactory) throws Exception {
 		URI uri = URI.create("https://localhost:" + port + "/rest/trust");
 		HttpsURLConnection conx = (HttpsURLConnection) uri.toURL().openConnection();
 		conx.setRequestMethod("GET");
-		conx.setSSLSocketFactory(clientSslSocketFactory());
+		conx.setSSLSocketFactory(clientFactory);
 		// Hostname verification is deliberately disabled: the generated test certs use the
 		// real server DN (CN=dev.izgateway.org, matching design.md Decision 5) while this test
 		// connects via loopback ("localhost") to exercise the embedded listener directly -- the
@@ -206,26 +217,32 @@ class TlsCertHotReloadTests {
 	}
 
 	/**
-	 * Builds an in-memory (PKCS12, never written to disk) client SSLContext presenting the
+	 * Builds an in-memory (BCFKS, never written to disk) client SSLContext presenting the
 	 * generated admin test cert, and trusting exactly the two certificates this run generated
 	 * (baseline + rotated) -- pinned, not a blanket trust-all TrustManager, since the point of
 	 * this test is to observe which of those two specific certificates the server presents.
+	 * Uses BCFKS/BCFIPS and explicitly pins the BCJSSE provider, matching this project's
+	 * {@code ClientTlsSupport} and the rest of this diff's key material -- not just FIPS-policy
+	 * consistency, but because the real {@code Application} this test boots sets
+	 * {@code org.bouncycastle.fips.approved_only=true} process-wide, so an unpinned
+	 * {@code getInstance(...)} call could otherwise silently resolve through a FIPS-restricted
+	 * provider depending on this JVM's provider registration order.
 	 */
 	private SSLSocketFactory clientSslSocketFactory() throws Exception {
-		KeyStore clientKs = KeyStore.getInstance("PKCS12");
+		KeyStore clientKs = KeyStore.getInstance("BCFKS", TlsTestKeystoreFactory.BCFIPS);
 		clientKs.load(null, null);
 		clientKs.setKeyEntry("client", clientKeyPair.getPrivate(), STORE_PASSWORD, new Certificate[] { clientCert });
-		KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+		KeyManagerFactory kmf = KeyManagerFactory.getInstance("PKIX", "BCJSSE");
 		kmf.init(clientKs, STORE_PASSWORD);
 
-		KeyStore trustKs = KeyStore.getInstance("PKCS12");
+		KeyStore trustKs = KeyStore.getInstance("BCFKS", TlsTestKeystoreFactory.BCFIPS);
 		trustKs.load(null, null);
 		trustKs.setCertificateEntry("initial", initialCert);
 		trustKs.setCertificateEntry("rotated", rotatedCert);
-		TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+		TrustManagerFactory tmf = TrustManagerFactory.getInstance("PKIX", "BCJSSE");
 		tmf.init(trustKs);
 
-		SSLContext sslContext = SSLContext.getInstance("TLS");
+		SSLContext sslContext = SSLContext.getInstance("TLSv1.2", "BCJSSE");
 		sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), new SecureRandom());
 		return sslContext.getSocketFactory();
 	}
