@@ -34,13 +34,21 @@ import org.springframework.test.context.DynamicPropertySource;
  * IGDD-3582 regression test: proves the Hub's embedded HTTPS listener picks up a rotated
  * TLS certificate without a process restart.
  *
- * <p>The fix relies entirely on Spring Boot's own {@code SslBundle} machinery: the server's
- * keystore/truststore are configured as a named bundle ({@code spring.ssl.bundle.jks.izgw-server})
- * with {@code reload-on-update: true}, so Spring's {@code FileWatcher} detects the rotated file
- * and pushes a rebuilt bundle into the live Tomcat connector automatically -- no custom reload
- * code is involved. Before this fix (legacy {@code server.ssl.key-store} properties, which never
- * get any update-handler wiring from Spring Boot), this test fails: the certificate served after
- * rotation still matches the pre-rotation serial, even after waiting out the watch quiet period.
+ * <p>The fix is {@code ServerSslBundleReloader} (izgw-core), scheduled by izgw-hub's
+ * {@code ServerSslBundleReloadScheduler}: it polls the server's {@code SslBundle} keystore file's
+ * modification time and, on a change, rebuilds the bundle and pushes it via
+ * {@code SslBundleRegistry.updateBundle(...)}. This is deliberately <em>not</em> Spring Boot's own
+ * {@code reload-on-update} (disabled in {@code application.yml}): that mechanism is backed by
+ * {@code java.nio.file.WatchService} (inotify on Linux), which does not detect a change written
+ * by a different client to a network filesystem -- and this application's keystore lives on an
+ * AWS EFS (NFSv4.1) volume in every real deployment. Polling file mtime is the same mechanism
+ * already proven correct on EFS for the outbound client TLS path.
+ *
+ * <p>This test forces an immediate reload via {@code GET /rest/trust?reload=true} (mTLS, admin
+ * client cert) rather than waiting out the scheduler's own poll interval -- that endpoint calls
+ * the exact same {@code ServerSslBundleReloader.reloadIfChanged()} method the scheduler does, just
+ * synchronously and on demand. Before this fix, this test fails: the certificate served after
+ * rotation still matches the pre-rotation serial.
  *
  * <p>All key material is generated fresh by {@link TlsTestKeystoreFactory} for this run only --
  * nothing is checked into the repository, so there is nothing here that can expire.
@@ -56,10 +64,9 @@ class TlsCertHotReloadTests {
 	private static final char[] STORE_PASSWORD = "password".toCharArray();
 	private static final String SERVER_ALIAS = "dev.izgateway.org";
 	private static final String CLIENT_ALIAS = "admin-client";
-	// Short enough to keep the test fast; long enough to comfortably exceed the debounce window
-	// Spring's FileWatcher applies after it sees the ENTRY_MODIFY/ENTRY_CREATE event.
-	private static final Duration WATCH_QUIET_PERIOD = Duration.ofMillis(200);
-	private static final Duration AWAIT_RELOAD_TIMEOUT = Duration.ofSeconds(10);
+	// The forced reload=true trigger is synchronous, so this is defensive insurance against any
+	// subtle propagation delay on the very next connection, not the primary detection mechanism.
+	private static final Duration AWAIT_RELOAD_TIMEOUT = Duration.ofSeconds(2);
 
 	// NOT a JUnit @TempDir: that field is injected by a JUnit extension that runs at normal
 	// test-instance setup time, but @DynamicPropertySource runs earlier, during Spring's
@@ -117,9 +124,6 @@ class TlsCertHotReloadTests {
 		registry.add("spring.ssl.bundle.jks.izgw-server.truststore.location", () -> "file:" + path);
 		registry.add("spring.ssl.bundle.jks.izgw-server.truststore.password", () -> password);
 		registry.add("spring.ssl.bundle.jks.izgw-server.key.alias", () -> SERVER_ALIAS);
-		// Shorten Spring's FileWatcher debounce window (default 10s) so the test doesn't have to
-		// wait that long for the rotated file to be picked up.
-		registry.add("spring.ssl.bundle.watch.file.quiet-period", WATCH_QUIET_PERIOD::toString);
 		// Disable the fixed-port (9081) management connector: Application.java only adds it
 		// when additionalPort >= 1. WebEnvironment.RANDOM_PORT only randomizes server.port,
 		// not this second connector, so with Surefire's reuseForks=true, this test's
@@ -130,7 +134,11 @@ class TlsCertHotReloadTests {
 
 	@Test
 	void certificateRotationIsPickedUpWithoutRestart() throws Exception {
-		BigInteger baselineServing = capturePresentedCertSerial();
+		// Built once and reused throughout: none of this client-side material changes, only the
+		// server's presented certificate does.
+		SSLSocketFactory clientFactory = clientSslSocketFactory();
+
+		BigInteger baselineServing = capturePresentedCertSerial(clientFactory, false);
 		assertEquals(initialCert.getSerialNumber(), baselineServing,
 				"Server should initially present the generated baseline certificate");
 
@@ -142,10 +150,16 @@ class TlsCertHotReloadTests {
 		TlsTestKeystoreFactory.writeKeyStore(rotated, tempFile, STORE_PASSWORD);
 		Files.move(tempFile.toPath(), keystoreFile.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
 
-		// No manual trigger exists anymore (or is needed): Spring's own FileWatcher picks up the
-		// ENTRY_MODIFY event asynchronously, waits out its debounce window, then rebuilds and
-		// pushes the bundle into the live connector on its own. Poll until that has happened.
-		BigInteger postRotationServing = awaitRotatedCertificate(baselineServing);
+		// Force an immediate reload via the same endpoint an operator would use, rather than
+		// waiting out ServerSslBundleReloadScheduler's own poll interval -- this call is
+		// synchronous, so the live connector is already updated by the time it returns.
+		BigInteger forcedServing = capturePresentedCertSerial(clientFactory, true);
+		assertEquals(rotatedCert.getSerialNumber(), forcedServing,
+				"Server should present the rotated certificate's exact serial immediately after the forced reload");
+
+		// Defensive insurance, not the primary detection mechanism: confirm it still holds on a
+		// fresh connection shortly after.
+		BigInteger postRotationServing = awaitRotatedCertificate(clientFactory, baselineServing);
 		assertNotEquals(baselineServing, postRotationServing,
 				"Server is still presenting the pre-rotation certificate -- hot reload did not happen");
 		assertEquals(rotatedCert.getSerialNumber(), postRotationServing,
@@ -156,33 +170,26 @@ class TlsCertHotReloadTests {
 	 * Polls the server's presented certificate until it differs from {@code baseline} or
 	 * {@link #AWAIT_RELOAD_TIMEOUT} elapses, returning whatever the last observed serial was.
 	 */
-	private BigInteger awaitRotatedCertificate(BigInteger baseline) throws Exception {
-		// Built once and reused for every poll: none of this client-side material changes
-		// between iterations, only the server's presented certificate does.
-		SSLSocketFactory clientFactory = clientSslSocketFactory();
+	private BigInteger awaitRotatedCertificate(SSLSocketFactory clientFactory, BigInteger baseline) throws Exception {
 		long deadline = System.nanoTime() + AWAIT_RELOAD_TIMEOUT.toNanos();
 		BigInteger lastSeen;
 		do {
-			lastSeen = capturePresentedCertSerial(clientFactory);
+			lastSeen = capturePresentedCertSerial(clientFactory, false);
 			if (!lastSeen.equals(baseline)) {
 				return lastSeen;
 			}
-			// Deliberate poll-with-sleep, not a lint oversight: Spring's FileWatcher reacts to
-			// the rotated file asynchronously on its own thread, so there is nothing to await()
-			// on directly from here (no CompletableFuture/latch is exposed), and pulling in a
-			// dedicated polling library for this one call isn't proportionate.
-			Thread.sleep(100); // NOSONAR java:S2925 -- see comment above
+			Thread.sleep(100); // NOSONAR java:S2925 -- short, bounded defensive poll; see javadoc above
 		} while (System.nanoTime() < deadline);
 		return lastSeen;
 	}
 
-	/** Connects over TLS and returns the serial number of the certificate the server presents. */
-	private BigInteger capturePresentedCertSerial() throws Exception {
-		return capturePresentedCertSerial(clientSslSocketFactory());
-	}
-
-	private BigInteger capturePresentedCertSerial(SSLSocketFactory clientFactory) throws Exception {
-		HttpsURLConnection conx = openAdminConnection(clientFactory);
+	/**
+	 * Connects over TLS and returns the serial number of the certificate the server presents.
+	 * @param reload if true, calls {@code GET /rest/trust?reload=true} to force an immediate
+	 * reload before capturing; if false, captures without forcing anything.
+	 */
+	private BigInteger capturePresentedCertSerial(SSLSocketFactory clientFactory, boolean reload) throws Exception {
+		HttpsURLConnection conx = openAdminConnection(clientFactory, reload);
 		try {
 			conx.connect();
 			Certificate[] serverCerts = conx.getServerCertificates();
@@ -192,8 +199,8 @@ class TlsCertHotReloadTests {
 		}
 	}
 
-	private HttpsURLConnection openAdminConnection(SSLSocketFactory clientFactory) throws Exception {
-		URI uri = URI.create("https://localhost:" + port + "/rest/trust");
+	private HttpsURLConnection openAdminConnection(SSLSocketFactory clientFactory, boolean reload) throws Exception {
+		URI uri = URI.create("https://localhost:" + port + "/rest/trust?reload=" + reload);
 		HttpsURLConnection conx = (HttpsURLConnection) uri.toURL().openConnection();
 		conx.setRequestMethod("GET");
 		conx.setSSLSocketFactory(clientFactory);
