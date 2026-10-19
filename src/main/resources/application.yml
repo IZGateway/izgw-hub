@@ -119,8 +119,9 @@ server:
         enabled: true
         client-auth: need
         # Keystore/truststore, and enabled-protocols/ciphers (see options: there), come from the
-        # named bundle below (spring.ssl.bundle.jks.izgw-server), which Spring Boot's own
-        # FileWatcher hot-reloads on change -- see reload-on-update there. IGDD-3582: legacy
+        # named bundle below (spring.ssl.bundle.jks.izgw-server). Reload is handled by polling file
+        # mtime (ServerSslBundleReloader/ServerSslBundleReloadScheduler), not Spring's own
+        # reload-on-update -- see that property's comment there for why. IGDD-3582: legacy
         # key-store/trust-store/enabled-protocols/ciphers properties here get no reload wiring,
         # and are ignored entirely once a bundle is selected (Tomcat's SslConnectorCustomizer
         # reads protocols/ciphers only from the bundle's own options when server.ssl.bundle is set).
