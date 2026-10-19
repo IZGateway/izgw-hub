@@ -142,6 +142,14 @@ class TlsCertHotReloadTests {
 		assertEquals(initialCert.getSerialNumber(), baselineServing,
 				"Server should initially present the generated baseline certificate");
 
+		// ServerSslBundleReloader detects a change by comparing file mtime, not content, to the
+		// mtime it saw when the bundle was primed at context startup. Some filesystems (confirmed
+		// on CI) only have whole-second mtime resolution, so rotating immediately after startup
+		// can land in the same tick and look unchanged even though the content genuinely differs.
+		// Sleep past the worst-case 1s granularity before rotating -- this is about the test's own
+		// timing assumptions, not the reload mechanism's production latency.
+		Thread.sleep(1100); // NOSONAR java:S2925 -- see comment above
+
 		// Rotate: atomically replace the live keystore file with the "renewed" one -- a plain
 		// local file operation, exactly as design.md Decision 5 describes.
 		KeyStore rotated = TlsTestKeystoreFactory.newServerKeyStore(SERVER_ALIAS, rotatedKeyPair, rotatedCert, STORE_PASSWORD);
