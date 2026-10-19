@@ -199,7 +199,14 @@ class TlsCertHotReloadTests {
 	private BigInteger capturePresentedCertSerial(SSLSocketFactory clientFactory, boolean reload) throws Exception {
 		HttpsURLConnection conx = openAdminConnection(clientFactory, reload);
 		try {
+			// HttpsURLConnection.connect() only establishes the TLS handshake -- it does not force
+			// the HTTP request itself to be sent. getResponseCode() does, and when reload=true that
+			// is the whole point of this call: without it, TrustController.getTrust() never runs.
 			conx.connect();
+			int status = conx.getResponseCode();
+			if (status != 200) {
+				throw new AssertionError("GET /rest/trust?reload=" + reload + " returned HTTP " + status);
+			}
 			Certificate[] serverCerts = conx.getServerCertificates();
 			return ((X509Certificate) serverCerts[0]).getSerialNumber();
 		} finally {
