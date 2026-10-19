@@ -1,7 +1,10 @@
 package gov.cdc.izgateway;
 
 import gov.cdc.izgateway.common.HealthService;
+import gov.cdc.izgateway.logging.RequestContext;
 import gov.cdc.izgateway.logging.event.Health;
+import gov.cdc.izgateway.logging.event.IHealth;
+import gov.cdc.izgateway.logging.event.PublicHealth;
 import gov.cdc.izgateway.logging.info.HostInfo;
 import gov.cdc.izgateway.security.AccessControlRegistry;
 import gov.cdc.izgateway.security.Roles;
@@ -93,17 +96,24 @@ public class AppController {
 	
 	/**
 	 * Report the health of the application, returning 200 OK and the health status.
-	 * @return The Health of the application.
+	 * <p>
+	 * The detail depends on the caller. An authenticated caller gets the full {@link Health}
+	 * report; an unauthenticated one gets only {@link PublicHealth}. See
+	 * {@link #healthFor(Health)}.
+	 *
+	 * @return The Health of the application, at the detail the caller is entitled to.
 	 */
 	@Operation(summary = "Get the health status of the application",
-			description = "Returns the health status of the application")
+			description = "Returns the health status of the application. Authenticated callers "
+					+ "receive the full report; unauthenticated callers receive only the health "
+					+ "flag and its timestamp.")
 	@ApiResponse(responseCode = "200", description = "Success", 
 		content = @Content(mediaType = "application/json",
-			schema = @Schema(implementation=Health.class))
+			schema = @Schema(anyOf = {Health.class, PublicHealth.class}))
 	)
 	@GetMapping("/health")
-	public Health getHealth() {
-		return HealthService.getHealth();
+	public IHealth getHealth() {
+		return healthFor(HealthService.getHealth());
 	}
 	
 	/**
@@ -124,25 +134,57 @@ public class AppController {
 	/**
 	 * Report the health of the application, returning 200 OK if the application is health,
 	 * or 503 Service unavailable if it is not.
+	 * <p>
+	 * The status code does not depend on the caller, so load balancer and container probes
+	 * are unaffected. Only the body varies; see {@link #healthFor(Health)}.
+	 *
 	 * @param resp	The response.
-	 * @return The Health of the application.
+	 * @return The Health of the application, at the detail the caller is entitled to.
 	 */
 	@Operation(summary = "Get the health status of the application",
-			description = "Returns the health status of the application")
+			description = "Returns the health status of the application. Authenticated callers "
+					+ "receive the full report; unauthenticated callers receive only the health "
+					+ "flag and its timestamp.")
 	@ApiResponse(responseCode = "200", description = "Application is Healthy", 
 	    content = @Content(mediaType = "application/json", 
-	     schema = @Schema(implementation = Health.class))
+	     schema = @Schema(anyOf = {Health.class, PublicHealth.class}))
 	)
 	@ApiResponse(responseCode = "503", description = "Application is Not Healthy", 
 	    content = @Content(mediaType = "application/json", 
-	     schema = @Schema(implementation = Health.class))
+	     schema = @Schema(anyOf = {Health.class, PublicHealth.class}))
 	)
 	@GetMapping("/healthy")
-	public Health isHealthy(HttpServletResponse resp) {
+	public IHealth isHealthy(HttpServletResponse resp) {
 		Health h = HealthService.getHealth();
 		if (!h.isHealthy()) {
 			resp.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
 		}
-		return h;
+		return healthFor(h);
+	}
+
+	/**
+	 * Choose how much of a health report the current caller may see.
+	 * <p>
+	 * {@code /rest/health} and {@code /rest/healthy} are reachable without a credential because
+	 * the ALB target group and the container health check probe them with none
+	 * ({@code AccessControlValve.isHealthCheck}). The full {@link Health} report names the host,
+	 * the server, the ingress and egress addresses, the region, the database, the build, and the
+	 * access control action in force, which is more than an anonymous caller should learn
+	 * (IGDD-3178, CWE-200).
+	 * <p>
+	 * The test is positive -- disclose only on a principal that reports itself authenticated --
+	 * so a missing principal, or a principal type added later, withholds detail by default.
+	 * <p>
+	 * Note that this is a narrower test than the valve's authorization check, and deliberately so.
+	 * A request from localhost with no certificate is granted ADMIN by the valve but leaves no
+	 * principal on the thread, so it gets the public view: an operator probing from inside the
+	 * container sees only the liveness answer. Widening the test to match the valve would put the
+	 * full report behind nothing more than a source address.
+	 *
+	 * @param h	the full health report
+	 * @return the full report for an authenticated caller, otherwise the public view
+	 */
+	private IHealth healthFor(Health h) {
+		return RequestContext.isAuthenticated() ? h : h.publicView();
 	}
 }
