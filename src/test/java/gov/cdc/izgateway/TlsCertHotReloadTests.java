@@ -13,7 +13,6 @@ import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
-import java.time.Duration;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.KeyManagerFactory;
@@ -47,8 +46,14 @@ import org.springframework.test.context.DynamicPropertySource;
  * <p>This test forces an immediate reload via {@code GET /rest/trust?reload=true} (mTLS, admin
  * client cert) rather than waiting out the scheduler's own poll interval -- that endpoint calls
  * the exact same {@code ServerSslBundleReloader.reloadIfChanged()} method the scheduler does, just
- * synchronously and on demand. Before this fix, this test fails: the certificate served after
- * rotation still matches the pre-rotation serial.
+ * synchronously and on demand. Observing the result requires a *separate*, fresh connection: the
+ * triggering request's own TLS handshake (and therefore the certificate
+ * {@code HttpsURLConnection.getServerCertificates()} would report on it) completes before the
+ * server processes the request and reloads, so that connection can never see its own effect --
+ * confirmed the hard way in CI (Tomcat's own connector log showed the reload succeeding with the
+ * correct rotated serial, while the triggering connection's handshake still reported the old one).
+ * Before this fix, this test fails: the certificate served after rotation still matches the
+ * pre-rotation serial.
  *
  * <p>All key material is generated fresh by {@link TlsTestKeystoreFactory} for this run only --
  * nothing is checked into the repository, so there is nothing here that can expire.
@@ -64,9 +69,6 @@ class TlsCertHotReloadTests {
 	private static final char[] STORE_PASSWORD = "password".toCharArray();
 	private static final String SERVER_ALIAS = "dev.izgateway.org";
 	private static final String CLIENT_ALIAS = "admin-client";
-	// The forced reload=true trigger is synchronous, so this is defensive insurance against any
-	// subtle propagation delay on the very next connection, not the primary detection mechanism.
-	private static final Duration AWAIT_RELOAD_TIMEOUT = Duration.ofSeconds(2);
 
 	// NOT a JUnit @TempDir: that field is injected by a JUnit extension that runs at normal
 	// test-instance setup time, but @DynamicPropertySource runs earlier, during Spring's
@@ -138,7 +140,7 @@ class TlsCertHotReloadTests {
 		// server's presented certificate does.
 		SSLSocketFactory clientFactory = clientSslSocketFactory();
 
-		BigInteger baselineServing = capturePresentedCertSerial(clientFactory, false);
+		BigInteger baselineServing = capturePresentedCertSerial(clientFactory);
 		assertEquals(initialCert.getSerialNumber(), baselineServing,
 				"Server should initially present the generated baseline certificate");
 
@@ -159,15 +161,13 @@ class TlsCertHotReloadTests {
 		Files.move(tempFile.toPath(), keystoreFile.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
 
 		// Force an immediate reload via the same endpoint an operator would use, rather than
-		// waiting out ServerSslBundleReloadScheduler's own poll interval -- this call is
-		// synchronous, so the live connector is already updated by the time it returns.
-		BigInteger forcedServing = capturePresentedCertSerial(clientFactory, true);
-		assertEquals(rotatedCert.getSerialNumber(), forcedServing,
-				"Server should present the rotated certificate's exact serial immediately after the forced reload");
+		// waiting out ServerSslBundleReloadScheduler's own poll interval. This call's own TLS
+		// handshake -- and therefore the certificate it observes -- completes before the server
+		// processes the request and reloads, so it cannot see the new certificate on itself; it
+		// only needs to succeed. A separate, fresh connection is what actually observes the result.
+		triggerReload(clientFactory);
 
-		// Defensive insurance, not the primary detection mechanism: confirm it still holds on a
-		// fresh connection shortly after.
-		BigInteger postRotationServing = awaitRotatedCertificate(clientFactory, baselineServing);
+		BigInteger postRotationServing = capturePresentedCertSerial(clientFactory);
 		assertNotEquals(baselineServing, postRotationServing,
 				"Server is still presenting the pre-rotation certificate -- hot reload did not happen");
 		assertEquals(rotatedCert.getSerialNumber(), postRotationServing,
@@ -175,38 +175,29 @@ class TlsCertHotReloadTests {
 	}
 
 	/**
-	 * Polls the server's presented certificate until it differs from {@code baseline} or
-	 * {@link #AWAIT_RELOAD_TIMEOUT} elapses, returning whatever the last observed serial was.
+	 * Calls {@code GET /rest/trust?reload=true} (mTLS, admin client cert) and asserts it
+	 * succeeded. {@code HttpsURLConnection.connect()} only establishes the TLS handshake -- it
+	 * does not force the HTTP request itself to be sent. {@code getResponseCode()} does, and that
+	 * is the whole point of this call: without it, {@code TrustController.getTrust()} never runs.
 	 */
-	private BigInteger awaitRotatedCertificate(SSLSocketFactory clientFactory, BigInteger baseline) throws Exception {
-		long deadline = System.nanoTime() + AWAIT_RELOAD_TIMEOUT.toNanos();
-		BigInteger lastSeen;
-		do {
-			lastSeen = capturePresentedCertSerial(clientFactory, false);
-			if (!lastSeen.equals(baseline)) {
-				return lastSeen;
-			}
-			Thread.sleep(100); // NOSONAR java:S2925 -- short, bounded defensive poll; see javadoc above
-		} while (System.nanoTime() < deadline);
-		return lastSeen;
-	}
-
-	/**
-	 * Connects over TLS and returns the serial number of the certificate the server presents.
-	 * @param reload if true, calls {@code GET /rest/trust?reload=true} to force an immediate
-	 * reload before capturing; if false, captures without forcing anything.
-	 */
-	private BigInteger capturePresentedCertSerial(SSLSocketFactory clientFactory, boolean reload) throws Exception {
-		HttpsURLConnection conx = openAdminConnection(clientFactory, reload);
+	private void triggerReload(SSLSocketFactory clientFactory) throws Exception {
+		HttpsURLConnection conx = openAdminConnection(clientFactory, true);
 		try {
-			// HttpsURLConnection.connect() only establishes the TLS handshake -- it does not force
-			// the HTTP request itself to be sent. getResponseCode() does, and when reload=true that
-			// is the whole point of this call: without it, TrustController.getTrust() never runs.
 			conx.connect();
 			int status = conx.getResponseCode();
 			if (status != 200) {
-				throw new AssertionError("GET /rest/trust?reload=" + reload + " returned HTTP " + status);
+				throw new AssertionError("GET /rest/trust?reload=true returned HTTP " + status);
 			}
+		} finally {
+			conx.disconnect();
+		}
+	}
+
+	/** Connects over TLS (a fresh handshake) and returns the serial number of the certificate the server presents. */
+	private BigInteger capturePresentedCertSerial(SSLSocketFactory clientFactory) throws Exception {
+		HttpsURLConnection conx = openAdminConnection(clientFactory, false);
+		try {
+			conx.connect();
 			Certificate[] serverCerts = conx.getServerCertificates();
 			return ((X509Certificate) serverCerts[0]).getSerialNumber();
 		} finally {
