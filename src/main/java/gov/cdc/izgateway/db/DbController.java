@@ -1,11 +1,7 @@
 package gov.cdc.izgateway.db;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.InetAddress;
-import java.net.URI;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Date;
@@ -24,7 +20,6 @@ import jakarta.annotation.security.RolesAllowed;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.MDC;
@@ -84,7 +79,6 @@ import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
 import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
 import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 
-import javax.net.ssl.HttpsURLConnection;
 
 /**
  * This class provides APIs to manage information in the database.
@@ -139,7 +133,14 @@ public class DbController {
 			this.certificateStatusService = certificateStatusService;
 		}
 		
-		private void refresh() {
+		/**
+		 * Reload every cached configuration value from the datastore.
+		 * <p>
+		 * Public so that {@link RefreshQueueService} can apply a received refresh command
+		 * without calling back into {@link DbController}. See IGDD-3599.
+		 * </p>
+		 */
+		public void refresh() {
 			this.messageHeaderService.refresh();
 			this.destinationService.refresh();
 			this.accessControlService.refresh();
@@ -222,13 +223,14 @@ public class DbController {
 		DbControllerConfiguration config,
 		AccessControlRegistry registry,
 		ApiKeyPrincipalProvider apiKeyPrincipalProvider,
+		RefreshQueueService refreshQueueService,
 		DynamoDbClient ddbClient,
 		DynamoDbConfig ddbConfig
 	) {
 		this.hostService = hostService;
 		this.configuration = config;
 		this.apiKeyPrincipalProvider = apiKeyPrincipalProvider;
-		this.refreshQueueService = new RefreshQueueService(REGION, this, apiKeyPrincipalProvider);
+		this.refreshQueueService = refreshQueueService;
 		this.ddbClient = ddbClient;
 		this.tableName = ddbConfig.getDynamodbTable();
 		registry.register(this);
@@ -416,61 +418,27 @@ public class DbController {
       refresh();
       String me = SystemUtils.getHostname();
       String eventId = MDC.get(EventId.EVENTID_KEY);
-      results.put(REGION + ":" + me, "OK (Local)");
+      // Apply the local reset in process, then record what actually happened. Calling
+      // /rest/reset over HTTP would recurse once that endpoint distributes. IGDD-3599.
+      String localStatus = "OK (Local)";
       if (reset) {
-         resetEndpoint(me, eventId);
+         String applied = refreshQueueService.applyLocally(
+            new RefreshRequest(true, eventId, me, REGION, null, false, null));
+         localStatus = "OK".equals(applied) ? "OK (Local)" : applied;
       }
+      results.put(REGION + ":" + me, localStatus);
       if ("true".equalsIgnoreCase(all)) {
-         Map<String, String> hostsAndRegions = hostService.getHostsAndRegion();
-         for (Map.Entry<String, String> entry : hostsAndRegions.entrySet()) {
-            String hostName = entry.getKey();
-            String hostRegion = entry.getValue();
-            if (hostName.equalsIgnoreCase(me) && hostRegion.equals(REGION)) {
-			   continue;  // Yeah, we already did that one
-			}
-            RefreshRequest request = new RefreshRequest(reset, eventId, me, REGION, jti);
-            refreshQueueService.sendRefreshMessage(request, results, hostName, hostRegion);
-         }
-         refreshQueueService.awaitRefreshResponses(eventId, results);
+         refreshQueueService.distribute(new RefreshRequest(reset, eventId, me, REGION, jti), results);
       }
       return results;
     }
 
-	protected String resetEndpoint(String host, String eventId) {
-		return callEndpoint(host, eventId, "/rest/reset");
-	}
-
-	private String callEndpoint(String host, String eventId, String path) {
-		URL url = null;
-		MDC.put(EventId.EVENTID_KEY, eventId);
-		try {
-			url = new URI("https://" + host + path).toURL();
-			HttpsURLConnection con = (HttpsURLConnection) url.openConnection();
-
-			if (con.getResponseCode() != HttpStatus.OK.value()) {
-				String error = getErrorStream(con);
-				log.warn("Could not call {}{}: {}", host, path, error);
-				return con.getResponseCode() + error;
-			}
-			return "OK";
-		} catch (Exception e) {
-			log.error(Markers2.append(e), "Exception calling {}{}: {}", host, path, e.getMessage());
-			return Objects.toString(e.getMessage(), "NOT OK");
-		}
-	}
-
-	private String getErrorStream(HttpsURLConnection con) {
-		String error = " ";
-		try {
-			InputStream is = con.getErrorStream();
-			if (is != null) {
-				error += IOUtils.toString(is, StandardCharsets.UTF_8);
-			}
-		} catch (IOException ex) {
-			// Ignore it
-		}
-		return error;
-	}
+	// resetEndpoint and callEndpoint were removed by IGDD-3599. They posted to this
+	// instance's own /rest/reset over HTTPS, which failed on every host: the default
+	// HttpURLConnection method is GET, and /rest/reset is registered for POST only, so
+	// AccessControlValve rejected it as an unknown path. Both call sites discarded the
+	// result and reported OK. Commands are now applied in process by
+	// RefreshQueueService.applyLocally.
 
 	@Operation(summary = "Report the running host instances and their regions.",
 			description = "Refresh the list of running hosts.  Returns a list region:hostname values.")

@@ -1,8 +1,14 @@
 package gov.cdc.izgateway.db;
 
 import org.apache.commons.lang3.SystemUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import gov.cdc.izgateway.db.DbController.DbControllerConfiguration;
 import gov.cdc.izgateway.hub.security.ApiKeyPrincipalProvider;
 import gov.cdc.izgateway.logging.markers.Markers2;
+import gov.cdc.izgateway.repository.IHostRepository;
+import gov.cdc.izgateway.service.impl.EndpointStatusService;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sqs.SqsClient;
@@ -25,13 +31,16 @@ import java.util.concurrent.Executors;
  *
  */
 @Slf4j
+@Service
 public class RefreshQueueService {
     private static final String WAITING_FOR_RESPONSE = "Waiting for Response";
     private static final Map<String, SqsClient> sqsClients = new TreeMap<>();
     private static final List<String> createdQueues = new java.util.ArrayList<>();
 	private static final String region = Objects.toString(System.getenv("AWS_REGION"), "unknown");
-    private final DbController dbController;
+    private final DbControllerConfiguration configuration;
+    private final EndpointStatusService endpointStatusService;
     private final ApiKeyPrincipalProvider apiKeyPrincipalProvider;
+    private final IHostRepository hostService;
     private static MessageAttributeValue newStringAttribute(String value) {
     	return MessageAttributeValue.builder().stringValue(value).dataType("String").build();
     }
@@ -56,18 +65,40 @@ public class RefreshQueueService {
      * @param senderHost	The host sending the request
      * @param senderRegion	The region of the host sending the request
      */
-    public record RefreshRequest(boolean reset, String eventId, String senderHost, String senderRegion, String jti) {
+    public record RefreshRequest(boolean reset, String eventId, String senderHost, String senderRegion, String jti,
+    		boolean refreshConfig, String destId) {
     	public static String MESSAGE = "RefreshRequest";
+
+        /**
+         * Create a request that refreshes configuration, matching the original five-field
+         * shape. Retained so that existing callers and tests do not change.
+         *
+         * @param reset	Clear circuit breakers as well as refreshing
+         * @param eventId	Correlation identifier
+         * @param senderHost	Host to reply to
+         * @param senderRegion	Region of the host to reply to
+         * @param jti	Credential to evict, or null
+         */
+        public RefreshRequest(boolean reset, String eventId, String senderHost, String senderRegion, String jti) {
+        	this(reset, eventId, senderHost, senderRegion, jti, true, null);
+        }
+
         @Override
         public String toString() {
             return String.format(
-                "{\"reset\":%b,\"eventId\":\"%s\",\"senderHost\":\"%s\",\"senderRegion\":\"%s\",\"jti\":\"%s\"}",
-                reset, Objects.toString(eventId, ""), Objects.toString(senderHost, ""), Objects.toString(senderRegion, ""), Objects.toString(jti, "")
+                "{\"reset\":%b,\"eventId\":\"%s\",\"senderHost\":\"%s\",\"senderRegion\":\"%s\",\"jti\":\"%s\",\"refreshConfig\":%b,\"destId\":\"%s\"}",
+                reset, Objects.toString(eventId, ""), Objects.toString(senderHost, ""), Objects.toString(senderRegion, ""),
+                Objects.toString(jti, ""), refreshConfig, Objects.toString(destId, "")
             );
         }
 
         /**
          * Create a RefreshRequest from an SQS message.
+         * <p>
+         * An instance running the previous release sends no {@code refreshConfig} and no
+         * {@code destId}. Both default to the previous behavior: refresh the
+         * configuration, and reset every destination. See IGDD-3599, design decision D3.
+         * </p>
          * @param msg	The SQS message
          * @return	 The RefreshRequest
          */
@@ -77,7 +108,10 @@ public class RefreshQueueService {
 			String senderHost = getAttribute(msg, "senderHost");
 			String senderRegion = getAttribute(msg, "senderRegion");
 			String jti = getAttribute(msg, "jti");
-			return new RefreshRequest(reset, eventId, senderHost, senderRegion, jti);
+			String refreshConfigValue = getAttribute(msg, "refreshConfig");
+			boolean refreshConfig = refreshConfigValue == null || Boolean.parseBoolean(refreshConfigValue);
+			String destId = getAttribute(msg, "destId");
+			return new RefreshRequest(reset, eventId, senderHost, senderRegion, jti, refreshConfig, destId);
 		}
 
         /**
@@ -85,12 +119,18 @@ public class RefreshQueueService {
          */
         public Map<String, MessageAttributeValue> toMap() {
         	Map<String, MessageAttributeValue> map = new TreeMap<>();
+        	// The names below are read by instances running the previous release. Do not
+        	// rename them while a rolling deployment can run mixed versions.
 			map.put("reset", newStringAttribute(Boolean.toString(reset)));
 			map.put("eventId", newStringAttribute(eventId));
 			map.put("senderHost", newStringAttribute(senderHost));
 			map.put("senderRegion", newStringAttribute(senderRegion));
 			if (jti != null) {
 				map.put("jti", newStringAttribute(jti));
+			}
+			map.put("refreshConfig", newStringAttribute(Boolean.toString(refreshConfig)));
+			if (destId != null) {
+				map.put("destId", newStringAttribute(destId));
 			}
 			return map;
         }
@@ -158,9 +198,41 @@ public class RefreshQueueService {
         }
     }
     
-    RefreshQueueService(String region, DbController dbController, ApiKeyPrincipalProvider apiKeyPrincipalProvider) {
-		this.dbController = dbController;
+    /**
+     * Create the messaging service.
+     * <p>
+     * This bean depends on services only. It must never depend on a controller: a
+     * controller on the dependency path of the listener thread is what forced the
+     * earlier {@code new RefreshQueueService(...)} and kept {@code StatusController}
+     * from reaching it. See IGDD-3599.
+     * </p>
+     *
+     * @param configuration          Reloads cached configuration from the datastore
+     * @param endpointStatusService  Clears circuit breakers
+     * @param apiKeyPrincipalProvider Evicts a cached API key credential
+     * @param hostService            Lists the known instances and their regions
+     */
+    @Autowired
+    public RefreshQueueService(
+    		DbControllerConfiguration configuration,
+    		EndpointStatusService endpointStatusService,
+    		ApiKeyPrincipalProvider apiKeyPrincipalProvider,
+    		IHostRepository hostService) {
+		this.configuration = configuration;
+		this.endpointStatusService = endpointStatusService;
 		this.apiKeyPrincipalProvider = apiKeyPrincipalProvider;
+		this.hostService = hostService;
+	}
+
+    /**
+     * Create the queues for this instance and start the listener.
+     * <p>
+     * Spring calls this once for the singleton bean. Two listener threads on one queue
+     * would compete for the same messages.
+     * </p>
+     */
+    @PostConstruct
+    void start() {
 		createRefreshQueues();
 		// Add a shutdown hook to delete the created queues
         Runtime.getRuntime().addShutdownHook(new Thread(RefreshQueueService::deleteQueues, "SQS-Queue-ShutdownHook"));
@@ -172,12 +244,44 @@ public class RefreshQueueService {
 		return sqsClients.computeIfAbsent(hostRegion, r -> SqsClient.builder().region(Region.of(r)).build());
 	}
 
+	/**
+	 * Get the SQS client for a region.
+	 * <p>
+	 * An instance method wrapping {@link #getClient(String)} so that a test can
+	 * substitute a client without reaching AWS. Behavior is unchanged: the same cached
+	 * client is returned. See IGDD-3599.
+	 * </p>
+	 *
+	 * @param hostRegion	The region to get a client for
+	 * @return The SQS client for that region
+	 */
+	SqsClient clientFor(String hostRegion) {
+		return getClient(hostRegion);
+	}
+
+	/**
+	 * Get the host name of this instance.
+	 * <p>
+	 * {@code org.apache.commons.lang3.SystemUtils.getHostName()} reads the
+	 * {@code HOSTNAME} environment variable and returns null when it is not set. A null
+	 * here builds the queue name {@code izgw_null_refresh-requests}. The fallback keeps
+	 * the primary value whenever {@code HOSTNAME} is set, which it always is in the
+	 * deployed container. See IGDD-3599.
+	 * </p>
+	 *
+	 * @return The host name, never null
+	 */
+	static String myHostName() {
+		return Objects.toString(SystemUtils.getHostName(),
+				gov.cdc.izgateway.utils.SystemUtils.getHostname());
+	}
+
 	private static void createRefreshQueues() {
 		// Create an SQS queue named after the hostname (serverName) to receive refresh messages
 		try {
 			SqsClient sqsClient = getClient(region);
-			String requestQueueName = getRequestQueueName(SystemUtils.getHostName());
-			String responseQueueName = getResponseQueueName(SystemUtils.getHostName());
+			String requestQueueName = getRequestQueueName(myHostName());
+			String responseQueueName = getResponseQueueName(myHostName());
 			createQueue(requestQueueName, sqsClient);
 			createQueue(responseQueueName, sqsClient);
 		} catch (Exception e) {
@@ -236,6 +340,101 @@ public class RefreshQueueService {
         return "izgw_" + host.replace(".", "-") + "_refresh-responses";
     }
     /**
+     * @return The AWS region this instance runs in, or {@code "unknown"} when
+     *         {@code AWS_REGION} is not set.
+     */
+    public static String getRegion() {
+    	return region;
+    }
+
+    /**
+     * How long to wait for replies, in milliseconds.
+     * <p>
+     * Deliberately not a configuration property. The Configuration Console timeout must
+     * stay above this value, and nothing enforces that relationship, so a hardcoded pair
+     * cannot drift. See IGDD-3599, design decision D6. Package-private only so that a
+     * test does not have to wait 15 seconds.
+     * </p>
+     */
+    static long responseTimeoutMillis = 15000L;
+
+    /** Outcome recorded when an instance has no queue to receive on. */
+    public static final String NO_QUEUE = "No Queue";
+    /** Outcome recorded when a message could not be sent. */
+    public static final String SEND_FAILURE = "Send Failure";
+    /** Outcome recorded when an instance did not reply in time. */
+    public static final String TIMED_OUT = "Timed Out";
+
+    /**
+     * Send a command to every known instance other than the caller, then wait for the
+     * replies.
+     * <p>
+     * The caller identifies itself through {@code senderHost} and {@code senderRegion}
+     * on the request. Those values decide which entry is skipped, so a caller keeps its
+     * own notion of the local host name rather than inheriting one from this class.
+     * </p>
+     *
+     * @param request	The command to send. Its sender fields identify the caller
+     * @param results	The outcome map to fill in, keyed {@code region:hostname}
+     * @return the same map, with one entry per instance reached
+     */
+    public Map<String, String> distribute(RefreshRequest request, Map<String, String> results) {
+        String me = request.senderHost();
+        String myRegion = request.senderRegion();
+        for (Map.Entry<String, String> entry : hostService.getHostsAndRegion().entrySet()) {
+            String hostName = entry.getKey();
+            String hostRegion = entry.getValue();
+            if (hostName.equalsIgnoreCase(me) && hostRegion.equals(myRegion)) {
+                continue;  // The caller already applied the command locally
+            }
+            sendRefreshMessage(request, results, hostName, hostRegion);
+        }
+        awaitRefreshResponses(request.eventId(), results);
+        return results;
+    }
+
+    /**
+     * Reduce per-instance outcomes to one status per region.
+     * <p>
+     * The result carries no host name and no instance count, so a consumer can forward
+     * it to an untrusted client without redacting it. See IGDD-3599, design decision D5.
+     * </p>
+     *
+     * @param results	Outcomes keyed {@code region:hostname}
+     * @return one of {@code complete}, {@code partial} or {@code failed} per region
+     */
+    public static Map<String, String> summarizeByRegion(Map<String, String> results) {
+        Map<String, int[]> counts = new TreeMap<>();
+        for (Map.Entry<String, String> entry : results.entrySet()) {
+            String key = entry.getKey();
+            int colon = key.indexOf(':');
+            String regionName = colon < 0 ? key : key.substring(0, colon);
+            int[] count = counts.computeIfAbsent(regionName, k -> new int[2]);
+            count[1]++;
+            if (isSuccess(entry.getValue())) {
+                count[0]++;
+            }
+        }
+        Map<String, String> summary = new TreeMap<>();
+        for (Map.Entry<String, int[]> entry : counts.entrySet()) {
+            int ok = entry.getValue()[0];
+            int total = entry.getValue()[1];
+            String status = "partial";
+            if (ok == total) {
+                status = "complete";
+            } else if (ok == 0) {
+                status = "failed";
+            }
+            summary.put(entry.getKey(), status);
+        }
+        return summary;
+    }
+
+    private static boolean isSuccess(String outcome) {
+        return outcome != null && outcome.startsWith("OK");
+    }
+
+    /**
      * Send a refresh request to the specified host in the specified region.
      * @param request The refresh request to send
      * @param results	A map to record the results of the send operation
@@ -244,17 +443,33 @@ public class RefreshQueueService {
      * @return results map with the status of the send operation
      */
     public Map<String, String> sendRefreshMessage(RefreshRequest request, Map<String, String> results, String host, String hostRegion) {
-        SqsClient sqsClient = getClient(hostRegion);
+        SqsClient sqsClient = clientFor(hostRegion);
         String endpointName = hostRegion + ":" + host;
         String queueName = getRequestQueueName(host);
         try {
             String queueUrl = sqsClient.getQueueUrl(r -> r.queueName(queueName)).queueUrl();
             sqsClient.sendMessage(request.toSendMessageRequest(queueUrl));
+        } catch (QueueDoesNotExistException e) {
+        	// Usually a task that stopped recently. Elastic still lists it for up to
+        	// three minutes after its queue is deleted. Not the same as a real fault.
+            log.warn(Markers2.append("eventType", "SQS_SEND_FAILED", "direction", "send",
+            		"queueName", queueName, "targetHost", host, "targetRegion", hostRegion,
+            		"messageType", RefreshRequest.MESSAGE, "result", NO_QUEUE),
+            		"No SQS queue {} for {}", queueName, endpointName);
+            results.put(endpointName, NO_QUEUE);
+            return results;
         } catch (Exception e) {
-            log.error(Markers2.append(e), "Exception sending SQS message to {}: {}", queueName, e.getMessage());
-            results.put(endpointName, "Send Failure");
+            log.error(Markers2.append(e, "eventType", "SQS_SEND_FAILED", "direction", "send",
+            		"queueName", queueName, "targetHost", host, "targetRegion", hostRegion,
+            		"messageType", RefreshRequest.MESSAGE, "result", SEND_FAILURE),
+            		"Exception sending SQS message to {}: {}", queueName, e.getMessage());
+            results.put(endpointName, SEND_FAILURE);
             return results;
         }
+        log.info(Markers2.append("eventType", "SQS_SEND", "direction", "send",
+        		"queueName", queueName, "targetHost", host, "targetRegion", hostRegion,
+        		"messageType", RefreshRequest.MESSAGE, "keyId", request.jti()),
+        		"SQS send {} to {}", RefreshRequest.MESSAGE, endpointName);
         results.put(endpointName, WAITING_FOR_RESPONSE);
         return results;
     }
@@ -267,8 +482,8 @@ public class RefreshQueueService {
      * @return results map with the status of the send operation
      */
     public Map<String, String> awaitRefreshResponses(String eventId, Map<String, String> results) {
-        SqsClient sqsClient = sqsClients.computeIfAbsent(region, r -> SqsClient.builder().region(Region.of(r)).build());
-        String queueName = getResponseQueueName(SystemUtils.getHostName());
+        SqsClient sqsClient = clientFor(region);
+        String queueName = getResponseQueueName(myHostName());
         String queueUrl;
         try {
             queueUrl = sqsClient.getQueueUrl(r -> r.queueName(queueName)).queueUrl();
@@ -277,7 +492,7 @@ public class RefreshQueueService {
             results.replaceAll((k, v) -> v.equals(WAITING_FOR_RESPONSE) ? "Internal Error" : v);
             return results;
         }
-        long timeoutMillis = 15000; // 15 seconds
+        long timeoutMillis = responseTimeoutMillis;
         long start = System.currentTimeMillis();
         boolean allResponded = results.values().stream().noneMatch(v -> v.equals(WAITING_FOR_RESPONSE));
         while (!allResponded && System.currentTimeMillis() - start < timeoutMillis) {
@@ -288,11 +503,15 @@ public class RefreshQueueService {
             			.waitTimeSeconds(2)
             		).messages();
             for (Message msg : messages) {
-            	log.debug("Received message: {} {}", msg.body(), msg.messageAttributes());
             	if (!RefreshResponse.MESSAGE.equals(msg.body())) {
             		continue;
             	}
             	RefreshResponse response = RefreshResponse.fromMessage(msg);
+            	log.info(Markers2.append("eventType", "SQS_RECEIVE", "direction", "receive",
+            			"queueName", queueName, "messageType", RefreshResponse.MESSAGE,
+            			"targetHost", response.host(), "targetRegion", response.region(),
+            			"result", response.status()),
+            			"SQS receive {} from {}:{}", RefreshResponse.MESSAGE, response.region(), response.host());
                 String key = response.region() + ":" + response.host();
                 // Only update the result if the eventId matches and it is a response we are waiting for
                 if (response.host() != null && response.status() != null && eventId.equals(response.eventId()) && results.get(key) != null) {
@@ -307,9 +526,29 @@ public class RefreshQueueService {
             allResponded = results.values().stream().noneMatch(v -> v.equals(WAITING_FOR_RESPONSE));
         }
         if (!allResponded) {
-			results.replaceAll((k, v) -> v.equals(WAITING_FOR_RESPONSE) ? "Timed Out" : v);
+			results.replaceAll((k, v) -> v.equals(WAITING_FOR_RESPONSE) ? TIMED_OUT : v);
 		}
+        logOperationComplete(eventId, results);
         return results;
+    }
+
+    /**
+     * Record one summary line for a distributed operation.
+     * <p>
+     * This line answers "did every region apply the command" without a search across
+     * instances.
+     * </p>
+     *
+     * @param eventId	Correlation identifier of the operation
+     * @param results	Outcomes keyed {@code region:hostname}
+     */
+    private static void logOperationComplete(String eventId, Map<String, String> results) {
+    	long ok = results.values().stream().filter(RefreshQueueService::isSuccess).count();
+    	int total = results.size();
+    	log.info(Markers2.append("eventType", "SQS_OPERATION_COMPLETE", "eventId", eventId,
+    			"instances", total, "succeeded", ok, "failed", total - ok,
+    			"regions", summarizeByRegion(results)),
+    			"Distributed operation complete: {} of {} instances applied the command", ok, total);
     }
 
     /**
@@ -319,8 +558,8 @@ public class RefreshQueueService {
     public void startRefreshListener() {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         executor.submit(() -> {
-            SqsClient sqsClient = sqsClients.computeIfAbsent(region, r -> SqsClient.builder().region(Region.of(r)).build());
-            String queueName = getRequestQueueName(SystemUtils.getHostName());
+            SqsClient sqsClient = clientFor(region);
+            String queueName = getRequestQueueName(myHostName());
             String queueUrl;
             try {
                 queueUrl = sqsClient.getQueueUrl(r -> r.queueName(queueName)).queueUrl();
@@ -343,12 +582,17 @@ public class RefreshQueueService {
 		        			.waitTimeSeconds(10)
 		        	).messages();
 		        for (Message msg : messages) {
-		        	log.debug("Received message: {} {}", msg.body(), msg.messageAttributes());
 		        	if (RefreshRequest.MESSAGE.equals(msg.body())) {
 		        		RefreshRequest request = RefreshRequest.fromMessage(msg);
+		        		log.info(Markers2.append("eventType", "SQS_RECEIVE", "direction", "receive",
+		        				"queueName", getRequestQueueName(myHostName()),
+		        				"messageType", RefreshRequest.MESSAGE, "eventId", request.eventId(),
+		        				"keyId", request.jti()),
+		        				"SQS receive {} from {}:{}", RefreshRequest.MESSAGE,
+		        				request.senderRegion(), request.senderHost());
 		        		handleRefreshRequest(sqsClient, queueUrl, request);
 		        		sqsClient.deleteMessage(r -> r.queueUrl(queueUrl).receiptHandle(msg.receiptHandle()));
-		        	} 
+		        	}
 		        }
 		    } catch (Exception e) {
 		        log.error(Markers2.append(e), "Error processing refresh request: {}", e.getMessage());
@@ -357,26 +601,72 @@ public class RefreshQueueService {
 	}
 
 	private void handleRefreshRequest(SqsClient sqsClient, String queueUrl, RefreshRequest request) {
-		log.info(Markers2.append("refreshRequest", request), "Refresh Request", request.toString());
-		if (request.jti() != null && apiKeyPrincipalProvider != null) {
-			apiKeyPrincipalProvider.evictCredential(request.jti());
-		}
-		dbController.refresh();
-		if (request.reset()) {
-		    dbController.resetEndpoint(SystemUtils.getHostName(), request.eventId());
-		}
-		RefreshResponse response = new RefreshResponse(SystemUtils.getHostName(), region, request.eventId(), "OK");
+		log.info(Markers2.append("refreshRequest", request), "Refresh Request {}", request);
+		String status = applyLocally(request);
+		RefreshResponse response = new RefreshResponse(myHostName(), region, request.eventId(), status);
 		sendRefreshResponse(request, response);
+	}
+
+	/**
+	 * Apply a command on this instance, in process.
+	 * <p>
+	 * CAUTION: this method must never call a REST endpoint of this instance. If it
+	 * did, and that endpoint distributes commands, every receiving instance would
+	 * distribute again and the operation would never terminate. See IGDD-3599,
+	 * design decision D4.
+	 * </p>
+	 * <p>
+	 * Authorization is not rechecked here. The operator's request was authorized once,
+	 * on the instance that received it, and this message arrived on a queue that only
+	 * Hub instances can write to.
+	 * </p>
+	 *
+	 * @param request The command to apply
+	 * @return {@code "OK"} when every requested action succeeded, otherwise a short
+	 *         description of the failure
+	 */
+	String applyLocally(RefreshRequest request) {
+		try {
+			if (request.jti() != null && apiKeyPrincipalProvider != null) {
+				apiKeyPrincipalProvider.evictCredential(request.jti());
+			}
+			if (request.refreshConfig()) {
+				configuration.refresh();
+			}
+			if (request.reset()) {
+				resetBreakers(request.destId());
+			}
+			return "OK";
+		} catch (RuntimeException e) {
+			log.error(Markers2.append(e), "Could not apply {}: {}", request, e.getMessage());
+			return Objects.toString(e.getMessage(), "NOT OK");
+		}
+	}
+
+	private void resetBreakers(String destId) {
+		if (destId == null) {
+			endpointStatusService.resetCircuitBreakers();
+		} else {
+			endpointStatusService.resetCircuitBreakerById(destId);
+		}
 	}
 
     private void sendRefreshResponse(RefreshRequest request, RefreshResponse response) {
         String responseQueueName = getResponseQueueName(request.senderHost());
         try {
-            SqsClient sqsClient = getClient(request.senderRegion());
+            SqsClient sqsClient = clientFor(request.senderRegion());
             String responseQueueUrl = sqsClient.getQueueUrl(r -> r.queueName(responseQueueName)).queueUrl();
             sqsClient.sendMessage(response.toSendMessageRequest(responseQueueUrl));
+            log.info(Markers2.append("eventType", "SQS_SEND", "direction", "send",
+            		"queueName", responseQueueName, "messageType", RefreshResponse.MESSAGE,
+            		"targetHost", request.senderHost(), "targetRegion", request.senderRegion(),
+            		"eventId", request.eventId(), "result", response.status()),
+            		"SQS send {} to {}:{}", RefreshResponse.MESSAGE,
+            		request.senderRegion(), request.senderHost());
         } catch (Exception e) {
-            log.error(Markers2.append(e), "Failed to send refresh response to {}: {}", responseQueueName, e.getMessage());
+            log.error(Markers2.append(e, "eventType", "SQS_SEND_FAILED", "direction", "send",
+            		"queueName", responseQueueName, "messageType", RefreshResponse.MESSAGE),
+            		"Failed to send refresh response to {}: {}", responseQueueName, e.getMessage());
         }
     }
  
