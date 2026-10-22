@@ -147,7 +147,8 @@ the instance count. Both reset endpoints require `admin` and run over mutual TLS
 the Hub treats its caller as a trusted peer and returns the names in full.
 
 A consumer that forwards this body to an untrusted client MUST remove the host keys
-first. The Configuration Console is such a consumer, and it already applies this rule
+first. The same applies to `destinations`: each entry carries `statusBy`, the private
+DNS name of the instance that last checked that destination. The Configuration Console is such a consumer, and it already applies this rule
 elsewhere: `[...slug].ts` deletes `statusBy` before responding, and
 `fetchEndpointStatus.ts` performs the same redaction on initial load.
 

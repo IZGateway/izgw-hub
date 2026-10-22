@@ -45,6 +45,11 @@ CAUTION: Do not forward `hosts` to an untrusted client. The keys carry private A
 names, which disclose internal addressing and the instance count. Forward `regions`
 instead. It carries no host name and no count.
 
+CAUTION: Do not forward `destinations` to an untrusted client either. Each destination
+carries a `statusBy` field holding the private DNS name of the instance that last
+checked it. The Configuration Console already removes that field on the
+per-destination route.
+
 The `regions` vocabulary is closed at those three words. A fourth word is a coordinated
 change with `izg-configuration-console`, because every deployed Console renders an
 unrecognised value as a warning.
