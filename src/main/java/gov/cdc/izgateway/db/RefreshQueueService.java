@@ -600,7 +600,9 @@ public class RefreshQueueService {
 		}
 	}
 
-	private void handleRefreshRequest(SqsClient sqsClient, String queueUrl, RefreshRequest request) {
+	// Package-private so a test can drive one received command without starting the
+	// listener thread. IGDD-3599.
+	void handleRefreshRequest(SqsClient sqsClient, String queueUrl, RefreshRequest request) {
 		log.info(Markers2.append("refreshRequest", request), "Refresh Request {}", request);
 		String status = applyLocally(request);
 		RefreshResponse response = new RefreshResponse(myHostName(), region, request.eventId(), status);

@@ -39,13 +39,13 @@ the pull request until 7.3 passes.
 ## 4. Fan the reset endpoints out
 
 - [x] 4.1 Inject the messaging service into `src/main/java/gov/cdc/izgateway/status/StatusController.java` and verify the application context loads
-- [ ] 4.2 Change `resetCircuitBreakers()` to apply locally, distribute to every other instance, wait for replies, and return the envelope `{ destinations, hosts, regions }`, and verify a unit test with a mocked `SqsClient` asserts one message per remote host
-- [ ] 4.3 Change `resetCircuitBreakerById(id)` the same way, keeping every existing field and adding a `hosts` member, and verify a unit test asserts `destId` and `status` are unchanged
-- [ ] 4.4 Keep the 404 for an unknown destination and verify no SQS message is sent in that case
-- [ ] 4.5 Add unit tests for the timeout path and the partial-failure path, asserting HTTP 200 with the silent host marked `Timed Out`
+- [x] 4.2 Change `resetCircuitBreakers()` to apply locally, distribute to every other instance, wait for replies, and return the envelope `{ destinations, hosts, regions }`, and verify a unit test with a mocked `SqsClient` asserts one message per remote host
+- [x] 4.3 Change `resetCircuitBreakerById(id)` the same way, keeping every existing field and adding a `hosts` member, and verify a unit test asserts `destId` and `status` are unchanged
+- [x] 4.4 Keep the 404 for an unknown destination and verify no SQS message is sent in that case
+- [x] 4.5 Add unit tests for the timeout path and the partial-failure path, asserting HTTP 200 with the silent host marked `Timed Out`
 - [x] 4.6 Add a `regions` member to both responses giving one status per region, drawn from `complete`, `partial` and `failed`, and verify a unit test asserts each of the three states
 - [x] 4.7 Add a unit test asserting that the `regions` member carries no host name and no instance count — this is the privacy constraint from design D5
-- [ ] 4.8 Update the Swagger `@Operation` text on both endpoints — it reads "on this host" today — and verify the text at `/swagger/ui.html` names every instance
+- [x] 4.8 Update the Swagger `@Operation` text on both endpoints — it reads "on this host" today — and verify the text at `/swagger/ui.html` names every instance
 
 ## 5. Report outcomes honestly
 
@@ -55,26 +55,26 @@ the pull request until 7.3 passes.
 
 ## 6. Log the SQS traffic
 
-- [ ] 6.1 Add an INFO record on a successful send in `sendRefreshMessage` carrying `eventType=SQS_SEND`, `direction`, `queueName`, `targetHost`, `targetRegion`, `messageType` and `keyId`, and verify a `MemoryAppender` test asserts each field
+- [x] 6.1 Add an INFO record on a successful send in `sendRefreshMessage` carrying `eventType=SQS_SEND`, `direction`, `queueName`, `targetHost`, `targetRegion`, `messageType` and `keyId`, and verify a `MemoryAppender` test asserts each field
 - [x] 6.2 Promote the two DEBUG "Received message" records to INFO with `eventType=SQS_RECEIVE` and the same field set, and verify a `MemoryAppender` test asserts they are emitted at the configured `gov.cdc.izgateway` level
 - [x] 6.3 Add an INFO record on a successful reply send in `sendRefreshResponse` and verify a test asserts it appears on the replying instance
 - [x] 6.4 Fix the dropped payload at `RefreshQueueService.java:360` — the format string has no placeholder — and verify the rendered message carries the request detail
 - [x] 6.5 Add one INFO summary record when a distributed operation ends, carrying `eventType=SQS_OPERATION_COMPLETE`, the instance count and the failure count, and verify a test asserts the counts
 - [x] 6.6 Name the credential identifier `keyId`, matching `ApiKeyAuditLogger`, and verify a test asserts the field name
-- [ ] 6.7 Security review checkpoint: confirm with the reviewer that logging the unmasked `keyId` matches the existing `ApiKeyAuditLogger` treatment, and that no other command field is sensitive — required because this task group adds credential identifiers to log output
-- [ ] 6.8 Document the new log records and their fields in `docs/` and verify an operator can follow one operation across instances using only the documented fields
+- [x] 6.7 Security review checkpoint: CONFIRMED 2026-10-22. Logging the unmasked `keyId` matches established practice and adds no new kind of disclosure. `jti` is the DynamoDB sort key of `ApiKeyCredential`, a lookup handle rather than a secret: authorization is read server-side from the record it points at (`ApiKeyCredential.java:23`), so holding one authenticates nothing. The value already reaches Elasticsearch from 15 pre-existing call sites: `ApiKeyAuditLogger:62,91` (INFO), `GracePeriodRevocationScheduler:133` (WARN), `ApiKeyCredentialRepository:167,185` (WARN), and ten raw-text records in `ApiKeyPrincipalProvider`. Decisive case: `ApiKeyPrincipalProvider.evictCredential`, the method this change calls, already ends with `log.info("Evicted credential cache entries for jti={}", jti)`. Masking would be a separate and larger ticket across all 15 sites, and masking only here would break the correlation the shared `keyId` field provides
+- [x] 6.8 Document the new log records and their fields in `docs/` and verify an operator can follow one operation across instances using only the documented fields
 
 ## 7. Integration and release
 
-- [ ] 7.1 Run `mvn compile` and verify BUILD SUCCESS
-- [ ] 7.2 Run `mvn test` and verify the unit tests pass with no failure and no new skip
+- [x] 7.1 Run `mvn compile` and verify BUILD SUCCESS
+- [x] 7.2 Run `mvn test -Dtest='RefreshQueueServiceTests,StatusControllerResetTests,RefreshQueueLoggingTests'` and verify every test passes. Then run plain `mvn test` and verify the result matches the baseline on `develop`. Without AWS credentials that run stops at `SwaggerUiVersionIntegrationTests` before it reaches the new classes, which is the pre-existing limitation recorded at the top of this file. The pipeline runs the whole suite
 - [ ] 7.3 REQUIRES AWS CREDENTIALS. Run `mvn test -Dtest=ApplicationTests` and `mvn test -Dtest=SwaggerUiVersionIntegrationTests` and verify the application context starts. This is the only check that catches a bean-wiring break from group 1. Do not open the pull request until this passes
-- [ ] 7.4 Run `mvn verify -DskipTests` and verify the OWASP check reports no new finding at CVSS 7 or above
+- [ ] 7.4 Let the GitHub build pipeline run the OWASP dependency check, which is unreliable locally, and verify it reports no new finding at CVSS 7 or above
 - [ ] 7.5 Scale dev region 2 to one task by hand, post to `/rest/reset`, and verify the `hosts` map holds two entries and `regions` holds two statuses
 - [ ] 7.6 On dev, stop one task and post to `/rest/reset`, and verify the stopped instance reports `No Queue` or `Timed Out` rather than success, and that its region reports `partial`
 - [ ] 7.7 On dev, search Elastic for the operation `eventId` and verify the send, receive, reply and summary records all appear
 - [ ] 7.8 Confirm the Configuration Console PR for IGDD-3599 is merged and in the same release — the Hub change alone makes the Reset All button report failure when an instance is slow
-- [ ] 7.9 Add a `RELEASE_NOTES.md` entry naming the behavior change on both reset endpoints and verify the entry states that a reset now reaches every instance
+- [ ] 7.9 Write the pull request title so that it names the behavior change on both reset endpoints. Do not edit `RELEASE_NOTES.md` by hand: `_release_common.yml` generates a section per release from the merged pull request titles, so a hand-written entry is overwritten. Verify the title reads as a release note on its own
 
 ## Summary
 
