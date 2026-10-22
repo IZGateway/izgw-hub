@@ -117,12 +117,14 @@ An operator cannot see who sent what, to which queue, or whether a reply returne
 2. Every SQS send and receive is logged at INFO, with the queue name and the direction.
    One summary line closes each operation.
 3. A host that fails to reset is never reported as `OK`.
+4. Both endpoints also return a per-region summary that carries no host name and no
+   instance count, so a consumer can forward it to a browser unchanged.
 
 ## Capabilities
 
 | Capability | Covers |
 |---|---|
-| `circuit-breaker-reset` | The observable contract of the two reset endpoints: scope, response shape, per-host outcome, and honest reporting of failure. |
+| `circuit-breaker-reset` | The observable contract of the two reset endpoints: scope, response shape, per-host outcome, the browser-safe per-region summary, and honest reporting of failure. |
 | `cross-instance-messaging` | Carrying an administrative command to every Hub instance in every region, and recording each message so an operator can trace it. Serves the reset endpoints and `/rest/refresh`. |
 
 ## Decisions
@@ -133,9 +135,9 @@ These were settled before drafting. The design artifact carries the detail.
 |---|---|
 | Scope | The fan-out and the logging ship as one change. Both touch `RefreshQueueService`. |
 | Recursion | SQS handlers call `endpointStatusService` directly. No handler calls `/rest/reset` over HTTP. |
-| `/rest/reset/{id}` body | Keep every existing field. Add a `hosts` map. The Console needs no change for this. |
-| `/rest/reset` body | New envelope, `{ destinations, hosts }`. No caller reads the current body. |
-| Partial failure | Return 200 with every host marked. The Console reads the map and shows the per-host result. |
+| `/rest/reset/{id}` body | Keep every existing field. Add `hosts` and `regions`. Existing fields keep their names, but the Console still changes: it removes `hosts` before answering the browser. |
+| `/rest/reset` body | New envelope, `{ destinations, hosts, regions }`. No caller reads the current body. |
+| Partial failure | Return 200 with every host marked in `hosts` and every region marked in `regions`. The Console reads `regions`. |
 | `refresh?reset=true` | Kept, and reimplemented to call the service directly. |
 | Reply timeout | Stays hardcoded at 15 seconds. No new property, either side. |
 | `jti` in logs | Full value, in a field named `keyId`, to match `ApiKeyAuditLogger`. |
@@ -188,7 +190,7 @@ expiry, and every eviction message for a credential.
 
 - SOAP WSDL: untouched.
 - `POST /rest/reset/{id}`: additive. Existing fields keep their names and values. Older
-  callers ignore the new `hosts` key.
+  callers ignore the new `hosts` and `regions` keys.
 - `POST /rest/reset`: the body changes shape. `resetAllCircuitBreakers()` counts settled
   promises and never reads the body, and no test reads it.
 - `GET /rest/refresh`: parameters and response shape unchanged.

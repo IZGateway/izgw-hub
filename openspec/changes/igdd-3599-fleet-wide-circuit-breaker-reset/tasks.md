@@ -39,7 +39,7 @@ the pull request until 7.3 passes.
 ## 4. Fan the reset endpoints out
 
 - [x] 4.1 Inject the messaging service into `src/main/java/gov/cdc/izgateway/status/StatusController.java` and verify the application context loads
-- [ ] 4.2 Change `resetCircuitBreakers()` to apply locally, distribute to every other instance, wait for replies, and return the envelope `{ destinations, hosts }`, and verify a unit test with a mocked `SqsClient` asserts one message per remote host
+- [ ] 4.2 Change `resetCircuitBreakers()` to apply locally, distribute to every other instance, wait for replies, and return the envelope `{ destinations, hosts, regions }`, and verify a unit test with a mocked `SqsClient` asserts one message per remote host
 - [ ] 4.3 Change `resetCircuitBreakerById(id)` the same way, keeping every existing field and adding a `hosts` member, and verify a unit test asserts `destId` and `status` are unchanged
 - [ ] 4.4 Keep the 404 for an unknown destination and verify no SQS message is sent in that case
 - [ ] 4.5 Add unit tests for the timeout path and the partial-failure path, asserting HTTP 200 with the silent host marked `Timed Out`

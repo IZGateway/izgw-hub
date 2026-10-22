@@ -135,8 +135,9 @@ POST /rest/reset                        POST /rest/reset/{id}
 `/rest/reset` gets an envelope. Its body is a map keyed by destination identifier, so
 there is no free key for host outcomes, and nothing reads that body today.
 
-`/rest/reset/{id}` gets an added member. The Configuration Console passes that body
-through to the browser, so existing fields keep their names and meaning.
+`/rest/reset/{id}` gets two added members. The Configuration Console forwards the rest
+of that body to the browser after it removes `hosts`, so existing fields keep their
+names and meaning.
 
 Host keys use `region:hostname`, matching the format `/rest/refresh` already returns.
 
