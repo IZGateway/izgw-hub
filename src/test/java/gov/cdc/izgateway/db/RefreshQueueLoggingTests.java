@@ -83,8 +83,14 @@ class RefreshQueueLoggingTests {
 
 		encoder = new LogstashEncoder();
 		encoder.setContext(logger.getLoggerContext());
-		// Matches logback-spring.xml: marker names collide with Filebeat's environment tag.
+		// Both settings mirror logback-spring.xml, and both matter.
+		// includeTags: marker names collide with Filebeat's environment tag (IGDD-3562).
+		// includeContext: logback-spring.xml loads every application.yml key as a context
+		// property, and one of them is named "level". Writing those into the record emits a
+		// second, empty "level" field that overrides the real one. The application's own
+		// appenders disable context for the same reason.
 		encoder.setIncludeTags(false);
+		encoder.setIncludeContext(false);
 		encoder.start();
 	}
 
