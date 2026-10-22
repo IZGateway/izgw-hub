@@ -161,6 +161,13 @@ and makes the redaction a rule a developer has to remember, in a file where the 
 reader may not know the rule exists. A separate, already-safe block turns a discipline
 problem into a shape problem.
 
+**The region status vocabulary is closed.** It holds `complete`, `partial` and
+`failed`, and nothing else. The Configuration Console maps any value it does not
+recognise to a warning, never to success, so adding a fourth word does not create a
+false success. It does make every existing Console release report the new state as a
+warning. Treat a new status word as a contract change and coordinate it, rather than
+adding one to the Hub alone.
+
 Instance counts are excluded deliberately. A count discloses how many tasks run in each
 region, which is weaker than an address but is still topology. An operator who needs to
 know which instance failed reads `hosts`, which requires the `admin` role and mutual
