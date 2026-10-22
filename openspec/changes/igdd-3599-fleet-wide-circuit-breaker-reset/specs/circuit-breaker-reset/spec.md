@@ -80,6 +80,45 @@ region and host name.
 - **THEN** the entry for that instance reports a missing queue
 - **AND** that outcome is distinguishable from a send failure
 
+### Requirement: Summarise the outcome by region
+
+Both reset endpoints SHALL return a summary that gives one status per region. The
+status SHALL be `complete` when every instance in that region reset, `partial` when
+some did, and `failed` when none did.
+
+#### Scenario: One region succeeds and one is degraded
+
+- **GIVEN** every instance in one region resets
+- **AND** one instance in a second region does not answer
+- **WHEN** the response is built
+- **THEN** the first region reports `complete`
+- **AND** the second region reports `partial`
+
+#### Scenario: A region is unreachable
+
+- **GIVEN** no instance in a region resets
+- **WHEN** the response is built
+- **THEN** that region reports `failed`
+- **AND** the status for every other region is unaffected
+
+### Requirement: Keep the region summary free of topology
+
+The region summary SHALL carry no host name and no instance count, so that a consumer
+can pass it to an untrusted client without redacting it.
+
+#### Scenario: A consumer forwards the summary unchanged
+
+- **GIVEN** a consumer reads only the region summary
+- **WHEN** the consumer forwards it to a browser
+- **THEN** no host name reaches the browser
+- **AND** no count of instances reaches the browser
+
+#### Scenario: Detail stays available to an authorised caller
+
+- **GIVEN** a caller holds the `admin` role and reads the response directly
+- **WHEN** the caller needs to know which instance failed
+- **THEN** the per-instance outcomes remain in the response alongside the summary
+
 ### Requirement: Never report a failed reset as success
 
 The gateway SHALL NOT report an instance as successful unless that instance confirmed

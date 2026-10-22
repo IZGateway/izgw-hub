@@ -116,14 +116,18 @@ network round trip per instance inside a loop, and leaves the silent-OK defect i
 The two endpoints differ because their consumers differ.
 
 ```
-POST /rest/reset                    POST /rest/reset/{id}
-{                                   {
-  "destinations": { ... },            "destId": "md",
-  "hosts": {                          "status": "Connected",
-    "us-east-1:ip-10-9-93-145":       "hosts": { ... }
-        "OK (Local)",               }
-    "us-west-1:ip-10-161-101-98":
+POST /rest/reset                        POST /rest/reset/{id}
+{                                       {
+  "destinations": { ... },                "destId": "md",
+  "hosts": {                              "status": "Connected",
+    "us-east-1:ip-10-9-93-145":           "hosts":   { ... },
+        "OK (Local)",                     "regions": { ... }
+    "us-west-1:ip-10-161-101-98":       }
         "Timed Out"
+  },
+  "regions": {
+    "us-east-1": "complete",
+    "us-west-1": "partial"
   }
 }
 ```
@@ -141,11 +145,25 @@ Host keys use `region:hostname`, matching the format `/rest/refresh` already ret
 the instance count. Both reset endpoints require `admin` and run over mutual TLS, so
 the Hub treats its caller as a trusted peer and returns the names in full.
 
-A consumer that forwards this body to an untrusted client MUST aggregate or remove the
-host keys first. The Configuration Console is such a consumer, and it already applies
-this rule elsewhere: `[...slug].ts` deletes `statusBy` before responding, and
-`fetchEndpointStatus.ts` performs the same redaction on initial load. How the Console
-presents the outcomes is specified in its own change, not here.
+A consumer that forwards this body to an untrusted client MUST remove the host keys
+first. The Configuration Console is such a consumer, and it already applies this rule
+elsewhere: `[...slug].ts` deletes `statusBy` before responding, and
+`fetchEndpointStatus.ts` performs the same redaction on initial load.
+
+**`regions` exists so that the consumer never has to redact.** It gives one status per
+region, drawn from `complete`, `partial` and `failed`. It carries no host name and no
+instance count, so a consumer can forward that block unchanged.
+
+The alternative was to let the Console derive the summary itself, by splitting each
+`region:hostname` key and counting. Rejected: that puts host names through Console code
+and makes the redaction a rule a developer has to remember, in a file where the next
+reader may not know the rule exists. A separate, already-safe block turns a discipline
+problem into a shape problem.
+
+Instance counts are excluded deliberately. A count discloses how many tasks run in each
+region, which is weaker than an address but is still topology. An operator who needs to
+know which instance failed reads `hosts`, which requires the `admin` role and mutual
+TLS. How the Console presents the summary is specified in its own change, not here.
 
 ### D6 — Keep the reply wait hardcoded at 15 seconds
 

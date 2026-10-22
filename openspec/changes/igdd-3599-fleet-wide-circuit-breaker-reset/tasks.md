@@ -34,7 +34,9 @@ release is not cut without it.
 - [ ] 4.3 Change `resetCircuitBreakerById(id)` the same way, keeping every existing field and adding a `hosts` member, and verify a unit test asserts `destId` and `status` are unchanged
 - [ ] 4.4 Keep the 404 for an unknown destination and verify no SQS message is sent in that case
 - [ ] 4.5 Add unit tests for the timeout path and the partial-failure path, asserting HTTP 200 with the silent host marked `Timed Out`
-- [ ] 4.6 Update the Swagger `@Operation` text on both endpoints — it reads "on this host" today — and verify the text at `/swagger/ui.html` names every instance
+- [ ] 4.6 Add a `regions` member to both responses giving one status per region, drawn from `complete`, `partial` and `failed`, and verify a unit test asserts each of the three states
+- [ ] 4.7 Add a unit test asserting that the `regions` member carries no host name and no instance count — this is the privacy constraint from design D5
+- [ ] 4.8 Update the Swagger `@Operation` text on both endpoints — it reads "on this host" today — and verify the text at `/swagger/ui.html` names every instance
 
 ## 5. Report outcomes honestly
 
