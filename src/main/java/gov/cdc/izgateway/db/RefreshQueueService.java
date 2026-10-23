@@ -649,6 +649,7 @@ public class RefreshQueueService {
 	 *         description of the failure
 	 */
 	public String applyLocally(RefreshRequest request) {
+		String result;
 		try {
 			if (request.jti() != null && apiKeyPrincipalProvider != null) {
 				apiKeyPrincipalProvider.evictCredential(request.jti());
@@ -659,11 +660,21 @@ public class RefreshQueueService {
 			if (request.reset()) {
 				resetBreakers(request.destId());
 			}
-			return "OK";
+			result = "OK";
 		} catch (RuntimeException e) {
 			log.error(Markers2.append(e), "Could not apply {}: {}", request, e.getMessage());
-			return Objects.toString(e.getMessage(), "NOT OK");
+			result = Objects.toString(e.getMessage(), "NOT OK");
 		}
+		// Without this record the instance that serves an operator's request applies the
+		// command silently: the remote instances log SQS_RECEIVE, and the serving one
+		// logs nothing. An operator tracing one eventId would see every hop but the
+		// first. This record also carries the outcome, which SQS_RECEIVE does not.
+		log.info(Markers2.append("eventType", "COMMAND_APPLIED", "eventId", request.eventId(),
+				"reset", request.reset(), "refreshConfig", request.refreshConfig(),
+				"destId", request.destId(), "keyId", request.jti(), "result", result),
+				"Applied command on this instance: reset={} destId={} result={}",
+				request.reset(), request.destId(), result);
+		return result;
 	}
 
 	private void resetBreakers(String destId) {

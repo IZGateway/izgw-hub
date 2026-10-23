@@ -90,7 +90,7 @@ A missing record tells you where the operation stopped.
 
 | Field | Meaning |
 |---|---|
-| `eventType` | `SQS_SEND`, `SQS_RECEIVE`, `SQS_SEND_FAILED`, `SQS_OPERATION_COMPLETE` |
+| `eventType` | `SQS_SEND`, `SQS_RECEIVE`, `SQS_SEND_FAILED`, `COMMAND_APPLIED`, `SQS_OPERATION_COMPLETE` |
 | `direction` | `send` or `receive` |
 | `queueName` | The SQS queue, named after the host |
 | `messageType` | `RefreshRequest` or `RefreshResponse` |

@@ -211,6 +211,38 @@ class RefreshQueueLoggingTests {
 				"the record must carry the command detail: " + record.path("message").asText());
 	}
 
+	// ---------- The instance that applies a command locally says so
+
+	@Test
+	void applyingACommandLocallyIsRecordedWithItsOutcome() throws Exception {
+		serviceWith(sqsAccepting()).applyLocally(
+				new RefreshRequest(true, "evt-30", "host-a", "us-east-1", "jti-3", false, "md"));
+
+		JsonNode record = jsonOf("Applied command on this instance");
+
+		assertEquals("INFO", record.path("level").asText());
+		assertEquals("COMMAND_APPLIED", record.path("eventType").asText());
+		assertEquals("evt-30", record.path("eventId").asText());
+		assertEquals("md", record.path("destId").asText());
+		assertEquals("jti-3", record.path("keyId").asText());
+		assertEquals("OK", record.path("result").asText());
+		assertTrue(record.path("reset").asBoolean());
+	}
+
+	@Test
+	void aFailedLocalApplicationRecordsTheFailureNotOk() throws Exception {
+		when(endpointStatusService.resetCircuitBreakerById(anyString()))
+				.thenThrow(new IllegalStateException("datastore unavailable"));
+
+		serviceWith(sqsAccepting()).applyLocally(
+				new RefreshRequest(true, "evt-31", "host-a", "us-east-1", null, false, "md"));
+
+		JsonNode record = jsonOf("Applied command on this instance");
+
+		assertEquals("datastore unavailable", record.path("result").asText());
+		assertFalse(record.path("result").asText().startsWith("OK"));
+	}
+
 	// ---------- Task 6.3: the reply send is recorded on the replying instance
 
 	@Test
