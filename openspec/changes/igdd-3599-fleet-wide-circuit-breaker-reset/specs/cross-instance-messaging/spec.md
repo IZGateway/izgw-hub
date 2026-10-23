@@ -107,18 +107,6 @@ ends, naming the count of instances reached and the count that failed.
 - **AND** the record reports four instances and one failure
 - **AND** the record carries the correlation identifier of the operation
 
-### Requirement: Record a failed outbound call with its status
-
-The gateway SHALL include the response status in the log record for any failed outbound
-call it makes while distributing a command.
-
-#### Scenario: A call is refused
-
-- **GIVEN** an outbound call returns a status other than success
-- **WHEN** the gateway records the failure
-- **THEN** the record names the status
-- **AND** the record names the target of the call
-
 ### Requirement: Name the credential identifier consistently
 
 When a command carries an API key identifier, the gateway SHALL record that identifier

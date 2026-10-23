@@ -38,8 +38,10 @@ import gov.cdc.izgateway.hub.service.DestinationService;
 import gov.cdc.izgateway.hub.service.StatusCheckerService;
 import gov.cdc.izgateway.model.IEndpointStatus;
 import gov.cdc.izgateway.security.AccessControlRegistry;
+import gov.cdc.izgateway.security.Roles;
 import gov.cdc.izgateway.service.impl.EndpointStatusService;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.annotation.security.RolesAllowed;
 
 /**
  * Tests for the reset endpoints (IGDD-3599).
@@ -241,6 +243,23 @@ class StatusControllerResetTests {
 		StatusController.ResetAllResponse response = controller.resetCircuitBreakers();
 
 		assertEquals(RefreshQueueService.NO_QUEUE, response.hosts().get("us-west-1:host-gone"));
+	}
+
+	// ---------- Both endpoints stay restricted to administrators
+
+	@Test
+	void bothResetEndpointsRequireTheAdminRole() throws NoSuchMethodException {
+		// A reset now reaches every instance in every region, so losing this annotation
+		// would widen the blast radius fleet-wide. These tests call the controller
+		// directly and bypass Spring Security, so nothing else here would notice.
+		for (Method m : List.of(
+				StatusController.class.getMethod("resetCircuitBreakers"),
+				StatusController.class.getMethod("resetCircuitBreakerById", String.class))) {
+			RolesAllowed roles = m.getAnnotation(RolesAllowed.class);
+			assertNotNull(roles, m.getName() + " must carry @RolesAllowed");
+			assertTrue(List.of(roles.value()).contains(Roles.ADMIN),
+					m.getName() + " must require the admin role, found " + List.of(roles.value()));
+		}
 	}
 
 	// ---------- Task 4.8: the documented scope matches the behavior
