@@ -27,6 +27,26 @@ in the region of that instance.
 - **THEN** no message is sent
 - **AND** the gateway returns without waiting
 
+### Requirement: Report a failed host list distinctly from an empty one
+
+The gateway SHALL distinguish a host list that could not be read from a host list that
+holds no other instance. A read failure SHALL NOT be reported as a fleet-wide success.
+
+#### Scenario: The host list cannot be read
+
+- **GIVEN** the host list cannot be read from Elasticsearch
+- **WHEN** the gateway distributes a command
+- **THEN** no message is sent
+- **AND** the outcome carries an entry that reports the discovery failure
+- **AND** the region summary reports that entry as failed
+
+#### Scenario: Host reporting is switched off
+
+- **GIVEN** the gateway runs with no Elasticsearch endpoint configured
+- **WHEN** the gateway distributes a command
+- **THEN** no message is sent
+- **AND** no discovery failure is reported
+
 ### Requirement: Apply commands locally, never through the HTTP API
 
 An instance that receives a command SHALL apply it through an internal call. An
@@ -65,6 +85,35 @@ waiting after 15 seconds.
 - **THEN** the gateway stops waiting
 - **AND** the outcome for that instance reports a timeout
 - **AND** the outcomes for the replying instances are preserved
+
+#### Scenario: The reply queue cannot be read
+
+- **GIVEN** the gateway messaged three instances and collected one reply
+- **WHEN** reading the reply queue fails
+- **THEN** the gateway stops waiting
+- **AND** the collected outcome is preserved
+- **AND** the outcome for each instance still pending reports an internal error
+- **AND** the gateway returns the outcomes rather than raising an error to the caller
+
+### Requirement: Share one reply queue between operations
+
+Each instance reads replies from one queue. The gateway SHALL NOT consume a reply that
+answers a different operation, and SHALL make such a reply available again at once.
+
+#### Scenario: Two operations run on one instance
+
+- **GIVEN** two distributed operations run on one instance at the same time
+- **WHEN** one of them reads a reply that answers the other
+- **THEN** it does not record that reply against itself
+- **AND** it does not delete that reply
+- **AND** the reply becomes available again without waiting for the visibility timeout
+
+#### Scenario: A reply for a finished operation
+
+- **GIVEN** a reply arrives for an operation that already stopped waiting
+- **WHEN** a later operation reads it
+- **THEN** the record names the identifier of the operation that the reply answers
+- **AND** the later operation reports no outcome for it
 
 ### Requirement: Record every message sent and received
 

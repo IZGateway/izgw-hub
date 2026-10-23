@@ -444,6 +444,9 @@ public class DbController {
 			description="If true, return only locally accessible hosts, if false, return only non-locally accessible hosts, if omitted return all hosts.")
 		@RequestParam(name = "local", required = false) Boolean local) {
 		
+		// A read failure throws HostDiscoveryException and ends this request. Reporting
+		// only the local host would describe a one-instance fleet that does not exist.
+		// IGDD-3599.
 		Map<String, String> m = hostService.getHostsAndRegion();
 
 		for (Iterator<Map.Entry<String, String>> i = m.entrySet().iterator(); i.hasNext();) {

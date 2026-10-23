@@ -84,7 +84,8 @@ region and host name.
 
 Both reset endpoints SHALL return a summary that gives one status per region. The
 status SHALL be `complete` when every instance in that region reset, `partial` when
-some did, and `failed` when none did.
+some did, and `failed` when none did. The summary SHALL carry one further entry,
+`fleet`, when the list of instances could not be read.
 
 #### Scenario: One region succeeds and one is degraded
 
@@ -100,6 +101,14 @@ some did, and `failed` when none did.
 - **WHEN** the response is built
 - **THEN** that region reports `failed`
 - **AND** the status for every other region is unaffected
+
+#### Scenario: The list of instances cannot be read
+
+- **GIVEN** the instance that receives the request reset its own breakers
+- **AND** the list of instances cannot be read
+- **WHEN** the response is built
+- **THEN** the summary carries a `fleet` entry that reports `failed`
+- **AND** a consumer that reads only the summary sees that the operation is incomplete
 
 ### Requirement: Keep the region summary free of topology
 
@@ -137,6 +146,21 @@ that it cleared its circuit breakers.
 - **WHEN** that instance replies
 - **THEN** the reply carries the failure
 - **AND** the response entry for that instance reports the failure
+
+#### Scenario: A remote instance holds no status for the destination
+
+- **GIVEN** a remote instance receives a reset for one destination
+- **AND** that instance holds no status for the destination
+- **WHEN** that instance replies
+- **THEN** the reply names the destination and does not report success
+- **AND** the region of that instance does not report `complete`
+
+#### Scenario: The fleet was never reached
+
+- **GIVEN** the list of instances cannot be read
+- **WHEN** the response is built
+- **THEN** the response does not report the operation as complete
+- **AND** the entry for the instance that reset locally keeps its own outcome
 
 ### Requirement: Preserve the existing response fields for a single destination
 

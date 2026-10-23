@@ -4,6 +4,7 @@ import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import gov.cdc.izgateway.db.DbController.DbControllerConfiguration;
+import gov.cdc.izgateway.elastic.HostDiscoveryException;
 import gov.cdc.izgateway.hub.security.ApiKeyPrincipalProvider;
 import gov.cdc.izgateway.logging.event.EventId;
 import gov.cdc.izgateway.logging.markers.Markers2;
@@ -18,8 +19,10 @@ import software.amazon.awssdk.services.sqs.model.Message;
 import software.amazon.awssdk.services.sqs.model.MessageAttributeValue;
 import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException;
 import software.amazon.awssdk.services.sqs.model.DeleteQueueRequest;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Objects;
 import java.util.TreeMap;
 import java.util.concurrent.ExecutorService;
@@ -373,6 +376,20 @@ public class RefreshQueueService {
     public static final String TIMED_OUT = "Timed Out";
 
     /**
+     * Key used to report that the list of instances could not be read.
+     * <p>
+     * Deliberately not a {@code region:hostname} key. It carries no host name, so it is
+     * safe to forward to an untrusted client, and {@link #summarizeByRegion} turns it
+     * into one more entry in the region summary. A consumer that reads only the region
+     * summary still sees the failure. See IGDD-3599.
+     * </p>
+     */
+    public static final String FLEET_KEY = "fleet";
+
+    /** Outcome recorded when the list of instances could not be read. */
+    public static final String DISCOVERY_FAILED = "Discovery Unavailable";
+
+    /**
      * Send a command to every known instance other than the caller, then wait for the
      * replies.
      * <p>
@@ -388,7 +405,21 @@ public class RefreshQueueService {
     public Map<String, String> distribute(RefreshRequest request, Map<String, String> results) {
         String me = request.senderHost();
         String myRegion = request.senderRegion();
-        for (Map.Entry<String, String> entry : hostService.getHostsAndRegion().entrySet()) {
+        Map<String, String> known;
+        try {
+            known = hostService.getHostsAndRegion();
+        } catch (HostDiscoveryException e) {
+            // Nothing was sent, and nothing is known about the rest of the fleet. The
+            // local reset still stands, so the local entry keeps its outcome, but the
+            // caller must not read the whole operation as complete. IGDD-3599.
+            log.error(Markers2.append(e, "eventType", "FLEET_DISCOVERY_FAILED",
+            		"result", DISCOVERY_FAILED),
+            		"Could not list the running instances: {}", e.getMessage());
+            results.put(FLEET_KEY, DISCOVERY_FAILED);
+            awaitRefreshResponses(request.eventId(), results);
+            return results;
+        }
+        for (Map.Entry<String, String> entry : known.entrySet()) {
             String hostName = entry.getKey();
             String hostRegion = entry.getValue();
             if (hostName.equalsIgnoreCase(me) && hostRegion.equals(myRegion)) {
@@ -509,40 +540,25 @@ public class RefreshQueueService {
         }
         long timeoutMillis = responseTimeoutMillis;
         long start = System.currentTimeMillis();
+        // Replies that answer a different operation on this instance. Held so that one
+        // such message produces one log record for this wait, not one record per poll.
+        Set<String> logged = new HashSet<>();
         boolean allResponded = results.values().stream().noneMatch(v -> v.equals(WAITING_FOR_RESPONSE));
         while (!allResponded && System.currentTimeMillis() - start < timeoutMillis) {
-            List<Message> messages = sqsClient.receiveMessage(
-            	r -> r.queueUrl(queueUrl)
-    					.messageAttributeNames("All")
-            			.maxNumberOfMessages(10)
-            			.waitTimeSeconds(2)
-            		).messages();
-            for (Message msg : messages) {
-            	if (!RefreshResponse.MESSAGE.equals(msg.body())) {
-            		continue;
-            	}
-            	RefreshResponse response = RefreshResponse.fromMessage(msg);
-            	// Carry the reply's own eventId. A late reply from an operation that already
-            	// timed out is redelivered and read here, and without this it would be
-            	// recorded against whichever operation happens to be running.
-            	log.info(Markers2.append("eventType", "SQS_RECEIVE", "direction", "receive",
-            			"queueName", queueName, "messageType", RefreshResponse.MESSAGE,
-            			"targetHost", response.host(), "targetRegion", response.region(),
-            			// Not "eventId": the MDC already carries the running operation's id.
-            			// A late reply from a timed-out operation answers a different one, and
-            			// overwriting eventId would file this record under the wrong operation.
-            			"replyEventId", response.eventId(), "result", response.status()),
-            			"SQS receive {} from {}:{}", RefreshResponse.MESSAGE, response.region(), response.host());
-                String key = response.region() + ":" + response.host();
-                // Only update the result if the eventId matches and it is a response we are waiting for
-                if (response.host() != null && response.status() != null && Objects.equals(eventId, response.eventId()) && results.get(key) != null) {
-                    results.put(key, response.status());
-                    // Delete only the messages we processed
-                    sqsClient.deleteMessage(r -> r.queueUrl(queueUrl).receiptHandle(msg.receiptHandle()));
-                } else {
-					log.warn("Ignoring mismatched response message: {} {}", msg.body(), msg.messageAttributes());
-				}
-                
+            try {
+                collectReplies(sqsClient, queueUrl, queueName, eventId, results, logged);
+            } catch (Exception e) {
+                // Polling or deletion failed part way through. Every reply already
+                // collected keeps its outcome, and the rest are unknown rather than
+                // failed on the remote instance. Throwing here instead would lose the
+                // whole map and answer the operator with an HTTP error. IGDD-3599.
+                log.error(Markers2.append(e, "eventType", "SQS_RECEIVE_FAILED",
+                		"direction", "receive", "queueName", queueName,
+                		"messageType", RefreshResponse.MESSAGE, "result", INTERNAL_ERROR),
+                		"Could not read response queue {}: {}", queueName, e.getMessage());
+                results.replaceAll((k, v) -> v.equals(WAITING_FOR_RESPONSE) ? INTERNAL_ERROR : v);
+                logOperationComplete(eventId, results);
+                return results;
             }
             allResponded = results.values().stream().noneMatch(v -> v.equals(WAITING_FOR_RESPONSE));
         }
@@ -551,6 +567,100 @@ public class RefreshQueueService {
 		}
         logOperationComplete(eventId, results);
         return results;
+    }
+
+    /**
+     * Read one batch of replies and record the ones that answer this operation.
+     *
+     * @param sqsClient	Client for this instance's own region
+     * @param queueUrl	URL of this instance's response queue
+     * @param queueName	Name of that queue, for the log record
+     * @param eventId	Correlation identifier of the running operation
+     * @param results	The outcome map to update
+     * @param logged	Identifiers of foreign replies already recorded in this wait
+     */
+    private void collectReplies(SqsClient sqsClient, String queueUrl, String queueName, String eventId,
+    		Map<String, String> results, Set<String> logged) {
+        List<Message> messages = sqsClient.receiveMessage(
+        	r -> r.queueUrl(queueUrl)
+					.messageAttributeNames("All")
+        			.maxNumberOfMessages(10)
+        			.waitTimeSeconds(2)
+        		).messages();
+        for (Message msg : messages) {
+        	if (!RefreshResponse.MESSAGE.equals(msg.body())) {
+        		continue;
+        	}
+        	RefreshResponse response = RefreshResponse.fromMessage(msg);
+        	boolean answersThisOperation = Objects.equals(eventId, response.eventId());
+        	boolean usable = response.host() != null && response.status() != null;
+        	if (usable && !answersThisOperation) {
+        		releaseForeignReply(sqsClient, queueUrl, queueName, msg, response, logged);
+        		continue;
+        	}
+        	// Carry the reply's own eventId here as well as on a released reply, so that
+        	// every received reply reads the same way in Elasticsearch.
+        	log.info(Markers2.append("eventType", "SQS_RECEIVE", "direction", "receive",
+        			"queueName", queueName, "messageType", RefreshResponse.MESSAGE,
+        			"targetHost", response.host(), "targetRegion", response.region(),
+        			// Not "eventId": the MDC already carries the running operation's id.
+        			// A reply that answers another operation would otherwise be filed
+        			// under this one. IGDD-3599.
+        			"replyEventId", response.eventId(), "result", response.status()),
+        			"SQS receive {} from {}:{}", RefreshResponse.MESSAGE, response.region(), response.host());
+            String key = response.region() + ":" + response.host();
+            if (usable && results.get(key) != null) {
+                results.put(key, response.status());
+                // Delete only the messages we processed
+                sqsClient.deleteMessage(r -> r.queueUrl(queueUrl).receiptHandle(msg.receiptHandle()));
+            } else {
+				log.warn("Ignoring mismatched response message: {} {}", msg.body(), msg.messageAttributes());
+			}
+        }
+    }
+
+    /**
+     * Make a reply that answers another operation available again.
+     * <p>
+     * Two operations on one instance share one response queue, so a poll can take a
+     * reply that the other one waits for. Every receive starts a new visibility period,
+     * so the reply must be released on every receive, not only the first. Left alone it
+     * stays hidden for the queue's visibility timeout, which is longer than the other
+     * operation's wait, and that operation reports a timeout for an instance that
+     * answered. See IGDD-3599.
+     * </p>
+     * <p>
+     * One second rather than zero. The reply is still available well inside the other
+     * operation's 15 second wait, and a reply whose operation already ended is touched
+     * about once a second instead of continuously.
+     * </p>
+     *
+     * @param sqsClient	Client for this instance's own region
+     * @param queueUrl	URL of this instance's response queue
+     * @param queueName	Name of that queue, for the log record
+     * @param msg	The message as received, carrying the current receipt handle
+     * @param response	The reply read from that message
+     * @param logged	Identifiers of foreign replies already recorded in this wait
+     */
+    private void releaseForeignReply(SqsClient sqsClient, String queueUrl, String queueName, Message msg,
+    		RefreshResponse response, Set<String> logged) {
+    	if (logged.add(msg.messageId())) {
+    		// Once per wait. One record per poll would bury the replies that do answer
+    		// this operation.
+        	log.info(Markers2.append("eventType", "SQS_RECEIVE", "direction", "receive",
+        			"queueName", queueName, "messageType", RefreshResponse.MESSAGE,
+        			"targetHost", response.host(), "targetRegion", response.region(),
+        			"replyEventId", response.eventId(), "result", response.status()),
+        			"SQS receive {} from {}:{} for another operation", RefreshResponse.MESSAGE,
+        			response.region(), response.host());
+    	}
+    	try {
+    		sqsClient.changeMessageVisibility(
+    				r -> r.queueUrl(queueUrl).receiptHandle(msg.receiptHandle()).visibilityTimeout(1));
+    	} catch (Exception e) {
+    		// Someone else's reply. Failing to release it must not end this wait.
+    		log.warn("Could not release reply for operation {}: {}", response.eventId(), e.getMessage());
+    	}
     }
 
     /**
@@ -696,8 +806,15 @@ public class RefreshQueueService {
 	private void resetBreakers(String destId) {
 		if (destId == null) {
 			endpointStatusService.resetCircuitBreakers();
-		} else {
-			endpointStatusService.resetCircuitBreakerById(destId);
+			return;
+		}
+		// A null return means the repository holds no status for the destination. That
+		// also happens when its cache is empty and the read behind it failed, so the
+		// breaker state is unknown rather than known to be clear. The instance that
+		// serves the operator's request answers 404 in that case, so an instance that
+		// receives the command must not answer OK. IGDD-3599.
+		if (endpointStatusService.resetCircuitBreakerById(destId) == null) {
+			throw new IllegalStateException("No status for destination " + destId);
 		}
 	}
 

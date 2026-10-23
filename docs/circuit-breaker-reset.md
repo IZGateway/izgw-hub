@@ -36,10 +36,25 @@ Both answer **200 even when an instance fails**. Read the body, not the status c
 }
 ```
 
-`hosts` values: `OK (Local)`, `OK`, `Timed Out`, `No Queue`, `Send Failure`, `Internal Error`. The last one means this instance could not read its own reply queue, so it never learned what the others did.
+`hosts` values: `OK (Local)`, `OK`, `Timed Out`, `No Queue`, `Send Failure`,
+`Internal Error`, `Discovery Unavailable`.
+
+- `Internal Error` means this instance could not read its own reply queue, so it never
+  learned what the others did. Every reply collected before the failure keeps its
+  outcome.
+- A reset of one destination reports `No status for destination <id>` when an instance
+  holds no status for it. The breaker state on that instance is unknown, so the outcome
+  is not `OK`.
+
+`hosts` also carries the key `fleet`, value `Discovery Unavailable`, when the list of
+instances could not be read from Elasticsearch. Nothing was sent in that case. The local
+reset still stands, and the rest of the fleet is unknown. The key is not a host name, so
+it is safe to forward.
 
 `regions` values: `complete` when every instance in that region reset, `partial` when
-some did, `failed` when none did.
+some did, `failed` when none did. The map carries one further key, `fleet`, with the
+value `failed`, when the list of instances could not be read. A consumer that renders
+only `regions` therefore still shows the failure.
 
 CAUTION: Do not forward `hosts` to an untrusted client. The keys carry private AWS DNS
 names, which disclose internal addressing and the instance count. Forward `regions`
@@ -52,7 +67,8 @@ per-destination route.
 
 The `regions` vocabulary is closed at those three words. A fourth word is a coordinated
 change with `izg-configuration-console`, because every deployed Console renders an
-unrecognised value as a warning.
+unrecognised value as a warning. The `fleet` key keeps that rule: its value is `failed`,
+one of the three words. The Console renders it as one more row, labelled `fleet`.
 
 ## Tracing one reset in Elasticsearch
 
@@ -90,7 +106,7 @@ A missing record tells you where the operation stopped.
 
 | Field | Meaning |
 |---|---|
-| `eventType` | `SQS_SEND`, `SQS_RECEIVE`, `SQS_SEND_FAILED`, `COMMAND_APPLIED`, `SQS_OPERATION_COMPLETE` |
+| `eventType` | `SQS_SEND`, `SQS_RECEIVE`, `SQS_SEND_FAILED`, `SQS_RECEIVE_FAILED`, `COMMAND_APPLIED`, `SQS_OPERATION_COMPLETE`, `FLEET_DISCOVERY_FAILED` |
 | `direction` | `send` or `receive` |
 | `queueName` | The SQS queue, named after the host |
 | `messageType` | `RefreshRequest` or `RefreshResponse` |
@@ -130,6 +146,17 @@ is still failing buys one attempt, not a permanent change.
 **Discovery reaches instances that logged recently, not instances that are running.** An
 instance that started but has written no record yet receives no message, and does not
 appear in the response.
+
+**Two operations on one instance share one reply queue.** A reset and a refresh that run
+at the same time on the same instance read the same queue. Each one releases a reply that
+answers the other, so the other can still read it. A reply therefore reaches the right
+operation, but it can reach it a second or two late. A reply whose operation already
+ended stays on the queue until SQS retention expires, and each later operation reads and
+releases it about once a second. Run one fleet-wide operation at a time where you can.
+
+**A failed host list stops the operation.** The gateway sends nothing when it cannot read
+the list of instances, and reports `fleet: Discovery Unavailable`. Search for
+`eventType:"FLEET_DISCOVERY_FAILED"` to find the Elasticsearch failure behind it.
 
 **Replies are bounded at 15 seconds.** An instance that does not answer in that time
 reads `Timed Out`. The reset may still have applied on it. The timeout bounds the wait,

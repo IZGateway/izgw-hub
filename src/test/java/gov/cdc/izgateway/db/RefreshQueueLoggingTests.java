@@ -40,6 +40,7 @@ import gov.cdc.izgateway.db.DbController.DbControllerConfiguration;
 import gov.cdc.izgateway.db.RefreshQueueService.RefreshRequest;
 import gov.cdc.izgateway.db.RefreshQueueService.RefreshResponse;
 import gov.cdc.izgateway.hub.security.ApiKeyPrincipalProvider;
+import gov.cdc.izgateway.model.IEndpointStatus;
 import gov.cdc.izgateway.repository.IHostRepository;
 import gov.cdc.izgateway.service.impl.EndpointStatusService;
 import net.logstash.logback.encoder.LogstashEncoder;
@@ -275,10 +276,41 @@ class RefreshQueueLoggingTests {
 		assertEquals("other-op", record.path("replyEventId").asText(), "the reply's own id is kept separately");
 	}
 
+	@SuppressWarnings("unchecked")
+	@Test
+	void aReplyForAnotherOperationIsRecordedOncePerWait() {
+		// The reply is released on every receipt, so it comes back on every poll. One
+		// record per poll would bury the replies that answer this operation.
+		Message reply = Message.builder().body(RefreshResponse.MESSAGE).messageId("m-3")
+				.messageAttributes(new RefreshResponse("host-b", "us-west-1", "other-op", "OK").toMap())
+				.receiptHandle("rh-foreign").build();
+		SqsClient sqs = mock(SqsClient.class);
+		when(sqs.getQueueUrl(any(Consumer.class)))
+				.thenReturn(GetQueueUrlResponse.builder().queueUrl("https://sqs.test/q").build());
+		when(sqs.sendMessage(any(SendMessageRequest.class))).thenReturn(SendMessageResponse.builder().build());
+		when(sqs.receiveMessage(any(Consumer.class)))
+				.thenReturn(ReceiveMessageResponse.builder().messages(List.of(reply)).build());
+		when(hostService.getHostsAndRegion()).thenReturn(Map.of("host-a", "us-east-1", "host-b", "us-west-1"));
+		RefreshQueueService.responseTimeoutMillis = 300L;
+
+		Map<String, String> results = new TreeMap<>();
+		results.put("us-east-1:host-a", "OK (Local)");
+		serviceWith(sqs).distribute(
+				new RefreshRequest(true, OPERATION_ID, "host-a", "us-east-1", null, false, null), results);
+
+		long records = appender.list.stream()
+				.filter(e -> e.getFormattedMessage().contains("for another operation")).count();
+		assertEquals(1, records, "a reply for another operation must be recorded once for this wait");
+	}
+
 	// ---------- The instance that applies a command locally says so
 
 	@Test
 	void applyingACommandLocallyIsRecordedWithItsOutcome() throws Exception {
+		// A reset that finds a status returns it. The default null means "no status
+		// here", which is a failure rather than a reset. IGDD-3599.
+		when(endpointStatusService.resetCircuitBreakerById("md")).thenReturn(mock(IEndpointStatus.class));
+
 		serviceWith(sqsAccepting()).applyLocally(
 				new RefreshRequest(true, "evt-30", "host-a", "us-east-1", "jti-3", false, "md"));
 

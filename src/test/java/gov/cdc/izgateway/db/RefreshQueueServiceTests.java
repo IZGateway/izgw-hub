@@ -34,7 +34,9 @@ import org.springframework.stereotype.Service;
 
 import gov.cdc.izgateway.db.DbController.DbControllerConfiguration;
 import gov.cdc.izgateway.db.RefreshQueueService.RefreshRequest;
+import gov.cdc.izgateway.elastic.HostDiscoveryException;
 import gov.cdc.izgateway.hub.security.ApiKeyPrincipalProvider;
+import gov.cdc.izgateway.model.IEndpointStatus;
 import gov.cdc.izgateway.repository.IHostRepository;
 import gov.cdc.izgateway.service.impl.EndpointStatusService;
 import jakarta.annotation.PostConstruct;
@@ -123,8 +125,12 @@ class RefreshQueueServiceTests {
 
 	@Test
 	void applyLocallyResetsOneDestinationWhenNamed() {
-		service.applyLocally(new RefreshRequest(true, "evt-2", "sender", "us-east-1", null, false, "md"));
+		when(endpointStatusService.resetCircuitBreakerById("md")).thenReturn(mock(IEndpointStatus.class));
 
+		String status = service.applyLocally(
+				new RefreshRequest(true, "evt-2", "sender", "us-east-1", null, false, "md"));
+
+		assertEquals("OK", status);
 		verify(endpointStatusService).resetCircuitBreakerById("md");
 		verify(endpointStatusService, never()).resetCircuitBreakers();
 		verify(configuration, never()).refresh();
@@ -406,6 +412,170 @@ class RefreshQueueServiceTests {
 
 		assertEquals(1, results.size(), "the only instance is the caller, so nothing is sent");
 		assertEquals("OK (Local)", results.get("us-east-1:host-a"));
+	}
+
+	// ---------- Review of PR 204: a missing status is not a reset
+
+	@Test
+	void anInstanceWithNoStatusForTheDestinationDoesNotReportOk() {
+		// The repository returns null when it holds no status for the destination, which
+		// also happens when its cache is empty and the read behind it failed. The
+		// instance that serves the operator's request answers 404 in that case, so an
+		// instance that receives the command must not answer OK.
+		when(endpointStatusService.resetCircuitBreakerById("md")).thenReturn(null);
+
+		String status = service.applyLocally(
+				new RefreshRequest(true, "evt-40", "sender", "us-east-1", null, false, "md"));
+
+		assertFalse(status.startsWith("OK"), "a destination with no status must not read as reset");
+		assertTrue(status.contains("md"), "the outcome must name the destination: " + status);
+	}
+
+	// ---------- Review of PR 204: a failed host list is not an empty fleet
+
+	@Test
+	void aFailedHostListIsReportedRatherThanReadingAsAOneInstanceFleet() {
+		// An Elasticsearch read failure used to return an empty map, which looked exactly
+		// like "no other instance exists". The local reset then read as a complete
+		// fleet-wide reset.
+		when(hostService.getHostsAndRegion())
+				.thenThrow(new HostDiscoveryException("elastic unreachable", new java.io.IOException("boom")));
+		SqsClient sqs = sqsThatAcceptsSendsAndNeverReplies();
+
+		Map<String, String> results = new TreeMap<>();
+		results.put("us-east-1:host-a", "OK (Local)");
+		withMockedSqs(sqs).distribute(
+				new RefreshRequest(true, "evt-41", "host-a", "us-east-1", null, false, null), results);
+
+		assertEquals(RefreshQueueService.DISCOVERY_FAILED, results.get(RefreshQueueService.FLEET_KEY));
+		assertEquals("OK (Local)", results.get("us-east-1:host-a"), "the local reset still stands");
+		verify(sqs, never()).sendMessage(any(SendMessageRequest.class));
+
+		Map<String, String> summary = RefreshQueueService.summarizeByRegion(results);
+		assertEquals("complete", summary.get("us-east-1"));
+		assertEquals("failed", summary.get(RefreshQueueService.FLEET_KEY),
+				"a consumer that reads only the region summary must still see the failure");
+	}
+
+	@Test
+	void theFleetKeyCarriesNoHostName() {
+		assertFalse(RefreshQueueService.FLEET_KEY.contains(":"),
+				"the key must summarise as its own entry, not as a region and host");
+		assertFalse(RefreshQueueService.FLEET_KEY.contains("ip-"),
+				"the key must be safe to forward to an untrusted client");
+	}
+
+	// ---------- Review of PR 204: a polling failure keeps what it collected
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void aPollingFailureKeepsCollectedOutcomesAndMarksTheRestUnknown() {
+		// receiveMessage and deleteMessage sit outside the queue-URL lookup. An exception
+		// there used to escape the endpoint, which answered with an HTTP error and no
+		// host or region outcomes at all.
+		SqsClient sqs = mock(SqsClient.class);
+		when(sqs.getQueueUrl(any(java.util.function.Consumer.class)))
+				.thenReturn(GetQueueUrlResponse.builder().queueUrl("https://sqs.test/q").build());
+		when(sqs.sendMessage(any(SendMessageRequest.class))).thenReturn(SendMessageResponse.builder().build());
+		when(sqs.receiveMessage(any(java.util.function.Consumer.class)))
+				.thenThrow(new RuntimeException("throttled"));
+		when(hostService.getHostsAndRegion()).thenReturn(Map.of("host-a", "us-east-1", "host-b", "us-west-1"));
+
+		Map<String, String> results = new TreeMap<>();
+		results.put("us-east-1:host-a", "OK (Local)");
+		Map<String, String> returned = withMockedSqs(sqs).distribute(
+				new RefreshRequest(true, "evt-42", "host-a", "us-east-1", null, false, null), results);
+
+		assertEquals("OK (Local)", returned.get("us-east-1:host-a"), "a collected outcome must survive");
+		assertEquals(RefreshQueueService.INTERNAL_ERROR, returned.get("us-west-1:host-b"),
+				"an instance whose reply could not be read is unknown, not failed on its side");
+	}
+
+	// ---------- Review of PR 204: one response queue, two operations
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void aReplyForAnotherOperationIsReleasedRatherThanHeldHidden() {
+		// Both reset endpoints and the refresh endpoint read one response queue per
+		// instance. A poll can take a reply that another operation is waiting for. Left
+		// alone it stays hidden for the queue's visibility timeout, which is longer than
+		// the other operation's wait.
+		Message foreign = Message.builder().body(RefreshResponse.MESSAGE).messageId("m-1")
+				.messageAttributes(new RefreshResponse("host-b", "us-west-1", "other-op", "OK").toMap())
+				.receiptHandle("rh-1").build();
+		SqsClient sqs = mock(SqsClient.class);
+		when(sqs.getQueueUrl(any(java.util.function.Consumer.class)))
+				.thenReturn(GetQueueUrlResponse.builder().queueUrl("https://sqs.test/q").build());
+		when(sqs.sendMessage(any(SendMessageRequest.class))).thenReturn(SendMessageResponse.builder().build());
+		when(sqs.receiveMessage(any(java.util.function.Consumer.class)))
+				.thenReturn(ReceiveMessageResponse.builder().messages(List.of(foreign)).build());
+		when(hostService.getHostsAndRegion()).thenReturn(Map.of("host-a", "us-east-1", "host-b", "us-west-1"));
+
+		Map<String, String> results = new TreeMap<>();
+		results.put("us-east-1:host-a", "OK (Local)");
+		withMockedSqs(sqs).distribute(
+				new RefreshRequest(true, "evt-43", "host-a", "us-east-1", null, false, null), results);
+
+		// Released, never consumed: the operation it answers must still be able to read it.
+		verify(sqs, never()).deleteMessage(any(java.util.function.Consumer.class));
+		verify(sqs, org.mockito.Mockito.atLeastOnce()).changeMessageVisibility(any(java.util.function.Consumer.class));
+		assertEquals(RefreshQueueService.TIMED_OUT, results.get("us-west-1:host-b"),
+				"a reply for another operation must not be recorded against this one");
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void aForeignReplyIsReleasedOnEveryReceipt() {
+		// Every receive starts a new visibility period, so a reply read a second time is
+		// hidden again under a new receipt handle. Releasing only the first receipt would
+		// hide the reply from the operation it answers, which is the defect this guards.
+		Message foreign = Message.builder().body(RefreshResponse.MESSAGE).messageId("m-2")
+				.messageAttributes(new RefreshResponse("host-b", "us-west-1", "other-op", "OK").toMap())
+				.receiptHandle("rh-2").build();
+		SqsClient sqs = mock(SqsClient.class);
+		when(sqs.getQueueUrl(any(java.util.function.Consumer.class)))
+				.thenReturn(GetQueueUrlResponse.builder().queueUrl("https://sqs.test/q").build());
+		when(sqs.sendMessage(any(SendMessageRequest.class))).thenReturn(SendMessageResponse.builder().build());
+		when(sqs.receiveMessage(any(java.util.function.Consumer.class)))
+				.thenReturn(ReceiveMessageResponse.builder().messages(List.of(foreign)).build());
+		when(hostService.getHostsAndRegion()).thenReturn(Map.of("host-a", "us-east-1", "host-b", "us-west-1"));
+		// Long enough for several polls against a mock that answers at once.
+		RefreshQueueService.responseTimeoutMillis = 300L;
+
+		Map<String, String> results = new TreeMap<>();
+		results.put("us-east-1:host-a", "OK (Local)");
+		withMockedSqs(sqs).distribute(
+				new RefreshRequest(true, "evt-44", "host-a", "us-east-1", null, false, null), results);
+
+		verify(sqs, org.mockito.Mockito.atLeast(2)).receiveMessage(any(java.util.function.Consumer.class));
+		verify(sqs, org.mockito.Mockito.atLeast(2)).changeMessageVisibility(any(java.util.function.Consumer.class));
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void aFailedReleaseDoesNotEndTheWait() {
+		// Releasing another operation's reply is a courtesy. A failure there must not
+		// turn this operation's outcome into an internal error.
+		Message foreign = Message.builder().body(RefreshResponse.MESSAGE).messageId("m-5")
+				.messageAttributes(new RefreshResponse("host-b", "us-west-1", "other-op", "OK").toMap())
+				.receiptHandle("rh-5").build();
+		SqsClient sqs = mock(SqsClient.class);
+		when(sqs.getQueueUrl(any(java.util.function.Consumer.class)))
+				.thenReturn(GetQueueUrlResponse.builder().queueUrl("https://sqs.test/q").build());
+		when(sqs.sendMessage(any(SendMessageRequest.class))).thenReturn(SendMessageResponse.builder().build());
+		when(sqs.receiveMessage(any(java.util.function.Consumer.class)))
+				.thenReturn(ReceiveMessageResponse.builder().messages(List.of(foreign)).build());
+		when(sqs.changeMessageVisibility(any(java.util.function.Consumer.class)))
+				.thenThrow(new RuntimeException("receipt handle expired"));
+		when(hostService.getHostsAndRegion()).thenReturn(Map.of("host-a", "us-east-1", "host-b", "us-west-1"));
+
+		Map<String, String> results = new TreeMap<>();
+		results.put("us-east-1:host-a", "OK (Local)");
+		withMockedSqs(sqs).distribute(
+				new RefreshRequest(true, "evt-45", "host-a", "us-east-1", null, false, null), results);
+
+		assertEquals(RefreshQueueService.TIMED_OUT, results.get("us-west-1:host-b"),
+				"the wait must run its course rather than reporting an internal error");
 	}
 
 	@Test
