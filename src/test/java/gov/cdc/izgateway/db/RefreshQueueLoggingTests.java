@@ -201,7 +201,7 @@ class RefreshQueueLoggingTests {
 	void aReceivedCommandIsRecordedAtInfo() throws Exception {
 		RefreshRequest received = new RefreshRequest(true, "evt-4", "host-a", "us-east-1", null, false, "md");
 
-		serviceWith(sqsAccepting()).handleRefreshRequest(sqsAccepting(), "https://sqs.test/q", received);
+		serviceWith(sqsAccepting()).handleRefreshRequest(received);
 
 		JsonNode record = jsonOf("Refresh Request");
 		assertEquals("INFO", record.path("level").asText());
@@ -217,7 +217,7 @@ class RefreshQueueLoggingTests {
 	void theReplyIsRecordedOnTheInstanceThatSendsIt() throws Exception {
 		RefreshRequest received = new RefreshRequest(true, "evt-5", "host-a", "us-east-1", null, false, null);
 
-		serviceWith(sqsAccepting()).handleRefreshRequest(sqsAccepting(), "https://sqs.test/q", received);
+		serviceWith(sqsAccepting()).handleRefreshRequest(received);
 
 		JsonNode record = jsonOf("SQS send RefreshResponse");
 		assertEquals("INFO", record.path("level").asText());

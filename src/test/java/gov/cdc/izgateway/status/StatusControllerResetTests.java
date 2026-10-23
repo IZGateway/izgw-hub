@@ -3,6 +3,7 @@ package gov.cdc.izgateway.status;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -97,6 +99,11 @@ class StatusControllerResetTests {
 	}
 
 	/** Make distribute() fill the outcome map the way a real fan-out would. */
+	@BeforeEach
+	void localResetSucceedsByDefault() {
+		when(refreshQueueService.applyLocally(any(RefreshRequest.class))).thenReturn("OK");
+	}
+
 	private void distributeYields(Map<String, String> remoteOutcomes) {
 		when(refreshQueueService.distribute(any(RefreshRequest.class), any()))
 				.thenAnswer(call -> {
@@ -134,6 +141,52 @@ class StatusControllerResetTests {
 		assertTrue(sent.getValue().reset(), "the command must reset");
 		assertFalse(sent.getValue().refreshConfig(), "a reset must not also reload configuration");
 		assertEquals(null, sent.getValue().destId(), "a null destination means every destination");
+	}
+
+	@Test
+	void resetAllAppliesTheResetOnTheServingInstance() {
+		// distribute() skips the caller, so the serving instance only resets if the
+		// controller applies the command itself. Without this the endpoint resets every
+		// instance except the one that answered, and still reports it as OK (Local).
+		doReturn(List.of()).when(endpointStatusService).findAll();
+		distributeYields(Map.of());
+
+		controller.resetCircuitBreakers();
+
+		ArgumentCaptor<RefreshRequest> applied = ArgumentCaptor.forClass(RefreshRequest.class);
+		verify(refreshQueueService).applyLocally(applied.capture());
+		assertTrue(applied.getValue().reset(), "the local command must reset");
+		assertNull(applied.getValue().destId(), "a null destination means every destination");
+		assertFalse(applied.getValue().refreshConfig(), "a reset must not also reload configuration");
+	}
+
+	@Test
+	void resetOneAppliesTheResetOnTheServingInstance() {
+		when(destinationService.findByDestId("md")).thenReturn(new Destination());
+		when(endpointStatusService.resetCircuitBreakerById("md")).thenReturn(statusFor("md"));
+		distributeYields(Map.of());
+
+		controller.resetCircuitBreakerById("md");
+
+		verify(endpointStatusService).resetCircuitBreakerById("md");
+		ArgumentCaptor<RefreshRequest> applied = ArgumentCaptor.forClass(RefreshRequest.class);
+		verify(refreshQueueService).applyLocally(applied.capture());
+		assertEquals("md", applied.getValue().destId());
+	}
+
+	@Test
+	void aFailedLocalResetIsReportedRatherThanReadingOk() {
+		doReturn(List.of()).when(endpointStatusService).findAll();
+		when(refreshQueueService.applyLocally(any(RefreshRequest.class))).thenReturn("datastore unavailable");
+		distributeYields(Map.of());
+
+		StatusController.ResetAllResponse response = controller.resetCircuitBreakers();
+
+		String local = response.hosts().values().iterator().next();
+		assertEquals("datastore unavailable", local);
+		assertFalse(local.startsWith("OK"), "a failed local reset must never read OK");
+		assertEquals("failed", response.regions().values().iterator().next(),
+				"a region whose only instance failed must not read complete");
 	}
 
 	// ---------- Task 4.3: reset one destination, additively

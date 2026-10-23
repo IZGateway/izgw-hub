@@ -271,7 +271,7 @@ public class RefreshQueueService {
 	 *
 	 * @return The host name, never null
 	 */
-	static String myHostName() {
+	public static String myHostName() {
 		return Objects.toString(SystemUtils.getHostName(),
 				gov.cdc.izgateway.utils.SystemUtils.getHostname());
 	}
@@ -357,6 +357,9 @@ public class RefreshQueueService {
      * </p>
      */
     static long responseTimeoutMillis = 15000L;
+
+    /** Outcome recorded when this instance cannot read its own reply queue. */
+    public static final String INTERNAL_ERROR = "Internal Error";
 
     /** Outcome recorded when an instance has no queue to receive on. */
     public static final String NO_QUEUE = "No Queue";
@@ -482,6 +485,11 @@ public class RefreshQueueService {
      * @return results map with the status of the send operation
      */
     public Map<String, String> awaitRefreshResponses(String eventId, Map<String, String> results) {
+        if (results.values().stream().noneMatch(WAITING_FOR_RESPONSE::equals)) {
+            // Nothing was sent, so there is nothing to wait for and no queue to look up.
+            logOperationComplete(eventId, results);
+            return results;
+        }
         SqsClient sqsClient = clientFor(region);
         String queueName = getResponseQueueName(myHostName());
         String queueUrl;
@@ -489,7 +497,10 @@ public class RefreshQueueService {
             queueUrl = sqsClient.getQueueUrl(r -> r.queueName(queueName)).queueUrl();
         } catch (Exception e) {
             log.error(Markers2.append(e), "Could not get response queue URL: {}", e.getMessage());
-            results.replaceAll((k, v) -> v.equals(WAITING_FOR_RESPONSE) ? "Internal Error" : v);
+            results.replaceAll((k, v) -> v.equals(WAITING_FOR_RESPONSE) ? INTERNAL_ERROR : v);
+            // The operation still ended, so it still gets a summary record. Without this
+            // an operator searching for SQS_OPERATION_COMPLETE finds nothing at all.
+            logOperationComplete(eventId, results);
             return results;
         }
         long timeoutMillis = responseTimeoutMillis;
@@ -507,10 +518,13 @@ public class RefreshQueueService {
             		continue;
             	}
             	RefreshResponse response = RefreshResponse.fromMessage(msg);
+            	// Carry the reply's own eventId. A late reply from an operation that already
+            	// timed out is redelivered and read here, and without this it would be
+            	// recorded against whichever operation happens to be running.
             	log.info(Markers2.append("eventType", "SQS_RECEIVE", "direction", "receive",
             			"queueName", queueName, "messageType", RefreshResponse.MESSAGE,
             			"targetHost", response.host(), "targetRegion", response.region(),
-            			"result", response.status()),
+            			"eventId", response.eventId(), "result", response.status()),
             			"SQS receive {} from {}:{}", RefreshResponse.MESSAGE, response.region(), response.host());
                 String key = response.region() + ":" + response.host();
                 // Only update the result if the eventId matches and it is a response we are waiting for
@@ -590,7 +604,7 @@ public class RefreshQueueService {
 		        				"keyId", request.jti()),
 		        				"SQS receive {} from {}:{}", RefreshRequest.MESSAGE,
 		        				request.senderRegion(), request.senderHost());
-		        		handleRefreshRequest(sqsClient, queueUrl, request);
+		        		handleRefreshRequest(request);
 		        		sqsClient.deleteMessage(r -> r.queueUrl(queueUrl).receiptHandle(msg.receiptHandle()));
 		        	}
 		        }
@@ -602,7 +616,7 @@ public class RefreshQueueService {
 
 	// Package-private so a test can drive one received command without starting the
 	// listener thread. IGDD-3599.
-	void handleRefreshRequest(SqsClient sqsClient, String queueUrl, RefreshRequest request) {
+	void handleRefreshRequest(RefreshRequest request) {
 		log.info(Markers2.append("refreshRequest", request), "Refresh Request {}", request);
 		String status = applyLocally(request);
 		RefreshResponse response = new RefreshResponse(myHostName(), region, request.eventId(), status);
@@ -623,11 +637,18 @@ public class RefreshQueueService {
 	 * Hub instances can write to.
 	 * </p>
 	 *
+	 * <p>
+	 * Public because both controllers apply commands through it. The reset endpoints
+	 * must call it for the instance that serves the request: {@link #distribute} skips
+	 * the caller, so without this the serving instance is the one instance that never
+	 * resets.
+	 * </p>
+	 *
 	 * @param request The command to apply
 	 * @return {@code "OK"} when every requested action succeeded, otherwise a short
 	 *         description of the failure
 	 */
-	String applyLocally(RefreshRequest request) {
+	public String applyLocally(RefreshRequest request) {
 		try {
 			if (request.jti() != null && apiKeyPrincipalProvider != null) {
 				apiKeyPrincipalProvider.evictCredential(request.jti());

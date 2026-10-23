@@ -36,7 +36,7 @@ Both answer **200 even when an instance fails**. Read the body, not the status c
 }
 ```
 
-`hosts` values: `OK (Local)`, `OK`, `Timed Out`, `No Queue`, `Send Failure`.
+`hosts` values: `OK (Local)`, `OK`, `Timed Out`, `No Queue`, `Send Failure`, `Internal Error`. The last one means this instance could not read its own reply queue, so it never learned what the others did.
 
 `regions` values: `complete` when every instance in that region reset, `partial` when
 some did, `failed` when none did.

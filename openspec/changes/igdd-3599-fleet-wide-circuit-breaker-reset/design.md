@@ -187,7 +187,7 @@ Every message record uses `Markers2.append` with this field set:
 
 | Field | Values |
 |---|---|
-| `eventType` | `SQS_SEND`, `SQS_RECEIVE`, `SQS_OPERATION_COMPLETE` |
+| `eventType` | `SQS_SEND`, `SQS_RECEIVE`, `SQS_SEND_FAILED`, `SQS_OPERATION_COMPLETE` |
 | `direction` | `send`, `receive` |
 | `queueName` | The SQS queue name |
 | `targetHost`, `targetRegion` | Present on a send |

@@ -43,6 +43,7 @@ import software.amazon.awssdk.services.sqs.model.GetQueueUrlResponse;
 import software.amazon.awssdk.services.sqs.model.Message;
 import software.amazon.awssdk.services.sqs.model.QueueDoesNotExistException;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
+import gov.cdc.izgateway.db.RefreshQueueService.RefreshResponse;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 import software.amazon.awssdk.services.sqs.model.SendMessageResponse;
 import software.amazon.awssdk.services.sqs.model.MessageAttributeValue;
@@ -207,6 +208,17 @@ class RefreshQueueServiceTests {
 		return spied;
 	}
 
+	@SuppressWarnings("unchecked")
+	private static SqsClient sqsAccepting(Message... repliesToReceive) {
+		SqsClient sqs = mock(SqsClient.class);
+		when(sqs.getQueueUrl(any(java.util.function.Consumer.class)))
+				.thenReturn(GetQueueUrlResponse.builder().queueUrl("https://sqs.test/q").build());
+		when(sqs.sendMessage(any(SendMessageRequest.class))).thenReturn(SendMessageResponse.builder().build());
+		when(sqs.receiveMessage(any(java.util.function.Consumer.class)))
+				.thenReturn(ReceiveMessageResponse.builder().messages(List.of(repliesToReceive)).build());
+		return sqs;
+	}
+
 	private static SqsClient sqsThatAcceptsSendsAndNeverReplies() {
 		SqsClient sqs = mock(SqsClient.class);
 		when(sqs.getQueueUrl(any(java.util.function.Consumer.class)))
@@ -256,6 +268,28 @@ class RefreshQueueServiceTests {
 		assertEquals(RefreshQueueService.TIMED_OUT, remote,
 				"no reply arrived, so the instance must be reported as timed out rather than OK");
 		assertFalse(remote.startsWith("OK"));
+	}
+
+	@Test
+	void aRemoteInstanceThatRepliesWithAFailureIsNotReportedAsOk() {
+		// The receiving instance applied the command and it failed. The reply carries
+		// that status, and it must reach the caller intact rather than being flattened
+		// to OK. Spec: "Never report a failed reset as success" / "A remote instance fails".
+		Message failureReply = Message.builder().body(RefreshResponse.MESSAGE)
+				.messageAttributes(new RefreshResponse("host-b", "us-west-1", "evt-20",
+						"datastore unavailable").toMap())
+				.receiptHandle("rh-9").build();
+		when(hostService.getHostsAndRegion()).thenReturn(Map.of("host-a", "us-east-1", "host-b", "us-west-1"));
+
+		Map<String, String> results = new TreeMap<>();
+		results.put("us-east-1:host-a", "OK (Local)");
+		withMockedSqs(sqsAccepting(failureReply)).distribute(
+				new RefreshRequest(true, "evt-20", "host-a", "us-east-1", null, false, null), results);
+
+		assertEquals("datastore unavailable", results.get("us-west-1:host-b"));
+		assertEquals("failed", RefreshQueueService.summarizeByRegion(results).get("us-west-1"),
+				"a region whose only instance reported a failure must read failed");
+		assertEquals("complete", RefreshQueueService.summarizeByRegion(results).get("us-east-1"));
 	}
 
 	@Test

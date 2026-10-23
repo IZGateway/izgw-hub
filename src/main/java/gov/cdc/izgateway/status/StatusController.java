@@ -268,6 +268,10 @@ public class StatusController {
 		if (destinationService.findByDestId(id) == null) {
 			throw new ResourceNotFoundException(String.format("Destination %s not found", id));
 		}
+		// Reset here first: this call both performs the local reset and yields the status
+		// for the response body, and a null tells us the destination has no status to
+		// reset. applyEverywhere then resets it again through the shared path, which is a
+		// no-op because the breaker is already clear, and records the real local outcome.
 		IEndpointStatus status = endpointStatusService.resetCircuitBreakerById(id);
 		if (status == null) {
 			throw new ResourceNotFoundException(String.format("No status found for destination %s", id));
@@ -288,13 +292,18 @@ public class StatusController {
 	 * @return The outcome for each instance, keyed {@code region:hostname}
 	 */
 	private Map<String, String> applyEverywhere(String destId) {
-		String me = SystemUtils.getHostname();
+		String me = RefreshQueueService.myHostName();
 		String myRegion = RefreshQueueService.getRegion();
 		String eventId = MDC.get(EventId.EVENTID_KEY);
+		RefreshRequest command = new RefreshRequest(true, eventId, me, myRegion, null, false, destId);
 		Map<String, String> hosts = new TreeMap<>();
-		hosts.put(myRegion + ":" + me, "OK (Local)");
-		refreshQueueService.distribute(
-				new RefreshRequest(true, eventId, me, myRegion, null, false, destId), hosts);
+		// Apply on this instance through the same method the remote instances use, and
+		// record what happened rather than assuming it worked. distribute() skips the
+		// caller, so without this line the instance that serves the request is the one
+		// instance that never resets.
+		String applied = refreshQueueService.applyLocally(command);
+		hosts.put(myRegion + ":" + me, "OK".equals(applied) ? "OK (Local)" : applied);
+		refreshQueueService.distribute(command, hosts);
 		return hosts;
 	}
 }
