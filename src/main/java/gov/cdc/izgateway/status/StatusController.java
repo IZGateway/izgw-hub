@@ -9,7 +9,6 @@ import gov.cdc.izgateway.dynamodb.model.EndpointStatus;
 import gov.cdc.izgateway.hub.service.DestinationService;
 import gov.cdc.izgateway.hub.service.StatusCheckerService;
 import gov.cdc.izgateway.logging.event.EventId;
-import gov.cdc.izgateway.utils.SystemUtils;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.model.IEndpointStatus;
 import gov.cdc.izgateway.security.AccessControlRegistry;
@@ -268,16 +267,22 @@ public class StatusController {
 		if (destinationService.findByDestId(id) == null) {
 			throw new ResourceNotFoundException(String.format("Destination %s not found", id));
 		}
-		// Reset here first: this call both performs the local reset and yields the status
-		// for the response body, and a null tells us the destination has no status to
-		// reset. applyEverywhere then resets it again through the shared path, which is a
-		// no-op because the breaker is already clear, and records the real local outcome.
-		IEndpointStatus status = endpointStatusService.resetCircuitBreakerById(id);
-		if (status == null) {
+		// findById reads without mutating and without synthesising a default, so this
+		// keeps the "no status, no message sent" behavior while leaving the only reset
+		// to applyEverywhere. Resetting here as well would mean a local failure throws
+		// a 500 instead of being reported, and would pin the response body to a status
+		// captured before the fan-out.
+		IEndpointStatus existing = endpointStatusService.findById(id);
+		if (existing == null) {
 			throw new ResourceNotFoundException(String.format("No status found for destination %s", id));
 		}
 		Map<String, String> hosts = applyEverywhere(id);
-		return new ResetOneResponse(status, hosts, RefreshQueueService.summarizeByRegion(hosts));
+		// Read again, so the body reflects the state after the reset. The scheduled
+		// status refresh replaces the whole cache rather than mutating it, so a refresh
+		// landing inside the wait would otherwise leave this holding a detached object.
+		IEndpointStatus status = endpointStatusService.findById(id);
+		return new ResetOneResponse(status == null ? existing : status, hosts,
+				RefreshQueueService.summarizeByRegion(hosts));
 	}
 
 	/**

@@ -1,10 +1,11 @@
 package gov.cdc.izgateway.db;
 
-import org.apache.commons.lang3.SystemUtils;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import gov.cdc.izgateway.db.DbController.DbControllerConfiguration;
 import gov.cdc.izgateway.hub.security.ApiKeyPrincipalProvider;
+import gov.cdc.izgateway.logging.event.EventId;
 import gov.cdc.izgateway.logging.markers.Markers2;
 import gov.cdc.izgateway.repository.IHostRepository;
 import gov.cdc.izgateway.service.impl.EndpointStatusService;
@@ -262,18 +263,21 @@ public class RefreshQueueService {
 	/**
 	 * Get the host name of this instance.
 	 * <p>
-	 * {@code org.apache.commons.lang3.SystemUtils.getHostName()} reads the
-	 * {@code HOSTNAME} environment variable and returns null when it is not set. A null
-	 * here builds the queue name {@code izgw_null_refresh-requests}. The fallback keeps
-	 * the primary value whenever {@code HOSTNAME} is set, which it always is in the
-	 * deployed container. See IGDD-3599.
+	 * Every caller must use this method rather than resolving the name itself. The
+	 * sender identity on a command and the queue a reply is read from are built from
+	 * this value. If two callers disagreed, replies would land on a queue nobody reads
+	 * and every remote instance would report a timeout. See IGDD-3599.
 	 * </p>
 	 *
 	 * @return The host name, never null
 	 */
 	public static String myHostName() {
-		return Objects.toString(SystemUtils.getHostName(),
-				gov.cdc.izgateway.utils.SystemUtils.getHostname());
+		// The core resolver is a strict superset of the commons-lang3 one: it reads
+		// HOSTNAME, then COMPUTERNAME, then InetAddress, and never returns null. The
+		// commons version returns null when HOSTNAME is unset and an empty string when
+		// HOSTNAME is set but blank, and an empty string would silently build the queue
+		// name izgw__refresh-requests that nobody reads.
+		return gov.cdc.izgateway.utils.SystemUtils.getHostname();
 	}
 
 	private static void createRefreshQueues() {
@@ -524,11 +528,14 @@ public class RefreshQueueService {
             	log.info(Markers2.append("eventType", "SQS_RECEIVE", "direction", "receive",
             			"queueName", queueName, "messageType", RefreshResponse.MESSAGE,
             			"targetHost", response.host(), "targetRegion", response.region(),
-            			"eventId", response.eventId(), "result", response.status()),
+            			// Not "eventId": the MDC already carries the running operation's id.
+            			// A late reply from a timed-out operation answers a different one, and
+            			// overwriting eventId would file this record under the wrong operation.
+            			"replyEventId", response.eventId(), "result", response.status()),
             			"SQS receive {} from {}:{}", RefreshResponse.MESSAGE, response.region(), response.host());
                 String key = response.region() + ":" + response.host();
                 // Only update the result if the eventId matches and it is a response we are waiting for
-                if (response.host() != null && response.status() != null && eventId.equals(response.eventId()) && results.get(key) != null) {
+                if (response.host() != null && response.status() != null && Objects.equals(eventId, response.eventId()) && results.get(key) != null) {
                     results.put(key, response.status());
                     // Delete only the messages we processed
                     sqsClient.deleteMessage(r -> r.queueUrl(queueUrl).receiptHandle(msg.receiptHandle()));
@@ -559,7 +566,7 @@ public class RefreshQueueService {
     private static void logOperationComplete(String eventId, Map<String, String> results) {
     	long ok = results.values().stream().filter(RefreshQueueService::isSuccess).count();
     	int total = results.size();
-    	log.info(Markers2.append("eventType", "SQS_OPERATION_COMPLETE", "eventId", eventId,
+    	log.info(Markers2.append("eventType", "SQS_OPERATION_COMPLETE",
     			"instances", total, "succeeded", ok, "failed", total - ok,
     			"regions", summarizeByRegion(results)),
     			"Distributed operation complete: {} of {} instances applied the command", ok, total);
@@ -598,14 +605,23 @@ public class RefreshQueueService {
 		        for (Message msg : messages) {
 		        	if (RefreshRequest.MESSAGE.equals(msg.body())) {
 		        		RefreshRequest request = RefreshRequest.fromMessage(msg);
-		        		log.info(Markers2.append("eventType", "SQS_RECEIVE", "direction", "receive",
-		        				"queueName", getRequestQueueName(myHostName()),
-		        				"messageType", RefreshRequest.MESSAGE, "eventId", request.eventId(),
-		        				"keyId", request.jti()),
-		        				"SQS receive {} from {}:{}", RefreshRequest.MESSAGE,
-		        				request.senderRegion(), request.senderHost());
-		        		handleRefreshRequest(request);
-		        		sqsClient.deleteMessage(r -> r.queueUrl(queueUrl).receiptHandle(msg.receiptHandle()));
+		        		// Put the correlation id in the MDC, the way the request valve does for
+		        		// an inbound HTTP request. Every record this thread writes then carries
+		        		// it once. A log statement that appends it again produces a duplicate
+		        		// JSON key, which is the fault commit a8f40240d fixed for "level".
+		        		MDC.put(EventId.EVENTID_KEY, request.eventId());
+		        		try {
+			        		log.info(Markers2.append("eventType", "SQS_RECEIVE", "direction", "receive",
+			        				"queueName", getRequestQueueName(myHostName()),
+			        				"messageType", RefreshRequest.MESSAGE,
+			        				"keyId", request.jti()),
+			        				"SQS receive {} from {}:{}", RefreshRequest.MESSAGE,
+			        				request.senderRegion(), request.senderHost());
+			        		handleRefreshRequest(request);
+			        		sqsClient.deleteMessage(r -> r.queueUrl(queueUrl).receiptHandle(msg.receiptHandle()));
+		        		} finally {
+		        			MDC.remove(EventId.EVENTID_KEY);
+		        		}
 		        	}
 		        }
 		    } catch (Exception e) {
@@ -669,7 +685,7 @@ public class RefreshQueueService {
 		// command silently: the remote instances log SQS_RECEIVE, and the serving one
 		// logs nothing. An operator tracing one eventId would see every hop but the
 		// first. This record also carries the outcome, which SQS_RECEIVE does not.
-		log.info(Markers2.append("eventType", "COMMAND_APPLIED", "eventId", request.eventId(),
+		log.info(Markers2.append("eventType", "COMMAND_APPLIED",
 				"reset", request.reset(), "refreshConfig", request.refreshConfig(),
 				"destId", request.destId(), "keyId", request.jti(), "result", result),
 				"Applied command on this instance: reset={} destId={} result={}",
@@ -694,7 +710,7 @@ public class RefreshQueueService {
             log.info(Markers2.append("eventType", "SQS_SEND", "direction", "send",
             		"queueName", responseQueueName, "messageType", RefreshResponse.MESSAGE,
             		"targetHost", request.senderHost(), "targetRegion", request.senderRegion(),
-            		"eventId", request.eventId(), "result", response.status()),
+            		"result", response.status()),
             		"SQS send {} to {}:{}", RefreshResponse.MESSAGE,
             		request.senderRegion(), request.senderHost());
         } catch (Exception e) {

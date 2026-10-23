@@ -25,6 +25,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+
+import gov.cdc.izgateway.logging.event.EventId;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -71,9 +74,13 @@ class RefreshQueueLoggingTests {
 	private ListAppender<ILoggingEvent> appender;
 	private LogstashEncoder encoder;
 
+	/** The operation id a request thread would carry, set by the valve in production. */
+	private static final String OPERATION_ID = "op-1";
+
 	@BeforeEach
 	void captureLogs() {
 		RefreshQueueService.responseTimeoutMillis = 50L;
+		MDC.put(EventId.EVENTID_KEY, OPERATION_ID);
 		logger = (Logger) LoggerFactory.getLogger(RefreshQueueService.class);
 		appender = new ListAppender<>();
 		appender.setContext(logger.getLoggerContext());
@@ -96,6 +103,7 @@ class RefreshQueueLoggingTests {
 
 	@AfterEach
 	void releaseLogs() {
+		MDC.remove(EventId.EVENTID_KEY);
 		logger.detachAppender(appender);
 		RefreshQueueService.responseTimeoutMillis = 15000L;
 	}
@@ -110,6 +118,16 @@ class RefreshQueueLoggingTests {
 		}
 		throw new AssertionError("no log record containing: " + messageFragment
 				+ " in " + appender.list.stream().map(ILoggingEvent::getFormattedMessage).toList());
+	}
+
+	/** The encoded record as text, so a duplicate key is visible. */
+	private String rawJsonOf(String messageFragment) {
+		for (ILoggingEvent event : appender.list) {
+			if (event.getFormattedMessage().contains(messageFragment)) {
+				return new String(encoder.encode(event), StandardCharsets.UTF_8);
+			}
+		}
+		throw new AssertionError("no log record containing: " + messageFragment);
 	}
 
 	private boolean anyRecordContains(String fragment) {
@@ -130,7 +148,10 @@ class RefreshQueueLoggingTests {
 				.thenReturn(GetQueueUrlResponse.builder().queueUrl("https://sqs.test/q").build());
 		when(sqs.sendMessage(any(SendMessageRequest.class))).thenReturn(SendMessageResponse.builder().build());
 		when(sqs.receiveMessage(any(Consumer.class)))
-				.thenReturn(ReceiveMessageResponse.builder().messages(List.of(repliesToReceive)).build());
+				.thenReturn(ReceiveMessageResponse.builder().messages(List.of(repliesToReceive)).build())
+				// Deliver once, then nothing. The real client long-polls; a mock that keeps
+				// returning the same message makes the wait loop spin and flood the test.
+				.thenReturn(ReceiveMessageResponse.builder().messages(List.of()).build());
 		return sqs;
 	}
 
@@ -211,6 +232,49 @@ class RefreshQueueLoggingTests {
 				"the record must carry the command detail: " + record.path("message").asText());
 	}
 
+	@Test
+	void noRecordShipsADuplicateEventIdKey() {
+		// LogstashEncoder writes MDC fields before marker fields, so a log statement that
+		// appends eventId while the MDC already holds it emits the key twice. Jackson
+		// keeps the last one, which is why a parsed tree cannot catch this. Commit
+		// a8f40240d fixed the same collision for "level".
+		Message reply = Message.builder().body(RefreshResponse.MESSAGE)
+				.messageAttributes(new RefreshResponse("host-b", "us-west-1", "other-op", "OK").toMap())
+				.receiptHandle("rh-dup").build();
+		when(hostService.getHostsAndRegion()).thenReturn(Map.of("host-a", "us-east-1", "host-b", "us-west-1"));
+
+		Map<String, String> results = new TreeMap<>();
+		results.put("us-east-1:host-a", "OK (Local)");
+		serviceWith(sqsAccepting(reply)).distribute(
+				new RefreshRequest(true, OPERATION_ID, "host-a", "us-east-1", null, false, null), results);
+
+		for (String fragment : List.of("SQS send RefreshRequest", "SQS receive RefreshResponse",
+				"Distributed operation complete")) {
+			String raw = rawJsonOf(fragment);
+			assertEquals(1, raw.split("\"eventId\"", -1).length - 1,
+					"exactly one eventId key expected in: " + raw);
+		}
+	}
+
+	@Test
+	void aReplyCarriesItsOwnIdSeparatelyFromTheRunningOperation() throws Exception {
+		// A late reply answers a different operation. Its id must not overwrite the
+		// running operation's id, or the record is filed under the wrong trace.
+		Message reply = Message.builder().body(RefreshResponse.MESSAGE)
+				.messageAttributes(new RefreshResponse("host-b", "us-west-1", "other-op", "OK").toMap())
+				.receiptHandle("rh-late").build();
+		when(hostService.getHostsAndRegion()).thenReturn(Map.of("host-a", "us-east-1", "host-b", "us-west-1"));
+
+		Map<String, String> results = new TreeMap<>();
+		results.put("us-east-1:host-a", "OK (Local)");
+		serviceWith(sqsAccepting(reply)).distribute(
+				new RefreshRequest(true, OPERATION_ID, "host-a", "us-east-1", null, false, null), results);
+
+		JsonNode record = jsonOf("SQS receive RefreshResponse");
+		assertEquals(OPERATION_ID, record.path("eventId").asText(), "the running operation stays authoritative");
+		assertEquals("other-op", record.path("replyEventId").asText(), "the reply's own id is kept separately");
+	}
+
 	// ---------- The instance that applies a command locally says so
 
 	@Test
@@ -222,7 +286,7 @@ class RefreshQueueLoggingTests {
 
 		assertEquals("INFO", record.path("level").asText());
 		assertEquals("COMMAND_APPLIED", record.path("eventType").asText());
-		assertEquals("evt-30", record.path("eventId").asText());
+		assertEquals(OPERATION_ID, record.path("eventId").asText(), "the MDC supplies the operation id");
 		assertEquals("md", record.path("destId").asText());
 		assertEquals("jti-3", record.path("keyId").asText());
 		assertEquals("OK", record.path("result").asText());
@@ -275,7 +339,7 @@ class RefreshQueueLoggingTests {
 		JsonNode record = jsonOf("Distributed operation complete");
 
 		assertEquals("SQS_OPERATION_COMPLETE", record.path("eventType").asText());
-		assertEquals("evt-6", record.path("eventId").asText());
+		assertEquals(OPERATION_ID, record.path("eventId").asText());
 		assertEquals(3, record.path("instances").asInt());
 		assertEquals(1, record.path("succeeded").asInt(), "only the local instance replied");
 		assertEquals(2, record.path("failed").asInt());

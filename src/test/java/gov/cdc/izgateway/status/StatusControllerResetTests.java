@@ -163,12 +163,14 @@ class StatusControllerResetTests {
 	@Test
 	void resetOneAppliesTheResetOnTheServingInstance() {
 		when(destinationService.findByDestId("md")).thenReturn(new Destination());
-		when(endpointStatusService.resetCircuitBreakerById("md")).thenReturn(statusFor("md"));
+		when(endpointStatusService.findById("md")).thenReturn(statusFor("md"));
 		distributeYields(Map.of());
 
 		controller.resetCircuitBreakerById("md");
 
-		verify(endpointStatusService).resetCircuitBreakerById("md");
+		// The controller must not mutate directly. applyLocally is the only reset, so a
+		// local failure is reported rather than thrown, and the body is read afterwards.
+		verify(endpointStatusService, never()).resetCircuitBreakerById(anyString());
 		ArgumentCaptor<RefreshRequest> applied = ArgumentCaptor.forClass(RefreshRequest.class);
 		verify(refreshQueueService).applyLocally(applied.capture());
 		assertEquals("md", applied.getValue().destId());
@@ -194,7 +196,7 @@ class StatusControllerResetTests {
 	@Test
 	void resetOneKeepsTheExistingFieldsAndAddsTheNewMembers() {
 		when(destinationService.findByDestId("md")).thenReturn(new Destination());
-		when(endpointStatusService.resetCircuitBreakerById("md")).thenReturn(statusFor("md"));
+		when(endpointStatusService.findById("md")).thenReturn(statusFor("md"));
 		distributeYields(Map.of("us-west-1:host-b", "OK"));
 
 		StatusController.ResetOneResponse response = controller.resetCircuitBreakerById("md");
@@ -225,7 +227,7 @@ class StatusControllerResetTests {
 	@Test
 	void resetOneDistributesForThatDestinationOnly() {
 		when(destinationService.findByDestId("md")).thenReturn(new Destination());
-		when(endpointStatusService.resetCircuitBreakerById("md")).thenReturn(statusFor("md"));
+		when(endpointStatusService.findById("md")).thenReturn(statusFor("md"));
 		distributeYields(Map.of());
 
 		controller.resetCircuitBreakerById("md");
@@ -251,7 +253,7 @@ class StatusControllerResetTests {
 	@Test
 	void aDestinationWithNoStatusIsNotFoundAndSendsNoMessage() {
 		when(destinationService.findByDestId("md")).thenReturn(new Destination());
-		when(endpointStatusService.resetCircuitBreakerById("md")).thenReturn(null);
+		when(endpointStatusService.findById("md")).thenReturn(null);
 
 		assertThrows(ResourceNotFoundException.class, () -> controller.resetCircuitBreakerById("md"));
 

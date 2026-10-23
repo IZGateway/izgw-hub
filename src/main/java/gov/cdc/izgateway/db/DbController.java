@@ -150,7 +150,6 @@ public class DbController {
 	}
 	private final IHostRepository hostService;
 	private final DbControllerConfiguration configuration;
-	private final ApiKeyPrincipalProvider apiKeyPrincipalProvider;
 	/** Cached region for THIS host */
 	private final RefreshQueueService refreshQueueService;
 	private final DynamoDbClient ddbClient;
@@ -213,7 +212,6 @@ public class DbController {
 	 * @param hostService	The service use to access running hosts
 	 * @param config	The configuration providing access to db services
 	 * @param registry	The access control registry managing these APIs
-	 * @param apiKeyPrincipalProvider  The API key principal provider for credential cache eviction
 	 * @param ddbClient	The raw DynamoDB client, used for the generic entity-type read endpoint
 	 * @param ddbConfig	The DynamoDB configuration, used to resolve the table name
 	 */
@@ -222,14 +220,12 @@ public class DbController {
 		IHostRepository hostService,
 		DbControllerConfiguration config,
 		AccessControlRegistry registry,
-		ApiKeyPrincipalProvider apiKeyPrincipalProvider,
 		RefreshQueueService refreshQueueService,
 		DynamoDbClient ddbClient,
 		DynamoDbConfig ddbConfig
 	) {
 		this.hostService = hostService;
 		this.configuration = config;
-		this.apiKeyPrincipalProvider = apiKeyPrincipalProvider;
 		this.refreshQueueService = refreshQueueService;
 		this.ddbClient = ddbClient;
 		this.tableName = ddbConfig.getDynamodbTable();
@@ -412,21 +408,15 @@ public class DbController {
       @RequestParam(name = "jti", required = false) String jti
 	) {
       HostMap results = new HostMap();
-      if (jti != null) {
-          apiKeyPrincipalProvider.evictCredential(jti);
-      }
-      refresh();
-      String me = SystemUtils.getHostname();
+      String me = RefreshQueueService.myHostName();
       String eventId = MDC.get(EventId.EVENTID_KEY);
-      // Apply the local reset in process, then record what actually happened. Calling
-      // /rest/reset over HTTP would recurse once that endpoint distributes. IGDD-3599.
-      String localStatus = "OK (Local)";
-      if (reset) {
-         String applied = refreshQueueService.applyLocally(
-            new RefreshRequest(true, eventId, me, REGION, null, false, null));
-         localStatus = "OK".equals(applied) ? "OK (Local)" : applied;
-      }
-      results.put(REGION + ":" + me, localStatus);
+      // Apply on this instance through the same method the remote instances use, so the
+      // serving instance reports a real outcome and writes the same COMMAND_APPLIED
+      // record they do. Calling /rest/reset over HTTP would recurse once that endpoint
+      // distributes. IGDD-3599.
+      String applied = refreshQueueService.applyLocally(
+         new RefreshRequest(reset, eventId, me, REGION, jti, true, null));
+      results.put(REGION + ":" + me, "OK".equals(applied) ? "OK (Local)" : applied);
       if ("true".equalsIgnoreCase(all)) {
          refreshQueueService.distribute(new RefreshRequest(reset, eventId, me, REGION, jti), results);
       }
@@ -461,10 +451,10 @@ public class DbController {
 		}
 		if (Boolean.FALSE.equals(local)) {
 			// Remove this server 
-			m.remove(SystemUtils.getHostname());
+			m.remove(RefreshQueueService.myHostName());
 		} else {
 			// Include this server (overwrites data from repository with locally known data) 
-			m.put(SystemUtils.getHostname(), REGION);
+			m.put(RefreshQueueService.myHostName(), REGION);
 		}
 		return m.entrySet().stream().map(e -> e.getKey() + ":" + e.getValue()).toList();
 	}

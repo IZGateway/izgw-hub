@@ -215,7 +215,10 @@ class RefreshQueueServiceTests {
 				.thenReturn(GetQueueUrlResponse.builder().queueUrl("https://sqs.test/q").build());
 		when(sqs.sendMessage(any(SendMessageRequest.class))).thenReturn(SendMessageResponse.builder().build());
 		when(sqs.receiveMessage(any(java.util.function.Consumer.class)))
-				.thenReturn(ReceiveMessageResponse.builder().messages(List.of(repliesToReceive)).build());
+				.thenReturn(ReceiveMessageResponse.builder().messages(List.of(repliesToReceive)).build())
+				// Deliver once, then nothing. The real client long-polls; a mock that keeps
+				// returning the same message makes the wait loop spin and flood the test.
+				.thenReturn(ReceiveMessageResponse.builder().messages(List.of()).build());
 		return sqs;
 	}
 

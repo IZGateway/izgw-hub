@@ -193,9 +193,15 @@ Every message record uses `Markers2.append` with this field set:
 | `targetHost`, `targetRegion` | Present on a send |
 | `messageType` | `RefreshRequest`, `RefreshResponse` |
 | `keyId` | The credential identifier, when the command carries one |
-| `result` | `OK`, `Timed Out`, `No Queue`, `Send Failure` |
+| `replyEventId` | On a received reply only: the operation that reply answers |
+| `result` | `OK`, `Timed Out`, `No Queue`, `Send Failure`, `Internal Error` |
 
-`eventId` is already in the MDC and needs no marker.
+`eventId` comes from the MDC, which the request valve populates for an inbound request
+and the listener thread populates for a received message. No log statement appends it
+again: `LogstashEncoder` writes MDC fields before marker fields, so a second one emits
+a duplicate JSON key and the parser decides which survives. A received reply therefore
+carries its own identifier as `replyEventId`, because a late reply answers a different
+operation than the one running.
 
 `keyId` matches `ApiKeyAuditLogger`, so one query returns the audit records and the
 messaging records for a credential together. The value is not masked, which matches the

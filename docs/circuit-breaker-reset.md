@@ -95,6 +95,7 @@ A missing record tells you where the operation stopped.
 | `queueName` | The SQS queue, named after the host |
 | `messageType` | `RefreshRequest` or `RefreshResponse` |
 | `targetHost`, `targetRegion` | Present on a send |
+| `replyEventId` | On a received reply only: the operation that reply answers. It differs from `eventId` when a late reply arrives from an operation that already timed out |
 | `result` | The outcome for that instance |
 | `keyId` | The API key identifier, when the command evicts a credential |
 

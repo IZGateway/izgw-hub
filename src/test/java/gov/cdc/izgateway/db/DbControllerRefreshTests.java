@@ -3,6 +3,7 @@ package gov.cdc.izgateway.db;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -22,7 +23,6 @@ import org.mockito.quality.Strictness;
 import gov.cdc.izgateway.configuration.DynamoDbConfig;
 import gov.cdc.izgateway.db.DbController.DbControllerConfiguration;
 import gov.cdc.izgateway.db.RefreshQueueService.RefreshRequest;
-import gov.cdc.izgateway.hub.security.ApiKeyPrincipalProvider;
 import gov.cdc.izgateway.repository.IHostRepository;
 import gov.cdc.izgateway.security.AccessControlRegistry;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
@@ -47,8 +47,6 @@ class DbControllerRefreshTests {
 	@Mock
 	private AccessControlRegistry registry;
 	@Mock
-	private ApiKeyPrincipalProvider apiKeyPrincipalProvider;
-	@Mock
 	private RefreshQueueService refreshQueueService;
 	@Mock
 	private DynamoDbClient ddbClient;
@@ -58,7 +56,7 @@ class DbControllerRefreshTests {
 	/** Stubs only what construction needs, so a test can set its own behaviour first. */
 	private DbController controller() {
 		when(ddbConfig.getDynamodbTable()).thenReturn("izgateway-test");
-		return new DbController(hostService, configuration, registry, apiKeyPrincipalProvider,
+		return new DbController(hostService, configuration, registry,
 				refreshQueueService, ddbClient, ddbConfig);
 	}
 
@@ -98,12 +96,19 @@ class DbControllerRefreshTests {
 	}
 
 	@Test
-	void aRefreshWithoutResetAppliesNoResetLocally() {
+	void aRefreshWithoutResetStillAppliesLocallyWithTheResetFlagOff() {
+		localResetReturns("OK");
+
 		controller().getRefreshed("true", false, null);
 
-		verify(refreshQueueService, never()).applyLocally(any(RefreshRequest.class));
+		// Every local application goes through applyLocally, reset or not. That is what
+		// gives the serving instance a COMMAND_APPLIED record and an honest outcome,
+		// rather than refreshing silently and reporting a hardcoded OK.
+		ArgumentCaptor<RefreshRequest> applied = ArgumentCaptor.forClass(RefreshRequest.class);
+		verify(refreshQueueService, times(1)).applyLocally(applied.capture());
+		assertFalse(applied.getValue().reset(), "a refresh without reset must not reset");
+		assertTrue(applied.getValue().refreshConfig(), "a refresh must reload the configuration");
 		verify(refreshQueueService, times(1)).distribute(any(RefreshRequest.class), any());
-		verify(configuration, times(1)).refresh();
 	}
 
 	@Test
@@ -118,9 +123,15 @@ class DbControllerRefreshTests {
 	}
 
 	@Test
-	void aCredentialIsEvictedBeforeAnythingElse() {
+	void aCredentialToEvictIsCarriedOnTheLocalCommand() {
+		localResetReturns("OK");
+
 		controller().getRefreshed("false", false, "jti-5");
 
-		verify(apiKeyPrincipalProvider, times(1)).evictCredential("jti-5");
+		// The eviction now happens inside applyLocally, alongside the refresh, so it is
+		// logged and its failure is reported like any other part of the command.
+		ArgumentCaptor<RefreshRequest> applied = ArgumentCaptor.forClass(RefreshRequest.class);
+		verify(refreshQueueService, times(1)).applyLocally(applied.capture());
+		assertEquals("jti-5", applied.getValue().jti());
 	}
 }

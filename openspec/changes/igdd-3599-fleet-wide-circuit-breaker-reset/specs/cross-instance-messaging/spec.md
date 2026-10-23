@@ -94,6 +94,33 @@ type, and the correlation identifier.
 - **THEN** the sending instance records the reply at INFO level
 - **AND** the originating instance records the reply when it reads it
 
+### Requirement: Record the application of a command
+
+Every instance SHALL write a record at INFO level when it applies a command, whether
+the command arrived over a message or was given to it directly. The record SHALL name
+the outcome.
+
+#### Scenario: The instance that receives the operator's request
+
+- **GIVEN** an operator sends a reset to one instance
+- **WHEN** that instance applies the command to itself
+- **THEN** a record is written at INFO level
+- **AND** the record names the outcome of the application
+
+#### Scenario: An instance that receives a message
+
+- **GIVEN** an instance reads a command from its queue
+- **WHEN** that instance applies the command
+- **THEN** a record is written at INFO level
+- **AND** the record carries the correlation identifier of the operation
+
+#### Scenario: The application fails
+
+- **GIVEN** applying a command raises an error
+- **WHEN** the record is written
+- **THEN** the record names the failure
+- **AND** the record does not report success
+
 ### Requirement: Close each operation with a summary record
 
 The gateway SHALL write one summary record at INFO level when a distributed operation
