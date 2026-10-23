@@ -1,9 +1,14 @@
 package gov.cdc.izgateway.status;
 
+import com.fasterxml.jackson.annotation.JsonUnwrapped;
+
 import gov.cdc.izgateway.common.ResourceNotFoundException;
+import gov.cdc.izgateway.db.RefreshQueueService;
+import gov.cdc.izgateway.db.RefreshQueueService.RefreshRequest;
 import gov.cdc.izgateway.dynamodb.model.EndpointStatus;
 import gov.cdc.izgateway.hub.service.DestinationService;
 import gov.cdc.izgateway.hub.service.StatusCheckerService;
+import gov.cdc.izgateway.logging.event.EventId;
 import gov.cdc.izgateway.model.IDestination;
 import gov.cdc.izgateway.model.IEndpointStatus;
 import gov.cdc.izgateway.security.AccessControlRegistry;
@@ -18,6 +23,7 @@ import jakarta.annotation.security.RolesAllowed;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
@@ -35,11 +41,13 @@ public class StatusController {
     private final EndpointStatusService  endpointStatusService;
 	private final StatusCheckerService checkerService;
 	private final DestinationService destinationService;
+	private final RefreshQueueService refreshQueueService;
     @Autowired
-    public StatusController(EndpointStatusService endpointStatusService, StatusCheckerService checkerService, AccessControlRegistry registry, DestinationService destinationService) {
+    public StatusController(EndpointStatusService endpointStatusService, StatusCheckerService checkerService, AccessControlRegistry registry, DestinationService destinationService, RefreshQueueService refreshQueueService) {
         this.endpointStatusService = endpointStatusService;
         this.checkerService = checkerService;
         this.destinationService = destinationService;
+        this.refreshQueueService = refreshQueueService;
         registry.register(this);
     }
 
@@ -180,37 +188,127 @@ public class StatusController {
 		return checkerService.updateDestinationStatus(d);
 	}
 	
+	/**
+	 * Response for a reset of every destination.
+	 *
+	 * @param destinations	The status of each destination on this instance
+	 * @param hosts	The outcome for each instance, keyed {@code region:hostname}
+	 * @param regions	One status per region: {@code complete}, {@code partial} or {@code failed}
+	 */
+	public record ResetAllResponse(
+			Map<String, IEndpointStatus> destinations,
+			Map<String, String> hosts,
+			Map<String, String> regions) {
+	}
+
+	/**
+	 * Response for a reset of one destination.
+	 * <p>
+	 * The status fields are unwrapped to the top level, so every field this endpoint
+	 * returned before keeps its name and meaning. See IGDD-3599, design decision D5.
+	 * </p>
+	 */
+	public static class ResetOneResponse {
+		@JsonUnwrapped
+		private final IEndpointStatus status;
+		private final Map<String, String> hosts;
+		private final Map<String, String> regions;
+
+		ResetOneResponse(IEndpointStatus status, Map<String, String> hosts, Map<String, String> regions) {
+			this.status = status;
+			this.hosts = hosts;
+			this.regions = regions;
+		}
+
+		/** @return The destination status, serialized at the top level */
+		public IEndpointStatus getStatus() {
+			return status;
+		}
+
+		/** @return The outcome for each instance, keyed {@code region:hostname} */
+		public Map<String, String> getHosts() {
+			return hosts;
+		}
+
+		/** @return One status per region */
+		public Map<String, String> getRegions() {
+			return regions;
+		}
+	}
+
 	@PostMapping("/reset")
 	@RolesAllowed(Roles.ADMIN)
-	@Operation(summary = "Reset the circuit breakers on this host",
-			description = "Reset the circuit breaker for all destinations on this host")
-	@ApiResponse(responseCode = "200", description = "Success", 
+	@Operation(summary = "Reset the circuit breakers on every instance",
+			description = "Reset the circuit breaker for all destinations on every Hub instance "
+					+ "in every region. Returns 200 even when an instance fails; read the hosts "
+					+ "and regions members for the outcome.")
+	@ApiResponse(responseCode = "200", description = "Success",
 	content = @Content(mediaType = "application/json",
-		schema = @Schema(implementation=EndpointStatus.class))
+		schema = @Schema(implementation=ResetAllResponse.class))
 	)
-	public Map<String, IEndpointStatus> resetCircuitBreakers() {
-		endpointStatusService.resetCircuitBreakers();
+	public ResetAllResponse resetCircuitBreakers() {
+		Map<String, String> hosts = applyEverywhere(null);
 		Map<String, IEndpointStatus> l2 = new TreeMap<>();
 		endpointStatusService.findAll().forEach(s -> l2.put(s.getDestId(), s));
-		return l2;
+		return new ResetAllResponse(l2, hosts, RefreshQueueService.summarizeByRegion(hosts));
 	}
 
 	@PostMapping("/reset/{id}")
-	@Operation(summary = "Reset the circuit breaker for a single destination",
-			description = "Reset the circuit breaker for the specified destination on this host")
+	@Operation(summary = "Reset the circuit breaker for a single destination on every instance",
+			description = "Reset the circuit breaker for the specified destination on every Hub "
+					+ "instance in every region. Returns 200 even when an instance fails; read the "
+					+ "hosts and regions members for the outcome.")
 	@ApiResponse(responseCode = "200", description = "Success",
 		content = @Content(mediaType = "application/json",
-			schema = @Schema(implementation = EndpointStatus.class))
+			schema = @Schema(implementation = ResetOneResponse.class))
 	)
 	@RolesAllowed(Roles.ADMIN)
-	public IEndpointStatus resetCircuitBreakerById(@PathVariable String id) {
+	public ResetOneResponse resetCircuitBreakerById(@PathVariable String id) {
 		if (destinationService.findByDestId(id) == null) {
 			throw new ResourceNotFoundException(String.format("Destination %s not found", id));
 		}
-		IEndpointStatus status = endpointStatusService.resetCircuitBreakerById(id);
-		if (status == null) {
+		// findById reads without mutating and without synthesising a default, so this
+		// keeps the "no status, no message sent" behavior while leaving the only reset
+		// to applyEverywhere. Resetting here as well would mean a local failure throws
+		// a 500 instead of being reported, and would pin the response body to a status
+		// captured before the fan-out.
+		IEndpointStatus existing = endpointStatusService.findById(id);
+		if (existing == null) {
 			throw new ResourceNotFoundException(String.format("No status found for destination %s", id));
 		}
-		return status;
+		Map<String, String> hosts = applyEverywhere(id);
+		// Read again, so the body reflects the state after the reset. The scheduled
+		// status refresh replaces the whole cache rather than mutating it, so a refresh
+		// landing inside the wait would otherwise leave this holding a detached object.
+		IEndpointStatus status = endpointStatusService.findById(id);
+		return new ResetOneResponse(status == null ? existing : status, hosts,
+				RefreshQueueService.summarizeByRegion(hosts));
+	}
+
+	/**
+	 * Send the reset to every other instance and collect the outcome.
+	 * <p>
+	 * The local reset already happened before this runs. Only the remote instances are
+	 * messaged, and the local outcome is recorded directly. Commands travel over SQS,
+	 * never by calling this endpoint again. See IGDD-3599, design decision D4.
+	 * </p>
+	 *
+	 * @param destId	The destination to reset, or null for every destination
+	 * @return The outcome for each instance, keyed {@code region:hostname}
+	 */
+	private Map<String, String> applyEverywhere(String destId) {
+		String me = RefreshQueueService.myHostName();
+		String myRegion = RefreshQueueService.getRegion();
+		String eventId = MDC.get(EventId.EVENTID_KEY);
+		RefreshRequest command = new RefreshRequest(true, eventId, me, myRegion, null, false, destId);
+		Map<String, String> hosts = new TreeMap<>();
+		// Apply on this instance through the same method the remote instances use, and
+		// record what happened rather than assuming it worked. distribute() skips the
+		// caller, so without this line the instance that serves the request is the one
+		// instance that never resets.
+		String applied = refreshQueueService.applyLocally(command);
+		hosts.put(myRegion + ":" + me, "OK".equals(applied) ? "OK (Local)" : applied);
+		refreshQueueService.distribute(command, hosts);
+		return hosts;
 	}
 }

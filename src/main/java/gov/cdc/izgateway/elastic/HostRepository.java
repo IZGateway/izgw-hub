@@ -67,12 +67,24 @@ public class HostRepository extends ElasticRepository implements IHostRepository
 		return map.keySet().stream().collect(Collectors.toList());
 	}
 	
+	/**
+	 * List the instances that reported in the last few minutes, and their regions.
+	 * <p>
+	 * An empty map means that host reporting is switched off, not that no instance is
+	 * running. A read failure throws {@link HostDiscoveryException} instead of
+	 * returning an empty map, so that a caller which fans a command out to every
+	 * instance can tell the two apart. See IGDD-3599.
+	 * </p>
+	 *
+	 * @return The known instances, keyed by host name, with the region as the value
+	 * @throws HostDiscoveryException If the list cannot be read from Elasticsearch
+	 */
 	@Override
 	public Map<String, String> getHostsAndRegion() {
 		Date from = new Date();
-		
+
 		if (!config.isConfigured()) {
-			return Collections.emptyMap(); 
+			return Collections.emptyMap();
 		}
 		String request = getRequest(from);
 		try {
@@ -90,15 +102,27 @@ public class HostRepository extends ElasticRepository implements IHostRepository
 			}
 		} catch (IOException e) {
 			log.error(Markers2.append(e), "IOException getting host list: \n{}", e.getMessage());
+			throw new HostDiscoveryException("IOException getting host list: " + e.getMessage(), e);
 		} catch (NoSuchAlgorithmException e) {
 			log.error(Markers2.append(e), "TLS Error getting host list: \n{}", e.getMessage());
+			throw new HostDiscoveryException("TLS error getting host list: " + e.getMessage(), e);
 		}
-		return Collections.emptyMap();
 	}
 	
 	/**
 	 * Parse aggregate status data from ElasticSearch into host list.
-	 * @return
+	 * <p>
+	 * A response that cannot be parsed is a failed read, not a short host list.
+	 * {@code getNode} raises when the response does not hold the expected path, and
+	 * this used to log that and return whatever it had collected. A caller that fans a
+	 * command out would then send to an incomplete list and report success. A valid
+	 * response that holds no buckets still returns an empty map, so a quiet fleet
+	 * stays distinguishable from a broken response. See IGDD-3599.
+	 * </p>
+	 *
+	 * @param result	The response body from Elasticsearch
+	 * @return The instances in the response, keyed by host name
+	 * @throws HostDiscoveryException If the response cannot be parsed
 	 */
 	private Map<String, String>  parseResult(String result) {
 		Map<String, String>  hosts = new TreeMap<>();
@@ -118,6 +142,7 @@ public class HostRepository extends ElasticRepository implements IHostRepository
 			}
 		} catch (Exception e) {
 			log.error(Markers2.append(e), "Error retrieving host list: {}", e.getMessage());
+			throw new HostDiscoveryException("Error parsing host list: " + e.getMessage(), e);
 		}
 		return hosts;
 	}

@@ -1,11 +1,7 @@
 package gov.cdc.izgateway.db;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.InetAddress;
-import java.net.URI;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Date;
@@ -24,7 +20,6 @@ import jakarta.annotation.security.RolesAllowed;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.MDC;
@@ -84,7 +79,6 @@ import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
 import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
 import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 
-import javax.net.ssl.HttpsURLConnection;
 
 /**
  * This class provides APIs to manage information in the database.
@@ -139,7 +133,14 @@ public class DbController {
 			this.certificateStatusService = certificateStatusService;
 		}
 		
-		private void refresh() {
+		/**
+		 * Reload every cached configuration value from the datastore.
+		 * <p>
+		 * Public so that {@link RefreshQueueService} can apply a received refresh command
+		 * without calling back into {@link DbController}. See IGDD-3599.
+		 * </p>
+		 */
+		public void refresh() {
 			this.messageHeaderService.refresh();
 			this.destinationService.refresh();
 			this.accessControlService.refresh();
@@ -149,7 +150,6 @@ public class DbController {
 	}
 	private final IHostRepository hostService;
 	private final DbControllerConfiguration configuration;
-	private final ApiKeyPrincipalProvider apiKeyPrincipalProvider;
 	/** Cached region for THIS host */
 	private final RefreshQueueService refreshQueueService;
 	private final DynamoDbClient ddbClient;
@@ -212,7 +212,6 @@ public class DbController {
 	 * @param hostService	The service use to access running hosts
 	 * @param config	The configuration providing access to db services
 	 * @param registry	The access control registry managing these APIs
-	 * @param apiKeyPrincipalProvider  The API key principal provider for credential cache eviction
 	 * @param ddbClient	The raw DynamoDB client, used for the generic entity-type read endpoint
 	 * @param ddbConfig	The DynamoDB configuration, used to resolve the table name
 	 */
@@ -221,14 +220,13 @@ public class DbController {
 		IHostRepository hostService,
 		DbControllerConfiguration config,
 		AccessControlRegistry registry,
-		ApiKeyPrincipalProvider apiKeyPrincipalProvider,
+		RefreshQueueService refreshQueueService,
 		DynamoDbClient ddbClient,
 		DynamoDbConfig ddbConfig
 	) {
 		this.hostService = hostService;
 		this.configuration = config;
-		this.apiKeyPrincipalProvider = apiKeyPrincipalProvider;
-		this.refreshQueueService = new RefreshQueueService(REGION, this, apiKeyPrincipalProvider);
+		this.refreshQueueService = refreshQueueService;
 		this.ddbClient = ddbClient;
 		this.tableName = ddbConfig.getDynamodbTable();
 		registry.register(this);
@@ -410,67 +408,27 @@ public class DbController {
       @RequestParam(name = "jti", required = false) String jti
 	) {
       HostMap results = new HostMap();
-      if (jti != null) {
-          apiKeyPrincipalProvider.evictCredential(jti);
-      }
-      refresh();
-      String me = SystemUtils.getHostname();
+      String me = RefreshQueueService.myHostName();
       String eventId = MDC.get(EventId.EVENTID_KEY);
-      results.put(REGION + ":" + me, "OK (Local)");
-      if (reset) {
-         resetEndpoint(me, eventId);
-      }
+      // Apply on this instance through the same method the remote instances use, so the
+      // serving instance reports a real outcome and writes the same COMMAND_APPLIED
+      // record they do. Calling /rest/reset over HTTP would recurse once that endpoint
+      // distributes. IGDD-3599.
+      String applied = refreshQueueService.applyLocally(
+         new RefreshRequest(reset, eventId, me, REGION, jti, true, null));
+      results.put(REGION + ":" + me, "OK".equals(applied) ? "OK (Local)" : applied);
       if ("true".equalsIgnoreCase(all)) {
-         Map<String, String> hostsAndRegions = hostService.getHostsAndRegion();
-         for (Map.Entry<String, String> entry : hostsAndRegions.entrySet()) {
-            String hostName = entry.getKey();
-            String hostRegion = entry.getValue();
-            if (hostName.equalsIgnoreCase(me) && hostRegion.equals(REGION)) {
-			   continue;  // Yeah, we already did that one
-			}
-            RefreshRequest request = new RefreshRequest(reset, eventId, me, REGION, jti);
-            refreshQueueService.sendRefreshMessage(request, results, hostName, hostRegion);
-         }
-         refreshQueueService.awaitRefreshResponses(eventId, results);
+         refreshQueueService.distribute(new RefreshRequest(reset, eventId, me, REGION, jti), results);
       }
       return results;
     }
 
-	protected String resetEndpoint(String host, String eventId) {
-		return callEndpoint(host, eventId, "/rest/reset");
-	}
-
-	private String callEndpoint(String host, String eventId, String path) {
-		URL url = null;
-		MDC.put(EventId.EVENTID_KEY, eventId);
-		try {
-			url = new URI("https://" + host + path).toURL();
-			HttpsURLConnection con = (HttpsURLConnection) url.openConnection();
-
-			if (con.getResponseCode() != HttpStatus.OK.value()) {
-				String error = getErrorStream(con);
-				log.warn("Could not call {}{}: {}", host, path, error);
-				return con.getResponseCode() + error;
-			}
-			return "OK";
-		} catch (Exception e) {
-			log.error(Markers2.append(e), "Exception calling {}{}: {}", host, path, e.getMessage());
-			return Objects.toString(e.getMessage(), "NOT OK");
-		}
-	}
-
-	private String getErrorStream(HttpsURLConnection con) {
-		String error = " ";
-		try {
-			InputStream is = con.getErrorStream();
-			if (is != null) {
-				error += IOUtils.toString(is, StandardCharsets.UTF_8);
-			}
-		} catch (IOException ex) {
-			// Ignore it
-		}
-		return error;
-	}
+	// resetEndpoint and callEndpoint were removed by IGDD-3599. They posted to this
+	// instance's own /rest/reset over HTTPS, which failed on every host: the default
+	// HttpURLConnection method is GET, and /rest/reset is registered for POST only, so
+	// AccessControlValve rejected it as an unknown path. Both call sites discarded the
+	// result and reported OK. Commands are now applied in process by
+	// RefreshQueueService.applyLocally.
 
 	@Operation(summary = "Report the running host instances and their regions.",
 			description = "Refresh the list of running hosts.  Returns a list region:hostname values.")
@@ -486,6 +444,9 @@ public class DbController {
 			description="If true, return only locally accessible hosts, if false, return only non-locally accessible hosts, if omitted return all hosts.")
 		@RequestParam(name = "local", required = false) Boolean local) {
 		
+		// A read failure throws HostDiscoveryException and ends this request. Reporting
+		// only the local host would describe a one-instance fleet that does not exist.
+		// IGDD-3599.
 		Map<String, String> m = hostService.getHostsAndRegion();
 
 		for (Iterator<Map.Entry<String, String>> i = m.entrySet().iterator(); i.hasNext();) {
@@ -493,10 +454,10 @@ public class DbController {
 		}
 		if (Boolean.FALSE.equals(local)) {
 			// Remove this server 
-			m.remove(SystemUtils.getHostname());
+			m.remove(RefreshQueueService.myHostName());
 		} else {
 			// Include this server (overwrites data from repository with locally known data) 
-			m.put(SystemUtils.getHostname(), REGION);
+			m.put(RefreshQueueService.myHostName(), REGION);
 		}
 		return m.entrySet().stream().map(e -> e.getKey() + ":" + e.getValue()).toList();
 	}
