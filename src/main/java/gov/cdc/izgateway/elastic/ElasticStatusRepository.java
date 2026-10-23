@@ -130,11 +130,32 @@ public class ElasticStatusRepository extends ElasticRepository implements Endpoi
 	}
 	
 
+	/**
+	 * Make sure that the cache holds the status this instance knows about.
+	 * <p>
+	 * {@link #refresh()} reports a failed read by returning false and leaving the cache
+	 * empty. A reset that ignored that cleared nothing and reported success, because an
+	 * empty cache and a cache with no thrown breaker look the same from here. Only the
+	 * reset methods call this: a read that returns no status is a valid answer for a
+	 * query, and {@code findById} must still answer 404 rather than an error. See
+	 * IGDD-3599.
+	 * </p>
+	 * <p>
+	 * An instance with no Elasticsearch endpoint configured reads an empty status set
+	 * successfully, so this does not raise for it.
+	 * </p>
+	 *
+	 * @throws StatusUnavailableException If the status cannot be read
+	 */
+	private void requireStatus() {
+		if (cache.isEmpty() && !refresh()) {
+			throw new StatusUnavailableException("Could not read status from Elasticsearch");
+		}
+	}
+
 	@Override
 	public void resetCircuitBreakers() {
-		if (cache.isEmpty()) {
-			refresh();
-		}
+		requireStatus();
 		for (IEndpointStatus status: cache.values()) {
 			if (status.isCircuitBreakerThrown()) {
 				status.setStatus(IEndpointStatus.CONNECTED);
@@ -144,9 +165,10 @@ public class ElasticStatusRepository extends ElasticRepository implements Endpoi
 
 	@Override
 	public EndpointStatus resetCircuitBreakerById(String id) {
-		if (cache.isEmpty()) {
-			refresh();
-		}
+		// Without this a failed read returns null, which the caller reports as "no status
+		// for this destination". Two different causes would read the same way, and an
+		// operator could not tell them apart. IGDD-3599.
+		requireStatus();
 		IEndpointStatus status = cache.get(id);
 		if (status == null) {
 			return null;
@@ -179,6 +201,10 @@ public class ElasticStatusRepository extends ElasticRepository implements Endpoi
 			refreshed = true;
 		} catch (IOException | NoSuchAlgorithmException e) {
 			log.error("Exception refreshing status service: {}", e.getMessage(), e);
+		} catch (StatusUnavailableException e) {
+			// A response that cannot be parsed is a failed read. parseResult already
+			// wrote the detail, so this records only that the refresh did not happen.
+			log.error("Status refresh did not complete: {}", e.getMessage());
 		}
 		return refreshed;
 	}
@@ -368,7 +394,13 @@ public class ElasticStatusRepository extends ElasticRepository implements Endpoi
 			}
 		} catch (Exception e ) {
 			log.error(Markers2.append(e), "Error reading status response from ElasticSearch: {}", e.getMessage());
-			return cache;
+			// Returning the existing cache here reported a failed read as a successful
+			// one: refresh() set refreshed to true, so a reset of an empty cache cleared
+			// nothing and replied OK. refresh() catches this and returns false, which
+			// leaves the previous cache in place exactly as returning it did. Only the
+			// reset path acts on that false, so a query still answers from whatever the
+			// cache holds. IGDD-3599.
+			throw new StatusUnavailableException("Could not parse the status response: " + e.getMessage());
 		}
 		Map<String, EndpointStatus> newCache = new HashMap<>();
 		for (ParsedResponse r: map.values()) {

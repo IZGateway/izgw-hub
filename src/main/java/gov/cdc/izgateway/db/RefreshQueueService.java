@@ -674,8 +674,15 @@ public class RefreshQueueService {
      * @param results	Outcomes keyed {@code region:hostname}
      */
     private static void logOperationComplete(String eventId, Map<String, String> results) {
-    	long ok = results.values().stream().filter(RefreshQueueService::isSuccess).count();
-    	int total = results.size();
+    	// The fleet key reports whether the instance list could be read. It is not an
+    	// instance, so counting it would describe a remote instance that was never
+    	// discovered and never contacted. The region summary below still carries it, so
+    	// the discovery failure is still in this record. IGDD-3599.
+    	long total = results.keySet().stream().filter(k -> !FLEET_KEY.equals(k)).count();
+    	long ok = results.entrySet().stream()
+    			.filter(e -> !FLEET_KEY.equals(e.getKey()))
+    			.filter(e -> isSuccess(e.getValue()))
+    			.count();
     	log.info(Markers2.append("eventType", "SQS_OPERATION_COMPLETE",
     			"instances", total, "succeeded", ok, "failed", total - ok,
     			"regions", summarizeByRegion(results)),

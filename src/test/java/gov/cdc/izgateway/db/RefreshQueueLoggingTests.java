@@ -39,6 +39,7 @@ import ch.qos.logback.core.read.ListAppender;
 import gov.cdc.izgateway.db.DbController.DbControllerConfiguration;
 import gov.cdc.izgateway.db.RefreshQueueService.RefreshRequest;
 import gov.cdc.izgateway.db.RefreshQueueService.RefreshResponse;
+import gov.cdc.izgateway.elastic.HostDiscoveryException;
 import gov.cdc.izgateway.hub.security.ApiKeyPrincipalProvider;
 import gov.cdc.izgateway.model.IEndpointStatus;
 import gov.cdc.izgateway.repository.IHostRepository;
@@ -301,6 +302,29 @@ class RefreshQueueLoggingTests {
 		long records = appender.list.stream()
 				.filter(e -> e.getFormattedMessage().contains("for another operation")).count();
 		assertEquals(1, records, "a reply for another operation must be recorded once for this wait");
+	}
+
+	@Test
+	void theSummaryCountsInstancesAndNotTheFleetKey() throws Exception {
+		// A discovery failure adds the fleet key to the outcome map. Counting it as an
+		// instance would report a remote instance that was never discovered and never
+		// contacted. The region summary still has to carry the failure.
+		when(hostService.getHostsAndRegion())
+				.thenThrow(new HostDiscoveryException("elastic unreachable", new java.io.IOException("boom")));
+
+		Map<String, String> results = new TreeMap<>();
+		results.put("us-east-1:host-a", "OK (Local)");
+		serviceWith(sqsAccepting()).distribute(
+				new RefreshRequest(true, OPERATION_ID, "host-a", "us-east-1", null, false, null), results);
+
+		JsonNode record = jsonOf("Distributed operation complete");
+
+		assertEquals(1, record.path("instances").asInt(), "the fleet key is not an instance");
+		assertEquals(1, record.path("succeeded").asInt());
+		assertEquals(0, record.path("failed").asInt());
+		assertEquals("failed", record.path("regions").path("fleet").asText(),
+				"the discovery failure must stay in the record");
+		assertEquals("complete", record.path("regions").path("us-east-1").asText());
 	}
 
 	// ---------- The instance that applies a command locally says so

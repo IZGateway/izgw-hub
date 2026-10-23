@@ -47,6 +47,20 @@ holds no other instance. A read failure SHALL NOT be reported as a fleet-wide su
 - **THEN** no message is sent
 - **AND** no discovery failure is reported
 
+#### Scenario: The host list cannot be parsed
+
+- **GIVEN** Elasticsearch answers 200 with a body that the host query does not recognise
+- **WHEN** the gateway reads the host list
+- **THEN** the read reports a discovery failure
+- **AND** the gateway does not send to a partial list
+
+#### Scenario: A valid response reports no instance
+
+- **GIVEN** Elasticsearch answers 200 with no instance in the aggregation
+- **WHEN** the gateway reads the host list
+- **THEN** the list is empty
+- **AND** no discovery failure is reported
+
 ### Requirement: Apply commands locally, never through the HTTP API
 
 An instance that receives a command SHALL apply it through an internal call. An

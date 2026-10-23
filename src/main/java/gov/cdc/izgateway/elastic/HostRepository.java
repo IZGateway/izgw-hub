@@ -111,7 +111,18 @@ public class HostRepository extends ElasticRepository implements IHostRepository
 	
 	/**
 	 * Parse aggregate status data from ElasticSearch into host list.
-	 * @return
+	 * <p>
+	 * A response that cannot be parsed is a failed read, not a short host list.
+	 * {@code getNode} raises when the response does not hold the expected path, and
+	 * this used to log that and return whatever it had collected. A caller that fans a
+	 * command out would then send to an incomplete list and report success. A valid
+	 * response that holds no buckets still returns an empty map, so a quiet fleet
+	 * stays distinguishable from a broken response. See IGDD-3599.
+	 * </p>
+	 *
+	 * @param result	The response body from Elasticsearch
+	 * @return The instances in the response, keyed by host name
+	 * @throws HostDiscoveryException If the response cannot be parsed
 	 */
 	private Map<String, String>  parseResult(String result) {
 		Map<String, String>  hosts = new TreeMap<>();
@@ -131,6 +142,7 @@ public class HostRepository extends ElasticRepository implements IHostRepository
 			}
 		} catch (Exception e) {
 			log.error(Markers2.append(e), "Error retrieving host list: {}", e.getMessage());
+			throw new HostDiscoveryException("Error parsing host list: " + e.getMessage(), e);
 		}
 		return hosts;
 	}

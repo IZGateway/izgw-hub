@@ -147,6 +147,21 @@ that it cleared its circuit breakers.
 - **THEN** the reply carries the failure
 - **AND** the response entry for that instance reports the failure
 
+#### Scenario: The status cannot be read
+
+- **GIVEN** an instance cannot read destination status from Elasticsearch
+- **WHEN** it applies a reset of every destination
+- **THEN** the outcome for that instance names the failed status read
+- **AND** the outcome does not report success
+- **AND** the outcome is distinguishable from a successful read that holds no status
+
+#### Scenario: An instance holds no status at all
+
+- **GIVEN** an instance reads status successfully and holds none
+- **WHEN** it applies a reset of every destination
+- **THEN** the outcome reports success
+- **AND** no circuit breaker is reported as cleared
+
 #### Scenario: A remote instance holds no status for the destination
 
 - **GIVEN** a remote instance receives a reset for one destination

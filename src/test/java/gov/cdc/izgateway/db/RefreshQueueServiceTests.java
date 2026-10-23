@@ -35,6 +35,7 @@ import org.springframework.stereotype.Service;
 import gov.cdc.izgateway.db.DbController.DbControllerConfiguration;
 import gov.cdc.izgateway.db.RefreshQueueService.RefreshRequest;
 import gov.cdc.izgateway.elastic.HostDiscoveryException;
+import gov.cdc.izgateway.elastic.StatusUnavailableException;
 import gov.cdc.izgateway.hub.security.ApiKeyPrincipalProvider;
 import gov.cdc.izgateway.model.IEndpointStatus;
 import gov.cdc.izgateway.repository.IHostRepository;
@@ -412,6 +413,20 @@ class RefreshQueueServiceTests {
 
 		assertEquals(1, results.size(), "the only instance is the caller, so nothing is sent");
 		assertEquals("OK (Local)", results.get("us-east-1:host-a"));
+	}
+
+	@Test
+	void aResetOfEveryDestinationReportsAFailedStatusReadRatherThanOk() {
+		// The repository raises when it cannot fill the status cache. Before that, an
+		// empty cache left by a failed read cleared nothing and reported OK.
+		org.mockito.Mockito.doThrow(new StatusUnavailableException("Could not read status from Elasticsearch"))
+				.when(endpointStatusService).resetCircuitBreakers();
+
+		String status = service.applyLocally(
+				new RefreshRequest(true, "evt-46", "sender", "us-east-1", null, false, null));
+
+		assertFalse(status.startsWith("OK"), "an unknown breaker state must not read as reset");
+		assertEquals("Could not read status from Elasticsearch", status);
 	}
 
 	// ---------- Review of PR 204: a missing status is not a reset

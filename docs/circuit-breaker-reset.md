@@ -45,6 +45,11 @@ Both answer **200 even when an instance fails**. Read the body, not the status c
 - A reset of one destination reports `No status for destination <id>` when an instance
   holds no status for it. The breaker state on that instance is unknown, so the outcome
   is not `OK`.
+- Either reset reports `Could not read status from Elasticsearch` when an instance
+  cannot fill its status cache, and `Could not parse the status response: <detail>` when
+  Elasticsearch answers 200 with a body the status query does not recognise. An instance
+  that reads successfully and holds no status reports `OK`, because it holds no thrown
+  breaker to clear.
 
 `hosts` also carries the key `fleet`, value `Discovery Unavailable`, when the list of
 instances could not be read from Elasticsearch. Nothing was sent in that case. The local
@@ -84,6 +89,10 @@ eventType:"SQS_OPERATION_COMPLETE"
 One record per operation, written by the instance that received the request. It names
 the instance count, the success count, the failure count, and the per-region status.
 This answers "did every region apply the command" without a search across hosts.
+
+The three counts describe instances only. A discovery failure is not an instance, so it
+does not raise the failure count. Read `regions` in the same record for it: a `fleet`
+entry means that the list of instances could not be read.
 
 ### Follow one operation end to end
 
