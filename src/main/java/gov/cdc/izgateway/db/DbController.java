@@ -105,7 +105,6 @@ public class DbController {
 	private static final String MAINTENANCE_STATUS_DESCRIPTION = "The maintenance status for of the destination.";
 	private static final String DESTINATION_DOES_NOT_EXIST_DESCRIPTION = "The destination does not exist";
 	private static final String MAINTENANCE_ID_PATH = "/maint/{id}";
-	private static final String TRUE_STRING = "true";
 	private static final String DESTINATION_ENTITY_TYPE = "Destination";
 	private static final long DEFAULT_MAINT_PERIOD = TimeUnit.MINUTES.toMillis(30);
 	private static final String REGION = Objects.toString(System.getenv("AWS_REGION"), "unknown");
@@ -431,7 +430,7 @@ public class DbController {
       String applied = refreshQueueService.applyLocally(
          new RefreshRequest(reset, eventId, me, REGION, jti, true, null));
       results.put(REGION + ":" + me, "OK".equals(applied) ? "OK (Local)" : applied);
-      if (TRUE_STRING.equalsIgnoreCase(all)) {
+      if (Boolean.parseBoolean(all)) {
          refreshQueueService.distribute(new RefreshRequest(reset, eventId, me, REGION, jti), results);
       }
       return results;
@@ -620,7 +619,7 @@ public class DbController {
 
 		configuration.getDestinationService().saveAndFlush(dest);
 		// Refresh other services.
-		getRefreshed(TRUE_STRING, false, null);
+		getRefreshed(Boolean.TRUE.toString(), false, null);
 		return getConfigById(id);
 	}
 
@@ -659,7 +658,7 @@ public class DbController {
 		dest.setMaintEnd(null);
 		configuration.getDestinationService().saveAndFlush(dest);
 		// Refresh other services.
-		getRefreshed(TRUE_STRING, false, null);
+		getRefreshed(Boolean.TRUE.toString(), false, null);
 		return getConfigById(id);
 	}
 
