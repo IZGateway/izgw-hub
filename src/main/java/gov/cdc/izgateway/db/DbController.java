@@ -93,6 +93,20 @@ import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 @RequestMapping({ "/rest"})
 @Lazy(false)
 public class DbController {
+	private static final String JSON_MEDIA_TYPE = "application/json";
+	private static final String HTTP_STATUS_OK = "200";
+	private static final String HTTP_STATUS_BAD_REQUEST = "400";
+	private static final String HTTP_STATUS_NOT_FOUND = "404";
+	private static final String MESSAGE_HEADER_INFO_VALUES_DESCRIPTION = "The Message Header information values";
+	private static final String MESSAGE_HEADER_BY_MSH_DESCRIPTION =
+			"Returns the Message Header Values for HL7 Message for the given MSH3 or MSH4 value";
+	private static final String HEADER_ID_PATH = "/headers/{id}";
+	private static final String IDENTIFIER_CANNOT_BE_CHANGED_DESCRIPTION = "The identifier cannot be changed.";
+	private static final String MAINTENANCE_STATUS_DESCRIPTION = "The maintenance status for of the destination.";
+	private static final String DESTINATION_DOES_NOT_EXIST_DESCRIPTION = "The destination does not exist";
+	private static final String MAINTENANCE_ID_PATH = "/maint/{id}";
+	private static final String TRUE_STRING = "true";
+	private static final String DESTINATION_ENTITY_TYPE = "Destination";
 	private static final long DEFAULT_MAINT_PERIOD = TimeUnit.MINUTES.toMillis(30);
 	private static final String REGION = Objects.toString(System.getenv("AWS_REGION"), "unknown");
 
@@ -180,7 +194,7 @@ public class DbController {
 	 */
 	private static final Set<String> ALLOWED_ENTITY_TYPES = Set.of(
 		"AccessControl", "AccessGroup", "AllowedUser", "ApiKeyCredential", "CertificateStatus",
-		"Destination", "DenyListRecord", "Event", "EndpointStatus", "FileType", "Jurisdiction",
+		DESTINATION_ENTITY_TYPE, "DenyListRecord", "Event", "EndpointStatus", "FileType", "Jurisdiction",
 		"MessageHeader", "OrganizationRecord", "SourceAttackExceptionRecord",
 		"ApiKeyDomain", "ApiKeyDomainOwner", "Sender"
 	);
@@ -202,7 +216,7 @@ public class DbController {
 	 * verification.</p>
 	 */
 	private static final Map<String, Set<String>> REDACTED_FIELDS = Map.of(
-		"Destination", Set.of("password", "username", "passExpiry"),
+		DESTINATION_ENTITY_TYPE, Set.of("password", "username", "passExpiry"),
 		"ApiKeyDomain", Set.of("challengeUuid")
 	);
 
@@ -243,8 +257,8 @@ public class DbController {
 	 */
 	@Operation(summary = "Get Message Header Info entries",
 			description = "Returns the Message Header Values for HL7 Message for all endpoints")
-	@ApiResponse(responseCode = "200", description = "The Message Header information values", 
-	    content = @Content(mediaType = "application/json", 
+	@ApiResponse(responseCode = HTTP_STATUS_OK, description = MESSAGE_HEADER_INFO_VALUES_DESCRIPTION,
+	    content = @Content(mediaType = JSON_MEDIA_TYPE,
 	     schema = @Schema(implementation = MessageHeader.Map.class))
 	)
 	@GetMapping("/headers")
@@ -266,14 +280,14 @@ public class DbController {
 	 * @return	The message header record for the specified MSH value.
 	 */
 	@Operation(summary = "Get Message Header Info entry for a given endpoint",
-			description = "Returns the Message Header Values for HL7 Message for the given MSH3 or MSH4 value")
-	@ApiResponse(responseCode = "200", description = "The Message Header information values", 
-	    content = @Content(mediaType = "application/json", 
+			description = MESSAGE_HEADER_BY_MSH_DESCRIPTION)
+	@ApiResponse(responseCode = HTTP_STATUS_OK, description = MESSAGE_HEADER_INFO_VALUES_DESCRIPTION,
+	    content = @Content(mediaType = JSON_MEDIA_TYPE,
 	     schema = @Schema(implementation = MessageHeader.class))
 	)
-	@ApiResponse(responseCode = "404", description = "No MSH3 or MSH4 entry exists for the specified value", 
+	@ApiResponse(responseCode = HTTP_STATUS_NOT_FOUND, description = "No MSH3 or MSH4 entry exists for the specified value",
 		content = @Content)
-	@GetMapping("/headers/{id}")
+	@GetMapping(HEADER_ID_PATH)
 	public IMessageHeader getMessageHeadersById(
 			@Schema(description = "The MSH3 or MSH4 value to retrieve an entry for")
 			@PathVariable String id) {
@@ -285,14 +299,14 @@ public class DbController {
 	}
 
 	@Operation(summary = "Update the username and password for the specified MSH-3 value",
-			description = "Returns the Message Header Values for HL7 Message for the given MSH3 or MSH4 value")
-	@ApiResponse(responseCode = "200", description = "The Message Header information values", 
-	    content = @Content(mediaType = "application/json", 
+			description = MESSAGE_HEADER_BY_MSH_DESCRIPTION)
+	@ApiResponse(responseCode = HTTP_STATUS_OK, description = MESSAGE_HEADER_INFO_VALUES_DESCRIPTION,
+	    content = @Content(mediaType = JSON_MEDIA_TYPE,
 	     schema = @Schema(implementation = MessageHeader.class))
 	)
-	@ApiResponse(responseCode = "400", description = "The identifier cannot be changed.", 
+	@ApiResponse(responseCode = HTTP_STATUS_BAD_REQUEST, description = IDENTIFIER_CANNOT_BE_CHANGED_DESCRIPTION,
 		content = @Content)
-	@PostMapping("/headers/{id}")
+	@PostMapping(HEADER_ID_PATH)
 	public IMessageHeader setMessageHeadersById(@PathVariable String id, @RequestBody MessageHeader newValues) {
 		IMessageHeader old;
 		old = getMessageHeadersById(id);
@@ -315,8 +329,8 @@ public class DbController {
 	    content = @Content(mediaType = "application/json", 
 	     schema = @Schema(implementation = MessageHeader.class))
 	)
-	@ApiResponse(responseCode = "404", description = "The header record cannot be found.", content = @Content)
-	@DeleteMapping("/headers/{id}")
+	@ApiResponse(responseCode = HTTP_STATUS_NOT_FOUND, description = "The header record cannot be found.", content = @Content)
+	@DeleteMapping(HEADER_ID_PATH)
 	public IMessageHeader deleteMessageHeadersById(@PathVariable String id) {
 		refresh();
 		IMessageHeader old = getMessageHeadersById(id);
@@ -325,12 +339,12 @@ public class DbController {
 	}
 	
 	@Operation(summary = "Create a header mapping, setting the username and password for the specified MSH-3 value",
-			description = "Returns the Message Header Values for HL7 Message for the given MSH3 or MSH4 value")
+			description = MESSAGE_HEADER_BY_MSH_DESCRIPTION)
 	@ApiResponse(responseCode = "201", description = "The created Message Header information values", 
-	    content = @Content(mediaType = "application/json", 
+	    content = @Content(mediaType = JSON_MEDIA_TYPE,
 	     schema = @Schema(implementation = MessageHeader.class))
 	)
-	@ApiResponse(responseCode = "400", description = "The identifier cannot be changed.", content = @Content)
+	@ApiResponse(responseCode = HTTP_STATUS_BAD_REQUEST, description = IDENTIFIER_CANNOT_BE_CHANGED_DESCRIPTION, content = @Content)
 	@PutMapping("/headers")
 	@ResponseStatus(HttpStatus.CREATED)
 	public IMessageHeader createMessageHeadersById(@RequestBody MessageHeader newValues) {
@@ -352,11 +366,11 @@ public class DbController {
 
 	@Operation(summary = "Report the configuration for all endpoints",
 			description = "Returns configuration for all endpoints")
-	@ApiResponse(responseCode = "200", description = "The Message Header information values", 
-	    content = @Content(mediaType = "application/json", 
+	@ApiResponse(responseCode = HTTP_STATUS_OK, description = MESSAGE_HEADER_INFO_VALUES_DESCRIPTION,
+	    content = @Content(mediaType = JSON_MEDIA_TYPE,
 	     schema = @Schema(implementation = IDestination.Map.class))
 	)
-	@ApiResponse(responseCode = "400", description = "The identifier cannot be changed.", 
+	@ApiResponse(responseCode = HTTP_STATUS_BAD_REQUEST, description = IDENTIFIER_CANNOT_BE_CHANGED_DESCRIPTION,
 		content = @Content)
 	@GetMapping("/config")
 	public IDestination.Map getConfig() {
@@ -369,11 +383,11 @@ public class DbController {
 
 	@Operation(summary = "Report the configuration for the specified endpoint",
 			description = "Returns configuration for the specified endpoint")
-	@ApiResponse(responseCode = "200", description = "The endpoint configuration", 
-	    content = @Content(mediaType = "application/json", 
+	@ApiResponse(responseCode = HTTP_STATUS_OK, description = "The endpoint configuration",
+	    content = @Content(mediaType = JSON_MEDIA_TYPE,
 	     schema = @Schema(implementation = Destination.class))
 	)
-	@ApiResponse(responseCode = "404", description = "The endpoint does not exist.", 
+	@ApiResponse(responseCode = HTTP_STATUS_NOT_FOUND, description = "The endpoint does not exist.",
 		content = @Content)
 	@GetMapping("/config/{id}")
 	public IDestination getConfigById(
@@ -390,12 +404,12 @@ public class DbController {
 	private static class HostMap extends TreeMap<String, String> {}
 	@Operation(summary = "Refresh host setup from the database",
 			description = "Refresh the current or all instances.  Returns refresh status for each instance refreshed.")
-	@ApiResponse(responseCode = "200", description = "A map indicating the refresh status for each host.", 
-	    content = @Content(mediaType = "application/json", 
+	@ApiResponse(responseCode = HTTP_STATUS_OK, description = "A map indicating the refresh status for each host.",
+	    content = @Content(mediaType = JSON_MEDIA_TYPE,
 	     	schema = @Schema(implementation=HostMap.class)
 	    )
 	)
-	@ApiResponse(responseCode = "404", description = "The endpoint does not exist.", 
+	@ApiResponse(responseCode = HTTP_STATUS_NOT_FOUND, description = "The endpoint does not exist.",
 		content = @Content)
   	@GetMapping("/refresh")
 	@RolesAllowed({ Roles.ADMIN, Roles.INTERNAL })
@@ -417,7 +431,7 @@ public class DbController {
       String applied = refreshQueueService.applyLocally(
          new RefreshRequest(reset, eventId, me, REGION, jti, true, null));
       results.put(REGION + ":" + me, "OK".equals(applied) ? "OK (Local)" : applied);
-      if ("true".equalsIgnoreCase(all)) {
+      if (TRUE_STRING.equalsIgnoreCase(all)) {
          refreshQueueService.distribute(new RefreshRequest(reset, eventId, me, REGION, jti), results);
       }
       return results;
@@ -432,9 +446,9 @@ public class DbController {
 
 	@Operation(summary = "Report the running host instances and their regions.",
 			description = "Refresh the list of running hosts.  Returns a list region:hostname values.")
-	@ApiResponse(responseCode = "200", description = "a list region:hostname values", 
+	@ApiResponse(responseCode = HTTP_STATUS_OK, description = "a list region:hostname values",
 	    content = @Content(
-	    		mediaType = "application/json", 
+			mediaType = JSON_MEDIA_TYPE,
 	    		array = @ArraySchema(schema = @Schema(implementation = String.class))
 	    )
 	)
@@ -503,9 +517,9 @@ public class DbController {
 	 */
 	@Operation(summary = "Report status of all destinations scheduled for maintenance",
 			description = "Returns all destinations scheduled for maintenance.")
-	@ApiResponse(responseCode = "200", description = "A map indicating the maintenance status for each destination.", 
+	@ApiResponse(responseCode = HTTP_STATUS_OK, description = "A map indicating the maintenance status for each destination.",
 	    content = @Content(
-	    		mediaType = "application/json", 
+			mediaType = JSON_MEDIA_TYPE,
 	    		schema = @Schema(implementation = IDestination.Map.class)
 	    )
 	)
@@ -525,14 +539,14 @@ public class DbController {
 
 	@Operation(summary = "Report the maintenance status of specified destination",
 			description = "Returns maintenance status of the specified destination.")
-	@ApiResponse(responseCode = "200", description = "The maintenance status for of the destination.", 
+	@ApiResponse(responseCode = HTTP_STATUS_OK, description = MAINTENANCE_STATUS_DESCRIPTION,
 	    content = @Content(
-	    		mediaType = "application/json", 
+			mediaType = JSON_MEDIA_TYPE,
 	    		schema = @Schema(implementation = Destination.class)
 	    )
 	)
-	@ApiResponse(responseCode = "404", description = "The destination does not exist", content = @Content)
-	@GetMapping("/maint/{id}")
+	@ApiResponse(responseCode = HTTP_STATUS_NOT_FOUND, description = DESTINATION_DOES_NOT_EXIST_DESCRIPTION, content = @Content)
+	@GetMapping(MAINTENANCE_ID_PATH)
 	public IDestination getMaintenance(
 		@Parameter(description="The destination to check the maintenance status of")
 		@PathVariable String id
@@ -542,14 +556,14 @@ public class DbController {
 
 	@Operation(summary = "Update the maintenance status of specified destination",
 			description = "Updates the maintenance status and returns it for specified destination.")
-	@ApiResponse(responseCode = "200", description = "The maintenance status for of the destination.", 
+	@ApiResponse(responseCode = HTTP_STATUS_OK, description = MAINTENANCE_STATUS_DESCRIPTION,
 	    content = @Content(
-	    		mediaType = "application/json", 
+			mediaType = JSON_MEDIA_TYPE,
 	    		schema = @Schema(implementation = Destination.class)
 	    )
 	)
-	@ApiResponse(responseCode = "404", description = "The destination does not exist", content = @Content)
-	@PostMapping("/maint/{id}")
+	@ApiResponse(responseCode = HTTP_STATUS_NOT_FOUND, description = DESTINATION_DOES_NOT_EXIST_DESCRIPTION, content = @Content)
+	@PostMapping(MAINTENANCE_ID_PATH)
 	public IDestination setMaintenance(
 			@Parameter(description="The destination to update the maintenance status for")
 			@PathVariable String id,
@@ -566,7 +580,7 @@ public class DbController {
 		configuration.getDestinationService().refresh();
 		IDestination dest = configuration.getDestinationService().findByDestId(id);
 		if (dest == null) {
-			throw new ResourceNotFoundException("Destination " + id + " uknown.");
+			throw new ResourceNotFoundException(DESTINATION_ENTITY_TYPE + " " + id + " uknown.");
 		}
 		Date now = new Date();
 		// If start not present, treat it as now
@@ -606,7 +620,7 @@ public class DbController {
 
 		configuration.getDestinationService().saveAndFlush(dest);
 		// Refresh other services.
-		getRefreshed("true", false, null);
+		getRefreshed(TRUE_STRING, false, null);
 		return getConfigById(id);
 	}
 
@@ -622,14 +636,14 @@ public class DbController {
 
 	@Operation(summary = "Clear the maintenance status of specified destination",
 			description = "Clear the maintenance status and returns it for specified destination.")
-	@ApiResponse(responseCode = "200", description = "The maintenance status for of the destination.", 
+	@ApiResponse(responseCode = HTTP_STATUS_OK, description = MAINTENANCE_STATUS_DESCRIPTION,
 	    content = @Content(
-	    		mediaType = "application/json", 
+			mediaType = JSON_MEDIA_TYPE,
 	    		schema = @Schema(implementation = Destination.class)
 	    )
 	)
-	@ApiResponse(responseCode = "404", description = "The destination does not exist", content = @Content)
-	@DeleteMapping("/maint/{id}")
+	@ApiResponse(responseCode = HTTP_STATUS_NOT_FOUND, description = DESTINATION_DOES_NOT_EXIST_DESCRIPTION, content = @Content)
+	@DeleteMapping(MAINTENANCE_ID_PATH)
 	public IDestination clearMaintenance(
 		@Parameter(description="The destination to clear the maintenance status for")
 		@PathVariable String id
@@ -638,19 +652,19 @@ public class DbController {
 		configuration.getDestinationService().refresh();
 		IDestination dest = configuration.getDestinationService().findByDestId(id);
 		if (dest == null) {
-			throw new ResourceNotFoundException("Destination " + id + " uknown.");
+			throw new ResourceNotFoundException(DESTINATION_ENTITY_TYPE + " " + id + " uknown.");
 		}
 		dest.setMaintReason(null);
 		dest.setMaintStart(null);
 		dest.setMaintEnd(null);
 		configuration.getDestinationService().saveAndFlush(dest);
 		// Refresh other services.
-		getRefreshed("true", false, null);
+		getRefreshed(TRUE_STRING, false, null);
 		return getConfigById(id);
 	}
 
 	private ResourceNotFoundException destinationNotFound(String id) {
-		return notFound("Destination", id);
+		return notFound(DESTINATION_ENTITY_TYPE, id);
 	}
 
 	private ResourceNotFoundException notFound(String what, String id) {
@@ -662,9 +676,9 @@ public class DbController {
 					+ "Only entity types in a fixed allowlist are servable; audit/change-request "
 					+ "entity types are never returned. Destination items never include "
 					+ "password/username/passExpiry.")
-	@ApiResponse(responseCode = "200", description = "A map of sortKey to the item at that key.",
-		content = @Content(mediaType = "application/json"))
-	@ApiResponse(responseCode = "404", description = "The entity type is unknown or not servable via this API.",
+	@ApiResponse(responseCode = HTTP_STATUS_OK, description = "A map of sortKey to the item at that key.",
+		content = @Content(mediaType = JSON_MEDIA_TYPE))
+	@ApiResponse(responseCode = HTTP_STATUS_NOT_FOUND, description = "The entity type is unknown or not servable via this API.",
 		content = @Content)
 	@GetMapping("/data/{entityType}")
 	@RolesAllowed(Roles.ADMIN)
@@ -702,9 +716,9 @@ public class DbController {
 					+ "Only entity types in a fixed allowlist are servable; audit/change-request "
 					+ "entity types are never returned. A Destination item never includes "
 					+ "password/username/passExpiry.")
-	@ApiResponse(responseCode = "200", description = "The item at the specified entity type and sortKey.",
-		content = @Content(mediaType = "application/json"))
-	@ApiResponse(responseCode = "404", description = "The entity type is unknown/not servable, "
+	@ApiResponse(responseCode = HTTP_STATUS_OK, description = "The item at the specified entity type and sortKey.",
+		content = @Content(mediaType = JSON_MEDIA_TYPE))
+	@ApiResponse(responseCode = HTTP_STATUS_NOT_FOUND, description = "The entity type is unknown/not servable, "
 			+ "or no item exists at that sortKey.", content = @Content)
 	@GetMapping("/data/{entityType}/{sortKey}")
 	@RolesAllowed(Roles.ADMIN)
