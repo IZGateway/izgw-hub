@@ -17,6 +17,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import jakarta.annotation.security.RolesAllowed;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -94,9 +95,9 @@ import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 @Lazy(false)
 public class DbController {
 	private static final String JSON_MEDIA_TYPE = "application/json";
-	private static final String HTTP_STATUS_OK = "200";
-	private static final String HTTP_STATUS_BAD_REQUEST = "400";
-	private static final String HTTP_STATUS_NOT_FOUND = "404";
+	private static final String HTTP_STATUS_OK = HttpServletResponse.SC_OK + "";
+	private static final String HTTP_STATUS_BAD_REQUEST = HttpServletResponse.SC_BAD_REQUEST + "";
+	private static final String HTTP_STATUS_NOT_FOUND = HttpServletResponse.SC_NOT_FOUND + "";
 	private static final String MESSAGE_HEADER_INFO_VALUES_DESCRIPTION = "The Message Header information values";
 	private static final String MESSAGE_HEADER_BY_MSH_DESCRIPTION =
 			"Returns the Message Header Values for HL7 Message for the given MSH3 or MSH4 value";
