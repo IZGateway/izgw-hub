@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Set;
 
 /**
  * Returns 401 for unauthenticated callers when server.ssl.client-auth=want.
@@ -32,10 +33,18 @@ public class AuthenticationEnforcementFilter extends OncePerRequestFilter {
         this.principalService = principalService;
     }
 
+    /**
+     * Health check endpoints the ALB target group and the container probe reach without a
+     * credential. Matched exactly, for the same reason as
+     * {@code AccessControlValve.HEALTH_CHECK_PATHS}: a prefix match hands this exemption to
+     * anything else that happens to start with {@code /rest/health}, which is more than the
+     * probes need.
+     */
+    private static final Set<String> HEALTH_CHECK_PATHS = Set.of("/rest/health", "/rest/healthy");
+
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getServletPath();
-        return path.startsWith("/rest/health");
+        return HEALTH_CHECK_PATHS.contains(request.getServletPath());
     }
 
     @Override
