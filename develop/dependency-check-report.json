@@ -25,7 +25,7 @@
     },
     "projectInfo": {
         "name": "IZ",
-        "reportDate": "2026-10-26T21:00:37.108848397Z",
+        "reportDate": "2026-10-26T22:02:45.509749226Z",
         "credits": {
             "NVD": "This product uses the NVD API but is not endorsed or certified by the NVD. This report contains data retrieved from the National Vulnerability Database: https://nvd.nist.gov",
             "CISA": "This report may contain data retrieved from the CISA Known Exploited Vulnerability Catalog: https://www.cisa.gov/known-exploited-vulnerabilities-catalog",
@@ -128,9 +128,9 @@
             "isVirtual": false,
             "fileName": "2.18.0-SNAPSHOT-1243.jar",
             "filePath": "\/github\/workspace\/target\/2.18.0-SNAPSHOT-1243.jar"
-,"md5": "b3a76492e3ccfc28f98f22304fec8603",
-            "sha1": "c135443d72eb4f1f3a20d15fb55252404b3bfb1c",
-            "sha256": "b95e911b308c5310b7b1ae4478fb08f36617a872e3f452819a10cc95a4dbb22f"            ,"evidenceCollected": {
+,"md5": "337f413c66ff8200a80df0cd5d561f61",
+            "sha1": "59eb358a7c6e72de31cb5724e0bf76913e002069",
+            "sha256": "d87d66ed37c0b34387875a019d0dea6f8b4e1001d44fa3ac1b9f3a39d9410775"            ,"evidenceCollected": {
                 "vendorEvidence": [
 {
                             "type": "vendor",
