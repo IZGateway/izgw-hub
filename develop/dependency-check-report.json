@@ -5,19 +5,19 @@
         "dataSource": [
 {
                 "name": "NVD API Last Checked",
-                "timestamp": "2026-10-25T14:59:47Z"
+                "timestamp": "2026-10-26T17:30:57Z"
             }
 ,{
                 "name": "NVD API Last Modified",
-                "timestamp": "2026-10-25T14:17:02Z"
+                "timestamp": "2026-10-26T17:13:18Z"
             }
 ,{
                 "name": "NVD Cache Last Checked",
-                "timestamp": "2026-10-25T14:59:47Z"
+                "timestamp": "2026-10-26T17:30:57Z"
             }
 ,{
                 "name": "NVD Cache Last Modified",
-                "timestamp": "2026-10-25T14:17:02Z"
+                "timestamp": "2026-10-26T17:13:18Z"
             }
         ]
 
@@ -25,7 +25,7 @@
     },
     "projectInfo": {
         "name": "IZ",
-        "reportDate": "2026-10-26T06:23:56.076070281Z",
+        "reportDate": "2026-10-26T20:38:28.659631103Z",
         "credits": {
             "NVD": "This product uses the NVD API but is not endorsed or certified by the NVD. This report contains data retrieved from the National Vulnerability Database: https://nvd.nist.gov",
             "CISA": "This report may contain data retrieved from the CISA Known Exploited Vulnerability Catalog: https://www.cisa.gov/known-exploited-vulnerabilities-catalog",
@@ -128,9 +128,9 @@
             "isVirtual": false,
             "fileName": "2.18.0-SNAPSHOT-1244.jar",
             "filePath": "\/github\/workspace\/target\/2.18.0-SNAPSHOT-1244.jar"
-,"md5": "96b2884f4ef9ce6f01bafdc194fc0afc",
-            "sha1": "87af4df0e8240aca9cb687767810856a77234a24",
-            "sha256": "15699d18a8f6adc9c2ccf35df2326b54b9e8d08bcfb1430e12b7a9f966f443ea"            ,"evidenceCollected": {
+,"md5": "7fc28d88a9f20168e6a10e4717736d2b",
+            "sha1": "663ebbf89b128cf7b0fc67662d2668cc84e1f635",
+            "sha256": "533db3ce3f37a73687063704af8ab6d49e9cc64af658e4d0afca1d23f0635dc4"            ,"evidenceCollected": {
                 "vendorEvidence": [
 {
                             "type": "vendor",
