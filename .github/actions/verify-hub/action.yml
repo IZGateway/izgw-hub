@@ -279,6 +279,44 @@ runs:
         chmod 600 testing/newman-cert-list.json
         echo "Client certificate scoped to ${HOST} and ${HOST}:${PORT}."
 
+    # Catch a bad secret here, with a clear message, instead of letting an
+    # expired or mismatched client certificate surface as opaque connection
+    # failures scattered through the warm-up and the suite.
+    - name: Verify the Newman client certificate
+      shell: bash
+      env:
+        TESTING_PASS: ${{ inputs.testing_pass }}
+      run: |
+        set -euo pipefail
+
+        fail() { echo "::error::$1" >&2; exit 1; }
+
+        CA="${GITHUB_WORKSPACE}/testing/certs/izgwroot.pem"
+        CERT="testing/newman.pem"
+        KEY="testing/newman.key"
+
+        [ -f "$CA" ] || fail "The repository CA ${CA} does not exist."
+        [ -f "$CERT" ] || fail "${CERT} does not exist. The setup step must run first."
+        [ -f "$KEY" ] || fail "${KEY} does not exist. The setup step must run first."
+
+        openssl x509 -in "$CERT" -noout -subject -issuer -dates 2>/dev/null ||
+          fail "${CERT} is not a readable X.509 certificate."
+
+        openssl x509 -in "$CERT" -noout -checkend 0 ||
+          fail "The Newman client certificate has expired (or is not yet valid). Check the testing_cert secret."
+
+        openssl verify -CAfile "$CA" "$CERT" ||
+          fail "The Newman client certificate does not chain to ${CA}. It may be signed by the wrong CA, or testing_cert is stale."
+
+        CERT_PUBKEY="$(openssl x509 -in "$CERT" -noout -pubkey)"
+        KEY_PUBKEY="$(openssl pkey -in "$KEY" -passin "pass:${TESTING_PASS}" -pubout 2>/dev/null)" ||
+          fail "Could not read the Newman private key with the given passphrase. Check testing_key and testing_pass."
+        [ "$CERT_PUBKEY" = "$KEY_PUBKEY" ] ||
+          fail "The Newman private key does not match the certificate's public key. testing_cert and testing_key are out of sync."
+
+        echo "Newman client certificate is valid, trusted by ${CA}, and matches its private key:"
+        openssl x509 -in "$CERT" -noout -subject -issuer -dates -fingerprint -sha256
+
     # Warm up on the same runner that runs the suite. The cluster is sticky by
     # source address, so warmup and verification must share an address.
     - name: Run warm up for functional testing
