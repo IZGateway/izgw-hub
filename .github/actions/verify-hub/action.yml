@@ -282,6 +282,17 @@ runs:
     # Catch a bad secret here, with a clear message, instead of letting an
     # expired or mismatched client certificate surface as opaque connection
     # failures scattered through the warm-up and the suite.
+    #
+    # This deliberately does NOT check that the certificate chains to
+    # testing/certs/izgwroot.pem. That file isn't the server's client-trust
+    # store (see conf/ssl/Certificates.md: the real one is provisioned onto
+    # an EFS volume at deploy time and isn't in this repo), and the actual
+    # Newman invocation passes --insecure, which disables server-certificate
+    # verification anyway. A local chain check here would validate a
+    # relationship Newman never actually relies on, against a CA file that
+    # was never meant to be the authority for it: a real, working
+    # testing_cert can fail that check for a reason that has nothing to do
+    # with whether the suite will pass.
     - name: Verify the Newman client certificate
       shell: bash
       env:
@@ -292,18 +303,16 @@ runs:
         fail() { echo "::error::$1" >&2; exit 1; }
 
         # Prints the leaf certificate's own details, never the private key, so
-        # a chain or expiry failure below is diagnosable from the job log
-        # alone: who issued it, what it's valid for, and its fingerprint.
+        # an expiry failure below is diagnosable from the job log alone: who
+        # issued it, what it's valid for, and its fingerprint.
         describe_cert() {
           echo "--- $1 ($2) ---"
           openssl x509 -in "$2" -noout -subject -issuer -serial -dates -fingerprint -sha256
         }
 
-        CA="${GITHUB_WORKSPACE}/testing/certs/izgwroot.pem"
         CERT="testing/newman.pem"
         KEY="testing/newman.key"
 
-        [ -f "$CA" ] || fail "The repository CA ${CA} does not exist."
         [ -f "$CERT" ] || fail "${CERT} does not exist. The setup step must run first."
         [ -f "$KEY" ] || fail "${KEY} does not exist. The setup step must run first."
 
@@ -315,29 +324,13 @@ runs:
           fail "The Newman client certificate has expired (or is not yet valid): see notBefore/notAfter above. Check the testing_cert secret."
         fi
 
-        VERIFY_OUTPUT="$(openssl verify -CAfile "$CA" "$CERT" 2>&1)" && VERIFY_STATUS=0 || VERIFY_STATUS=$?
-        if [ "$VERIFY_STATUS" -ne 0 ]; then
-          echo "::group::Certificate chain validation failed"
-          describe_cert "Newman client certificate" "$CERT"
-          describe_cert "Trusted CA" "$CA"
-          echo "--- openssl verify output ---"
-          printf '%s\n' "$VERIFY_OUTPUT"
-          echo "::endgroup::"
-          # openssl error 20 ("unable to get local issuer certificate") means
-          # the chain above is broken between the two certs just printed, not
-          # that the leaf is wrong outright: compare its issuer line to the
-          # CA's subject line. A mismatch there is a missing intermediate CA,
-          # not a bad or expired testing_cert.
-          fail "The Newman client certificate does not chain to ${CA}. Compare the certificate's issuer above to the CA's subject: a mismatch means an intermediate CA is missing from ${CA} (or from testing_cert, if it should carry its own chain)."
-        fi
-
         CERT_PUBKEY="$(openssl x509 -in "$CERT" -noout -pubkey)"
         KEY_PUBKEY="$(openssl pkey -in "$KEY" -passin "pass:${TESTING_PASS}" -pubout 2>/dev/null)" ||
           fail "Could not read the Newman private key with the given passphrase. Check testing_key and testing_pass."
         [ "$CERT_PUBKEY" = "$KEY_PUBKEY" ] ||
           fail "The Newman private key does not match the certificate's public key. testing_cert and testing_key are out of sync."
 
-        echo "Newman client certificate is valid, trusted by ${CA}, and matches its private key:"
+        echo "Newman client certificate is valid and matches its private key:"
         describe_cert "Newman client certificate" "$CERT"
 
     # Warm up on the same runner that runs the suite. The cluster is sticky by
