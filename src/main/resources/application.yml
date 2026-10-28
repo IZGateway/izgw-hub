@@ -113,8 +113,9 @@ server:
         accept-count: 200
         max-connections: 16384
         max-threads: 400
-        max-keep-alive-requests: 1
-        
+        # Unlimited: this leg is ALB-to-Tomcat, inside the security boundary.
+        max-keep-alive-requests: -1
+
     ssl:
         enabled: true
         client-auth: need
