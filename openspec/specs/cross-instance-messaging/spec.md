@@ -1,4 +1,4 @@
-# Spec Delta
+# cross-instance-messaging Specification
 
 ## Purpose
 
@@ -6,7 +6,7 @@ Carries an administrative command from the Hub instance that receives a request 
 every other Hub instance in every region, and records each message sent and received so
 that an operator can trace one operation end to end.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Deliver a command to every known instance
 
@@ -187,7 +187,8 @@ the outcome.
 ### Requirement: Close each operation with a summary record
 
 The gateway SHALL write one summary record at INFO level when a distributed operation
-ends, naming the count of instances reached and the count that failed.
+ends, naming the count of instances reached and the count that failed. The counts SHALL
+describe hosts only. The `fleet` entry SHALL NOT raise either count.
 
 #### Scenario: An operator checks one operation
 
@@ -196,6 +197,13 @@ ends, naming the count of instances reached and the count that failed.
 - **THEN** one summary record is written
 - **AND** the record reports four instances and one failure
 - **AND** the record carries the correlation identifier of the operation
+
+#### Scenario: The host list cannot be read
+
+- **GIVEN** the host list cannot be read and the local instance reset its own breakers
+- **WHEN** the operation ends
+- **THEN** the summary record reports one instance and no failure
+- **AND** the region summary in the same record carries `fleet` with the value `failed`
 
 ### Requirement: Name the credential identifier consistently
 

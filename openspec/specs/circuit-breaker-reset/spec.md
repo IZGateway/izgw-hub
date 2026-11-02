@@ -1,4 +1,4 @@
-# Spec Delta
+# circuit-breaker-reset Specification
 
 ## Purpose
 
@@ -6,7 +6,7 @@ Lets an operator clear thrown circuit breakers across every Hub instance in ever
 region, so that traffic to a recovered destination resumes without a service restart,
 and reports honestly which instances were cleared.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Reset all destinations across every instance
 
@@ -149,11 +149,21 @@ that it cleared its circuit breakers.
 
 #### Scenario: The status cannot be read
 
-- **GIVEN** an instance cannot read destination status from Elasticsearch
+- **GIVEN** an instance holds no cached status
+- **AND** it cannot read destination status from Elasticsearch, or the response cannot be
+  parsed
 - **WHEN** it applies a reset of every destination
 - **THEN** the outcome for that instance names the failed status read
 - **AND** the outcome does not report success
 - **AND** the outcome is distinguishable from a successful read that holds no status
+
+#### Scenario: The status cannot be read but a cache exists
+
+- **GIVEN** an instance holds a status cache from an earlier successful read
+- **AND** Elasticsearch is now unreachable
+- **WHEN** it applies a reset of every destination
+- **THEN** the instance clears the cached breakers
+- **AND** the outcome reports success, because the clear is the work requested
 
 #### Scenario: An instance holds no status at all
 
