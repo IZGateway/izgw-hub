@@ -141,6 +141,15 @@ names and meaning.
 
 Host keys use `region:hostname`, matching the format `/rest/refresh` already returns.
 
+**One further key, `fleet`, reports a failed host list.** If the Hub cannot read or parse
+the list of instances, `hosts` carries `fleet` with the value `Discovery Unavailable`, and
+`regions` carries `fleet` with the value `failed`. The key is not a host name, so it
+discloses no topology. Without it, a failed read looks the same as a fleet of one
+instance, and the response reads `complete` for the local region only. `fleet` uses the
+closed vocabulary below, so a consumer that maps an unknown word to a warning needs no
+change. The summary record counts hosts only, so `fleet` does not raise the instance
+count or the failure count. The operator reads `regions` for the discovery outcome.
+
 **The host keys disclose internal topology.** They carry private AWS DNS names such as
 `ip-10-9-93-145.ec2.internal`, which reveal internal addressing, the region layout and
 the instance count. Both reset endpoints require `admin` and run over mutual TLS, so
@@ -222,6 +231,10 @@ does govern the SOAP path.
 | Caller lacks `admin` | none (REST) | 403 | n/a |
 | One instance times out | none | 200, outcome `Timed Out` | n/a |
 | Queue missing for an instance | none | 200, outcome `No Queue` | n/a |
+| Host list cannot be read or parsed | none | 200, `hosts` and `regions` carry `fleet` | n/a |
+| Reply queue cannot be read | none | 200, collected outcomes kept, pending instances `Internal Error` | n/a |
+| Status cannot be read on an instance with an empty cache | none | 200, outcome for that instance names the failed read | n/a |
+| Instance holds no status for the named destination | none | 200, outcome for that instance names the destination and is not `OK` | n/a |
 | Breaker thrown, message routed | `DestinationConnectionFault` code 18 (`CircuitBreakerThrown`) | per SOAP mapping | `CHECK_IIS_STATUS` |
 
 No new destination type is introduced, so circuit breaker thresholds and the retry
@@ -278,6 +291,13 @@ from a real fault. See the `cross-instance-messaging` spec.
 **A newly started instance that has logged nothing is missed silently.** → Accepted.
 Fixing it means a second source of truth for instance discovery, which is a larger
 change. The specs record the limitation.
+
+**An instance with a stale status cache reports `OK` while Elasticsearch is down.** →
+Accepted. The reset fails only when the cache is empty and the read fails. An instance
+that holds a cache from an earlier successful read clears that cache and reports `OK`.
+Those values gate outbound traffic, so clearing them is the work the operator asked for,
+and the outcome states what happened. Reporting a failure there would be wrong. See
+tasks 9.1 and 9.7.
 
 **Making `DbControllerConfiguration.refresh()` public widens its reach.** → The method
 reloads five caches from the datastore and holds no secret. The widening is from one
