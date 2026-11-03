@@ -65,4 +65,32 @@
         <packageUrl regex="true">^pkg:maven/org\.apache\.tomcat\.embed/tomcat\-embed\-core@.*$</packageUrl>
         <cve>CVE-2026-66299</cve>
     </suppress>
+    <suppress>
+        <notes><![CDATA[
+        DOMPurify (bundled inside org.webjars:swagger-ui's swagger-ui-bundle.js /
+        swagger-ui-es-bundle.js, currently at 3.4.13): CVE-2026-116803 and CVE-2026-116804
+        are both fixed upstream in DOMPurify 3.4.17 (IN_PLACE/shadow-root/template-engine
+        XSS edge cases - cfindeisen/DOMPurify PR merged into swagger-api/swagger-ui as
+        PR #11109 on 2026-10-27, two days before this suppression was added).
+
+        No swagger-ui release contains the fix yet. 5.34.0 is the latest version published
+        to both npm and Maven Central (org.webjars:swagger-ui) as of this writing, and its
+        own package.json still pins "dompurify": "^3.4.16" - confirmed directly against the
+        npm registry. A version bump cannot clear this finding; there is nothing newer to
+        bump to. Revisit once swagger-ui ships a release depending on dompurify >= 3.4.17;
+        this suppression may become unnecessary (harmless if left in place - it will simply
+        stop matching).
+
+        Also worth noting: independent trackers (Strix, OpenCVE) score both CVEs at 6.1
+        (Medium) for the same underlying issue, not the 10.0 NVD feeds into this scan -
+        plausibly an inflated provisional CVSS vector, common for very recently published
+        CVEs before analyst review. Not the basis for this suppression (the "no fix exists
+        yet" fact stands regardless), but it supports that suppressing now and revisiting
+        later is a reasonable call rather than a more drastic one (e.g. dropping Swagger UI).
+        Added: 2026-10-29 (IGDD-3582)
+        ]]></notes>
+        <packageUrl regex="true">^pkg:javascript/DOMPurify@.*$</packageUrl>
+        <cve>CVE-2026-116803</cve>
+        <cve>CVE-2026-116804</cve>
+    </suppress>
 </suppressions>

@@ -4651,6 +4651,72 @@
               "response": []
             },
             {
+              "name": "TC_98a Health Check discloses nothing without authentication",
+              "protocolProfileBehavior": {
+                "disabledSystemHeaders": {
+                  "host": true
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "// IGDD-3178: /rest/health reached with neither a client certificate nor an API\r",
+                      "// key must not disclose infrastructure detail. This request goes to no_cert_host,\r",
+                      "// which the runner's certificate list does not match, so the Hub resolves the\r",
+                      "// caller to an UnauthenticatedPrincipal. TC_98 covers the authenticated view.\r",
+                      "\r",
+                      "pm.test(\"Status code is 200\", function () {\r",
+                      "    pm.response.to.have.status(200);\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Body parses as a json object\", function () {\r",
+                      "    pm.expect(typeof pm.response.json()).to.eql(\"object\");\r",
+                      "});\r",
+                      "\r",
+                      "pm.test(\"Liveness is still reported\", function () {\r",
+                      "    pm.expect(pm.response.json()).to.have.property(\"healthy\");\r",
+                      "    pm.expect(pm.response.json()).to.have.property(\"statusAt\");\r",
+                      "});\r",
+                      "\r",
+                      "// An exact key-set match, not a list of forbidden names: a field added to\r",
+                      "// Health later fails this without anyone remembering to list it here.\r",
+                      "pm.test(\"Nothing beyond liveness is disclosed\", function () {\r",
+                      "    pm.expect(Object.keys(pm.response.json()).sort()).to.eql([\"healthy\", \"statusAt\"]);\r",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Host",
+                    "value": "{{hostHeader}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{protocol}}://{{no_cert_host}}:{{port}}/rest/health",
+                  "protocol": "{{protocol}}",
+                  "host": [
+                    "{{no_cert_host}}"
+                  ],
+                  "port": "{{port}}",
+                  "path": [
+                    "rest",
+                    "health"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
               "name": "TC_ACK02 Error Handling IIS Accepted Message with additional Information",
               "event": [
                 {

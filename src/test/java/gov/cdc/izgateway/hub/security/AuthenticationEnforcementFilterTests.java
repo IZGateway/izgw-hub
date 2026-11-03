@@ -44,6 +44,23 @@ class AuthenticationEnforcementFilterTests {
     }
 
     @Test
+    void healthyEndpoint_isExemptFromAuthCheck() {
+        when(request.getServletPath()).thenReturn("/rest/healthy");
+
+        assert filter.shouldNotFilter(request)
+                : "The container health check probes /rest/healthy and must bypass the auth filter";
+    }
+
+    /** The exemption is for the two probe paths, not for everything beneath or beside them. */
+    @Test
+    void otherPathsSharingTheHealthPrefix_areNotExempt() {
+        when(request.getServletPath()).thenReturn("/rest/healthReport");
+
+        assert !filter.shouldNotFilter(request)
+                : "Only the exact probe paths may skip authentication";
+    }
+
+    @Test
     void authenticatedPrincipal_continuesFilterChain() throws Exception {
         ApiKeyPrincipal principal = new ApiKeyPrincipal("ORG", "jti-123", "dns.example.gov", "http://issuer");
         when(principalService.getPrincipal(request)).thenReturn(principal);

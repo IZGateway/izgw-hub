@@ -18,6 +18,53 @@ spring:
         max-file-size: 15GB
         max-request-size: 15GB
 
+    ssl:
+        bundle:
+            jks:
+                izgw-server:
+                    # IGDD-3582: reload-on-update is deliberately disabled. It relies on Spring
+                    # Boot's FileWatcher, which is backed by java.nio.file.WatchService -- inotify
+                    # on Linux. Inotify does not detect a change written by a different client to
+                    # a network filesystem, and this application's keystore lives on an AWS EFS
+                    # (NFSv4.1) volume in every real deployment, written to by a process other than
+                    # this one. Confirmed: AWS has not finished implementing NFSv4.1 delegation
+                    # callbacks for Linux clients on EFS, so this mechanism would silently never
+                    # fire in production. Reload is instead handled by polling file mtime
+                    # (ServerSslBundleReloader in izgw-core, scheduled by izgw-hub's
+                    # ServerSslBundleReloadScheduler) -- the same mechanism already proven correct
+                    # on EFS for this application's client-side TLS path.
+                    reload-on-update: false
+                    # Once server.ssl.bundle names this bundle, Tomcat's SslConnectorCustomizer
+                    # reads enabled protocols/ciphers exclusively from this bundle's own options --
+                    # it never falls back to server.ssl.enabled-protocols/ciphers. Those legacy
+                    # properties must live here, not under server.ssl, or they're silently ignored
+                    # (confirmed against spring-boot-tomcat's SslConnectorCustomizer source).
+                    options:
+                        enabled-protocols:
+                            - TLSv1.2
+                            - TLSv1.3
+                        ciphers:
+                            - TLS_AES_256_GCM_SHA384
+                            - TLS_AES_128_GCM_SHA256
+                            - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+                            - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+                            - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+                            - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+                            - TLS_DHE_RSA_WITH_AES_256_GCM_SHA384
+                            - TLS_DHE_DSS_WITH_AES_256_GCM_SHA384
+                            - TLS_DHE_RSA_WITH_AES_128_GCM_SHA256
+                            - TLS_DHE_DSS_WITH_AES_128_GCM_SHA256
+                    keystore:
+                        location: ${PHIZ_CRYPTO_STORE_KEY_TOMCAT_SERVER_FILE:${security.ssl-path}/awsdev_keystore.bcfks}
+                        password: ${COMMON_PASS:}
+                        provider: BCFIPS
+                        type: bcfks
+                    truststore:
+                        location: ${PHIZ_CRYPTO_STORE_TRUST_TOMCAT_SERVER_FILE:${security.ssl-path}/awsdev_keystore.bcfks}
+                        password: ${COMMON_PASS:}
+                        provider: BCFIPS
+                        type: bcfks
+
 # uncomment these lines to use local DynamoDb instance for testing 
 # amazon:
 #    dynamodb:
@@ -66,37 +113,20 @@ server:
         accept-count: 200
         max-connections: 16384
         max-threads: 400
-        max-keep-alive-requests: 1
-        
+        # Unlimited: this leg is ALB-to-Tomcat, inside the security boundary.
+        max-keep-alive-requests: -1
+
     ssl:
         enabled: true
         client-auth: need
-        enabled-protocols: 
-            - TLSv1.2
-            - TLSv1.3
-        ciphers:
-            - TLS_AES_256_GCM_SHA384
-            - TLS_AES_128_GCM_SHA256
-            - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
-            - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
-            - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
-            - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
-            - TLS_DHE_RSA_WITH_AES_256_GCM_SHA384
-            - TLS_DHE_DSS_WITH_AES_256_GCM_SHA384
-            - TLS_DHE_RSA_WITH_AES_128_GCM_SHA256
-            - TLS_DHE_DSS_WITH_AES_128_GCM_SHA256
-
-
-        
-        key-store: ${PHIZ_CRYPTO_STORE_KEY_TOMCAT_SERVER_FILE:${security.ssl-path}/awsdev_keystore.bcfks}
-        key-store-password: ${COMMON_PASS:}
-        key-store-provider: BCFIPS
-        key-store-type: bcfks
-
-        trust-store: ${PHIZ_CRYPTO_STORE_TRUST_TOMCAT_SERVER_FILE:${security.ssl-path}/awsdev_keystore.bcfks}
-        trust-store-password: ${COMMON_PASS:}
-        trust-store-provider: BCFIPS
-        trust-store-type: bcfks
+        # Keystore/truststore, and enabled-protocols/ciphers (see options: there), come from the
+        # named bundle below (spring.ssl.bundle.jks.izgw-server). Reload is handled by polling file
+        # mtime (ServerSslBundleReloader/ServerSslBundleReloadScheduler), not Spring's own
+        # reload-on-update -- see that property's comment there for why. IGDD-3582: legacy
+        # key-store/trust-store/enabled-protocols/ciphers properties here get no reload wiring,
+        # and are ignored entirely once a bundle is selected (Tomcat's SslConnectorCustomizer
+        # reads protocols/ciphers only from the bundle's own options when server.ssl.bundle is set).
+        bundle: izgw-server
 
 client:
     contentType: text/xml

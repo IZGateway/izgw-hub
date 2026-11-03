@@ -15,3 +15,4 @@ src/main/resources/logback-local.xml
 .classpath
 .factorypath
 .project
+/bin/

@@ -46,7 +46,7 @@ class ApplicationTests {
     @BeforeAll
     void setupParameters() {
     	// We want a larger memory appender for these tests, because some tests log more info.
-        MemoryAppender.getInstance("memory").setSize(100);
+        MemoryAppender.getInstance("memory").setSize(150);
     }
 
 	@Test
