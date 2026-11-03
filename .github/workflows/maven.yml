@@ -180,7 +180,12 @@ jobs:
             -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn \
             -DskipDependencyCheck=true \
             -Dimage.tag=${{env.IMAGE_TAG}}
-            
+
+    - name: TEMPORARY - fail on purpose to test the build-failure artifact (IGDD-3642)
+      run: |
+        echo "::warning::This failure is on purpose. Remove this step before merge."
+        exit 1
+
 # Use GitHub Action to speed up and improve dependency checking.
 # Automatic dependency checking is disabled in the build; this replaces it.
 #
