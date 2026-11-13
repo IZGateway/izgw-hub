@@ -13,6 +13,21 @@ created:
     prompt:/claude-code/6489d253-64a8-47f7-9d36-4bd4d59d6e03/~dd641be6-9c76-48ec-9370-9243b651be97
   summary: Initial proposal for annual RI aggregate ZIP submission support
 updated:
+  - date: '2026-11-13T20:35:15.530Z'
+    user: boonek
+    agent:
+      name: claude-code
+      version: 1.0.0
+    llm:
+      name: claude-sonnet-5
+      version: '5'
+    prompt_uri: >-
+      prompt:/claude-code/6489d253-64a8-47f7-9d36-4bd4d59d6e03/~db3b975b-82fb-46c0-b844-9bda262bcec2
+    summary: >-
+      Add CSV Annual support and DynamoDB trim-fix to What Changes, correcting
+      the now-stale no-change claim; Move filename-validation and
+      report-type-normalization into Modified Capabilities; Add
+      CsvFilenameValidator/Components and NewModelHelper to Impact section
   - date: '2026-11-13T17:28:49.644Z'
     user: boonek
     agent:
@@ -93,9 +108,8 @@ rather than inventing shared infrastructure nothing else needs.
   type). A divisor of `12` collapses the month comparison to a year-only match, which
   is sufficient because the ZIP filename's existing period field already carries the
   full date.
-- No change to `CsvFilenameValidator`, `computeDataStreamId()`, or
-  `report-type-normalization` — the existing camelCase→kebab algorithm and three-tier
-  registry lookup already handle `riAnnualAggregate` with no modification.
+- No change to `computeDataStreamId()` — the existing camelCase→kebab algorithm
+  already handles `riAnnualAggregate` with no modification.
 - `MetadataBuilder.PERIOD_PATTERN` gains a bare-`\d{4}` alternative so an annual
   submission can send `period=2025`, and `setPeriod()` gains a new cross-check:
   the submitted period's shape (monthly/quarterly/annual) must match the submitted
@@ -103,6 +117,17 @@ rather than inventing shared infrastructure nothing else needs.
   format (CSV and ZIP alike), not just the new annual type — it closes a gap where
   `PERIOD_PATTERN` validated that `period` matched *some* recognized shape but never
   that it matched the *right* one for the report type.
+- `CsvFilenameValidator` now recognizes `"Annual"` as a third frequency keyword
+  (alongside `"Monthly"`/`"Quarterly"`), with a bare-`YYYY` date alternative in the
+  structural regex. `CsvFilenameComponents` gains `isAnnual()`, and `isMonthly()` is
+  corrected from `!isQuarterly()` to an explicit match — with three frequencies, "not
+  quarterly" is no longer a safe stand-in for "monthly".
+- **Fixed a real incident found via PR #209's live `verify` CI run**:
+  `NewModelHelper.refresh()` now trims `FileType.fileTypeName` (both the cache key
+  and the entity's own field) when rebuilding the registry cache. A hand-entered
+  `riAnnualAggregate` value in dev's `FileType` table had a trailing space, which
+  broke every tier of the three-tier `reportType` match and rejected an otherwise
+  byte-for-byte-correct submission with a 400.
 
 Deployment (not code, tracked separately): add a `FileType` registry entry for
 `riAnnualAggregate`, the same mechanism already used for `riQuarterlyAggregate`
@@ -125,8 +150,14 @@ Deployment (not code, tracked separately): add a `FileType` registry entry for
   existed, with no connection to the report type at all.
 
 ### Modified Capabilities
-(none — `compute-data-stream-id`, `report-type-normalization`, `filename-validation`,
-and `ads-folder-path-computation` are unaffected)
+- `filename-validation`: `CsvFilenameValidator`/`CsvFilenameComponents` now recognize
+  `"Annual"` as a third frequency keyword (with a bare-`YYYY` date), alongside the
+  existing `"Monthly"`/`"Quarterly"`.
+- `report-type-normalization`: `NewModelHelper.refresh()` now trims `fileTypeName`
+  (cache key and entity field) when rebuilding the registry, fixing a real incident
+  where a trailing-space typo in dev broke the three-tier match entirely.
+
+(`compute-data-stream-id` and `ads-folder-path-computation` remain unaffected.)
 
 ## Impact
 
@@ -135,6 +166,11 @@ and `ads-folder-path-computation` are unaffected)
   and frequency cross-check in `setPeriod()` (applies to all report types/formats).
 - **`ZipFilenameComponents.java`**: remove the hardcoded
   `filetype = ROUTINE_IMMUNIZATION` assignment in favor of a name-derived value.
+- **`CsvFilenameValidator.java`/`CsvFilenameComponents.java`**: add the `Annual`
+  frequency keyword, a bare-`YYYY` regex alternative, `isAnnual()`, and an explicit
+  (not `!isQuarterly()`) `isMonthly()`.
+- **`NewModelHelper.java`**: trim `fileTypeName` when rebuilding `fileTypeCache`,
+  for both the cache key and the `FileType` entity itself.
 - **No izgw-core, SOAP/WSDL, FIPS/crypto, or PHI-masking impact** — this is confined
   to ADS REST metadata computation; filenames and period values are not PHI, and no
   cryptographic or TLS code is touched.

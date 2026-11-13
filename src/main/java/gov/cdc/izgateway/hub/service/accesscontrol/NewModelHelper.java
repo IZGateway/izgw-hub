@@ -20,6 +20,7 @@ import gov.cdc.izgateway.model.IFileType;
 import gov.cdc.izgateway.repository.IRepository;
 import gov.cdc.izgateway.utils.SystemUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -52,7 +53,16 @@ class NewModelHelper implements AccessControlModelHelper {
 	public void refresh() {
     	accessGroupCache = refreshCache(accessControlService.accessGroupRepository, ag -> ag.getGroupName());
     	denyListRecordCache = refreshCache(accessControlService.denyListRecordRepository, dr -> dr.getPrincipal());
-    	fileTypeCache = refreshCache(accessControlService.fileTypeRepository, FileType::getFileTypeName);
+    	// Defensively trim fileTypeName: it's hand-entered in the configuration console/DynamoDB,
+    	// and a stray leading/trailing space (e.g. a copy-paste typo) breaks the three-tier
+    	// reportType match in getFileType() below as well as every downstream use of the
+    	// canonical name (meta_ext_event, data_stream_id, ...). Mutate the entity itself, not
+    	// just the cache key, since getFileType() callers read fileType.getFileTypeName() directly.
+    	fileTypeCache = refreshCache(accessControlService.fileTypeRepository, ft -> {
+    		String trimmed = StringUtils.trim(ft.getFileTypeName());
+    		ft.setFileTypeName(trimmed);
+    		return trimmed;
+    	});
     	sourceAttackExceptionCache = refreshCache(accessControlService.sourceAttackExceptionRepository, SourceAttackExceptionRecord::getSender);
     	Map<String, Set<AllowedUser>> newAllowedUserCache = new TreeMap<>();
     	for (AllowedUser user : refreshCache(accessControlService.allowedUserRepository, au -> au.getDestinationId()).values()) {

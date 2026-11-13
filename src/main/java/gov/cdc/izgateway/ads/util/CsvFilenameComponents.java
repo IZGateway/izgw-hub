@@ -12,9 +12,10 @@ import lombok.Value;
  * <p>
  * CSV ADS filenames follow the structure:
  * <pre>{@code [Prefix]_[Entity]_[Date].[extension]}</pre>
- * where {@code [Prefix]} contains a frequency keyword ("Monthly" or "Quarterly",
- * detected case-insensitively at any position) plus a report-type abbreviation.
- * For example: {@code MonthlyFlu_XXA_2026FEB.csv}, {@code riQuarterlyAggregate_XXA_2025Q4.csv}
+ * where {@code [Prefix]} contains a frequency keyword ("Monthly", "Quarterly", or
+ * "Annual", detected case-insensitively at any position) plus a report-type
+ * abbreviation. For example: {@code MonthlyFlu_XXA_2026FEB.csv},
+ * {@code riQuarterlyAggregate_XXA_2025Q4.csv}, {@code AnnualRI_XXA_2026.csv}
  * </p>
  *
  * <p>Call {@link #isValid()} to check whether validation passed. When invalid,
@@ -30,7 +31,7 @@ public class CsvFilenameComponents {
 
     /**
      * The frequency keyword extracted from the filename prefix.
-     * Either {@code "Monthly"} or {@code "Quarterly"}.
+     * One of {@code "Monthly"}, {@code "Quarterly"}, or {@code "Annual"}.
      * {@code null} when the filename failed structural parsing.
      */
     String frequency;
@@ -60,13 +61,13 @@ public class CsvFilenameComponents {
 
     /**
      * The month abbreviation (e.g., {@code "FEB"}) for monthly filenames, or {@code null}
-     * for quarterly filenames.
+     * for quarterly or annual filenames.
      */
     String month;
 
     /**
      * The quarter digit (e.g., {@code "2"}) for quarterly filenames, or {@code null}
-     * for monthly filenames.
+     * for monthly or annual filenames.
      */
     String quarter;
 
@@ -104,16 +105,30 @@ public class CsvFilenameComponents {
      * @return true for quarterly submissions
      */
     public boolean isQuarterly() {
-        return "Quarterly".equals(frequency);
+        return CsvFilenameValidator.FREQ_QUARTERLY.equals(frequency);
+    }
+
+    /**
+     * Returns {@code true} if the frequency keyword is {@code "Annual"}.
+     *
+     * @return true for annual submissions
+     */
+    public boolean isAnnual() {
+        return CsvFilenameValidator.FREQ_ANNUAL.equals(frequency);
     }
 
     /**
      * Returns {@code true} if the frequency keyword is {@code "Monthly"} or if no
      * frequency keyword was detected (monthly is the default assumption).
+     * <p>
+     * Unlike before {@code Annual} existed, this is an explicit match rather than
+     * {@code !isQuarterly()} — with three possible frequencies, "not quarterly" would
+     * incorrectly also be {@code true} for an annual submission.
+     * </p>
      *
      * @return true for monthly submissions or when frequency is undetermined
      */
     public boolean isMonthly() {
-        return !"Quarterly".equals(frequency);
+        return frequency == null || CsvFilenameValidator.FREQ_MONTHLY.equals(frequency);
     }
 }

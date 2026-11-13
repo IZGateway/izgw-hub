@@ -194,7 +194,109 @@ class CsvFilenameValidatorTests {
     }
 
     // -------------------------------------------------------------------------
-    // 7. RIA_16M.csv  – no frequency prefix, wrong structure – must fail
+    // 7. AnnualRI_XXA_2026.csv  – plain valid annual file (bare YYYY date)
+    // -------------------------------------------------------------------------
+
+    @Test
+    void parseFilename_annualRI_parsesSuccessfully() {
+        CsvFilenameComponents c = CsvFilenameValidator.parseFilename("AnnualRI_XXA_2026.csv");
+
+        assertNotNull(c);
+        assertFalse(c.isTestFile());
+        assertEquals("Annual", c.getFrequency());
+        assertEquals("RI",     c.getReportTypeAbbrev());
+        assertEquals("XXA",    c.getEntityId());
+        assertEquals("2026",   c.getDateString());
+        assertEquals("2026",   c.getYear());
+        assertNull(c.getMonth(),   "Month should be null for an annual filename");
+        assertNull(c.getQuarter(), "Quarter should be null for an annual filename");
+        assertEquals("csv",    c.getExtension());
+        assertTrue(c.isAnnual());
+        assertFalse(c.isMonthly());
+        assertFalse(c.isQuarterly());
+    }
+
+    @Test
+    void validate_annualRI_passesAllChecks() {
+        CsvFilenameComponents result =
+            CsvFilenameValidator.validate("AnnualRI_XXA_2026.csv", "XXA", "2026");
+
+        assertTrue(result.isValid(), () -> result.getErrors().toString());
+    }
+
+    // -------------------------------------------------------------------------
+    // 7b. riAnnualAggregate_XXA_2026.csv – "Annual" mid-prefix, same pattern as
+    //     the riQuarterlyAggregate mid-prefix case above
+    // -------------------------------------------------------------------------
+
+    @Test
+    void parseFilename_riAnnualAggregate_parsesSuccessfully() {
+        CsvFilenameComponents c = CsvFilenameValidator.parseFilename("riAnnualAggregate_XXA_2026.csv");
+
+        assertNotNull(c, "Should parse: 'Annual' is present (case-insensitive) in the prefix");
+        assertFalse(c.isTestFile());
+        assertEquals("Annual",      c.getFrequency());
+        assertEquals("riAggregate", c.getReportTypeAbbrev());
+        assertEquals("XXA",         c.getEntityId());
+        assertEquals("2026",        c.getDateString());
+        assertTrue(c.isAnnual());
+        assertFalse(c.isQuarterly());
+        assertFalse(c.isMonthly());
+    }
+
+    @Test
+    void validate_riAnnualAggregate_passesAllChecks() {
+        CsvFilenameComponents result =
+            CsvFilenameValidator.validate("riAnnualAggregate_XXA_2026.csv", "XXA", "2026");
+
+        assertTrue(result.isValid(), () -> "Expected valid but got errors: " + result.getErrors());
+    }
+
+    // -------------------------------------------------------------------------
+    // 7c. Frequency keyword vs. date shape mismatch – must be rejected
+    //     (the bare-YYYY alternative added for Annual matches regardless of
+    //     which keyword is in the prefix, so this cross-check must reject it)
+    // -------------------------------------------------------------------------
+
+    @Test
+    void parseFilename_quarterlyKeywordWithBareYearDate_rejected() {
+        CsvFilenameComponents c = CsvFilenameValidator.parseFilename("QuarterlyRI_XXA_2026.csv");
+
+        assertNull(c, "Quarterly keyword with a bare-year date must not parse");
+    }
+
+    @Test
+    void parseFilename_monthlyKeywordWithQuarterlyDate_rejected() {
+        CsvFilenameComponents c = CsvFilenameValidator.parseFilename("MonthlyFlu_XXA_2026Q2.csv");
+
+        assertNull(c, "Monthly keyword with a quarterly-shaped date must not parse");
+    }
+
+    @Test
+    void parseFilename_annualKeywordWithMonthlyDate_rejected() {
+        CsvFilenameComponents c = CsvFilenameValidator.parseFilename("AnnualRI_XXA_2026FEB.csv");
+
+        assertNull(c, "Annual keyword with a monthly-shaped date must not parse");
+    }
+
+    @Test
+    void parseFilename_annualKeywordWithQuarterlyDate_rejected() {
+        CsvFilenameComponents c = CsvFilenameValidator.parseFilename("AnnualRI_XXA_2026Q2.csv");
+
+        assertNull(c, "Annual keyword with a quarterly-shaped date must not parse");
+    }
+
+    @Test
+    void validate_quarterlyKeywordWithBareYearDate_rejectedWithError() {
+        CsvFilenameComponents result =
+            CsvFilenameValidator.validate("QuarterlyRI_XXA_2026.csv", "XXA", "2026");
+
+        assertFalse(result.isValid());
+        assertFalse(result.getErrors().isEmpty());
+    }
+
+    // -------------------------------------------------------------------------
+    // 8. RIA_16M.csv  – no frequency prefix, wrong structure – must fail
     // -------------------------------------------------------------------------
 
     @Test

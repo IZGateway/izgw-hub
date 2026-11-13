@@ -13,6 +13,32 @@ created:
     prompt:/claude-code/6489d253-64a8-47f7-9d36-4bd4d59d6e03/~dd641be6-9c76-48ec-9370-9243b651be97
   summary: Task breakdown for annual RI aggregate ZIP submission support
 updated:
+  - date: '2026-11-13T21:06:08.981Z'
+    user: boonek
+    agent:
+      name: claude-code
+      version: 1.0.0
+    llm:
+      name: claude-sonnet-5
+      version: '5'
+    prompt_uri: >-
+      prompt:/claude-code/6489d253-64a8-47f7-9d36-4bd4d59d6e03/~0f4963bc-d59c-4f0d-921d-a60f0932a8ba
+    summary: >-
+      Correct 6.6's now-stale claim and add 6.7 for the keyword/date-shape
+      cross-check fix from the second independent review
+  - date: '2026-11-13T20:36:46.617Z'
+    user: boonek
+    agent:
+      name: claude-code
+      version: 1.0.0
+    llm:
+      name: claude-sonnet-5
+      version: '5'
+    prompt_uri: >-
+      prompt:/claude-code/6489d253-64a8-47f7-9d36-4bd4d59d6e03/~db3b975b-82fb-46c0-b844-9bda262bcec2
+    summary: >-
+      Correct 5.3's now-stale note and add Groups 6-7 for CSV Annual support and
+      the DynamoDB trim fix
   - date: '2026-11-13T20:07:40.267Z'
     user: boonek
     agent:
@@ -240,12 +266,87 @@ not-enough-information, respectively, per Keith's call.
 - [x] 5.3 Consolidated the `MONTHLY`/`QUARTERLY` constants: `MetadataBuilder.MONTHLY`
       and `.QUARTERLY` now reference `CsvFilenameValidator.FREQ_MONTHLY`/
       `.FREQ_QUARTERLY` (widened to `public`) instead of duplicating the literals.
-      `ANNUAL` stays unique to `MetadataBuilder`, since CSV has no annual concept.
+      (`ANNUAL` was unique to `MetadataBuilder` at the time — Task 6 below later
+      gives CSV an annual concept too and completes this consolidation.)
 - [x] 5.4 Added an inline comment at the `divisor` computation in
       `validateZipMetadata()` explaining the `12` "always equal, ignore month" trick,
       which previously existed only in `design.md`, not at the code site.
 - [x] 5.5 Hoisted the duplicate `isAnnual(reportType)` call in `validateZipMetadata()`
       (eligibility check and divisor computation) to a single local variable.
+
+## 6. CSV Annual Support
+
+Keith: "Introduce the concept of Annual for CSV." Mirrors the ZIP/period-frequency
+work but for `CsvFilenameValidator`, which previously only recognized `Monthly`/
+`Quarterly` keywords and `YYYYQ#`/`YYYYMMM` date shapes.
+
+- [x] 6.1 Added a third alternative to `FILENAME_PATTERN` — a bare `(\d{4})` — for
+      the date segment, shifting the extension capture group from 8 to 9. Verified:
+      `mvn compile` succeeds; existing Monthly/Quarterly filenames still parse
+      identically (regex backtracking never reaches the new alternative for them).
+- [x] 6.2 Added `CsvFilenameValidator.FREQ_ANNUAL = "Annual"` (public, alongside
+      `FREQ_QUARTERLY`/`FREQ_MONTHLY`) and a third `parseFilename()` branch detecting
+      it case-insensitively in the prefix, mirroring the existing two branches.
+      `MetadataBuilder.ANNUAL` now references it, completing Task 5.3's
+      consolidation.
+- [x] 6.3 Added `CsvFilenameComponents.isAnnual()` and corrected `isMonthly()` from
+      `!isQuarterly()` to an explicit `FREQ_MONTHLY.equals(frequency)` match (still
+      defaulting `true` for a `null` frequency) — with three frequencies now
+      possible, "not quarterly" would have wrongly also been `true` for an annual
+      filename. This was a real correctness fix, not just a refactor.
+- [x] 6.4 Updated class/method Javadoc (`CsvFilenameValidator`, `CsvFilenameComponents`)
+      and the structural-rejection error message to mention `Annual`/bare-`YYYY`.
+- [x] 6.5 Added 4 new tests to `CsvFilenameValidatorTests` (`AnnualRI_XXA_2026.csv`
+      plain case, `riAnnualAggregate_XXA_2026.csv` mid-prefix case, each with a
+      `parseFilename` and `validate` test). `mvn test -Dtest=CsvFilenameValidatorTests`:
+      18/18 passing (14 existing + 4 new, zero regressions).
+- [x] 6.6 Added `MODIFIED` delta for the `filename-validation` capability
+      (`specs/filename-validation/spec.md`) — copied the "Filename Parses
+      Successfully" requirement forward in full per OpenSpec discipline, adding
+      `Annual` scenarios.
+- [x] 6.7 **Fix from a second independent review pass, confirmed by Keith**: the
+      bare-`YYYY` date alternative added in 6.1 matches regardless of which
+      frequency keyword is in the prefix, so without a cross-check,
+      `"QuarterlyRI_XXA_2026.csv"` would parse successfully (a `Quarterly` keyword
+      paired with a bare-year date) — structurally impossible before this change,
+      since the old grammar had only two date shapes, each tied to one keyword.
+      `parseFilename()` now rejects (`null`) whenever the detected keyword doesn't
+      match the date shape actually matched. Added `ADDED` requirement "Frequency
+      Keyword Matches Date Shape" to the `filename-validation` delta and Decision 7
+      correction in `design.md`. 5 new tests (3 keyword/date mismatch combinations,
+      1 `validate()`-level error check, plus regression coverage for the existing
+      matching cases). `mvn test -Dtest=CsvFilenameValidatorTests`: 23/23 passing.
+
+## 7. DynamoDB `FileType` Name Hygiene (Real Incident Fix)
+
+PR #209's `verify` CI job deployed this change to dev and failed for real: the
+hand-entered `riAnnualAggregate` registry entry had a trailing space, breaking the
+three-tier `reportType` match. Keith: "Trim names coming back from DynamoDB. I will
+go back and correct it [the bad data]."
+
+- [x] 7.1 `NewModelHelper.refresh()` now trims `fileTypeName` when rebuilding
+      `fileTypeCache` — mutating the `FileType` entity's own field, not just the
+      cache key, since `getFileType()` callers (e.g.
+      `MetadataBuilder.setReportType()`) read `fileType.getFileTypeName()` directly
+      off the returned entity. Scoped to `FileType` specifically, not added to the
+      shared `refreshCache()` helper for every repository type (no other cached
+      entity's name is echoed back out as a canonical business value the way
+      `fileTypeName` is).
+- [x] 7.2 Added `NewModelHelperFileTypeNameTrimTests` (2 tests) using the same
+      `RepositoryFactory`-mock scaffolding as `AccessControlServiceSourceAttackTests`.
+      **Verified as a real regression guard, not just a passing test**: confirmed
+      both tests fail without the fix (temporarily reverted it, re-ran, restored it)
+      before leaving it in its passing state. `mvn test
+      -Dtest=NewModelHelperFileTypeNameTrimTests,NewModelHelperGetFileTypeTests`:
+      19/19 passing.
+- [x] 7.3 Added `MODIFIED` delta for the `report-type-normalization` capability
+      (`specs/report-type-normalization/spec.md`) — copied the "Three-tier registry
+      lookup" requirement forward in full, adding the trim behavior and a new
+      scenario.
+- [ ] 7.4 **Keith, separately, outside this code change**: correct the actual bad
+      `riAnnualAggregate` `FileType` entry in dev (strip the trailing space). The
+      code fix makes this class of typo non-fatal going forward, but the existing
+      bad row should still be cleaned up.
 
 ## Workflow follow-up
 

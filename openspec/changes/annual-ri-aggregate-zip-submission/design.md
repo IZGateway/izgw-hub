@@ -13,6 +13,33 @@ created:
     prompt:/claude-code/6489d253-64a8-47f7-9d36-4bd4d59d6e03/~dd641be6-9c76-48ec-9370-9243b651be97
   summary: Design doc for annual RI aggregate ZIP submission support
 updated:
+  - date: '2026-11-13T21:05:51.236Z'
+    user: boonek
+    agent:
+      name: claude-code
+      version: 1.0.0
+    llm:
+      name: claude-sonnet-5
+      version: '5'
+    prompt_uri: >-
+      prompt:/claude-code/6489d253-64a8-47f7-9d36-4bd4d59d6e03/~0f4963bc-d59c-4f0d-921d-a60f0932a8ba
+    summary: >-
+      Correct Decision 7's now-stale claim that no keyword/date-shape
+      cross-check was added
+  - date: '2026-11-13T20:36:12.605Z'
+    user: boonek
+    agent:
+      name: claude-code
+      version: 1.0.0
+    llm:
+      name: claude-sonnet-5
+      version: '5'
+    prompt_uri: >-
+      prompt:/claude-code/6489d253-64a8-47f7-9d36-4bd4d59d6e03/~db3b975b-82fb-46c0-b844-9bda262bcec2
+    summary: >-
+      Correct now-stale claim that CSV frequency keyword handling is unaffected
+      by this change; Add Decisions 7-8: CSV Annual support and the DynamoDB
+      fileTypeName trim fix
   - date: '2026-11-13T17:36:00.285Z'
     user: boonek
     agent:
@@ -102,7 +129,8 @@ See `proposal.md` - Why. One existing, undocumented behavior in `MetadataBuilder
 `ZipFilenameComponents` is the current blocker. Note there is **no**
 `computePeriodType()` or general period-type concept in the shipped codebase — the
 only cadence-aware logic is the CSV path's own `Monthly`/`Quarterly` filename
-keyword (unaffected by this change) and the ZIP path's hardcoded quarterly divisor:
+keyword (now also `Annual` — see Decision 7) and the ZIP path's hardcoded quarterly
+divisor:
 
 ```
 POST /ads/{destinationId}?reportType=riAnnualAggregate&file=XXA_20251231_20260131_Agg_Z.zip
@@ -247,6 +275,50 @@ actually applies. `setPeriod()` now computes `establishedFrequency(reportType)` 
 reports a single format example (`"YYYY-MMM (e.g. 2026-FEB)"`,
 `"YYYYQ# (e.g. 2026Q1)"`, or `"YYYY (e.g. 2026)"`). `genericImmunization` is the one
 exception — it has no established frequency, so it still lists all three forms.
+
+**7. Extend `CsvFilenameValidator` to recognize `"Annual"` as a third frequency
+keyword, with a bare-`YYYY` date alternative.** Keith asked to "introduce the concept
+of Annual for CSV" — the CSV grammar only had `Monthly`/`Quarterly` keywords and a
+`YYYYQ#`/`YYYYMMM` date shape; neither covered annual filenames. Changes:
+- `FILENAME_PATTERN` gains a third date alternative, a bare `(\d{4})`, adding one new
+  capture group (shifting the extension group from 8 to 9).
+- `FREQ_ANNUAL = "Annual"` added alongside `FREQ_QUARTERLY`/`FREQ_MONTHLY`, and
+  `MetadataBuilder.ANNUAL` now references it (completing the consolidation from
+  Task 5.3 — CSV has an annual concept now, so there's no reason for `ANNUAL` to stay
+  a separate literal).
+- `CsvFilenameComponents.isMonthly()` was `!isQuarterly()` — a safe shortcut when only
+  two frequencies existed, but **wrong** with three: it would have returned `true` for
+  an annual filename. Changed to an explicit `FREQ_MONTHLY.equals(frequency)` (still
+  defaulting `true` for a `null` frequency, preserving the documented "monthly is the
+  default" contract for the never-really-exercised manually-constructed case). Also
+  added `isAnnual()`.
+- **Correction, added after an independent review pass:** a keyword/date-shape
+  cross-check *was* needed after all. The bare-`YYYY` alternative added for `Annual`
+  matches regardless of which keyword is in the prefix, so without a check,
+  `"QuarterlyRI_XXA_2026.csv"` (a `Quarterly` keyword paired with a bare-year date)
+  would parse successfully — something that was structurally impossible before this
+  change, since the old grammar only had two mutually-exclusive date shapes tied one
+  each to `Monthly`/`Quarterly`. `parseFilename()` now rejects (`null`) whenever the
+  detected keyword doesn't match the date shape actually matched. Confirmed via Keith:
+  "that should be rejected because frequency and date don't match up."
+
+**8. Trim `FileType.fileTypeName` when refreshing the registry cache, mutating the
+entity itself — not just the cache key.** A real incident, not a hypothetical: PR
+#209's `verify` CI job deployed this change to dev and failed, because the
+hand-entered `riAnnualAggregate` registry value had a trailing space
+(`"riAnnualAggregate "`), which broke every tier of the three-tier match (none of
+exact/case-insensitive/noise-word-stripped comparison tolerates whitespace).
+Mutating only the cache key (`refreshCache`'s map) would have been insufficient:
+`MetadataBuilder.setReportType()` reads `fileType.getFileTypeName()` off the
+*returned entity*, not the cache key, to set the canonical `reportType` — so the
+untrimmed value would still propagate into `meta_ext_event`/`data_stream_id`/every
+downstream computation even after a successful lookup. Scoped to `FileType`
+specifically (not a generic trim added to `refreshCache()`'s shared helper for every
+repository type), since `FileType` is the one entity whose name gets echoed back out
+as a canonical business value for other callers to read — `AccessGroup`,
+`DenyListRecord`, etc. don't have that pattern. Confirmed as a real regression guard,
+not a speculative test: `NewModelHelperFileTypeNameTrimTests` was verified to fail
+without the fix before being left in its passing state.
 
 ## Risks / Trade-offs
 

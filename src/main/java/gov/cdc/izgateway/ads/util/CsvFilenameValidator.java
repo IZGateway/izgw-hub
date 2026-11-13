@@ -14,14 +14,15 @@ import org.apache.commons.lang3.Strings;
  * <p>
  * CSV ADS filenames must follow the structure:
  * <pre>{@code [prefix]_[Entity]_[Date].[extension]}</pre>
- * where {@code [prefix]} contains a frequency keyword ("Monthly" or "Quarterly",
- * detected case-insensitively at any position) plus a report-type abbreviation.
- * For example: {@code MonthlyFlu_XXA_2026FEB.csv}, {@code riQuarterlyAggregate_XXA_2025Q4.csv}
+ * where {@code [prefix]} contains a frequency keyword ("Monthly", "Quarterly", or
+ * "Annual", detected case-insensitively at any position) plus a report-type abbreviation.
+ * For example: {@code MonthlyFlu_XXA_2026FEB.csv}, {@code riQuarterlyAggregate_XXA_2025Q4.csv},
+ * {@code AnnualRI_XXA_2026.csv}
  * </p>
  *
- * <p>The frequency keyword in the filename determines whether the submission is monthly
- * or quarterly — no external period-type lookup is performed.  Monthly is the default
- * assumption when no frequency keyword can be detected.</p>
+ * <p>The frequency keyword in the filename determines whether the submission is monthly,
+ * quarterly, or annual — no external period-type lookup is performed.  Monthly is the
+ * default assumption when no frequency keyword can be detected.</p>
  *
  * <h2>Validation Checks</h2>
  * <ol>
@@ -45,17 +46,18 @@ public final class CsvFilenameValidator {
      * <pre>
      * Group 1 – Prefix segment:     everything before the first underscore (frequency + report type)
      * Group 2 – Entity ID:          exactly 2 letters followed by 'A' (case-insensitive)
-     * Group 3 – Full date string:   YYYYQ# or YYYYMMM
+     * Group 3 – Full date string:   YYYYQ#, YYYYMMM, or bare YYYY
      * Group 4 – Quarterly year:     4 digits  (present only for quarterly dates)
      * Group 5 – Quarter number:     1-4       (present only for quarterly dates)
      * Group 6 – Monthly year:       4 digits  (present only for monthly dates)
      * Group 7 – Month abbreviation: JAN-DEC   (present only for monthly dates)
-     * Group 8 – Extension:          csv | zip (case-insensitive)
+     * Group 8 – Annual year:        4 digits  (present only for bare-year annual dates)
+     * Group 9 – Extension:          csv | zip (case-insensitive)
      * </pre>
      */
     private static final Pattern FILENAME_PATTERN = Pattern.compile(
         "^([A-Za-z]+)_([A-Z]{2}A)_" +
-        "((?:(\\d{4})Q([1-4]))|(?:(\\d{4})(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)))" +
+        "((?:(\\d{4})Q([1-4]))|(?:(\\d{4})(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC))|(?:(\\d{4})))" +
         "\\.(csv|zip)$",
         Pattern.CASE_INSENSITIVE
     );
@@ -64,6 +66,7 @@ public final class CsvFilenameValidator {
     // so the CSV and ZIP/period-validation paths share one definition of each string.
     public static final String FREQ_QUARTERLY = "Quarterly";
     public static final String FREQ_MONTHLY   = "Monthly";
+    public static final String FREQ_ANNUAL    = "Annual";
 
     private CsvFilenameValidator() {
         // utility class – not instantiable
@@ -74,9 +77,10 @@ public final class CsvFilenameValidator {
      * validation. Returns {@code null} if the filename does not match the expected pattern
      * or contains no recognisable frequency keyword.
      * <p>
-     * The frequency keyword ("Monthly" or "Quarterly") is detected case-insensitively
-     * anywhere within the first underscore-delimited segment and then removed to leave
-     * the report-type abbreviation.  The extension is always returned in lowercase.
+     * The frequency keyword ("Monthly", "Quarterly", or "Annual") is detected
+     * case-insensitively anywhere within the first underscore-delimited segment and then
+     * removed to leave the report-type abbreviation.  The extension is always returned
+     * in lowercase.
      * </p>
      *
      * @param filename the raw filename (with extension) to parse; may be {@code null}
@@ -102,12 +106,13 @@ public final class CsvFilenameValidator {
 
         String prefix     = m.group(1);   // e.g. "MonthlyFlu", "riQuarterlyAggregate"
         String entityId   = m.group(2);   // e.g. "XXA"
-        String dateString = m.group(3);   // e.g. "2026FEB" or "2025Q4"
+        String dateString = m.group(3);   // e.g. "2026FEB", "2025Q4", or "2026"
         String qYear      = m.group(4);
         String quarter    = m.group(5);
         String mYear      = m.group(6);
         String month      = m.group(7);
-        String extension  = m.group(8).toLowerCase();
+        String aYear      = m.group(8);
+        String extension  = m.group(9).toLowerCase();
 
         // Detect frequency keyword anywhere in the prefix, case-insensitively.
         String frequency;
@@ -118,12 +123,27 @@ public final class CsvFilenameValidator {
         } else if (Strings.CI.contains(prefix, FREQ_MONTHLY)) {
             frequency    = FREQ_MONTHLY;
             reportAbbrev = Strings.CI.remove(prefix, FREQ_MONTHLY);
+        } else if (Strings.CI.contains(prefix, FREQ_ANNUAL)) {
+            frequency    = FREQ_ANNUAL;
+            reportAbbrev = Strings.CI.remove(prefix, FREQ_ANNUAL);
         } else {
             // No frequency keyword found – cannot determine submission cadence.
             return null;
         }
 
-        String year = qYear != null ? qYear : mYear;
+        // The keyword's implied cadence must agree with the date shape actually matched
+        // above (e.g. reject "QuarterlyRI_XXA_2026.csv" -- a Quarterly keyword paired
+        // with a bare-year date, which would otherwise parse silently since the
+        // bare-year alternative matches regardless of which keyword is in the prefix).
+        boolean keywordMatchesDate =
+                (FREQ_QUARTERLY.equals(frequency) && quarter != null) ||
+                (FREQ_MONTHLY.equals(frequency) && month != null) ||
+                (FREQ_ANNUAL.equals(frequency) && aYear != null);
+        if (!keywordMatchesDate) {
+            return null;
+        }
+
+        String year = qYear != null ? qYear : (mYear != null ? mYear : aYear);
 
         return CsvFilenameComponents.builder()
                 .frequency(frequency)
@@ -149,9 +169,9 @@ public final class CsvFilenameValidator {
      *       supplied at submission time. Pass {@code null} to skip this check.</li>
      * </ol>
      *
-     * <p>The frequency keyword in the filename ("Monthly"/"Quarterly") determines
-     * the submission cadence; no external period-type is required.  Monthly is
-     * assumed as the default when no frequency keyword is detectable.</p>
+     * <p>The frequency keyword in the filename ("Monthly"/"Quarterly"/"Annual")
+     * determines the submission cadence; no external period-type is required.
+     * Monthly is assumed as the default when no frequency keyword is detectable.</p>
      *
      * @param filename       the raw filename to validate (with extension)
      * @param expectedEntity the expected entity/facility code (e.g. {@code "XXA"});
@@ -173,8 +193,8 @@ public final class CsvFilenameValidator {
         if (components == null) {
             errors.add(String.format(
                 "Filename '%s' does not match the expected pattern " +
-                "[Monthly|Quarterly][ReportType]_[XXA]_[YYYY(MMM|Q#)].(csv|zip). " +
-                "Examples: MonthlyFlu_XXA_2026FEB.csv, QuarterlyRI_XXA_2026Q2.csv",
+                "[Monthly|Quarterly|Annual][ReportType]_[XXA]_[YYYY(MMM|Q#)|YYYY].(csv|zip). " +
+                "Examples: MonthlyFlu_XXA_2026FEB.csv, QuarterlyRI_XXA_2026Q2.csv, AnnualRI_XXA_2026.csv",
                 filename));
             return CsvFilenameComponents.builder()
                     .errors(Collections.unmodifiableList(errors))

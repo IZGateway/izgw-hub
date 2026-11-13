@@ -31,12 +31,12 @@ public class MetadataBuilder {
     private static final String MONTH_PATTERN = "(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)";
     // Trailing group is optional so a bare 4-digit year (annual) validates too.
     private static final String PERIOD_PATTERN = "^\\d{4}(Q[1-4]|-" + MONTH_PATTERN + "|((-\\d{2}){1,2}))?$";
-    // MONTHLY/QUARTERLY reference CsvFilenameValidator's canonical constants rather than
-    // duplicating the literals; ANNUAL has no CSV equivalent, so it's defined here.
+    // Reference CsvFilenameValidator's canonical constants rather than duplicating the
+    // literals, now that CSV also recognizes an Annual frequency keyword.
     // Package-private (not private) so MetadataImpl.getPeriodAsCalendar() can share them.
     static final String MONTHLY = CsvFilenameValidator.FREQ_MONTHLY;
     static final String QUARTERLY = CsvFilenameValidator.FREQ_QUARTERLY;
-    static final String ANNUAL = "Annual";
+    static final String ANNUAL = CsvFilenameValidator.FREQ_ANNUAL;
     /**
      * This is the facility id assigned to IZ Gateway by NDLP.
      */
