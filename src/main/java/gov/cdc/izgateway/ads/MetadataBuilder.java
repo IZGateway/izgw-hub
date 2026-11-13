@@ -242,9 +242,18 @@ public class MetadataBuilder {
     }
 
     /**
-     * Validate metadata for ZIP (routine immunization) files using {@link ZipFilenameComponents}.
-     * ZIP filenames follow a different structure than CSV files:
-     * {@code EEE_YYYYMMDD_yyyymmdd_Z.zip} (entity_startdate_submissiondate_zone).
+     * Validate metadata for ZIP files (routine immunization or annual aggregate reports)
+     * using {@link ZipFilenameComponents}. ZIP filenames follow a different structure
+     * than CSV files: {@code EEE_YYYYMMDD_yyyymmdd_Z.zip}
+     * (entity_startdate_submissiondate_zone).
+     * <p>
+     * Eligibility for ZIP submission is name-based: {@code routineImmunization} (the
+     * original quarterly-cadence type) or any report type whose canonical name contains
+     * {@code "annual"} (case-insensitive, see {@link #isAnnual(String)}) may submit a
+     * {@code .zip}. The date-bucket tolerance used to match the filename's date against
+     * the submission period is driven by the same check: a same-quarter match by
+     * default, or a same-year match (ignoring month) for an annual type.
+     * </p>
      *
      * @param pf the parsed filename
      */
@@ -253,17 +262,19 @@ public class MetadataBuilder {
             errors.add(String.format("Entity ID (%s) does not match Entity (%s) in filename (%s)",
                     meta.getExtEntity(), pf.getEntityId(), meta.getFilename()));
         }
-        // Filetype validation isn't relevant when type is genericImmunization.
-        if (!GENERIC.equalsIgnoreCase(meta.getExtEvent()) && !pf.getFiletype().equalsIgnoreCase(meta.getExtEvent())) {
-            errors.add(String.format("File type (%s) does not match file type (%s) in filename (%s)",
-                    meta.getExtEvent(), pf.getFiletype(), meta.getFilename()));
+        String reportType = meta.getExtEvent();
+        boolean zipEligible = "routineImmunization".equalsIgnoreCase(reportType) || isAnnual(reportType);
+        // Eligibility validation isn't relevant when type is genericImmunization.
+        if (!GENERIC.equalsIgnoreCase(reportType) && !zipEligible) {
+            errors.add(String.format("Report type (%s) is not eligible for ZIP submission (%s)",
+                    reportType, meta.getFilename()));
         }
         Calendar cal = Calendar.getInstance();
         if (pf.getDate() != null) {
             cal.setTime(pf.getDate());
         }
         Calendar metaDate = meta.getPeriodAsCalendar();
-        int divisor = pf.getFiletype().equals(ZipFilenameComponents.ROUTINE_IMMUNIZATION) ? 3 : 1;
+        int divisor = isAnnual(reportType) ? 12 : 3;
         if (!checkDate(cal, metaDate, divisor)) {
             // Failed first time through, try just one day later on date from file name.
             cal.add(Calendar.DAY_OF_MONTH, 1);
@@ -277,6 +288,18 @@ public class MetadataBuilder {
     private boolean checkDate(Calendar cal, Calendar metaDate, int divisor) {
         return cal.get(Calendar.MONTH) / divisor == metaDate.get(Calendar.MONTH) / divisor
                 && cal.get(Calendar.YEAR) == metaDate.get(Calendar.YEAR);
+    }
+
+    /**
+     * Returns true if the given canonical report type name indicates an annual
+     * submission cadence.
+     *
+     * @param reportType the canonical report type name (e.g. {@code meta_ext_event}),
+     *                    may be null
+     * @return true if {@code reportType} contains {@code "annual"} (case-insensitive)
+     */
+    static boolean isAnnual(String reportType) {
+        return reportType != null && StringUtils.containsIgnoreCase(reportType, "annual");
     }
 
     /**

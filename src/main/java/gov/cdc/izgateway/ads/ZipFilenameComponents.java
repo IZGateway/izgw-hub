@@ -13,11 +13,20 @@ import org.apache.commons.lang3.time.FastDateFormat;
 import lombok.Data;
 
 /**
- * Parses and validates ZIP (routine immunization) filenames for ADS submissions.
+ * Parses and validates ZIP filenames for ADS submissions (routine immunization and
+ * annual aggregate reports).
  * <p>
  * ZIP filenames follow the format {@code EEE_YYYYMMDD_yyyymmdd_Z.zip}
- * (entity_startdate_submissiondate_zone). This class also detects the "test" keyword
- * in any filename to set the {@link #testfile} flag.
+ * (entity_startdate_submissiondate_zone), with any additional segments between the
+ * submission date and the trailing zone marker ignored (e.g. an {@code _Agg_} tag).
+ * This class also detects the "test" keyword in any filename to set the
+ * {@link #testfile} flag.
+ * </p>
+ * <p>
+ * Eligibility for ZIP submission (which report types may use this format) and the
+ * date-matching tolerance are determined by
+ * {@link MetadataBuilder#validateZipMetadata} from the report type's canonical name,
+ * not from anything parsed here.
  * </p>
  * <p>
  * CSV filename validation is handled separately by
@@ -26,11 +35,9 @@ import lombok.Data;
  */
 @Data
 class ZipFilenameComponents {
-	public static final String ROUTINE_IMMUNIZATION = "routineImmunization";
 	String entityId = "";
 	String submissionDate = "";
 	String period = "";
-	String filetype = "";
 	Date date = null;
 	String originalFilename;
 	String filename;
@@ -84,7 +91,6 @@ class ZipFilenameComponents {
 		} else {
 			submissionDate = parts[2];
 		}
-		filetype = ROUTINE_IMMUNIZATION;
 		if (formatError) {
 			errors.add(String.format(
 				"Filename (%s) is in wrong format (It is expected to match EEE_YYYYMMDD_yyyymmdd_Z.zip)",

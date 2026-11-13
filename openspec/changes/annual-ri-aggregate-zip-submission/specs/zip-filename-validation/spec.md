@@ -15,6 +15,21 @@ created:
     New zip-filename-validation capability spec, generalized ZIP eligibility and
     divisor
 updated:
+  - date: '2026-11-13T16:57:34.825Z'
+    user: boonek
+    agent:
+      name: claude-code
+      version: 1.0.0
+    llm:
+      name: claude-sonnet-5
+      version: '5'
+    prompt_uri: >-
+      prompt:/claude-code/6489d253-64a8-47f7-9d36-4bd4d59d6e03/~e19f6c61-cc21-402b-8034-d685cbb7dd17
+    summary: >-
+      Sync example entity from NIH to XXA (established testing destination)
+      after Keith's rename; Sync mismatched-entity example from NIH to XXA; Fix
+      mistaken edit that made both sides of the mismatched-entity scenario read
+      XXA
   - date: '2026-11-13T07:04:23.205Z'
     user: boonek
     agent:
@@ -52,14 +67,14 @@ format. Any additional segments between `SubmissionDate` and the extension SHALL
 ignored by parsing.
 
 #### Scenario: Standard filename parses
-- GIVEN a filename `NIH_20251231_20260131_Z.zip`
+- GIVEN a filename `XXA_20251231_20260131_Z.zip`
 - WHEN the filename is parsed
-- THEN entity is `NIH`, period is `20251231`, and submission date is `20260131`
+- THEN entity is `XXA`, period is `20251231`, and submission date is `20260131`
 
 #### Scenario: Trailing segment before the zone marker is tolerated
-- GIVEN a filename `NIH_20251231_20260131_Agg_Z.zip`
+- GIVEN a filename `XXA_20251231_20260131_Agg_Z.zip`
 - WHEN the filename is parsed
-- THEN entity is `NIH`, period is `20251231`, and submission date is `20260131`
+- THEN entity is `XXA`, period is `20251231`, and submission date is `20260131`
 
 ### Requirement: ZIP Eligibility by Report Type
 The system SHALL accept a `.zip` upload only when the submitted report type is
@@ -100,8 +115,8 @@ submission.
 - THEN no entity error is recorded
 
 #### Scenario: Mismatched entity rejected
-- GIVEN a filename with entity `NIH`
-- AND a submission facility entity of `XXA`
+- GIVEN a filename with entity `XXA`
+- AND a submission facility entity of `MAA`
 - WHEN the file is validated
 - THEN an error is recorded indicating the entity does not match
 

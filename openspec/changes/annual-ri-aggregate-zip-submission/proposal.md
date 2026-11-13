@@ -13,6 +13,17 @@ created:
     prompt:/claude-code/6489d253-64a8-47f7-9d36-4bd4d59d6e03/~dd641be6-9c76-48ec-9370-9243b651be97
   summary: Initial proposal for annual RI aggregate ZIP submission support
 updated:
+  - date: '2026-11-13T16:57:08.989Z'
+    user: boonek
+    agent:
+      name: claude-code
+      version: 1.0.0
+    llm:
+      name: claude-sonnet-5
+      version: '5'
+    prompt_uri: >-
+      prompt:/claude-code/6489d253-64a8-47f7-9d36-4bd4d59d6e03/~e19f6c61-cc21-402b-8034-d685cbb7dd17
+    summary: Sync test artifact filename example from NIH to XXA after Keith's rename
   - date: '2026-11-13T07:02:26.545Z'
     user: boonek
     agent:
@@ -35,7 +46,7 @@ ticket: IGDD-3743
 ## Why
 
 NDLP is now ready to test IIS submission of an Annual Routine Immunization Aggregate
-report as a ZIP file (see test artifact `NIH_20251231_20260131_Agg_Z.ZIP`), but IZGW
+report as a ZIP file (see test artifact `XXA_20251231_20260131_Agg_Z.ZIP`), but IZGW
 cannot currently accept it. The ZIP upload path (`ZipFilenameComponents`) hardcodes
 its internal file type to the single literal `routineImmunization` — any other
 `reportType`, including a new `riAnnualAggregate` type, is rejected by
