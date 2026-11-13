@@ -205,6 +205,13 @@ public class MetadataImpl implements Metadata {
 			}
 			if (Strings.CI.contains(getPeriod(), "Q")) {
 				month = QUARTERS.indexOf(StringUtils.right(period.toUpperCase(), 2)) * 3;
+			} else if (MetadataBuilder.ANNUAL.equals(MetadataBuilder.classifyPeriodFrequency(period.toUpperCase()))) {
+				// Annual periods (bare YYYY) have no month component. Default to January
+				// instead of leaving this Calendar's month at whatever "now" happened to
+				// be -- callers that compare by month (rather than ignoring it, as
+				// MetadataBuilder.checkDate() does for annual types) get a deterministic
+				// value instead of one that varies by time of day.
+				month = 0;
 			} else {
 				month = MONTHS.indexOf(StringUtils.right(period.toUpperCase(), 3));
 			}
