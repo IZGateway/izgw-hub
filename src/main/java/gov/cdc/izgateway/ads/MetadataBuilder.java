@@ -178,7 +178,13 @@ public class MetadataBuilder {
         period = period.trim().toUpperCase();
         meta.setPeriod(period);
         if (!period.matches(PERIOD_PATTERN)) {
-            errors.add(String.format("Period (%s) is not valid.  It must be in the form YYYYQ# or YYYY-MMM or YYYY-MM-DD.", period));
+            String reportType = meta.getExtEvent();
+            String expectedForm = GENERIC.equalsIgnoreCase(reportType)
+                    ? "YYYYQ#, YYYY-MMM, or YYYY"
+                    : periodFormatExample(establishedFrequency(reportType));
+            errors.add(String.format(
+                    "Period (%s) is not valid.  Report type (%s) requires a period in the form %s.",
+                    period, reportType, expectedForm));
             return this;
         }
 
@@ -234,6 +240,24 @@ public class MetadataBuilder {
             return QUARTERLY;
         }
         return MONTHLY;
+    }
+
+    /**
+     * Describe, with an example, the single period format expected for a given
+     * established frequency. Used to give a specific, actionable error message
+     * instead of listing every structurally-valid form.
+     *
+     * @param frequency {@link #ANNUAL}, {@link #QUARTERLY}, or {@link #MONTHLY}
+     * @return a human-readable format description with an example value
+     */
+    private static String periodFormatExample(String frequency) {
+        if (ANNUAL.equals(frequency)) {
+            return "YYYY (e.g. 2026)";
+        }
+        if (QUARTERLY.equals(frequency)) {
+            return "YYYYQ# (e.g. 2026Q1)";
+        }
+        return "YYYY-MMM (e.g. 2026-FEB)";
     }
 
     /**

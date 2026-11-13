@@ -15,6 +15,19 @@ created:
     New period-frequency-validation capability: bare YYYY support and the
     period-shape-vs-report-type cross-check
 updated:
+  - date: '2026-11-13T17:36:16.009Z'
+    user: boonek
+    agent:
+      name: claude-code
+      version: 1.0.0
+    llm:
+      name: claude-sonnet-5
+      version: '5'
+    prompt_uri: >-
+      prompt:/claude-code/6489d253-64a8-47f7-9d36-4bd4d59d6e03/~525bf686-2d85-4ae2-965d-3df5700c5329
+    summary: >-
+      Add requirement for type-specific structural rejection message, per
+      Keith's correction
   - date: '2026-11-13T17:29:36.814Z'
     user: boonek
     agent:
@@ -72,6 +85,36 @@ value with a validation error.
 - GIVEN a period value `"2025Q5"` (no such quarter)
 - WHEN the period is validated
 - THEN a validation error is recorded
+
+### Requirement: Structural Rejection Message Names the Expected Format
+WHEN a `period` value fails the structural format check, the system SHALL report the
+single period format expected for the submission's report type (via its established
+frequency), rather than listing every structurally-valid shape. The system SHALL list
+all shapes only for `genericImmunization`, which has no established frequency.
+
+#### Scenario: Annual type names the bare-year format
+- GIVEN a submission with report type `riAnnualAggregate`
+- AND a structurally-invalid period value
+- WHEN the period is validated
+- THEN the error names the form `YYYY` with an example, not `YYYYQ#` or `YYYY-MMM`
+
+#### Scenario: Quarterly type names the quarterly format
+- GIVEN a submission with report type `routineImmunization`
+- AND a structurally-invalid period value
+- WHEN the period is validated
+- THEN the error names the form `YYYYQ#` with an example
+
+#### Scenario: Monthly type names the monthly format
+- GIVEN a submission with report type `influenzaVaccination`
+- AND a structurally-invalid period value
+- WHEN the period is validated
+- THEN the error names the form `YYYY-MMM` with an example
+
+#### Scenario: genericImmunization lists all three formats
+- GIVEN a submission with report type `genericImmunization`
+- AND a structurally-invalid period value
+- WHEN the period is validated
+- THEN the error lists `YYYYQ#`, `YYYY-MMM`, and `YYYY`
 
 ### Requirement: Established Frequency Mapping
 The system SHALL determine a report type's established frequency as: `Annual` when

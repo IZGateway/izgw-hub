@@ -13,6 +13,17 @@ created:
     prompt:/claude-code/6489d253-64a8-47f7-9d36-4bd4d59d6e03/~dd641be6-9c76-48ec-9370-9243b651be97
   summary: Task breakdown for annual RI aggregate ZIP submission support
 updated:
+  - date: '2026-11-13T17:36:26.669Z'
+    user: boonek
+    agent:
+      name: claude-code
+      version: 1.0.0
+    llm:
+      name: claude-sonnet-5
+      version: '5'
+    prompt_uri: >-
+      prompt:/claude-code/6489d253-64a8-47f7-9d36-4bd4d59d6e03/~525bf686-2d85-4ae2-965d-3df5700c5329
+    summary: Add task 4.7 for the type-specific structural rejection message fix
   - date: '2026-11-13T17:30:22.818Z'
     user: boonek
     agent:
@@ -181,6 +192,15 @@ change (`PERIOD_PATTERN` only checked that `period` matched *some* recognized sh
       Capabilities/Impact sections and `design.md`'s Decisions/Risks/Goals
       accordingly. Verified: `openspec validate annual-ri-aggregate-zip-submission --strict`
       passes.
+- [x] 4.7 **Fixed the structural-rejection error message**, flagged by Keith: it was
+      stale (didn't mention the new bare-`YYYY` form) and, more importantly, not
+      specific enough — since the valid form now depends on the report type, it
+      names the one expected format (`periodFormatExample(establishedFrequency(...))`)
+      instead of listing every structurally-valid shape. `genericImmunization` still
+      lists all three, since it has no established frequency. Added
+      `specs/period-frequency-validation/spec.md` requirement "Structural Rejection
+      Message Names the Expected Format" and design.md Decision 6. Verified: 4 new
+      tests in `MetadataBuilderSetPeriodTests` (39/39 total passing).
 
 ## Workflow follow-up
 

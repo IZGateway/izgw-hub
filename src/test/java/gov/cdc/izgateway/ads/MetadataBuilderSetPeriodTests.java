@@ -68,6 +68,47 @@ class MetadataBuilderSetPeriodTests {
     }
 
     // -------------------------------------------------------------------------
+    // Structural-error message names the one expected format for the report type,
+    // rather than listing every structurally-valid shape.
+    // -------------------------------------------------------------------------
+
+    @Test
+    void setPeriod_malformed_annualMessageNamesBareYear() {
+        MetadataBuilder builder = new MetadataBuilder();
+        builder.setReportType("riAnnualAggregate");
+        builder.setPeriod("not-a-period");
+
+        assertTrue(containsSubstring(builder.getErrors(), "requires a period in the form YYYY (e.g. 2026)"));
+    }
+
+    @Test
+    void setPeriod_malformed_quarterlyMessageNamesQuarterlyForm() {
+        MetadataBuilder builder = new MetadataBuilder();
+        builder.setReportType("routineImmunization");
+        builder.setPeriod("not-a-period");
+
+        assertTrue(containsSubstring(builder.getErrors(), "requires a period in the form YYYYQ# (e.g. 2026Q1)"));
+    }
+
+    @Test
+    void setPeriod_malformed_monthlyMessageNamesMonthlyForm() {
+        MetadataBuilder builder = new MetadataBuilder();
+        builder.setReportType("influenzaVaccination");
+        builder.setPeriod("not-a-period");
+
+        assertTrue(containsSubstring(builder.getErrors(), "requires a period in the form YYYY-MMM (e.g. 2026-FEB)"));
+    }
+
+    @Test
+    void setPeriod_malformed_genericImmunizationMessageListsAllForms() {
+        MetadataBuilder builder = new MetadataBuilder();
+        builder.setReportType("genericImmunization");
+        builder.setPeriod("not-a-period");
+
+        assertTrue(containsSubstring(builder.getErrors(), "requires a period in the form YYYYQ#, YYYY-MMM, or YYYY"));
+    }
+
+    // -------------------------------------------------------------------------
     // classifyPeriodFrequency()
     // -------------------------------------------------------------------------
 

@@ -13,6 +13,21 @@ created:
     prompt:/claude-code/6489d253-64a8-47f7-9d36-4bd4d59d6e03/~dd641be6-9c76-48ec-9370-9243b651be97
   summary: Design doc for annual RI aggregate ZIP submission support
 updated:
+  - date: '2026-11-13T17:36:00.285Z'
+    user: boonek
+    agent:
+      name: claude-code
+      version: 1.0.0
+    llm:
+      name: claude-sonnet-5
+      version: '5'
+    prompt_uri: >-
+      prompt:/claude-code/6489d253-64a8-47f7-9d36-4bd4d59d6e03/~525bf686-2d85-4ae2-965d-3df5700c5329
+    summary: >-
+      Fix dangling Open Question reference (section was resolved and removed)
+      and add Decision 6 for the type-specific structural error message; Add
+      Decision 6 for the type-specific structural error message, per Keith's
+      correction
   - date: '2026-11-13T17:28:11.691Z'
     user: boonek
     agent:
@@ -182,8 +197,8 @@ submits as the `period` form parameter (after `setPeriod()`'s uppercase/trim
 normalization) **is** `meta_ext_submissionperiod`, verbatim. There is no intermediate
 "derive `YYYY` from the date" step anywhere in the code. This does not change the
 ZIP filename's own date-matching logic (Decision 2's divisor is unaffected either
-way), but it does change what "confirm `YYYY`" can mean in practice — see the Open
-Question below, which this correction reopens.
+way), but it does change what "confirm `YYYY`" can mean in practice — resolved as
+option (b) in Decision 4 below.
 
 **4. `PERIOD_PATTERN` gains a bare-`\d{4}` alternative (option (b), confirmed by
 Keith).** Caller submits `period=2025` for an annual submission; `PERIOD_PATTERN`'s
@@ -221,6 +236,17 @@ analog, not a shortcut.
   `PERIOD_PATTERN` branch — rejected because Keith specifically asked for it, and
   because without it a monthly or quarterly type could submit a bare year too, which
   the real precedent above shows is wrong for anything but an annual type.
+
+**6. The structural-validation error message names the one expected format for the
+report type, not every structurally-valid shape.** The original message ("It must be
+in the form YYYYQ# or YYYY-MMM or YYYY-MM-DD") was already wrong after Decision 4
+(didn't mention the new bare-`YYYY` form), and Keith pointed out it's also the wrong
+shape of fix: since the valid form now depends on the report type, telling every
+caller all three-plus shapes is less useful than telling them the one shape that
+actually applies. `setPeriod()` now computes `establishedFrequency(reportType)` and
+reports a single format example (`"YYYY-MMM (e.g. 2026-FEB)"`,
+`"YYYYQ# (e.g. 2026Q1)"`, or `"YYYY (e.g. 2026)"`). `genericImmunization` is the one
+exception — it has no established frequency, so it still lists all three forms.
 
 ## Risks / Trade-offs
 
