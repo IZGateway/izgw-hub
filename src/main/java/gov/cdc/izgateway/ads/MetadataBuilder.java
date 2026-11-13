@@ -28,7 +28,11 @@ import java.util.UUID;
 @Slf4j
 public class MetadataBuilder {
     private static final String MONTH_PATTERN = "(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)";
-    private static final String PERIOD_PATTERN = "^\\d{4}(Q[1-4]|-" + MONTH_PATTERN + "|((-\\d{2}){1,2}))$";
+    // Trailing group is optional so a bare 4-digit year (annual) validates too.
+    private static final String PERIOD_PATTERN = "^\\d{4}(Q[1-4]|-" + MONTH_PATTERN + "|((-\\d{2}){1,2}))?$";
+    private static final String MONTHLY = "Monthly";
+    private static final String QUARTERLY = "Quarterly";
+    private static final String ANNUAL = "Annual";
     /**
      * This is the facility id assigned to IZ Gateway by NDLP.
      */
@@ -150,8 +154,17 @@ public class MetadataBuilder {
     }
 
     /**
-     * Set the period associated with the report
-     * @param period the period associated with the report, in the form YYYY-MMM or YYYYQ[1-4]
+     * Set the period associated with the report.
+     * <p>
+     * In addition to validating the period's structural format, this cross-checks the
+     * period's shape (monthly, quarterly, or annual) against the established submission
+     * frequency for the already-set report type (see {@link #setReportType(String)},
+     * which must be called first). The check is skipped for {@code genericImmunization}
+     * and for the legacy numeric {@code YYYY-MM}/{@code YYYY-MM-DD} period form, which
+     * predates this cross-check and is not one of the three recognized frequency shapes.
+     * </p>
+     *
+     * @param period the period associated with the report, in the form YYYY-MMM, YYYYQ[1-4], or YYYY
      * @return	The metadata builder
      */
     public MetadataBuilder setPeriod(String period) {
@@ -160,14 +173,67 @@ public class MetadataBuilder {
             errors.add("Period must be present and not empty");
             return this;
         }
-        
+
         // Normalize it
         period = period.trim().toUpperCase();
         meta.setPeriod(period);
         if (!period.matches(PERIOD_PATTERN)) {
             errors.add(String.format("Period (%s) is not valid.  It must be in the form YYYYQ# or YYYY-MMM or YYYY-MM-DD.", period));
+            return this;
+        }
+
+        String actualFrequency = classifyPeriodFrequency(period);
+        String reportType = meta.getExtEvent();
+        if (actualFrequency != null && !GENERIC.equalsIgnoreCase(reportType)) {
+            String expectedFrequency = establishedFrequency(reportType);
+            if (!actualFrequency.equals(expectedFrequency)) {
+                errors.add(String.format(
+                        "Period (%s) is %s-formatted, but report type (%s) requires a %s period.",
+                        period, actualFrequency, reportType, expectedFrequency));
+            }
         }
         return this;
+    }
+
+    /**
+     * Classify a structurally-valid period string's shape.
+     *
+     * @param period the normalized (uppercase, trimmed) period string; must already be
+     *               known to match {@link #PERIOD_PATTERN}
+     * @return {@link #QUARTERLY}, {@link #MONTHLY}, or {@link #ANNUAL}; or {@code null}
+     *         for the legacy numeric {@code YYYY-MM}/{@code YYYY-MM-DD} form, which is
+     *         not one of the three recognized frequency shapes
+     */
+    static String classifyPeriodFrequency(String period) {
+        if (period.matches("\\d{4}Q[1-4]")) {
+            return QUARTERLY;
+        }
+        if (period.matches("\\d{4}-" + MONTH_PATTERN)) {
+            return MONTHLY;
+        }
+        if (period.matches("\\d{4}")) {
+            return ANNUAL;
+        }
+        return null;
+    }
+
+    /**
+     * Determine the established submission frequency for a canonical report type.
+     * Mirrors the eligibility logic in {@link #isAnnual(String)}: annual aggregate
+     * types take priority over the quarterly check since their names also start with
+     * {@code "ri"}.
+     *
+     * @param reportType the canonical report type name (e.g. {@code meta_ext_event})
+     * @return {@link #ANNUAL}, {@link #QUARTERLY}, or {@link #MONTHLY} (the default)
+     */
+    static String establishedFrequency(String reportType) {
+        if (isAnnual(reportType)) {
+            return ANNUAL;
+        }
+        if ("routineImmunization".equalsIgnoreCase(reportType) || StringUtils.containsIgnoreCase(reportType, "quarter")) {
+            return QUARTERLY;
+        }
+        return MONTHLY;
     }
 
     /**

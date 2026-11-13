@@ -13,6 +13,21 @@ created:
     prompt:/claude-code/6489d253-64a8-47f7-9d36-4bd4d59d6e03/~dd641be6-9c76-48ec-9370-9243b651be97
   summary: Initial proposal for annual RI aggregate ZIP submission support
 updated:
+  - date: '2026-11-13T17:28:49.644Z'
+    user: boonek
+    agent:
+      name: claude-code
+      version: 1.0.0
+    llm:
+      name: claude-sonnet-5
+      version: '5'
+    prompt_uri: >-
+      prompt:/claude-code/6489d253-64a8-47f7-9d36-4bd4d59d6e03/~5d2b09a6-68c3-406a-834d-ca5307759040
+    summary: >-
+      Add What Changes bullet and new capability for the period-frequency
+      cross-check; Update Impact section: resolved NDLP format dependency, add
+      setPeriod change; Resolve the NDLP wire-format dependency note now that
+      YYYY is confirmed and implemented
   - date: '2026-11-13T16:57:08.989Z'
     user: boonek
     agent:
@@ -81,6 +96,13 @@ rather than inventing shared infrastructure nothing else needs.
 - No change to `CsvFilenameValidator`, `computeDataStreamId()`, or
   `report-type-normalization` — the existing camelCase→kebab algorithm and three-tier
   registry lookup already handle `riAnnualAggregate` with no modification.
+- `MetadataBuilder.PERIOD_PATTERN` gains a bare-`\d{4}` alternative so an annual
+  submission can send `period=2025`, and `setPeriod()` gains a new cross-check:
+  the submitted period's shape (monthly/quarterly/annual) must match the submitted
+  report type's established frequency. This applies to every report type and file
+  format (CSV and ZIP alike), not just the new annual type — it closes a gap where
+  `PERIOD_PATTERN` validated that `period` matched *some* recognized shape but never
+  that it matched the *right* one for the report type.
 
 Deployment (not code, tracked separately): add a `FileType` registry entry for
 `riAnnualAggregate`, the same mechanism already used for `riQuarterlyAggregate`
@@ -96,6 +118,11 @@ Deployment (not code, tracked separately): add a `FileType` registry entry for
   ZIP-eligibility check from a single hardcoded literal to a name-based rule, and
   derives the date-bucket divisor from the same check instead of a hardcoded
   constant.
+- `period-frequency-validation`: `MetadataBuilder.setPeriod()` — structural format
+  validation (`YYYYQ#`, `YYYY-MON`, now also bare `YYYY`) plus a cross-check that the
+  submitted period's shape matches the report type's established frequency. Applies
+  to all report types and both file formats; previously only structural validation
+  existed, with no connection to the report type at all.
 
 ### Modified Capabilities
 (none — `compute-data-stream-id`, `report-type-normalization`, `filename-validation`,
@@ -104,7 +131,8 @@ and `ads-folder-path-computation` are unaffected)
 ## Impact
 
 - **`MetadataBuilder.java`**: new ZIP-eligibility predicate and divisor logic in
-  `validateZipMetadata()`, scoped entirely to the ZIP path.
+  `validateZipMetadata()` (ZIP-scoped); new bare-year `PERIOD_PATTERN` alternative
+  and frequency cross-check in `setPeriod()` (applies to all report types/formats).
 - **`ZipFilenameComponents.java`**: remove the hardcoded
   `filetype = ROUTINE_IMMUNIZATION` assignment in favor of a name-derived value.
 - **No izgw-core, SOAP/WSDL, FIPS/crypto, or PHI-masking impact** — this is confined
@@ -115,9 +143,11 @@ and `ads-folder-path-computation` are unaffected)
 - **Backward compatible**: existing `routineImmunization` ZIP submissions are
   unaffected (still ZIP-eligible, still `QUARTERLY`, still divisor `3`). No REST or
   WSDL contract changes.
-- **Open dependency on NDLP**: the annual `meta_ext_submissionperiod` format is not
-  yet defined in `metadata-requirements.md` (precedent: `measlesVaccination`'s row is
-  marked "format TBD"). This needs an NDLP answer before `tasks.md` can include a
-  concrete format decision; captured as an open question in `design.md`.
+- **NDLP format confirmed**: `meta_ext_submissionperiod` for an annual submission is
+  a bare `YYYY` (e.g. `"2025"`), confirmed by Keith and consistent with how monthly
+  (`YYYY-MON`) and quarterly (`YYYYQ#`) each encode exactly their own granularity.
+  `metadata-requirements.md` has no row for this yet (precedent: `measlesVaccination`'s
+  row is marked "format TBD") — still pending NDLP's actual acceptance during dev
+  testing (tasks.md 3.3), but the implementation decision itself is no longer open.
 - **Deployment**: new `riAnnualAggregate` `FileType` registry entry (configuration
   only, no code), tracked as a task but performed outside this code change.

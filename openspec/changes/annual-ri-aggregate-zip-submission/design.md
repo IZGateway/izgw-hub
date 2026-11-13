@@ -13,6 +13,23 @@ created:
     prompt:/claude-code/6489d253-64a8-47f7-9d36-4bd4d59d6e03/~dd641be6-9c76-48ec-9370-9243b651be97
   summary: Design doc for annual RI aggregate ZIP submission support
 updated:
+  - date: '2026-11-13T17:28:11.691Z'
+    user: boonek
+    agent:
+      name: claude-code
+      version: 1.0.0
+    llm:
+      name: claude-sonnet-5
+      version: '5'
+    prompt_uri: >-
+      prompt:/claude-code/6489d253-64a8-47f7-9d36-4bd4d59d6e03/~5d2b09a6-68c3-406a-834d-ca5307759040
+    summary: >-
+      Finalize Decision 4 as option (b), confirmed by Keith; add Decision 5 for
+      the new frequency cross-check; Remove resolved open-question risk, add
+      cross-check scope risk; remove stale Non-Goal; remove resolved Open
+      Questions section; Remove stale Non-Goal now that NDLP wire format is
+      decided; Update Migration Plan step 4 wording and remove resolved Open
+      Questions section; Add Goal for the new period-frequency cross-check
   - date: '2026-11-13T16:58:24.506Z'
     user: boonek
     agent:
@@ -105,6 +122,10 @@ are all unaffected and require no change — see proposal.md Impact.
   ZIP-local check — without inventing a general-purpose period-type mechanism that
   nothing else in the codebase needs (CSV already gets cadence from its own filename
   keyword).
+- Accept a bare `YYYY` period for annual submissions, and cross-check that every
+  submitted `period` value's shape (monthly/quarterly/annual) actually matches the
+  established frequency for its report type — not just that it matches *some*
+  recognized shape.
 
 **Non-Goals:**
 - Changing the CSV filename grammar or `CsvFilenameValidator` in any way.
@@ -118,8 +139,6 @@ are all unaffected and require no change — see proposal.md Impact.
 - Fixing the unrelated OpenSpec `filename-validation` spec/code drift noted in the
   proposal (`.zip` documented as CSV-grammar-eligible but not actually dispatched
   there) — out of scope for this change, tracked separately.
-- Defining NDLP's exact wire format for an annual `meta_ext_submissionperiod` value
-  (open question below).
 
 ## Decisions
 
@@ -166,21 +185,42 @@ ZIP filename's own date-matching logic (Decision 2's divisor is unaffected eithe
 way), but it does change what "confirm `YYYY`" can mean in practice — see the Open
 Question below, which this correction reopens.
 
-**4. `PERIOD_PATTERN` validation is unaffected either way, but which literal value
-NDLP receives is not yet decided.** `PERIOD_PATTERN` requires a suffix after the
-4-digit year (`Q[1-4]`, a month abbreviation, or one-to-two `-dd` groups) — a bare
-`2025` fails it today. Two options exist, and they produce different wire values to
-NDLP:
-- **(a)** Caller submits `period=2025-12-31` (passes `PERIOD_PATTERN` unchanged) →
-  `meta_ext_submissionperiod` sent to NDLP is literally `"2025-12-31"`.
-- **(b)** `PERIOD_PATTERN` gains a new bare-`\d{4}` alternative → caller submits
-  `period=2025` → `meta_ext_submissionperiod` is literally `"2025"`.
+**4. `PERIOD_PATTERN` gains a bare-`\d{4}` alternative (option (b), confirmed by
+Keith).** Caller submits `period=2025` for an annual submission; `PERIOD_PATTERN`'s
+trailing suffix group (`Q[1-4]` / month abbreviation / one-to-two `-dd` groups) is
+made optional (one added `?`) so a bare 4-digit year validates too. This widens valid
+`period` values for every report type, not just annual — mitigated by Decision 5
+below, which cross-checks the period's shape against the report type's established
+frequency, so a monthly type still can't actually submit a bare year in practice.
+`meta_ext_submissionperiod` sent to NDLP for an annual submission is literally
+`"2025"`, matching the confirmed format, since `getPeriod()` forwards it verbatim
+(Decision 3).
 
-Keith confirmed "`YYYY`" as the target format, which points to (b), but (b) is a
-real code change (widens valid `period` values for every report type, not just
-annual — the pattern isn't keyed by report type) that was not in the original task
-breakdown. See Open Question below — resolving this before implementing the
-`PERIOD_PATTERN` change, rather than guessing, since it changes what gets built.
+**5. New cross-check: the `period` parameter's shape must match the report type's
+established frequency.** This did not exist before this change — `PERIOD_PATTERN`
+only validated that `period` matched *some* recognized shape, never that it matched
+the *right* shape for the submitted report type. Real precedent from the existing
+Postman collection confirms neither monthly nor quarterly types ever send a bare
+year: monthly sends `YYYY-MON` (e.g. `"2022-SEP"`), quarterly sends `YYYYQ#` (e.g.
+`"2025Q4"`) — each cadence's period value encodes exactly its own granularity, never
+coarser or finer. Annual's granularity *is* the year, so `YYYY` alone is the correct
+analog, not a shortcut.
+- `classifyPeriodFrequency(period)` — classifies an already-structurally-valid period
+  string as `Quarterly`, `Monthly`, or `Annual`, or `null` for the legacy numeric
+  `YYYY-MM`/`YYYY-MM-DD` form (predates this cross-check; not one of the three named
+  shapes, so it is exempted rather than retroactively broken for any existing caller
+  that may use it).
+- `establishedFrequency(reportType)` — `Annual` when `isAnnual(reportType)`;
+  `Quarterly` for `routineImmunization` or any name containing `"quarter"`; `Monthly`
+  otherwise (the default, matching every other known type).
+- The cross-check in `setPeriod()` is skipped for `genericImmunization` (consistent
+  with its existing bypass of the ZIP eligibility check and its "accepts either
+  cadence" precedent in the archived `ads-metadata-management` proposal) and for the
+  legacy numeric form.
+- Alternative considered: skip this cross-check entirely and only add the
+  `PERIOD_PATTERN` branch — rejected because Keith specifically asked for it, and
+  because without it a monthly or quarterly type could submit a bare year too, which
+  the real precedent above shows is wrong for anything but an annual type.
 
 ## Risks / Trade-offs
 
@@ -189,11 +229,12 @@ breakdown. See Open Question below — resolving this before implementing the
   → Mitigation: the replacement is one small, explicitly-named, explicitly-tested
   static check, not a removal of validation — adding a new zip-eligible type later is
   a one-line change plus a test, not a silent gap.
-- [Risk] Which literal `period` value to submit (full date vs. bare year) is not yet
-  decided, and picking wrong means either a `PERIOD_PATTERN` code change that wasn't
-  approved, or NDLP receiving `"2025-12-31"` instead of the confirmed `"2025"`.
-  → Mitigation: resolved as a question for Keith rather than guessed (see Open
-  Questions) before the `PERIOD_PATTERN` task is added to `tasks.md`.
+- [Risk] The new frequency cross-check could reject a legitimate existing caller that
+  relies on the exempted legacy numeric `YYYY-MM`/`YYYY-MM-DD` period form for a
+  monthly or quarterly type, if that form is ever tightened later.
+  → Mitigation: deliberately exempted (returns `null` from `classifyPeriodFrequency`)
+  rather than forced into one of the three shapes, so no existing behavior changes
+  for callers using that form today.
 - [Risk] Uploads for `riAnnualAggregate` will fail at the `setReportType()` registry
   lookup until the `FileType` entry exists in the target environment, independent of
   whether the code changes are deployed.
@@ -208,24 +249,12 @@ precedent). Deployment sequence:
 2. Add the `riAnnualAggregate` `FileType` registry entry in dev (configuration only).
 3. Resubmit the NDLP test artifact (`XXA_20251231_20260131_Agg_Z.ZIP`) to dev
    end-to-end.
-4. Confirm with NDLP that the delivered metadata — especially
-   `meta_ext_submissionperiod` — is acceptable; adjust the default format if not.
+4. Confirm with NDLP that the delivered metadata — especially the `"2025"`-format
+   `meta_ext_submissionperiod` — is accepted as-is.
 5. Promote the `FileType` entry and code to production via the standard release
    process.
 
 **Rollback:** pure code revert; no data migration to undo. A `riAnnualAggregate`
 `FileType` entry added before a rollback is simply inert (unreachable) once the code
 reverts, since nothing else depends on its existence.
-
-## Open Questions
-
-- **Does "confirm `YYYY`" mean the literal `meta_ext_submissionperiod` value sent to
-  NDLP should be `"2025"`, or is a full date like `"2025-12-31"` acceptable?** These
-  are not the same thing (see Decision 4) — `getPeriod()` is forwarded verbatim, with
-  no separate computation. Option (a) (submit `period=2025-12-31`) needs no code
-  change beyond Tasks 1.1–1.5. Option (b) (submit `period=2025`) requires adding a
-  bare-`\d{4}` alternative to `PERIOD_PATTERN`, which is a new, not-yet-approved code
-  change affecting every report type's period validation, not just the annual one.
-  Blocks adding a `PERIOD_PATTERN` task to `tasks.md` until answered — this is a
-  decision only Keith can make, not a guessable default.
 

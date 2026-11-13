@@ -77,7 +77,7 @@ class MetadataBuilderValidateZipMetadataTests {
     void validateZipMetadata_annualAggregate_isEligible() {
         MetadataBuilder builder = new MetadataBuilder();
         builder.setReportType("riAnnualAggregate");
-        builder.setPeriod("2025-12-31");
+        builder.setPeriod("2025");
         builder.setFilename(ANNUAL_FILENAME);
 
         assertFalse(containsSubstring(builder.getErrors(), "is not eligible for ZIP submission"),
@@ -136,10 +136,10 @@ class MetadataBuilderValidateZipMetadataTests {
 
     @Test
     void validateZipMetadata_annualAggregate_differentMonthSameYear_matches() {
-        // period = 2025-12-31; filename date = Nov 2025 -> same year, different month
+        // period = 2025; filename date = Nov 2025 -> same year, different month
         MetadataBuilder builder = new MetadataBuilder();
         builder.setReportType("riAnnualAggregate");
-        builder.setPeriod("2025-12-31");
+        builder.setPeriod("2025");
         builder.setFilename(ANNUAL_FILENAME);
 
         assertFalse(containsSubstring(builder.getErrors(), "does not match period"),
@@ -148,10 +148,10 @@ class MetadataBuilderValidateZipMetadataTests {
 
     @Test
     void validateZipMetadata_annualAggregate_differentYear_doesNotMatch() {
-        // period = 2025-12-31 (year 2025); filename date = Nov 2024 -> different year
+        // period = 2025 (year 2025); filename date = Nov 2024 -> different year
         MetadataBuilder builder = new MetadataBuilder();
         builder.setReportType("riAnnualAggregate");
-        builder.setPeriod("2025-12-31");
+        builder.setPeriod("2025");
         builder.setFilename("XXA_20241105_20241201_Agg_Z.zip");
 
         assertTrue(containsSubstring(builder.getErrors(), "does not match period"),
@@ -166,7 +166,7 @@ class MetadataBuilderValidateZipMetadataTests {
     void endToEnd_annualAggregateZip_acceptedWithCorrectDataStreamId() throws MetadataFault {
         MetadataBuilder builder = new MetadataBuilder();
         builder.setReportType("riAnnualAggregate");
-        builder.setPeriod("2025-12-31");
+        builder.setPeriod("2025");
         builder.setFilename(ANNUAL_FILENAME);
         builder.setMetadataValidationEnabled(false); // isolate build() from the unrelated entity check
 

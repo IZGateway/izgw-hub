@@ -12957,7 +12957,7 @@
                     "header": [
                       {
                         "key": "X-Message-ID",
-                        "value": "Annual RI Aggregate Submission XXA/riAnnualAggregate/XXA_20251231_20260131_Agg_Z.ZIP/2025-12-31"
+                        "value": "Annual RI Aggregate Submission XXA/riAnnualAggregate/XXA_20251231_20260131_Agg_Z.ZIP/2025"
                       }
                     ],
                     "body": {
@@ -12980,7 +12980,7 @@
                         },
                         {
                           "key": "period",
-                          "value": "2025-12-31",
+                          "value": "2025",
                           "type": "text"
                         },
                         {
