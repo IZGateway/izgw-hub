@@ -13,6 +13,19 @@ created:
     prompt:/claude-code/6489d253-64a8-47f7-9d36-4bd4d59d6e03/~dd641be6-9c76-48ec-9370-9243b651be97
   summary: Task breakdown for annual RI aggregate ZIP submission support
 updated:
+  - date: '2026-11-13T20:07:40.267Z'
+    user: boonek
+    agent:
+      name: claude-code
+      version: 1.0.0
+    llm:
+      name: claude-sonnet-5
+      version: '5'
+    prompt_uri: >-
+      prompt:/claude-code/6489d253-64a8-47f7-9d36-4bd4d59d6e03/~721aa085-fa53-42a2-910d-82c5cc3c1534
+    summary: >-
+      Add Group 5 documenting the self-review-driven fixes applied after PR
+      #209's independent review
   - date: '2026-11-13T17:36:26.669Z'
     user: boonek
     agent:
@@ -201,6 +214,38 @@ change (`PERIOD_PATTERN` only checked that `period` matched *some* recognized sh
       `specs/period-frequency-validation/spec.md` requirement "Structural Rejection
       Message Names the Expected Format" and design.md Decision 6. Verified: 4 new
       tests in `MetadataBuilderSetPeriodTests` (39/39 total passing).
+
+## 5. Fixes from the Independent Pre-Merge Review (PR #209)
+
+Per the new two-independent-reviews-then-reconcile procedure: `/code-review` ran
+against PR #209 before Copilot's findings were read, surfaced 9 items, and Keith
+triaged each. Copilot's own review found nothing. Fixed below; the rest (blast-radius
+risk of the new frequency cross-check, `setPeriod()`'s unenforced call-order
+assumption, and unifying `classifyPeriodFrequency`/`getPeriodAsCalendar` into one
+parser) were explicitly left alone — deferred to CI/CD, ignored, or deferred as
+not-enough-information, respectively, per Keith's call.
+
+- [x] 5.1 Fixed `MetadataImpl.getPeriodAsCalendar()`: it never got a branch for the
+      new bare-`YYYY` annual format, so an annual period's month silently fell back
+      to the real-world "now" (masked only by `MetadataBuilder.checkDate()`'s
+      divisor-12 trick elsewhere). Now defaults to January deterministically for an
+      annual period, via `MetadataBuilder.classifyPeriodFrequency()` (reused, not
+      duplicated). New `MetadataImplGetPeriodAsCalendarTests` (3 tests) verify this
+      and the pre-existing quarterly/monthly branches.
+- [x] 5.2 Replaced `StringUtils.containsIgnoreCase()` with `Strings.CI.contains()` in
+      `isAnnual()` and `establishedFrequency()`, per `java-maven-style`'s documented
+      (and, in this same diff, already-followed-elsewhere-in-`ZipFilenameComponents`)
+      convention. Saved as a feedback memory
+      (`feedback_strings_ci_over_stringutils.md`) so this isn't missed again.
+- [x] 5.3 Consolidated the `MONTHLY`/`QUARTERLY` constants: `MetadataBuilder.MONTHLY`
+      and `.QUARTERLY` now reference `CsvFilenameValidator.FREQ_MONTHLY`/
+      `.FREQ_QUARTERLY` (widened to `public`) instead of duplicating the literals.
+      `ANNUAL` stays unique to `MetadataBuilder`, since CSV has no annual concept.
+- [x] 5.4 Added an inline comment at the `divisor` computation in
+      `validateZipMetadata()` explaining the `12` "always equal, ignore month" trick,
+      which previously existed only in `design.md`, not at the code site.
+- [x] 5.5 Hoisted the duplicate `isAnnual(reportType)` call in `validateZipMetadata()`
+      (eligibility check and divisor computation) to a single local variable.
 
 ## Workflow follow-up
 

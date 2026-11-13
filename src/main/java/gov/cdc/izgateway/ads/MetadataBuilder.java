@@ -13,6 +13,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.slf4j.MDC;
 
 import java.nio.charset.StandardCharsets;
@@ -30,9 +31,12 @@ public class MetadataBuilder {
     private static final String MONTH_PATTERN = "(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)";
     // Trailing group is optional so a bare 4-digit year (annual) validates too.
     private static final String PERIOD_PATTERN = "^\\d{4}(Q[1-4]|-" + MONTH_PATTERN + "|((-\\d{2}){1,2}))?$";
-    private static final String MONTHLY = "Monthly";
-    private static final String QUARTERLY = "Quarterly";
-    private static final String ANNUAL = "Annual";
+    // MONTHLY/QUARTERLY reference CsvFilenameValidator's canonical constants rather than
+    // duplicating the literals; ANNUAL has no CSV equivalent, so it's defined here.
+    // Package-private (not private) so MetadataImpl.getPeriodAsCalendar() can share them.
+    static final String MONTHLY = CsvFilenameValidator.FREQ_MONTHLY;
+    static final String QUARTERLY = CsvFilenameValidator.FREQ_QUARTERLY;
+    static final String ANNUAL = "Annual";
     /**
      * This is the facility id assigned to IZ Gateway by NDLP.
      */
@@ -236,7 +240,7 @@ public class MetadataBuilder {
         if (isAnnual(reportType)) {
             return ANNUAL;
         }
-        if ("routineImmunization".equalsIgnoreCase(reportType) || StringUtils.containsIgnoreCase(reportType, "quarter")) {
+        if ("routineImmunization".equalsIgnoreCase(reportType) || Strings.CI.contains(reportType, "quarter")) {
             return QUARTERLY;
         }
         return MONTHLY;
@@ -353,7 +357,8 @@ public class MetadataBuilder {
                     meta.getExtEntity(), pf.getEntityId(), meta.getFilename()));
         }
         String reportType = meta.getExtEvent();
-        boolean zipEligible = "routineImmunization".equalsIgnoreCase(reportType) || isAnnual(reportType);
+        boolean annual = isAnnual(reportType);
+        boolean zipEligible = "routineImmunization".equalsIgnoreCase(reportType) || annual;
         // Eligibility validation isn't relevant when type is genericImmunization.
         if (!GENERIC.equalsIgnoreCase(reportType) && !zipEligible) {
             errors.add(String.format("Report type (%s) is not eligible for ZIP submission (%s)",
@@ -364,7 +369,9 @@ public class MetadataBuilder {
             cal.setTime(pf.getDate());
         }
         Calendar metaDate = meta.getPeriodAsCalendar();
-        int divisor = isAnnual(reportType) ? 12 : 3;
+        // 12 makes month/12 always equal (0 == 0 for any 0-11 value), so checkDate()
+        // effectively compares year only for annual types; 3 buckets by calendar quarter.
+        int divisor = annual ? 12 : 3;
         if (!checkDate(cal, metaDate, divisor)) {
             // Failed first time through, try just one day later on date from file name.
             cal.add(Calendar.DAY_OF_MONTH, 1);
@@ -389,7 +396,7 @@ public class MetadataBuilder {
      * @return true if {@code reportType} contains {@code "annual"} (case-insensitive)
      */
     static boolean isAnnual(String reportType) {
-        return reportType != null && StringUtils.containsIgnoreCase(reportType, "annual");
+        return reportType != null && Strings.CI.contains(reportType, "annual");
     }
 
     /**

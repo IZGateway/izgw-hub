@@ -60,8 +60,10 @@ public final class CsvFilenameValidator {
         Pattern.CASE_INSENSITIVE
     );
 
-    private static final String FREQ_QUARTERLY = "Quarterly";
-    private static final String FREQ_MONTHLY   = "Monthly";
+    // Public: also the canonical source for MetadataBuilder's frequency constants,
+    // so the CSV and ZIP/period-validation paths share one definition of each string.
+    public static final String FREQ_QUARTERLY = "Quarterly";
+    public static final String FREQ_MONTHLY   = "Monthly";
 
     private CsvFilenameValidator() {
         // utility class – not instantiable
