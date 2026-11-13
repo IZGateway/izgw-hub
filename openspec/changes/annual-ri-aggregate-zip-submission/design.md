@@ -13,6 +13,21 @@ created:
     prompt:/claude-code/6489d253-64a8-47f7-9d36-4bd4d59d6e03/~dd641be6-9c76-48ec-9370-9243b651be97
   summary: Design doc for annual RI aggregate ZIP submission support
 updated:
+  - date: '2026-11-13T15:47:03.082Z'
+    user: boonek
+    agent:
+      name: claude-code
+      version: 1.0.0
+    llm:
+      name: claude-sonnet-5
+      version: '5'
+    prompt_uri: >-
+      prompt:/claude-code/6489d253-64a8-47f7-9d36-4bd4d59d6e03/~7dcdcce1-6482-49e3-81c9-de3d1dba562c
+    summary: >-
+      Keith confirmed YYYY as the annual meta_ext_submissionperiod format;
+      promote from open question to decision; Remove resolved Open Question now
+      that YYYY format is confirmed, not just assumed; Remove now-resolved Open
+      Questions section per template
   - date: '2026-11-13T07:03:37.286Z'
     user: boonek
     agent:
@@ -129,6 +144,14 @@ bare `YYYY` period format — rejected as unnecessary; `YYYY-MM-DD` already cove
 and preserves the period-end-date precision the ZIP filename's `Period` segment
 provides.
 
+**4. `meta_ext_submissionperiod` for an annual submission is a 4-digit `YYYY` year
+(confirmed by Keith).** No row exists for this in `metadata-requirements.md` today
+(precedent: `measlesVaccination`'s row is marked "format TBD"). `YYYY` is consistent
+with the year-containing formats used by every other cadence in that table. NDLP
+validation of this value happens during dev testing (Migration Plan step 4) as a
+verification step, not as an open design question — if NDLP requires a different
+format, it is an isolated constant change, not a rework of this change's approach.
+
 ## Risks / Trade-offs
 
 - [Risk] Removing the single-literal ZIP filetype-match check could make it easy to
@@ -136,12 +159,12 @@ provides.
   → Mitigation: the replacement is one small, explicitly-named, explicitly-tested
   static check, not a removal of validation — adding a new zip-eligible type later is
   a one-line change plus a test, not a silent gap.
-- [Risk] NDLP's wire format for `meta_ext_submissionperiod` on an annual submission
-  is not yet confirmed (see Open Questions).
-  → Mitigation: implement a reasonable default (the 4-digit `YYYY` year) now; this is
-  an isolated constant/format choice, not a structural dependency for either code
-  change, so a later correction from NDLP does not require revisiting the specs, the
-  approach, or the task breakdown.
+- [Risk] NDLP's actual acceptance of the `YYYY`-format `meta_ext_submissionperiod`
+  value is not yet verified end-to-end against the live DEX endpoint.
+  → Mitigation: this is an isolated constant/format choice, not a structural
+  dependency for either code change, so a later correction from NDLP does not require
+  revisiting the specs, the approach, or the task breakdown — see Migration Plan
+  step 4.
 - [Risk] Uploads for `riAnnualAggregate` will fail at the `setReportType()` registry
   lookup until the `FileType` entry exists in the target environment, independent of
   whether the code changes are deployed.
@@ -165,11 +188,3 @@ precedent). Deployment sequence:
 `FileType` entry added before a rollback is simply inert (unreachable) once the code
 reverts, since nothing else depends on its existence.
 
-## Open Questions
-
-- What exact string format does NDLP expect for `meta_ext_submissionperiod` on an
-  annual submission? No row exists for this in `metadata-requirements.md` today
-  (precedent: `measlesVaccination`'s row is marked "format TBD"). Implementing a
-  4-digit `YYYY` default and confirming with NDLP during dev testing (Migration Plan
-  step 4) does not block or change this change's specs, approach, or task breakdown —
-  it's a format-string decision isolated to one computed field.

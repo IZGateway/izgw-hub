@@ -12,7 +12,20 @@ created:
   prompt_uri: >-
     prompt:/claude-code/6489d253-64a8-47f7-9d36-4bd4d59d6e03/~dd641be6-9c76-48ec-9370-9243b651be97
   summary: Task breakdown for annual RI aggregate ZIP submission support
-updated: []
+updated:
+  - date: '2026-11-13T15:47:17.810Z'
+    user: boonek
+    agent:
+      name: claude-code
+      version: 1.0.0
+    llm:
+      name: claude-sonnet-5
+      version: '5'
+    prompt_uri: >-
+      prompt:/claude-code/6489d253-64a8-47f7-9d36-4bd4d59d6e03/~7dcdcce1-6482-49e3-81c9-de3d1dba562c
+    summary: >-
+      Sync task 3.3 wording: YYYY is now a confirmed decision, not an open
+      question
 change_request: annual-ri-aggregate-zip-submission
 ticket: IGDD-3743
 ---
@@ -78,7 +91,7 @@ ticket: IGDD-3743
       both 1.x code and 3.1 configuration are deployed. Verify: submission succeeds
       and the file lands in NDLP's expected `ri-annual-aggregate` folder path.
 - [ ] 3.3 Confirm with NDLP that the delivered `meta_ext_submissionperiod` value
-      (implemented as the 4-digit `YYYY` year per design.md's Open Question) is
+      (implemented as the 4-digit `YYYY` year, confirmed per design.md Decision 4) is
       acceptable; file a follow-up task if a different format is required. Verify:
       written confirmation from NDLP, or a corrected format implemented and
       reverified per 2.1.
