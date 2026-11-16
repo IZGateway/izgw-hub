@@ -13,6 +13,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.slf4j.MDC;
 
 import java.nio.charset.StandardCharsets;
@@ -28,7 +29,14 @@ import java.util.UUID;
 @Slf4j
 public class MetadataBuilder {
     private static final String MONTH_PATTERN = "(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)";
-    private static final String PERIOD_PATTERN = "^\\d{4}(Q[1-4]|-" + MONTH_PATTERN + "|((-\\d{2}){1,2}))$";
+    // Trailing group is optional so a bare 4-digit year (annual) validates too.
+    private static final String PERIOD_PATTERN = "^\\d{4}(Q[1-4]|-" + MONTH_PATTERN + "|((-\\d{2}){1,2}))?$";
+    // Reference CsvFilenameValidator's canonical constants rather than duplicating the
+    // literals, now that CSV also recognizes an Annual frequency keyword.
+    // Package-private (not private) so MetadataImpl.getPeriodAsCalendar() can share them.
+    static final String MONTHLY = CsvFilenameValidator.FREQ_MONTHLY;
+    static final String QUARTERLY = CsvFilenameValidator.FREQ_QUARTERLY;
+    static final String ANNUAL = CsvFilenameValidator.FREQ_ANNUAL;
     /**
      * This is the facility id assigned to IZ Gateway by NDLP.
      */
@@ -150,8 +158,17 @@ public class MetadataBuilder {
     }
 
     /**
-     * Set the period associated with the report
-     * @param period the period associated with the report, in the form YYYY-MMM or YYYYQ[1-4]
+     * Set the period associated with the report.
+     * <p>
+     * In addition to validating the period's structural format, this cross-checks the
+     * period's shape (monthly, quarterly, or annual) against the established submission
+     * frequency for the already-set report type (see {@link #setReportType(String)},
+     * which must be called first). The check is skipped for {@code genericImmunization}
+     * and for the legacy numeric {@code YYYY-MM}/{@code YYYY-MM-DD} period form, which
+     * predates this cross-check and is not one of the three recognized frequency shapes.
+     * </p>
+     *
+     * @param period the period associated with the report, in the form YYYY-MMM, YYYYQ[1-4], or YYYY
      * @return	The metadata builder
      */
     public MetadataBuilder setPeriod(String period) {
@@ -160,14 +177,91 @@ public class MetadataBuilder {
             errors.add("Period must be present and not empty");
             return this;
         }
-        
+
         // Normalize it
         period = period.trim().toUpperCase();
         meta.setPeriod(period);
         if (!period.matches(PERIOD_PATTERN)) {
-            errors.add(String.format("Period (%s) is not valid.  It must be in the form YYYYQ# or YYYY-MMM or YYYY-MM-DD.", period));
+            String reportType = meta.getExtEvent();
+            String expectedForm = GENERIC.equalsIgnoreCase(reportType)
+                    ? "YYYYQ#, YYYY-MMM, or YYYY"
+                    : periodFormatExample(establishedFrequency(reportType));
+            errors.add(String.format(
+                    "Period (%s) is not valid.  Report type (%s) requires a period in the form %s.",
+                    period, reportType, expectedForm));
+            return this;
+        }
+
+        String actualFrequency = classifyPeriodFrequency(period);
+        String reportType = meta.getExtEvent();
+        if (actualFrequency != null && !GENERIC.equalsIgnoreCase(reportType)) {
+            String expectedFrequency = establishedFrequency(reportType);
+            if (!actualFrequency.equals(expectedFrequency)) {
+                errors.add(String.format(
+                        "Period (%s) is %s-formatted, but report type (%s) requires a %s period.",
+                        period, actualFrequency, reportType, expectedFrequency));
+            }
         }
         return this;
+    }
+
+    /**
+     * Classify a structurally-valid period string's shape.
+     *
+     * @param period the normalized (uppercase, trimmed) period string; must already be
+     *               known to match {@link #PERIOD_PATTERN}
+     * @return {@link #QUARTERLY}, {@link #MONTHLY}, or {@link #ANNUAL}; or {@code null}
+     *         for the legacy numeric {@code YYYY-MM}/{@code YYYY-MM-DD} form, which is
+     *         not one of the three recognized frequency shapes
+     */
+    static String classifyPeriodFrequency(String period) {
+        if (period.matches("\\d{4}Q[1-4]")) {
+            return QUARTERLY;
+        }
+        if (period.matches("\\d{4}-" + MONTH_PATTERN)) {
+            return MONTHLY;
+        }
+        if (period.matches("\\d{4}")) {
+            return ANNUAL;
+        }
+        return null;
+    }
+
+    /**
+     * Determine the established submission frequency for a canonical report type.
+     * Mirrors the eligibility logic in {@link #isAnnual(String)}: annual aggregate
+     * types take priority over the quarterly check since their names also start with
+     * {@code "ri"}.
+     *
+     * @param reportType the canonical report type name (e.g. {@code meta_ext_event})
+     * @return {@link #ANNUAL}, {@link #QUARTERLY}, or {@link #MONTHLY} (the default)
+     */
+    static String establishedFrequency(String reportType) {
+        if (isAnnual(reportType)) {
+            return ANNUAL;
+        }
+        if ("routineImmunization".equalsIgnoreCase(reportType) || Strings.CI.contains(reportType, "quarter")) {
+            return QUARTERLY;
+        }
+        return MONTHLY;
+    }
+
+    /**
+     * Describe, with an example, the single period format expected for a given
+     * established frequency. Used to give a specific, actionable error message
+     * instead of listing every structurally-valid form.
+     *
+     * @param frequency {@link #ANNUAL}, {@link #QUARTERLY}, or {@link #MONTHLY}
+     * @return a human-readable format description with an example value
+     */
+    private static String periodFormatExample(String frequency) {
+        if (ANNUAL.equals(frequency)) {
+            return "YYYY (e.g. 2026)";
+        }
+        if (QUARTERLY.equals(frequency)) {
+            return "YYYYQ# (e.g. 2026Q1)";
+        }
+        return "YYYY-MMM (e.g. 2026-FEB)";
     }
 
     /**
@@ -242,9 +336,18 @@ public class MetadataBuilder {
     }
 
     /**
-     * Validate metadata for ZIP (routine immunization) files using {@link ZipFilenameComponents}.
-     * ZIP filenames follow a different structure than CSV files:
-     * {@code EEE_YYYYMMDD_yyyymmdd_Z.zip} (entity_startdate_submissiondate_zone).
+     * Validate metadata for ZIP files (routine immunization or annual aggregate reports)
+     * using {@link ZipFilenameComponents}. ZIP filenames follow a different structure
+     * than CSV files: {@code EEE_YYYYMMDD_yyyymmdd_Z.zip}
+     * (entity_startdate_submissiondate_zone).
+     * <p>
+     * Eligibility for ZIP submission is name-based: {@code routineImmunization} (the
+     * original quarterly-cadence type) or any report type whose canonical name contains
+     * {@code "annual"} (case-insensitive, see {@link #isAnnual(String)}) may submit a
+     * {@code .zip}. The date-bucket tolerance used to match the filename's date against
+     * the submission period is driven by the same check: a same-quarter match by
+     * default, or a same-year match (ignoring month) for an annual type.
+     * </p>
      *
      * @param pf the parsed filename
      */
@@ -253,17 +356,22 @@ public class MetadataBuilder {
             errors.add(String.format("Entity ID (%s) does not match Entity (%s) in filename (%s)",
                     meta.getExtEntity(), pf.getEntityId(), meta.getFilename()));
         }
-        // Filetype validation isn't relevant when type is genericImmunization.
-        if (!GENERIC.equalsIgnoreCase(meta.getExtEvent()) && !pf.getFiletype().equalsIgnoreCase(meta.getExtEvent())) {
-            errors.add(String.format("File type (%s) does not match file type (%s) in filename (%s)",
-                    meta.getExtEvent(), pf.getFiletype(), meta.getFilename()));
+        String reportType = meta.getExtEvent();
+        boolean annual = isAnnual(reportType);
+        boolean zipEligible = "routineImmunization".equalsIgnoreCase(reportType) || annual;
+        // Eligibility validation isn't relevant when type is genericImmunization.
+        if (!GENERIC.equalsIgnoreCase(reportType) && !zipEligible) {
+            errors.add(String.format("Report type (%s) is not eligible for ZIP submission (%s)",
+                    reportType, meta.getFilename()));
         }
         Calendar cal = Calendar.getInstance();
         if (pf.getDate() != null) {
             cal.setTime(pf.getDate());
         }
         Calendar metaDate = meta.getPeriodAsCalendar();
-        int divisor = pf.getFiletype().equals(ZipFilenameComponents.ROUTINE_IMMUNIZATION) ? 3 : 1;
+        // 12 makes month/12 always equal (0 == 0 for any 0-11 value), so checkDate()
+        // effectively compares year only for annual types; 3 buckets by calendar quarter.
+        int divisor = annual ? 12 : 3;
         if (!checkDate(cal, metaDate, divisor)) {
             // Failed first time through, try just one day later on date from file name.
             cal.add(Calendar.DAY_OF_MONTH, 1);
@@ -277,6 +385,18 @@ public class MetadataBuilder {
     private boolean checkDate(Calendar cal, Calendar metaDate, int divisor) {
         return cal.get(Calendar.MONTH) / divisor == metaDate.get(Calendar.MONTH) / divisor
                 && cal.get(Calendar.YEAR) == metaDate.get(Calendar.YEAR);
+    }
+
+    /**
+     * Returns true if the given canonical report type name indicates an annual
+     * submission cadence.
+     *
+     * @param reportType the canonical report type name (e.g. {@code meta_ext_event}),
+     *                    may be null
+     * @return true if {@code reportType} contains {@code "annual"} (case-insensitive)
+     */
+    static boolean isAnnual(String reportType) {
+        return reportType != null && Strings.CI.contains(reportType, "annual");
     }
 
     /**
