@@ -226,6 +226,7 @@ public class DbController {
 	 * @param hostService	The service use to access running hosts
 	 * @param config	The configuration providing access to db services
 	 * @param registry	The access control registry managing these APIs
+	 * @param refreshQueueService	The service that sends refresh requests to the other instances
 	 * @param ddbClient	The raw DynamoDB client, used for the generic entity-type read endpoint
 	 * @param ddbConfig	The DynamoDB configuration, used to resolve the table name
 	 */
@@ -246,6 +247,9 @@ public class DbController {
 		registry.register(this);
 	}
 	
+	/**
+	 * Refresh the configuration from the database.
+	 */
 	protected void refresh() {
 		configuration.refresh();
 	}
@@ -298,6 +302,12 @@ public class DbController {
 		return l.get(id);
 	}
 
+	/**
+	 * Update the facility ID, username and password of a message header record.
+	 * @param id The MSH-3 or MSH-4 value of the record.
+	 * @param newValues The new values. The MSH value must be the same as {@code id}.
+	 * @return The updated message header record.
+	 */
 	@Operation(summary = "Update the username and password for the specified MSH-3 value",
 			description = MESSAGE_HEADER_BY_MSH_DESCRIPTION)
 	@ApiResponse(responseCode = HTTP_STATUS_OK, description = MESSAGE_HEADER_INFO_VALUES_DESCRIPTION,
@@ -323,6 +333,11 @@ public class DbController {
 		return configuration.getMessageHeaderService().saveAndFlush(old);
 	}
 	
+	/**
+	 * Delete a message header record.
+	 * @param id The MSH-3 or MSH-4 value of the record.
+	 * @return The deleted message header record.
+	 */
 	@Operation(summary = "Delete the header record for the specified MSH-3 value",
 			description = "Deletes the Message Header and username password values for HL7 Message for the given MSH3 or MSH4 value")
 	@ApiResponse(responseCode = "200", description = "The deleted message Header information values", 
@@ -338,6 +353,12 @@ public class DbController {
 		return old;
 	}
 	
+	/**
+	 * Create a message header record.
+	 * The record must not exist, and its destination must exist.
+	 * @param newValues The values of the new record.
+	 * @return The created message header record.
+	 */
 	@Operation(summary = "Create a header mapping, setting the username and password for the specified MSH-3 value",
 			description = MESSAGE_HEADER_BY_MSH_DESCRIPTION)
 	@ApiResponse(responseCode = "201", description = "The created Message Header information values", 
@@ -364,6 +385,10 @@ public class DbController {
 		return configuration.getMessageHeaderService().saveAndFlush(newValues);
 	}
 
+	/**
+	 * Refresh the configuration and report the configuration of all destinations.
+	 * @return A map of safe copies of the destinations, keyed by destination ID.
+	 */
 	@Operation(summary = "Report the configuration for all endpoints",
 			description = "Returns configuration for all endpoints")
 	@ApiResponse(responseCode = HTTP_STATUS_OK, description = MESSAGE_HEADER_INFO_VALUES_DESCRIPTION,
@@ -381,6 +406,11 @@ public class DbController {
 		return l2;
 	}
 
+	/**
+	 * Report the configuration of one destination.
+	 * @param id The destination ID.
+	 * @return A safe copy of the destination.
+	 */
 	@Operation(summary = "Report the configuration for the specified endpoint",
 			description = "Returns configuration for the specified endpoint")
 	@ApiResponse(responseCode = HTTP_STATUS_OK, description = "The endpoint configuration",
@@ -402,6 +432,13 @@ public class DbController {
 
 	@SuppressWarnings("serial")
 	private static class HostMap extends TreeMap<String, String> {}
+	/**
+	 * Refresh the configuration on this instance, and on every other instance when {@code all} is true.
+	 * @param all If {@code "true"}, also send the refresh to every other instance.
+	 * @param reset If true, also reset the circuit breakers.
+	 * @param jti The ID of an API key credential to evict from the credential cache, or null.
+	 * @return The refresh outcome for each instance, keyed {@code region:hostname}.
+	 */
 	@Operation(summary = "Refresh host setup from the database",
 			description = "Refresh the current or all instances.  Returns refresh status for each instance refreshed.")
 	@ApiResponse(responseCode = HTTP_STATUS_OK, description = "A map indicating the refresh status for each host.",
@@ -414,7 +451,7 @@ public class DbController {
   	@GetMapping("/refresh")
 	@RolesAllowed({ Roles.ADMIN, Roles.INTERNAL })
 	public HostMap getRefreshed(
-      @Parameter(description = "If true or local, refresh all accessible instances, otherwise refresh only the current instance.", required = false)
+      @Parameter(description = "If true, also refresh all other instances. Otherwise refresh only the current instance.", required = false)
       @RequestParam(name = "all", defaultValue = "false") String all,
       @Parameter(description = "If true, reset circuit breakers as well.", required = false)
       @RequestParam(name = "reset", defaultValue = "false") boolean reset,
@@ -444,9 +481,15 @@ public class DbController {
 	// result and reported OK. Commands are now applied in process by
 	// RefreshQueueService.applyLocally.
 
+	/**
+	 * Report the running host instances and their regions.
+	 * @param local If true, return only hosts that resolve and are in this region. If false, return only
+	 * hosts that do not resolve, without this instance. If null, return all hosts.
+	 * @return A list of {@code hostname:region} values.
+	 */
 	@Operation(summary = "Report the running host instances and their regions.",
-			description = "Refresh the list of running hosts.  Returns a list region:hostname values.")
-	@ApiResponse(responseCode = HTTP_STATUS_OK, description = "a list region:hostname values",
+			description = "Refresh the list of running hosts.  Returns a list of hostname:region values.")
+	@ApiResponse(responseCode = HTTP_STATUS_OK, description = "a list of hostname:region values",
 	    content = @Content(
 			mediaType = JSON_MEDIA_TYPE,
 	    		array = @ArraySchema(schema = @Schema(implementation = String.class))
@@ -537,6 +580,11 @@ public class DbController {
 		return result;
 	}
 
+	/**
+	 * Report the maintenance status of one destination.
+	 * @param id The destination ID.
+	 * @return A safe copy of the destination, with its maintenance fields.
+	 */
 	@Operation(summary = "Report the maintenance status of specified destination",
 			description = "Returns maintenance status of the specified destination.")
 	@ApiResponse(responseCode = HTTP_STATUS_OK, description = MAINTENANCE_STATUS_DESCRIPTION,
@@ -554,6 +602,14 @@ public class DbController {
 		return getConfigById(id);
 	}
 
+	/**
+	 * Set the maintenance period and reason of a destination, then refresh all instances.
+	 * @param id The destination ID.
+	 * @param start The start timestamp, or null to start now.
+	 * @param end The end timestamp, null to end 30 minutes after the start, or {@code none} for no end.
+	 * @param reason The reason for maintenance. The value {@code default} uses the standard reason.
+	 * @return A safe copy of the updated destination.
+	 */
 	@Operation(summary = "Update the maintenance status of specified destination",
 			description = "Updates the maintenance status and returns it for specified destination.")
 	@ApiResponse(responseCode = HTTP_STATUS_OK, description = MAINTENANCE_STATUS_DESCRIPTION,
@@ -634,6 +690,11 @@ public class DbController {
 		return startDate;
 	}
 
+	/**
+	 * Clear the maintenance status of a destination, then refresh all instances.
+	 * @param id The destination ID.
+	 * @return A safe copy of the updated destination.
+	 */
 	@Operation(summary = "Clear the maintenance status of specified destination",
 			description = "Clear the maintenance status and returns it for specified destination.")
 	@ApiResponse(responseCode = HTTP_STATUS_OK, description = MAINTENANCE_STATUS_DESCRIPTION,
@@ -671,6 +732,12 @@ public class DbController {
 		return new ResourceNotFoundException(String.format("%s %s not found.", what, id));
 	}
 
+	/**
+	 * Report all DynamoDB items of an entity type. Only entity types in the allowlist are served.
+	 * Fields that hold secrets are removed.
+	 * @param entityType The entity type.
+	 * @return A map of the items, keyed by sort key.
+	 */
 	@Operation(summary = "Report all entities of the specified type",
 			description = "Returns every DynamoDB item of the given entity type, keyed by sortKey. "
 					+ "Only entity types in a fixed allowlist are servable; audit/change-request "
@@ -711,6 +778,13 @@ public class DbController {
 	private static final char SORT_KEY_PATH_SUBSTITUTE = '!';
 	private static final char SORT_KEY_REAL_DELIMITER = '#';
 
+	/**
+	 * Report one DynamoDB item. Only entity types in the allowlist are served.
+	 * Fields that hold secrets are removed.
+	 * @param entityType The entity type.
+	 * @param sortKey The sort key. Use {@code !} in place of each {@code #}.
+	 * @return The item.
+	 */
 	@Operation(summary = "Report the specified entity",
 			description = "Returns the single DynamoDB item for the given entity type and sortKey. "
 					+ "Only entity types in a fixed allowlist are servable; audit/change-request "

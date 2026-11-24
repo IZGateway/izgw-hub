@@ -52,20 +52,18 @@ jobs:
 
     steps:
       # Name a missing credential before create-github-app-token produces a
-      # cryptic error. Also check for NVDAPIKEY so that we fail here instead
-      # of later in the flow when we try dependency-checker.
-      # Only the presence of each value is reported, never a value.
+      # cryptic error. Only the presence of each value is reported, never a value.
+      # NVDAPIKEY is not checked (IGDD-2974). The Dependency Check step does not
+      # use it. See the comment above that step.
       - name: Check necessary credentials are configured
         env:
           APP_ID: ${{ secrets.RELEASE_AUTOMATION_APP_ID }}
           APP_KEY: ${{ secrets.RELEASE_AUTOMATION_APP_KEY }}
-          NVDAPIKEY: ${{ secrets.NVDAPIKEY }}
         shell: bash
         run: |
           missing=""
           if [ -z "${APP_ID}" ]; then missing="${missing} RELEASE_AUTOMATION_APP_ID"; fi
           if [ -z "${APP_KEY}" ]; then missing="${missing} RELEASE_AUTOMATION_APP_KEY"; fi
-          if [ -z "${NVDAPIKEY}" ]; then missing="${missing} NVDAPIKEY"; fi
           if [ -n "${missing}" ]; then
             echo "::error::Missing necessary credential(s):${missing}. The release will not fall back to another identity."
             exit 1
@@ -144,7 +142,11 @@ jobs:
             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
             xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
             https://maven.apache.org/xsd/settings-1.0.0.xsd">
-            <localRepository>~/.m2/repository</localRepository>
+            <!-- No localRepository element (IGDD-2974). Maven does not expand
+                 "~" in this element. The old value made Maven use the folder
+                 "<workspace>/~/.m2/repository", so the Maven cache of
+                 actions/setup-java had nothing to save. The default location
+                 is ~/.m2/repository. -->
             <interactiveMode />
             <usePluginRegistry />
             <offline />
@@ -850,7 +852,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
 
       # Matches maven.yml's lifecycle and test environment, with one deliberate
-      # omission: maven.yml prefixes the command with `env &&`, which prints
+      # omission: maven.yml runs `env` before the build, which prints
       # every environment value into the log. The release path must not.
       - name: Build, test, and generate the site
         id: build
@@ -868,8 +870,28 @@ jobs:
 
           fail() { echo "::error::$1" >&2; exit 1; }
 
-          mvn -B -U clean package install site \
+          # Two things avoid "[WARNING] Overwriting artifact's file ... to
+          # target/classes" (IGDD-2974):
+          # 1. The first command lists only "verify". "verify" already runs
+          #    test and package. Nothing in this workflow reads the hub jar
+          #    from the local Maven repository, so "install" is not necessary.
+          # 2. The site is built in a separate Maven run on purpose, without
+          #    "clean" and without tests. It reads the test and JaCoCo results
+          #    of the first run.
+          # Both commands get the same -Dtimestamp. The site run writes
+          # target/classes/build.txt again, and Newman verification reads that
+          # file. Without the same value, build.txt gets a later time than the
+          # jar, and the Newman check of the timestamp fails.
+          BUILD_TIMESTAMP="$(date -u +%Y%m%d%H%M)"
+          mvn -B -U clean verify \
             -Dbuildno="${BUILD_NO}" \
+            -Dtimestamp="${BUILD_TIMESTAMP}" \
+            -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn \
+            -DskipDependencyCheck=true \
+            -Dimage.tag="${IMAGE_TAG}"
+          mvn -B site -DskipTests \
+            -Dbuildno="${BUILD_NO}" \
+            -Dtimestamp="${BUILD_TIMESTAMP}" \
             -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn \
             -DskipDependencyCheck=true \
             -Dimage.tag="${IMAGE_TAG}"
@@ -906,6 +928,11 @@ jobs:
       # after a clean NVD analysis, so passing those credentials fails the gate
       # for a reason unrelated to any vulnerability. Re-enable this only with
       # credentials confirmed to work.
+      #
+      # This scan does not use an NVD API key (IGDD-2974). The action runs the
+      # scanner with --noupdate. The scanner uses the NVD database that is
+      # inside the Docker image of the action. The owners of the action build
+      # this image every night with a new database.
       - name: Dependency Check
         id: scan
         env:
@@ -922,7 +949,6 @@ jobs:
             --failOnCVSS 7
             --format JSON
             --suppression ./dependency-suppression.xml
-            --nvdApiKey ${{ secrets.NVDAPIKEY }}
             --disableNuspec
             --disableNugetconf
             --disableAssembly

@@ -24,6 +24,13 @@ import java.time.Instant;
 @Slf4j
 public class ApiKeyAuditLogger {
 
+    /**
+     * Create the audit logger. Spring creates this component.
+     */
+    public ApiKeyAuditLogger() {
+        // Nothing to initialize.
+    }
+
     /** Audit event type emitted when an API key is revoked (cut off before its own expiry). */
     public static final String API_KEY_REVOKED = "API_KEY_REVOKED";
 

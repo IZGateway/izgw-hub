@@ -28,7 +28,9 @@ import gov.cdc.izgateway.model.DynamoDbEntity;
 public class OrganizationRecord extends DynamoDbAudit implements DynamoDbEntity, Serializable, IOrganizationRecord {
 	/** The type of organization, e.g., IIS, Provider, Consumer, CDC, Support */
 	private String type;
+    /** The principal names that belong to the organization. */
     private Set<String> principalNames = new TreeSet<>();
+    /** The name of the organization. */
     private String organizationName;
     
     @DynamoDbConvertedBy(EmptySetToNullConverter.class)

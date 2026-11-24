@@ -8,6 +8,7 @@ import gov.cdc.izgateway.soap.fault.MessageSupport;
 
 import org.apache.commons.lang3.StringUtils;
 
+/** A fault that reports errors in the metadata of a file submission. */
 public class MetadataFault extends Fault implements FaultSupport {
     private static final long serialVersionUID = 1L;
 
@@ -22,11 +23,23 @@ public class MetadataFault extends Fault implements FaultSupport {
     		MessageSupport.registerMessageSupport(m);
     	}
     }
+    /** The metadata that has the errors. */
     private final Metadata meta;
 
+    /**
+     * Creates a metadata fault.
+     * @param meta the metadata that has the errors
+     * @param errors the error messages
+     */
     public MetadataFault(Metadata meta, String ... errors) {
         this(meta, null, errors);
     }
+    /**
+     * Creates a metadata fault with a cause.
+     * @param meta the metadata that has the errors
+     * @param cause the exception that caused the fault, or null
+     * @param errors the error messages
+     */
     public MetadataFault(Metadata meta, Throwable cause, String ... errors) {
         super(MESSAGE_TEMPLATE[errors.length > 1 ? 1 : 0].copy().setDetail(StringUtils.join(errors, "\n")), cause);
         this.meta = meta;
@@ -35,6 +48,10 @@ public class MetadataFault extends Fault implements FaultSupport {
         }
     }
 
+    /**
+     * Gets the metadata that has the errors.
+     * @return the metadata
+     */
     public Metadata getMeta() {
         return meta;
     }

@@ -13,6 +13,9 @@ import gov.cdc.izgateway.hub.repository.RepositoryFactory;
 import gov.cdc.izgateway.model.IJurisdiction;
 import gov.cdc.izgateway.service.IJurisdictionService;
 
+/**
+ * Gets jurisdictions from the jurisdiction repository and caches them. The cache refreshes every hour.
+ */
 @Service
 @Lazy(false)
 public class JurisdictionService implements IJurisdictionService {
@@ -23,6 +26,10 @@ public class JurisdictionService implements IJurisdictionService {
 	private IJurisdictionRepository<Jurisdiction> jurisdictionRepository;
 	long lastUpdate = 0;
 	
+	/**
+	 * Create the jurisdiction service and make it the singleton instance.
+	 * @param factory	The repository factory that supplies the jurisdiction repository
+	 */
 	public JurisdictionService(RepositoryFactory factory) {
 		this.jurisdictionRepository = factory.jurisdictionRepository();
 		setInstance(this);
@@ -32,6 +39,10 @@ public class JurisdictionService implements IJurisdictionService {
 		instance = jurisdictionService;
 	}
 
+	/**
+	 * Get the singleton instance of the jurisdiction service.
+	 * @return The jurisdiction service, or null if Spring has not created it yet
+	 */
 	public static IJurisdictionService getInstance() {
 		return instance;
 	}

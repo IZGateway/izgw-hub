@@ -32,6 +32,10 @@ import org.springframework.web.bind.annotation.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * REST endpoints under {@code /rest} that report destination status and status history,
+ * and reset circuit breakers.
+ */
 @RestController
 @CrossOrigin
 @RolesAllowed({Roles.USERS, Roles.ADMIN})
@@ -42,6 +46,14 @@ public class StatusController {
 	private final StatusCheckerService checkerService;
 	private final DestinationService destinationService;
 	private final RefreshQueueService refreshQueueService;
+    /**
+     * Make the controller and register it for access control. Spring supplies the arguments.
+     * @param endpointStatusService The service that keeps the endpoint status.
+     * @param checkerService The service that checks destinations.
+     * @param registry The access control registry.
+     * @param destinationService The service that gets the destinations.
+     * @param refreshQueueService The service that sends reset requests to the other instances.
+     */
     @Autowired
     public StatusController(EndpointStatusService endpointStatusService, StatusCheckerService checkerService, AccessControlRegistry registry, DestinationService destinationService, RefreshQueueService refreshQueueService) {
         this.endpointStatusService = endpointStatusService;
@@ -51,6 +63,13 @@ public class StatusController {
         registry.register(this);
     }
 
+    /**
+     * Get the status history of the destinations.
+     * @param include A comma or space separated list of destination IDs, or null for all destinations.
+     * @param status Only include entries with this status. A leading {@code !} excludes entries with the status. Null or empty includes all entries.
+     * @param count The number of history entries for each destination, from 1 to 4.
+     * @return The status history, keyed by destination ID.
+     */
     @Operation(summary = "Get the status history",
             description = "Returns the status history of the destinations")
     @ApiResponse(responseCode = "200", description = "Success",
@@ -115,6 +134,13 @@ public class StatusController {
         }
 	}
     
+    /**
+     * Get the status history of one destination.
+     * @param id The destination ID.
+     * @param count The number of history entries, from 1 to 4.
+     * @return The status history of the destination.
+     * @throws ResourceNotFoundException When the destination does not exist.
+     */
     @Operation(summary = "Get the status history for a destination",
             description = "Returns the status history of the destination")
     @ApiResponse(responseCode = "200", description = "Success",
@@ -155,6 +181,10 @@ public class StatusController {
 		endpointStatusService.removeById(id);
 	}
     
+    /**
+     * Refresh the destinations, check each destination now, and return the status.
+     * @return The status, keyed by destination ID.
+     */
     @GetMapping("/status")
     @Operation(summary = "Get the status for all destinations", 
     	description = "Check the status of all destinations")
@@ -172,6 +202,12 @@ public class StatusController {
 	}
 
 	
+	/**
+	 * Check one destination now and return its status.
+	 * @param id The destination ID.
+	 * @return The status of the destination.
+	 * @throws ResourceNotFoundException When the destination does not exist.
+	 */
 	@GetMapping("/status/{id}")
     @Operation(summary = "Get the status for the destination", 
 		description = "Check the status of the destination")
@@ -220,22 +256,35 @@ public class StatusController {
 			this.regions = regions;
 		}
 
-		/** @return The destination status, serialized at the top level */
+		/**
+		 * Get the destination status.
+		 * @return The destination status, serialized at the top level
+		 */
 		public IEndpointStatus getStatus() {
 			return status;
 		}
 
-		/** @return The outcome for each instance, keyed {@code region:hostname} */
+		/**
+		 * Get the outcome for each instance.
+		 * @return The outcome for each instance, keyed {@code region:hostname}
+		 */
 		public Map<String, String> getHosts() {
 			return hosts;
 		}
 
-		/** @return One status per region */
+		/**
+		 * Get the status of each region.
+		 * @return One status per region
+		 */
 		public Map<String, String> getRegions() {
 			return regions;
 		}
 	}
 
+	/**
+	 * Reset the circuit breakers of all destinations on this instance and on every other instance.
+	 * @return The status of each destination on this instance, and the outcome for each instance and region.
+	 */
 	@PostMapping("/reset")
 	@RolesAllowed(Roles.ADMIN)
 	@Operation(summary = "Reset the circuit breakers on every instance",
@@ -253,6 +302,12 @@ public class StatusController {
 		return new ResetAllResponse(l2, hosts, RefreshQueueService.summarizeByRegion(hosts));
 	}
 
+	/**
+	 * Reset the circuit breaker of one destination on this instance and on every other instance.
+	 * @param id The destination ID.
+	 * @return The status of the destination after the reset, and the outcome for each instance and region.
+	 * @throws ResourceNotFoundException When the destination does not exist or has no status.
+	 */
 	@PostMapping("/reset/{id}")
 	@Operation(summary = "Reset the circuit breaker for a single destination on every instance",
 			description = "Reset the circuit breaker for the specified destination on every Hub "

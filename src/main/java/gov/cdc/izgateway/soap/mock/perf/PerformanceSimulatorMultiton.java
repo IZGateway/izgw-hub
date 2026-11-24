@@ -8,12 +8,18 @@ public class PerformanceSimulatorMultiton {
     static final String PERFORMANCE_PROFILE_TYPICAL = "PERF";
     static final String PERFORMANCE_PROFILE_REPEATED_FAILURES = "PERF_REPEATED_FAILURES";
     static final String PERFORMANCE_PROFILE_REGIONAL_OUTAGE = "PERF_REGIONAL_OUTAGE";
+    /** The test case identifier that selects the mock IIS simulator. */
     public static final String PERFORMANCE_PROFILE_MOCK_IIS = "MOCK";
     
     private static final PerformanceSimulatorInterface performanceSimulatorDailyFailures = new PerformanceSimulatorDailyFailures();
     private static final PerformanceSimulatorInterface performanceSimulatorRepeatedFailures = new PerformanceSimulatorRepeatedFailures();
     private static final PerformanceSimulatorInterface performanceSimulatorRegionalOutage = new PerformanceSimulatorRegionalOutage();
     private static final PerformanceSimulatorInterface mockIis = new PerformanceSimulatorMockIIS();
+    /**
+     * Get the simulator for a performance profile.
+     * @param performanceProfileIdentifier The test case identifier of the profile.
+     * @return The simulator, or null if no simulator matches the identifier.
+     */
     public static PerformanceSimulatorInterface getInstance(String performanceProfileIdentifier) {
     	if (performanceProfileIdentifier == null) {
     		return null;

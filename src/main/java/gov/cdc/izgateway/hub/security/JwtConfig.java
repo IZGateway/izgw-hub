@@ -14,10 +14,20 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.ServiceConfigurationError;
 
+/**
+ * Configuration properties for API key (JWT) authentication, bound from the {@code jwt} prefix.
+ */
 @Configuration
 @ConfigurationProperties(prefix = "jwt")
 @Data
 public class JwtConfig {
+
+    /**
+     * Create the configuration. Spring sets the fields.
+     */
+    public JwtConfig() {
+        // Nothing to initialize.
+    }
 
     private String issuer;
     private String secretsManagerSecretName;
@@ -55,7 +65,8 @@ public class JwtConfig {
      *
      * Note: the previous @ConditionalOnProperty(havingValue="") was a no-op — Spring treats
      * an empty havingValue as "match any non-false value", so the bean was always created.
-     * @ConditionalOnExpression correctly evaluates the actual property value at refresh time.
+     * {@code @ConditionalOnExpression} correctly evaluates the actual property value at refresh time.
+     * @return The Secrets Manager client
      */
     @Bean
     @ConditionalOnExpression("'${jwt.test-secret:}'.isEmpty()")

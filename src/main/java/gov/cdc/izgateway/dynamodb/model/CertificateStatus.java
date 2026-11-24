@@ -42,10 +42,14 @@ public class CertificateStatus extends DynamoDbAudit implements DynamoDbEntity, 
      */
     private String commonName;
     
+    /** The serial number of the certificate. */
     private String certSerialNumber;
 
+    /** The time of the last check. */
     private Date lastCheckedTimeStamp;
+    /** The time of the next check. */
     private Date nextCheckTimeStamp;
+    /** The status from the last check. */
     private String lastCheckStatus;
 
     @Override

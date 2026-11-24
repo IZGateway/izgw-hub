@@ -68,6 +68,9 @@ public class RefreshQueueService {
      * @param eventId	The event ID of the refresh request
      * @param senderHost	The host sending the request
      * @param senderRegion	The region of the host sending the request
+     * @param jti	The ID of the API key credential to evict from the cache, or null
+     * @param refreshConfig	If true, refresh the configuration
+     * @param destId	The destination whose circuit breaker to reset, or null for every destination
      */
     public record RefreshRequest(boolean reset, String eventId, String senderHost, String senderRegion, String jti,
     		boolean refreshConfig, String destId) {
@@ -119,6 +122,7 @@ public class RefreshQueueService {
 		}
 
         /**
+         * Make the SQS message attributes for this refresh request.
          * @return A map of the attributes of the refresh request for use in SQS message attributes
          */
         public Map<String, MessageAttributeValue> toMap() {
@@ -140,7 +144,8 @@ public class RefreshQueueService {
         }
 
         /**
-         * @param queueUrl
+         * Build a SendMessageRequest with the attributes of this refresh request.
+         * @param queueUrl The URL of the SQS queue to send the message to
          * @return A SendMessageRequest with the attributes of this refresh request
          */
         public SendMessageRequest toSendMessageRequest(String queueUrl) {
@@ -181,6 +186,7 @@ public class RefreshQueueService {
         	return new RefreshResponse(host, region, eventId, status);
         }
         /**
+         * Make the SQS message attributes for this refresh response.
          * @return	 A map of the attributes of the refresh response for use in SQS message attributes
          */
         public Map<String, MessageAttributeValue> toMap() {
@@ -347,6 +353,7 @@ public class RefreshQueueService {
         return "izgw_" + host.replace(".", "-") + "_refresh-responses";
     }
     /**
+     * Get the AWS region of this instance.
      * @return The AWS region this instance runs in, or {@code "unknown"} when
      *         {@code AWS_REGION} is not set.
      */

@@ -16,10 +16,22 @@ import gov.cdc.izgateway.soap.message.SubmitSingleMessageRequest;
 import gov.cdc.izgateway.soap.mock.perf.PerformanceSimulatorInterface;
 import gov.cdc.izgateway.soap.mock.perf.PerformanceSimulatorMultiton;
 
+/**
+ * The base class for mock IIS endpoints.
+ * It checks credentials against the message headers and uses a performance simulator
+ * when the test case identifier selects one.
+ */
 public class MockControllerBase extends SoapControllerBase implements InitializingBean {
 	@Value("${iis.max-message-size:65536}")
 	private int iisMaxMesageSize;
 
+	/**
+	 * Make the controller and register it for access control.
+	 * @param mshService The service that gets the expected credentials for a message header.
+	 * @param messageNamespace The namespace of the SOAP messages.
+	 * @param wsdl The name of the WSDL file.
+	 * @param registry The access control registry, or null to not register the controller.
+	 */
 	protected MockControllerBase(IMessageHeaderService mshService, String messageNamespace, String wsdl,
 			AccessControlRegistry registry) {
 		super(mshService, messageNamespace, wsdl, null);

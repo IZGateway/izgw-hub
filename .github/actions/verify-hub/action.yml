@@ -106,6 +106,16 @@ runs:
         key: npm-globals-${{ hashFiles('.github/actions/verify-hub/action.yml') }}
         restore-keys: npm-globals-
 
+    # Known warnings that this repository cannot fix (IGDD-2974):
+    # - "npm warn deprecated" for uuid@3.4.0, uuid@8.3.2, har-validator@5.1.5
+    #   and @faker-js/faker@5.5.3. These packages are dependencies of newman
+    #   and its reporters, not of this repository.
+    # - The Node warnings "fs.F_OK is deprecated" and "util.isArray API is
+    #   deprecated" in the Newman steps. They come from the code of newman and
+    #   its dependencies.
+    # On 2026-11-20 the newest versions (newman 6.2.3, newman-reporter-junitfull
+    # 1.1.1, xunit-viewer 10.6.1) still have these dependencies. newman 6.2.3
+    # pins uuid 8.3.2. A newer newman release can remove the warnings.
     - name: Install Newman
       shell: bash
       run: |

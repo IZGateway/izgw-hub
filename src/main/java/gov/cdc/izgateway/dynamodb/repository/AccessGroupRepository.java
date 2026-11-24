@@ -51,9 +51,9 @@ public class AccessGroupRepository extends DynamoDbRepository<AccessGroup> imple
 	/**
 	 * Migrate access controls to access groups.
 	 * @param list	The list of access controls
-	 * @param when 
-	 * @param who 
-	 * @param environments 
+	 * @param when	The date to record as the creation date of the groups
+	 * @param who	The user to record as the creator of the groups
+	 * @param environments	The environments to create the groups in
 	 */
 	public void migrateAccessControls(List<? extends IAccessControl> list, String who, Date when, int[] environments) {
 		Map<String, AccessGroup> groupMap = new LinkedHashMap<>();

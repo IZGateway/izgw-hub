@@ -461,6 +461,12 @@ public class DEXStorageSender extends RestfulFileSender implements FileSender {
 		throw new MessageTooLargeFault(MessageTooLargeFault.Direction.REQUEST, freeDiskSpace, fileSize);
 	}
 	
+	/**
+	 * Compares two files by the time of the last change. Older files come first.
+	 * @param f1 The first file
+	 * @param f2 The second file
+	 * @return A negative number, zero, or a positive number if f1 is older than, the same age as, or newer than f2
+	 */
 	protected static int fileAgeComparator(File f1, File f2) {
 		return Long.compare(f1.lastModified(), f2.lastModified());
 	}

@@ -51,6 +51,13 @@ public class SourceAttackExceptionController {
         private String sender;
         @Schema(description = "Operator justification for the exception")
         private String reason;
+
+        /**
+         * Create the request. Jackson sets the fields from the request body.
+         */
+        public CreateExceptionRequest() {
+            // Nothing to initialize.
+        }
     }
 
     /**
@@ -64,6 +71,10 @@ public class SourceAttackExceptionController {
         this.accessControlService = accessControlService;
     }
 
+    /**
+     * List the source-attack lockout exceptions.
+     * @return All senders that are exempt from source-attack auto-lockout
+     */
     @Operation(summary = "List source-attack lockout exceptions",
             description = "Returns all senders currently exempted from source-attack auto-lockout")
     @ApiResponse(responseCode = "200", description = "The configured exceptions",
@@ -74,6 +85,11 @@ public class SourceAttackExceptionController {
         return accessControlService.listSourceAttackExceptions();
     }
 
+    /**
+     * Create a source-attack lockout exception.
+     * @param request	The sender and the reason for the exception
+     * @return The created exception
+     */
     @Operation(summary = "Create a source-attack lockout exception",
             description = "Exempts a sender from source-attack auto-lockout. Does not affect whether a "
                     + "flagged message is accepted or rejected.")
@@ -86,6 +102,10 @@ public class SourceAttackExceptionController {
         return accessControlService.createSourceAttackException(request.getSender(), request.getReason());
     }
 
+    /**
+     * Remove the source-attack lockout exception for a sender.
+     * @param sender	The sender's common name
+     */
     @Operation(summary = "Remove a source-attack lockout exception",
             description = "The sender will again be added to the deny list on the next detected source attack")
     @ApiResponse(responseCode = "204", description = "The exception was removed, or did not exist", content = @Content)

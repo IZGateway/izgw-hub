@@ -21,15 +21,22 @@ import gov.cdc.izgateway.model.DynamoDbEntity;
  * functional benefit.
  * </p>
  */
-@SuppressWarnings("serial")
+// javadoc reads the source without Lombok, so it does not see the constructor that
+// Lombok generates (@NoArgsConstructor and @AllArgsConstructor). It then reports "use of default constructor, which does
+// not provide a comment". The real constructor exists. This suppression hides only
+// missing-comment warnings in this class (IGDD-2974). Other javadoc checks still apply.
+@SuppressWarnings({"serial", "doclint:missing"})
 @Data
 @EqualsAndHashCode(callSuper=false)
 @AllArgsConstructor
 @NoArgsConstructor
 @DynamoDbBean
 public class SourceAttackExceptionRecord extends DynamoDbAudit implements DynamoDbEntity, Serializable {
+	/** The common name of the sender that is exempt from source-attack auto-lockout. */
 	private String sender;
+	/** The operator justification for the exception. */
 	private String reason;
+	/** The environment (destination type) of the record. */
 	private int environment;
 
 	@Override

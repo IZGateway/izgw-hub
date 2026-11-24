@@ -32,17 +32,28 @@ public class AccessControl extends DynamoDbAudit implements DynamoDbEntity, Seri
 	/**
 	 * Provides easy access to the Map class for Swagger documentation
 	 */
-	public static class Map extends MappableEntity<AccessControl>{}
+	public static class Map extends MappableEntity<AccessControl>{
+		/**
+		 * Create an empty map.
+		 */
+		public Map() {
+			// Nothing to initialize.
+		}
+	}
 
+    /** The access control category. */
     @Schema(description = "The access control category")
 	private String category;
 
+    /** The access control name. */
     @Schema(description = "The access control name")
     private String name;
 
+    /** The access control member. */
     @Schema(description = "The access control member")
     private String member;
     
+    /** The environment (destination type) of the access control. */
     @Schema(description = "The environment")
     private int destType;
     

@@ -22,6 +22,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 
+/**
+ * Gets message header mappings from the message header repository and caches them. The cache
+ * refreshes at a fixed period.
+ */
 @Service
 @Slf4j
 public class MessageHeaderService implements InitializingBean, IMessageHeaderService {
@@ -32,6 +36,10 @@ public class MessageHeaderService implements InitializingBean, IMessageHeaderSer
     @Value("${data.cache.timeToLive:300}")
     private int refreshPeriod;
     
+    /**
+     * Create the message header service.
+     * @param factory	The repository factory that supplies the message header repository
+     */
     public MessageHeaderService(RepositoryFactory factory) {
         this.messageHeaderRepository = factory.messageHeaderRepository();
     }

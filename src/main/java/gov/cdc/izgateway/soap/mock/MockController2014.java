@@ -11,11 +11,19 @@ import gov.cdc.izgateway.service.IMessageHeaderService;
 import gov.cdc.izgateway.soap.message.SoapMessage;
 import jakarta.annotation.security.RolesAllowed;
 
+/**
+ * The mock IIS endpoint at {@code /dev/IISService} that uses the CDC 2014 WSDL.
+ */
 @RestController
 @RolesAllowed({Roles.SOAP, Roles.ADMIN})
 @RequestMapping("/dev/IISService")
 @Lazy(false)
 public class MockController2014 extends MockControllerBase  {
+	/**
+	 * Make the controller and register it for access control.
+	 * @param mshService The service that gets the expected credentials for a message header.
+	 * @param registry The access control registry.
+	 */
 	@Autowired
 	public MockController2014(IMessageHeaderService mshService, AccessControlRegistry registry) {
 		super(mshService, SoapMessage.IIS2014_NS, "cdc-iis.wsdl", registry);

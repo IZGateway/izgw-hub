@@ -53,6 +53,13 @@ public class LogController extends LogControllerBase {
     @Configuration(proxyBeanMethods = false)
     public static class LogControllerConfig {
         /**
+         * Create the configuration. Spring creates this class.
+         */
+        public LogControllerConfig() {
+            // Nothing to initialize.
+        }
+
+        /**
          * The Object Mapper bean used to serialize log events
          * @return The Object Mapper bean used to serialize log events
          */

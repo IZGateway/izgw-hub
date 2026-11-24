@@ -27,7 +27,14 @@ public class EndpointStatus extends AbstractEndpointStatus implements DynamoDbEn
 	 * Map of statushistory entities reported by /statushistory API 
 	 * @author Audacious Inquiry
 	 */
-	public static class Map extends TreeMap<String, EndpointStatus>{}
+	public static class Map extends TreeMap<String, EndpointStatus>{
+		/**
+		 * Create an empty map.
+		 */
+		public Map() {
+			// Nothing to initialize.
+		}
+	}
 
 	/**
 	 * Create a new EndpointStatus entity.

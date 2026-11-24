@@ -45,23 +45,36 @@ public class Event extends DynamoDbAudit implements DynamoDbEntity, Serializable
 	/**
 	 * Provides easy access to the Map class for Swagger documentation
 	 */
-	public static class Map extends MappableEntity<Event>{}
+	public static class Map extends MappableEntity<Event>{
+		/**
+		 * Create an empty map.
+		 */
+		public Map() {
+			// Nothing to initialize.
+		}
+	}
 
+    /** The event name. */
     @Schema(description = "The event name")
     private String name;
 
+    /** The target of the event. */
     @Schema(description = "The target of the event")
     private String target;
     
+    /** The start timestamp. */
     @Schema(description = "Start timestamp")
     private Date started = getCreatedOn();
     
+    /** The completed timestamp. */
     @Schema(description = "Completed timestamp")
     private Date completed;
     
+    /** The system that reports the event. */
     @Schema(description = "System reporting the event")
     private String reportedBy = getCreatedBy();
     
+    /** The unique identifier of the event. */
     @Schema(description = "The Unique Id of the event")
     private String eventId = UUID.randomUUID().toString();
     

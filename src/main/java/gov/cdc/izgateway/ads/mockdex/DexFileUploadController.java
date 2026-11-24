@@ -94,7 +94,9 @@ public class DexFileUploadController {
      */
     @SuppressWarnings("serial")
     public static class AuthenticationException extends Exception {
+        /** The error object. */
         private final ErrorObject err;
+        /** The token that the error applies to. */
         private final String token;
         /**
          * Construct a new AuthenticationException

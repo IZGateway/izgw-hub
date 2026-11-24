@@ -75,16 +75,20 @@ import java.util.Date;
 })
 public interface Metadata extends Serializable {
 	
+	/** The metadata name of the flag that marks a file as a test file. */
 	public static final String TESTFILE = "meta_ext_testfile";
+	/** The date pattern for RFC 2616 (HTTP) dates in metadata. */
 	public static final String RFC2616_DATE_FORMAT_PATTERN = "EEE, dd MMM yyyy HH:mm:ss zzz";
+	/** The date format for RFC 2616 (HTTP) dates in metadata. */
 	public static final FastDateFormat RFC2616_DATE_FORMAT = FastDateFormat.getInstance(RFC2616_DATE_FORMAT_PATTERN);
+	/** The first DEX metadata source version. */
 	public static final String DEX_VERSION1 = "V2023-09-01";
+	/** The second DEX metadata source version. */
 	public static final String DEX_VERSION2 = "V2024-09-04";
 
-	/*
-	 * version	New field
-	 *	DEX required	Add field
-	 *  Allowed value: 2.0
+	/**
+	 * Gets the DEX metadata version (version). DEX requires this field.
+	 * @return "1.0" for {@link #DEX_VERSION1}, else "2.0"
 	 */
 	@JsonProperty("version")
 	default String getVersion() {
@@ -97,96 +101,161 @@ public interface Metadata extends Serializable {
 		}
 	}
 	
+    /**
+     * Gets the destination ID (meta_destination_id).
+     * @return the destination ID
+     */
     @JsonProperty("meta_destination_id")
     String getDestinationId();
+    /**
+     * Sets the destination ID (meta_destination_id).
+     * @param destId the destination ID
+     */
     void setDestinationId(String destId);
     
+    /**
+     * Gets the source of the data (meta_ext_source).
+     * @return the source
+     */
     @JsonProperty("meta_ext_source")
     String getExtSource();
+    /**
+     * Sets the source of the data (meta_ext_source).
+     * @param extSource the source
+     */
     void setExtSource(String extSource);
-    /*
-     * sender_id	New field
-     * DEX required	Add field
-     * Allowed value: IZGW
+    /**
+     * Gets the sender ID (sender_id). DEX requires this field. The value is IZGW.
+     * @return the sender ID, which is the same as the source
      */
     @JsonProperty("sender_id")
     default String getSenderId() {
     	return getExtSource();
     }
 
+    /**
+     * Gets the version of the specification (meta_ext_sourceversion).
+     * @return the source version
+     */
     @JsonProperty("meta_ext_sourceversion")
     String getExtSourceVersion();
+    /**
+     * Sets the version of the specification (meta_ext_sourceversion).
+     * @param extSourceVersion the source version
+     */
     void setExtSourceVersion(String extSourceVersion);
     
+    /**
+     * Gets the event, which selects the storage container (meta_ext_event).
+     * @return the event
+     */
     @JsonProperty("meta_ext_event")
     String getExtEvent();
+    /**
+     * Sets the event, which selects the storage container (meta_ext_event).
+     * @param extEvent the event
+     */
     void setExtEvent(String extEvent);
 
-    /*
-     * New with DEX2.0
-     * Values generally same as meta_ext_event, but allows other
-     * forms of submissions to be passed through to NDLP
+    /**
+     * Gets the event type (meta_ext_event_type). This field is new in DEX 2.0.
+     * The values are usually the same as meta_ext_event, but other submission
+     * types can also go through to NDLP.
+     * @return the event type
      */
     @JsonProperty("meta_ext_event_type")
     String getExtEventType();
+    /**
+     * Sets the event type (meta_ext_event_type).
+     * @param extEventTyype the event type
+     */
     void setExtEventType(String extEventTyype);
-    /*
-     * data_stream_id  – computed from meta_ext_event via the camelCase→kebab algorithm
-     * in MetadataBuilder.computeDataStreamId().  MetadataImpl overrides this to return
-     * a stored field first, allowing explicit values set during deserialization to win.
+    /**
+     * Gets the data stream ID (data_stream_id). The value comes from meta_ext_event
+     * through the camelCase to kebab-case conversion in
+     * {@code MetadataBuilder.computeDataStreamId()}. {@link MetadataImpl} overrides
+     * this method to return a stored value first, so a value set during deserialization wins.
+     * @return the data stream ID
      */
     @JsonProperty("data_stream_id")
     default String getDataStreamId() {
         return MetadataBuilder.computeDataStreamId(getExtEvent());
     }
     
+    /**
+     * Gets the submitting entity code (meta_ext_entity).
+     * @return the entity code
+     */
     @JsonProperty("meta_ext_entity")
     String getExtEntity();
+    /**
+     * Sets the submitting entity code (meta_ext_entity).
+     * @param extEntity the entity code
+     */
     void setExtEntity(String extEntity);
-    /* 
-     * data_producer_id	New field
-     * DEX required	Add field
-     * Allowed values: use existing values for meta_ext_entity
+    /**
+     * Gets the data producer ID (data_producer_id). DEX requires this field.
+     * @return the data producer ID, which is the same as meta_ext_entity
      */
     @JsonProperty("data_producer_id")
     default String getDataProducerId() {
     	return getExtEntity();
     }
-    /* jurisdiction	New field
-     * DEX required	Add field
-     * Allowed values: use existing values for meta_ext_entity
+    /**
+     * Gets the jurisdiction (jurisdiction). DEX requires this field.
+     * @return the jurisdiction, which is the same as meta_ext_entity
      */
     @JsonProperty("jurisdiction")
     default String getJurisdiction() {
     	return getExtEntity();
     }
     
+    /**
+     * Gets the name of the user or service account that submitted the file (meta_username).
+     * @return the user name
+     */
     @JsonProperty("meta_username")
     String getUsername();
+    /**
+     * Sets the name of the user or service account that submitted the file (meta_username).
+     * @param username the user name
+     */
     void setUsername(String username);
     
+    /**
+     * Gets the object key that identifies the source file (meta_ext_objectkey).
+     * @return the object key
+     */
     @JsonProperty("meta_ext_objectkey")
     String getExtObjectKey();
+    /**
+     * Sets the object key that identifies the source file (meta_ext_objectkey).
+     * @param extObjectKey the object key
+     */
     void setExtObjectKey(String extObjectKey);
     
+    /**
+     * Gets the name of the submitted file (meta_ext_filename).
+     * @return the file name
+     */
     @JsonProperty("meta_ext_filename")
     String getFilename();
+    /**
+     * Sets the name of the submitted file (meta_ext_filename).
+     * @param filename the file name
+     */
     void setFilename(String filename);
-    /*
-     * received_filename	New field
-     * DEX required	Add field
-     * Allowed value: original filename uploaded
+    /**
+     * Gets the received file name (received_filename). DEX requires this field.
+     * @return the original name of the uploaded file
      */
     @JsonProperty("received_filename")
     default String getReceivedFilename() {
     	return getFilename();
     }
-    /*
-     * data_stream_route	New field
-     * DEX required	Add field
-     * Allowed values:
-     * -	csv for CSV files
-     * -	other for all other file types
+    /**
+     * Gets the data stream route (data_stream_route). DEX requires this field.
+     * @return "csv" for CSV files, else "other"
      */
     @JsonProperty("data_stream_route") 
     default String getDataStreamRoute() {
@@ -197,59 +266,156 @@ public interface Metadata extends Serializable {
     	return "other";
     }
     
+    /**
+     * Gets the submission period of the file (meta_ext_submissionperiod).
+     * @return the submission period
+     */
     @JsonProperty("meta_ext_submissionperiod")
     String getPeriod();
+    /**
+     * Sets the submission period of the file (meta_ext_submissionperiod).
+     * @param period the submission period
+     */
     void setPeriod(String period);
     
+    /**
+     * Gets the metadata schema version (meta_schema_version).
+     * @return the schema version
+     */
     @JsonProperty("meta_schema_version")
     String getSchemaVersion();
+    /**
+     * Sets the metadata schema version (meta_schema_version).
+     * @param version the schema version
+     */
     void setSchemaVersion(String version);
     
+    /**
+     * Tells if the file is a test file (meta_ext_testfile).
+     * @return true if the file is a test file
+     */
     @JsonProperty(TESTFILE)
     boolean isTestFile();
+    /**
+     * Sets the flag that marks the file as a test file (meta_ext_testfile).
+     * @param testFile true if the file is a test file
+     */
     void setTestFile(boolean testFile);
     
     // Our additions to NDLP Specification
+    /**
+     * Gets the ID of the destination route (izgw_route_id).
+     * @return the route ID
+     */
     @JsonProperty("izgw_route_id")
     String getRouteId();
+    /**
+     * Sets the ID of the destination route (izgw_route_id).
+     * @param routeId the route ID
+     */
     void setRouteId(String routeId);
     
+    /**
+     * Gets the path of the file at the destination (izgw_path).
+     * @return the path
+     */
     @JsonProperty("izgw_path")
     String getPath();
+    /**
+     * Sets the path of the file at the destination (izgw_path).
+     * @param path the path
+     */
     void setPath(String path);
     
+    /**
+     * Gets the IP address of the submitter (izgw_ipaddress).
+     * @return the IP address
+     */
     @JsonProperty("izgw_ipaddress")
     String getIpAddress();
+    /**
+     * Sets the IP address of the submitter (izgw_ipaddress).
+     * @param ipAddress the IP address
+     */
     void setIpAddress(String ipAddress);
     
+    /**
+     * Gets the size of the file in bytes (izgw_filesize).
+     * @return the file size
+     */
     @JsonProperty("izgw_filesize")
     long getFileSize();
+    /**
+     * Sets the size of the file in bytes (izgw_filesize).
+     * @param fileSize the file size
+     */
     void setFileSize(long fileSize);
     
+    /**
+     * Gets the date and time of the upload (izgw_uploaded_timestamp).
+     * @return the upload date
+     */
     @JsonProperty("izgw_uploaded_timestamp")
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = RFC2616_DATE_FORMAT_PATTERN)
     Date getUploadedDate();
+    /**
+     * Sets the date and time of the upload (izgw_uploaded_timestamp).
+     * @param uploadedDate the upload date
+     */
     void setUploadedDate(Date uploadedDate);
     
+    /**
+     * Gets the file timestamp (meta_ext_file_timestamp). This is the same as the upload date.
+     * @return the file timestamp
+     */
     @JsonProperty("meta_ext_file_timestamp")
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = RFC2616_DATE_FORMAT_PATTERN)
     default Date getFileTimestamp() {
     	return getUploadedDate();
     }
     
+    /**
+     * Gets the IZ Gateway event ID of the request (izgw_event_id).
+     * @return the event ID
+     */
     @JsonProperty("izgw_event_id")
     String getEventId();
+    /**
+     * Sets the IZ Gateway event ID of the request (izgw_event_id).
+     * @param eventId the event ID
+     */
     void setEventId(String eventId);
     
+    /**
+     * Gets the submission status (izgw_submission_status).
+     * @return the submission status
+     */
     @JsonProperty("izgw_submission_status")
     String getSubmissionStatus();
+    /**
+     * Sets the submission status (izgw_submission_status).
+     * @param status the submission status
+     */
     void setSubmissionStatus(String status);
     
+    /**
+     * Gets the submission location (izgw_submission_location).
+     * @return the submission location
+     */
     @JsonProperty("izgw_submission_location")
     String getSubmissionLocation();
+    /**
+     * Sets the submission location (izgw_submission_location).
+     * @param location the submission location
+     */
     void setSubmissionLocation(String location);
 
 
+    /**
+     * Compares the metadata fields of this object with the fields of another object.
+     * @param o the object to compare
+     * @return true if o is a Metadata object with the same field values
+     */
     default boolean isEqual(Object o) {
         if (!(o instanceof Metadata)) {
             return false;
@@ -275,6 +441,12 @@ public interface Metadata extends Serializable {
             equals(this.getEventId(), that.getEventId());
     }
     
+    /**
+     * Compares two objects for equality. Two null values are equal.
+     * @param a the first object
+     * @param b the second object
+     * @return true if the objects are equal
+     */
     default boolean equals(Object a, Object b) {
         if (a == b) {
             return true;

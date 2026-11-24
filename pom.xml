@@ -16,6 +16,9 @@
 	     automation bumps <version>. -->
 	<name>IZ Gateway Hub ${project.version}</name>
 	<description>IZ Gateway Hub</description>
+	<!-- Without this element, the project inherits the URL of izgw-bom and
+	     the site uses https://github.com/IZGateway/izgw-bom/izgw-hub (IGDD-2974). -->
+	<url>https://github.com/IZGateway/izgw-hub</url>
 	<properties>
 		<maven.build.timestamp.format>yyyyMMddHHmm</maven.build.timestamp.format>
 		<timestamp>${maven.build.timestamp}</timestamp>
@@ -29,12 +32,6 @@
 		<project.java.package>${project.groupId}</project.java.package>
 		<!-- JaCoCo Configuration -->
 		<jacoco.version>0.8.13</jacoco.version>
-		<jacoco.jar>${user.home}/.m2/repository/org/jacoco/org.jacoco.agent/${jacoco.version}/org.jacoco.agent-${jacoco.version}.jar</jacoco.jar>
-		<surefire.argLine>
-			-Xmx2048m
-			--add-opens=java.base/java.lang.reflect=ALL-UNNAMED
-			--add-opens=java.base/java.net=ALL-UNNAMED
-		</surefire.argLine>
 	</properties>
     <dependencyManagement>
         <dependencies>
@@ -268,10 +265,6 @@
 			<artifactId>bctls-fips</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>org.codehaus.janino</groupId>
-			<artifactId>janino</artifactId>
-		</dependency>
-		<dependency>
 			<groupId>org.codehaus.woodstox</groupId>
 			<artifactId>stax2-api</artifactId>
 		</dependency>
@@ -483,7 +476,17 @@
 					<useSystemClassLoader>true</useSystemClassLoader>
 					<reuseForks>true</reuseForks>
 					<testFailureIgnore>false</testFailureIgnore>
-					<argLine>--add-opens=java.base/java.lang.reflect=ALL-UNNAMED
+					<!-- IGDD-2974:
+					     @{argLine} keeps the JaCoCo agent that jacoco:prepare-agent
+					     puts in the argLine property. Before, a plain argLine
+					     replaced it, and JaCoCo wrote no coverage data.
+					     The Mockito agent is loaded at the start of the test JVM.
+					     Before, Mockito attached itself while the tests ran. JDK 21
+					     warns about this, and a future JDK will block it.
+					     ${org.mockito:mockito-core:jar} is set by the "properties"
+					     goal of maven-dependency-plugin. -->
+					<argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}
+						--add-opens=java.base/java.lang.reflect=ALL-UNNAMED
 						--add-opens=java.base/java.net=ALL-UNNAMED</argLine>
 					<includes>
 						<include>**/*Tests.java</include>
@@ -493,6 +496,16 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-dependency-plugin</artifactId>
+				<executions>
+					<!-- Sets the property ${org.mockito:mockito-core:jar} that the
+					     surefire argLine uses (IGDD-2974). -->
+					<execution>
+						<id>dependency-properties</id>
+						<goals>
+							<goal>properties</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -591,9 +604,11 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-javadoc-plugin</artifactId>
 				<version>3.12.0</version>
+				<!-- IGDD-2974: -Xdoclint:none was removed. It hid all javadoc
+				     warnings (more than 400). They are fixed, so a new gap now
+				     shows in the build log. -->
 				<configuration>
 					<failOnError>false</failOnError>
-					<additionalJOption>-Xdoclint:none</additionalJOption>
 				</configuration>
 			</plugin>
 			<plugin>
@@ -606,11 +621,34 @@
 							<report>index</report>
 							<report>dependencies</report>
 							<report>dependency-info</report>
+							<!-- Known warning (IGDD-2974): this report prints "Unable to
+							     create Maven project for
+							     org.apache.pulsar:tiered-storage-*:jar" three times.
+							     Spring Boot imports the Pulsar BOM. That BOM lists the
+							     tiered-storage modules, but Pulsar did not publish them
+							     to Maven Central after 4.0.14. The hub does not use
+							     Pulsar. The report is kept. -->
 							<report>dependency-management</report>
 							<report>distribution-management</report>
 							<report>licenses</report>
 							<report>scm</report>
 							<report>summary</report>
+						</reports>
+					</reportSet>
+				</reportSets>
+			</plugin>
+			<plugin>
+				<!-- IGDD-2974: the site reports link each finding to its line
+				     in the source code. Without JXR, those links had no target,
+				     and the site printed "Unable to locate Test Source XRef". -->
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jxr-plugin</artifactId>
+				<version>3.6.0</version>
+				<reportSets>
+					<reportSet>
+						<reports>
+							<report>jxr</report>
+							<report>test-jxr</report>
 						</reports>
 					</reportSet>
 				</reportSets>

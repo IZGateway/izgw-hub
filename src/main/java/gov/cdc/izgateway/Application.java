@@ -132,6 +132,13 @@ public class Application implements WebMvcConfigurer {
 	private static SecureRandom secureRandom;
 
 	/**
+	 * Create the application. Spring creates this class and sets the fields.
+	 */
+	public Application() {
+		// Nothing to initialize.
+	}
+
+	/**
 	 * Set whether to abort application startup if no IIS connections are available.
 	 * @param abort	true to abort startup if no IIS connections are available, false to continue startup.
 	 */
@@ -499,6 +506,10 @@ public class Application implements WebMvcConfigurer {
         return factory;
 	}
 
+	/**
+	 * Determine if the user of the current request is an administrator.
+	 * @return true if the request has the admin role and does not have the not-admin header role
+	 */
 	public static boolean isAdministrator() {
 	    return RequestContext.getRoles().contains(Roles.ADMIN) && !RequestContext.getRoles().contains(Roles.NOT_ADMIN_HEADER);
 	}

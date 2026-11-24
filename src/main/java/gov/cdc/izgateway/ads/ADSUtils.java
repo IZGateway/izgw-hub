@@ -192,9 +192,9 @@ public class ADSUtils {
      * from multiple regions or zones.  If more than two egress addresses are used, the DB
      * might need to be updated to support longer password strings.
      * 
-     * @param password
+     * @param password A comma-separated list of SAS tokens
      * @return	The appropriate token to use for an Azure blob store.
-     * @throws SecurityFault 
+     * @throws SecurityFault If no token matches the egress IP address of this system
      */
 	public static String getAzureToken(String password) throws SecurityFault {
 		String[] tokens = password.split(",");
@@ -263,6 +263,7 @@ public class ADSUtils {
 	}
     
     /**
+     * Gets the egress IP address for this instance.
      * @return The egress IP address for this instance.
      */
     public static String getEgressPoint() {

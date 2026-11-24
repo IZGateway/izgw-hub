@@ -22,8 +22,11 @@ import gov.cdc.izgateway.model.IAccessControl;
 @NoArgsConstructor
 @DynamoDbBean
 public class DenyListRecord extends DynamoDbAudit implements DynamoDbEntity, Serializable, IDenyListRecord {
+    /** The principal name of the user that is denied access. */
     private String principal;
+    /** The environment (destination type) of the record. */
     private int environment;
+    /** The reason that the user is denied access. */
     private String reason;
 	@Override
 	public String getPrimaryId() {

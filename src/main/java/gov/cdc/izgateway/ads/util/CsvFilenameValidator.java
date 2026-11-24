@@ -18,7 +18,6 @@ import org.apache.commons.lang3.Strings;
  * "Annual", detected case-insensitively at any position) plus a report-type abbreviation.
  * For example: {@code MonthlyFlu_XXA_2026FEB.csv}, {@code riQuarterlyAggregate_XXA_2025Q4.csv},
  * {@code AnnualRI_XXA_2026.csv}
- * </p>
  *
  * <p>The frequency keyword in the filename determines whether the submission is monthly,
  * quarterly, or annual — no external period-type lookup is performed.  Monthly is the
@@ -62,10 +61,15 @@ public final class CsvFilenameValidator {
         Pattern.CASE_INSENSITIVE
     );
 
-    // Public: also the canonical source for MetadataBuilder's frequency constants,
-    // so the CSV and ZIP/period-validation paths share one definition of each string.
+    /**
+     * The frequency keyword for quarterly files. This constant is public because
+     * MetadataBuilder also uses it, so the CSV and ZIP/period-validation paths share
+     * one definition of each string.
+     */
     public static final String FREQ_QUARTERLY = "Quarterly";
+    /** The frequency keyword for monthly files. MetadataBuilder also uses this constant. */
     public static final String FREQ_MONTHLY   = "Monthly";
+    /** The frequency keyword for annual files. MetadataBuilder also uses this constant. */
     public static final String FREQ_ANNUAL    = "Annual";
 
     private CsvFilenameValidator() {
