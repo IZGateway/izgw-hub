@@ -13,14 +13,31 @@ import gov.cdc.izgateway.soap.message.HasCredentials;
 import gov.cdc.izgateway.soap.message.HasFacilityID;
 import gov.cdc.izgateway.soap.message.HasHL7Message;
 
+/**
+ * Checks the credentials in a mock IIS request against the credentials of the matching message header.
+ */
 public class MockCredentialValidator {
 	private MockCredentialValidator() {}
+	/**
+	 * Run the failure action if the expected value is not empty and the actual value is different.
+	 * @param expected The expected value. An empty value matches all values.
+	 * @param actual The actual value.
+	 * @param failure The action to run when the values do not match.
+	 */
 	public static void validateCredential(String expected, String actual, Runnable failure) {
 		if (!StringUtils.isEmpty(expected) && !expected.equals(actual)) {
 			failure.run();
 		}
 	}
 
+	/**
+	 * Check the username, password and facility ID of a request against the message header
+	 * for MSH-3 and MSH-4 of the HL7 message.
+	 * The check passes when no message header matches or the request has no HL7 message.
+	 * @param mshService The service that gets the message headers, or null to skip the check.
+	 * @param s The request.
+	 * @throws SecurityFault When one or more credentials do not match.
+	 */
 	public static void checkCredentials(IMessageHeaderService mshService, HasCredentials s) throws SecurityFault {
 		String[] mshParts = null;
 		if (mshService == null) {

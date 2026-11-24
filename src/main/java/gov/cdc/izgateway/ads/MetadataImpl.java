@@ -23,25 +23,45 @@ import lombok.extern.slf4j.Slf4j;
 @Data
 public class MetadataImpl implements Metadata {
 	private static final long serialVersionUID = 1L;
+	/** The ID of the destination route (izgw_route_id). */
 	private String routeId;
+    /** The submission period of the file (meta_ext_submissionperiod). */
     private String period;
+    /** The source of the data (meta_ext_source). */
     private String extSource;
+    /** The version of the specification (meta_ext_sourceversion). */
     private String extSourceVersion;
+    /** The event, which selects the storage container (meta_ext_event). */
     private String extEvent;
+    /** The event type (meta_ext_event_type). */
     private String extEventType;
+    /** The submitting entity code (meta_ext_entity). */
     private String extEntity;
+    /** The name of the user or service account that submitted the file (meta_username). */
     private String username;
+    /** The name of the submitted file (meta_ext_filename). */
     private String filename;
+    /** The object key that identifies the source file (meta_ext_objectkey). */
     private String extObjectKey;
+    /** The IP address of the submitter (izgw_ipaddress). */
     private String ipAddress;
+    /** The path of the file at the destination (izgw_path). */
     private String path;
+    /** The metadata schema version (meta_schema_version). */
     private String schemaVersion;
+    /** The size of the file in bytes (izgw_filesize). */
     private long fileSize;
+    /** The date and time of the upload (izgw_uploaded_timestamp). */
     private Date uploadedDate;
+	/** The destination ID (meta_destination_id). */
 	private String destinationId;
+	/** The IZ Gateway event ID of the request (izgw_event_id). */
 	private String eventId;
+	/** The submission status (izgw_submission_status). */
 	private String submissionStatus;
+	/** The submission location (izgw_submission_location). */
 	private String submissionLocation;
+	/** True if the file is a test file (meta_ext_testfile). */
 	private boolean isTestFile;
 	/** Computed data stream ID stored at report-type resolution time. Null until set. */
 	private String dataStreamId;

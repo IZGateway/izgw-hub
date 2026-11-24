@@ -39,8 +39,16 @@ public class MessageHeader extends DynamoDbAudit implements DynamoDbEntity, Seri
 			@StringToClassMapItem(key="MDIIS", value=Destination.class),
 			@StringToClassMapItem(key="WIR", value=Destination.class)
 		})
-	public static class Map extends MappableEntity<MessageHeader>{}
+	public static class Map extends MappableEntity<MessageHeader>{
+		/**
+		 * Create an empty map.
+		 */
+		public Map() {
+			// Nothing to initialize.
+		}
+	}
 	
+    /** The message header (MSH-3/4) value for this source. */
     @Schema(description="The messsage header to use for this source")
     private String msh;
 	
@@ -53,21 +61,27 @@ public class MessageHeader extends DynamoDbAudit implements DynamoDbEntity, Seri
 		return msh;
 	}
     
+    /** The destination identifier for this MSH-3/4 value. */
     @Schema(description="The destination identifier associated with this MSH-3/4 value")
     private String destId;
 
+    /** The jurisdiction for this MSH-3/4 value. */
     @Schema(description="The jurisdiction associated with this MSH-3/4 value")
     private String iis;
     
+    /** The type of sender that uses this MSH-3/4 value. */
     @Schema(description="The type of sender using this MSH-3/4 value")
     private String sourceType;
 
+    /** The user name that the dev endpoint requires when it mocks this endpoint. Used in testing. */
     @Schema(description="The username required by the dev endpoint when mocking this endpoint", hidden=true)
     private String username;  // Not a real user name, used in testing
     
+    /** The password that the dev endpoint requires when it mocks this endpoint. Used in testing. */
     @Schema(description="The password required by the dev endpoint when mocking this endpoint", hidden=true)
     private String password;  // Not a secret password, used in testing
     
+    /** The facility identifier for this source. */
     @Schema(description="The facility identifier for this source", hidden=true)
     private String facilityId;
 

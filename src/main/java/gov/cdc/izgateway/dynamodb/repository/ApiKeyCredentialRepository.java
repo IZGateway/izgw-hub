@@ -24,6 +24,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+/**
+ * DynamoDB repository for {@link ApiKeyCredential} records.
+ */
 @Slf4j
 public class ApiKeyCredentialRepository extends DynamoDbRepository<ApiKeyCredential> {
 
@@ -62,14 +65,25 @@ public class ApiKeyCredentialRepository extends DynamoDbRepository<ApiKeyCredent
     private final DynamoDbClient ddbClient;
     private final String tableName;
 
-    // Not a Spring @Component: the DynamoDbRepositoryFactory constructs this directly, so the
-    // parameters are intentionally not @Autowired (Spring never invokes this constructor).
+    /**
+     * Create the repository. This is not a Spring {@code @Component}: the DynamoDbRepositoryFactory
+     * constructs it directly, so the parameters are intentionally not {@code @Autowired} (Spring
+     * never invokes this constructor).
+     * @param client	The DynamoDB enhanced client
+     * @param ddbClient	The low-level DynamoDB client, used for raw queries and conditional updates
+     * @param tableName	The name of the DynamoDB table
+     */
     public ApiKeyCredentialRepository(DynamoDbEnhancedClient client, DynamoDbClient ddbClient, String tableName) {
         super(ApiKeyCredential.class, client, tableName);
         this.ddbClient = ddbClient;
         this.tableName = tableName;
     }
 
+    /**
+     * Find a credential by its JWT identifier.
+     * @param jti	The JWT identifier
+     * @return The credential, or an empty Optional if it does not exist
+     */
     public Optional<ApiKeyCredential> findByJti(String jti) {
         return Optional.ofNullable(find(jti));
     }

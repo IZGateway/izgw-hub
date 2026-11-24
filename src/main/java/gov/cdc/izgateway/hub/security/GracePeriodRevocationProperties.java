@@ -19,6 +19,13 @@ import java.time.Duration;
 @Data
 public class GracePeriodRevocationProperties {
 
+    /**
+     * Create the configuration. Spring sets the fields.
+     */
+    public GracePeriodRevocationProperties() {
+        // Nothing to initialize.
+    }
+
     /** Whether the grace-period revocation job is enabled. Disabled by default. */
     private boolean enabled = false;
 

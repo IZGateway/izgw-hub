@@ -10,7 +10,19 @@ import org.apache.commons.lang3.StringUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.NullNode;
 
+/**
+ * The base class for repositories that send a query to Elasticsearch.
+ * The query comes from a template resource that contains {@code ${name}} placeholders.
+ */
 public class ElasticRepository {
+	/**
+	 * Get a node from a JSON tree with a dotted path, for example {@code hits.hits.1._source}.
+	 * A numeric part selects an array element. The index starts at 1.
+	 * @param key The dotted path.
+	 * @param node The root node.
+	 * @return The node at the path.
+	 * @throws IllegalArgumentException When a part of the path is missing or null.
+	 */
 	protected static JsonNode getNode(String key, JsonNode node) {
 		String[] parts = key.split("\\.");
 		for (String k: parts) {
@@ -29,8 +41,15 @@ public class ElasticRepository {
 	}
 
 	private String[] requestTemplate = null;
+	/** The connection settings for Elasticsearch. */
 	protected final ElasticConfiguration config;
 	
+	/**
+	 * Make a repository and load its query template from a class path resource.
+	 * @param config The connection settings for Elasticsearch.
+	 * @param query The class path resource name of the query template.
+	 * @throws ServiceConfigurationError When the resource cannot be read.
+	 */
 	protected ElasticRepository(ElasticConfiguration config, String query) {
 		this.config = config;
 		String template;
@@ -90,6 +109,11 @@ public class ElasticRepository {
 		requestTemplate = parts.toArray(new String[0]);
 	}
 
+	/**
+	 * Get the parsed query template. The parts alternate between literal text and
+	 * placeholder names, and the first part is literal text.
+	 * @return The template parts.
+	 */
 	public String[] getRequestTemplate() {
 		return requestTemplate;
 	}

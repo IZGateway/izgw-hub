@@ -79,8 +79,11 @@ import gov.cdc.izgateway.common.HttpStatusException;
 public class ADSController implements ADSChecker {
 	private static final String UNKNOWN = "UNKNOWN";
     private static final List<String> METADATA_FIELDNAMES = getMetadataFieldNames();
+    /** The IZ Gateway name of DEX version 1.0. */
     public static final String IZGW_ADS_VERSION1 = "DEX1.0";
+    /** The IZ Gateway name of DEX version 2.0. */
     public static final String IZGW_ADS_VERSION2 = "DEX2.0";
+    /** The list of the supported DEX versions. */
     public static final List<String> DEX_VERSIONS = Collections.unmodifiableList(Arrays.asList(IZGW_ADS_VERSION1, IZGW_ADS_VERSION2)); 
     
 	/**
@@ -88,7 +91,7 @@ public class ADSController implements ADSChecker {
 	 * 
 	 * @author Audacious Inquiry
 	 *
-	 * @param <T>
+	 * @param <T> The type of the result of the task
 	 */
 	public interface Execute<T> {
 		/**
@@ -102,6 +105,9 @@ public class ADSController implements ADSChecker {
 		T apply(IDestination r, FileSender s) throws Fault;
 	}
 
+    /**
+     * The configuration and services that the ADS controller uses.
+     */
     @Configuration
     @Data
     public static class ADSControllerConfiguration {
@@ -111,6 +117,14 @@ public class ADSController implements ADSChecker {
         private final DEXStorageSender dexFileSender;
 		private final AzureBlobStorageSender azureFileSender;
 
+		/**
+		 * Creates the controller configuration.
+		 * @param accessControls The access control service
+		 * @param dests The destination service
+		 * @param dexFileSender The sender for DEX destinations
+		 * @param azureFileSender The sender for Azure destinations
+		 * @param app The application properties that supply the server mode
+		 */
 		public ADSControllerConfiguration(IAccessControlService accessControls, IDestinationService dests,
 				DEXStorageSender dexFileSender, AzureBlobStorageSender azureFileSender, AppProperties app) {
 			mode = app.getServerMode();
@@ -123,6 +137,11 @@ public class ADSController implements ADSChecker {
 
 	private final ADSControllerConfiguration config;
 
+	/**
+	 * Creates the ADS controller and registers it with the access control registry.
+	 * @param config The controller configuration
+	 * @param registry The access control registry
+	 */
 	@Autowired
 	public ADSController(ADSControllerConfiguration config, AccessControlRegistry registry) {
 		this.config = config;
@@ -133,10 +152,10 @@ public class ADSController implements ADSChecker {
 	/**
 	 * Get the status of the destination.
 	 * 
-	 * @param xMessageId
-	 * @param xRequestId
-	 * @param xCorrelationId
-	 * @param destinationId
+	 * @param xMessageId The X-Message-ID header, or null
+	 * @param xRequestId The X-Request-ID header, or null
+	 * @param xCorrelationId The X-Correlation-ID header, or null
+	 * @param destinationId The ID of the destination
 	 * @return OK if the service is available, or throws an exception if it is not
 	 * @throws Fault If a generic fault occurs
 	 * @throws UnknownDestinationFault    If the destination is not known.
@@ -168,6 +187,15 @@ public class ADSController implements ADSChecker {
 		return logCall(meta, (IDestination r, FileSender f) -> f.getStatus(r));
 	}
 
+	/**
+	 * Clears the cache of OAuth tokens for the destination.
+	 * 
+	 * @param xMessageId The X-Message-ID header, or null
+	 * @param xRequestId The X-Request-ID header, or null
+	 * @param xCorrelationId The X-Correlation-ID header, or null
+	 * @param destinationId The ID of the destination
+	 * @throws Fault If the destination is not known
+	 */
 	@DeleteMapping("/ads/{destinationId}/clearTokens")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	@Operation(summary = "Reset token cache for the specified destination.", description = "Clears the cache of OAuth tokens for the destination.")
@@ -187,6 +215,17 @@ public class ADSController implements ADSChecker {
 		return getDestinationStatus(null, null, null, dest);
 	}
 	
+	/**
+	 * Gets the status of an upload.
+	 * 
+	 * @param xMessageId The X-Message-ID header, or null
+	 * @param xRequestId The X-Request-ID header, or null
+	 * @param xCorrelationId The X-Correlation-ID header, or null
+	 * @param destinationId The ID of the destination
+	 * @param tguid The ID of the upload
+	 * @return The upload status from the destination
+	 * @throws Fault If an error occurs
+	 */
     @GetMapping(value = "/ads/{destinationId}/info/{tguid}", produces = { "application/json" }) 
 	@Operation(summary = "Get the status of the specified upload", description = "Gets the upload status for the specified request")
     @ApiResponse(responseCode = "200", description = "Success", content = @Content)
@@ -225,6 +264,20 @@ public class ADSController implements ADSChecker {
 		return props;
 	}
 
+	/**
+	 * Gets a file from the destination.
+	 * 
+	 * @param destinationId The ID of the destination
+	 * @param xMessageId The X-Message-ID header, or null
+	 * @param xRequestId The X-Request-ID header, or null
+	 * @param xCorrelationId The X-Correlation-ID header, or null
+	 * @param facilityId The submitting facility (jurisdiction)
+	 * @param reportType The type of report
+	 * @param period The submission period
+	 * @param filename The name of the file
+	 * @return The file content and its metadata headers
+	 * @throws Fault If an error occurs
+	 */
 	@GetMapping(value = "/ads/{destinationId}", produces = { "text/plain", "text/csv",
 			"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel",
 			"application/x-zip-compressed" })
@@ -256,6 +309,21 @@ public class ADSController implements ADSChecker {
 		return new ResponseEntity<>(new InputStreamResource(result.getLeft(), meta.getPath()), headers, HttpStatus.OK);
 	}
 
+	/**
+	 * Deletes a file at the destination.
+	 * 
+	 * @param xMessageId The X-Message-ID header, or null
+	 * @param xRequestId The X-Request-ID header, or null
+	 * @param xCorrelationId The X-Correlation-ID header, or null
+	 * @param destinationId The ID of the destination
+	 * @param facilityId The submitting facility (jurisdiction)
+	 * @param reportType The type of report
+	 * @param period The submission period
+	 * @param filename The name of the file
+	 * @param reason The reason for the delete. The hub writes it to the log
+	 * @return The result of the delete operation
+	 * @throws Fault If an error occurs
+	 */
     @DeleteMapping(value = "/ads/{destinationId}")
 	@Operation(hidden = true)
 	public ResponseEntity<String> deleteFile(@RequestHeader(name = "X-Message-ID", required = false) String xMessageId,
@@ -393,6 +461,10 @@ public class ADSController implements ADSChecker {
 	/** Saved submission form */
 	private static String submissionForm = null;
 
+	/**
+	 * Gets the HTML form for browser uploads.
+	 * @return The HTML form
+	 */
 	@GetMapping(value = "/submitFile", produces = MediaType.TEXT_HTML_VALUE)
 	@Operation(summary = "Display the form for browser based uploads")
 	public static String getSubmissionForm() {
@@ -422,6 +494,22 @@ public class ADSController implements ADSChecker {
 		}
 	}
 
+	/**
+	 * Uploads an ADS file and its metadata to the destination.
+	 * 
+	 * @param destinationId The ID of the destination
+	 * @param xMessageId The X-Message-ID header, or null
+	 * @param xRequestId The X-Request-ID header, or null
+	 * @param xCorrelationId The X-Correlation-ID header, or null
+	 * @param facilityId The submitting jurisdiction
+	 * @param reportType The type of report
+	 * @param file The file to upload
+	 * @param period The submission period
+	 * @param filename The name of the file, or null to use the name of the uploaded file
+	 * @param force True to skip validation
+	 * @return The metadata of the submission
+	 * @throws Fault If an error occurs
+	 */
 	@PostMapping(value = "/ads/{destinationId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	@Operation(summary = "Upload an ADS submission and metadata", description = "This is the primary IZGW Upload API endpoint. It accepts a file upload for "
 			+ "the given period containing either a Routine Vaccination Report in CSV format, "
@@ -689,6 +777,13 @@ public class ADSController implements ADSChecker {
 		return err.getRetryStrategy().getStatus();
 	}
 
+	/**
+	 * Sends a file to the destination in the metadata.
+	 * @param meta The metadata of the file
+	 * @param data The file data
+	 * @return The metadata of the file
+	 * @throws Fault If an error occurs
+	 */
 	public Metadata submitFile(MetadataImpl meta, DataHandler data) throws Fault {
 		logCall(meta, (IDestination r, FileSender s) -> s.sendFile(r, data, meta));
 		return meta;

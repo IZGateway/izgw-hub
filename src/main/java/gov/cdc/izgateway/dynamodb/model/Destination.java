@@ -96,7 +96,7 @@ public class Destination extends AbstractDestination implements DynamoDbEntity, 
 	/**
 	 * Set the destination id. A setter must be available
 	 * for DynamoDb to operate on this field. 
-	 * @param id
+	 * @param id	The destination identifier
 	 */
 	public void setDestId(String id) {
 		getId().setDestId(id);

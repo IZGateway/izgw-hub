@@ -25,11 +25,17 @@ import gov.cdc.izgateway.model.DynamoDbEntity;
 @NoArgsConstructor
 @DynamoDbBean
 public class AllowedUser extends DynamoDbAudit implements DynamoDbEntity, Serializable, IAllowedUser {
+    /** The identifier of the destination that the user can send to. */
     private String destinationId;
+    /** The environment (destination type) of the record. */
     private int environment;
+    /** The organization of the user. */
     private String organization;
+    /** The principal name of the user. */
     private String principal;
+    /** True if the record is enabled. */
     private boolean enabled;
+    /** The date that the record was validated. */
     private Date validatedOn;
     /**
      * Copy constructor

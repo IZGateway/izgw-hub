@@ -20,12 +20,26 @@ import gov.cdc.izgateway.soap.message.SubmitSingleMessageResponse;
 import gov.cdc.izgateway.soap.net.MessageSender;
 import jakarta.annotation.security.RolesAllowed;
 
+/**
+ * Handles SOAP requests at {@code /IISHubService} that use the IZ Gateway Hub WSDL.
+ */
 @RestController
 @RolesAllowed({Roles.SOAP, Roles.ADMIN})
 @RequestMapping("/IISHubService")
 @Lazy(false)
 public class HubWSDLController extends BaseGatewayController {
 
+	/**
+	 * Create the controller. Spring supplies the parameters.
+	 * @param mshService	The service that maps message header values to sources
+	 * @param destinationService	The destination service used to obtain routing information
+	 * @param endpointStatusService	The service that gets and stores endpoint status
+	 * @param messageSender	The sender for outbound messages
+	 * @param adsController	The ADS controller, used for DEX status checks
+	 * @param registry	The access control registry that this controller registers with
+	 * @param accessControlService	The service that checks access to destinations
+	 * @param hubConfig	The sender configuration that supplies the maximum message size
+	 */
 	@Autowired
 	public HubWSDLController(
 		IMessageHeaderService mshService,

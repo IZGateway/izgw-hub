@@ -37,6 +37,13 @@ import java.util.HashMap;
  */
 @Slf4j
 public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterface {
+	/**
+	 * Make a mock IIS simulator.
+	 */
+	public PerformanceSimulatorMockIIS() {
+		// Nothing to initialize. The test data is loaded in static fields.
+	}
+
 	/** Test data is loaded from a text file containing one RSP message per patient per file line */ 
 	private static final Map<String, String> dataById = new LinkedHashMap<>();
 	private static final Map<String, List<String>> immunizationData = initMock();
@@ -173,6 +180,12 @@ public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterfac
 		return r;
 	}
 	
+	/**
+	 * Make the HL7 response to an HL7 request message.
+	 * The response is an RSP message with the matching test patients, or an ACK message that reports an error.
+	 * @param hl7RequestMessage The HL7 request message.
+	 * @return The HL7 response message.
+	 */
 	public String getResponse(String hl7RequestMessage) {
 		if (!RequestPayloadType.QBP.equals(getRequestPayloadType(hl7RequestMessage))) {
 			// Return a NAK to the message reporting the error.

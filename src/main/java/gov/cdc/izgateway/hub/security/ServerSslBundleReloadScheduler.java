@@ -22,11 +22,19 @@ public class ServerSslBundleReloadScheduler {
 
 	private final ServerSslBundleReloader reloader;
 
+	/**
+	 * Create the scheduler. Spring supplies the parameter.
+	 * @param reloader	The reloader that checks and reloads the SSL bundle
+	 */
 	@Autowired
 	public ServerSslBundleReloadScheduler(ServerSslBundleReloader reloader) {
 		this.reloader = reloader;
 	}
 
+	/**
+	 * Check if the SSL bundle changed on disk and reload it if necessary. This method logs a
+	 * failure and does not throw it.
+	 */
 	@Scheduled(
 			fixedDelayString = "${server.ssl.bundle-reload.interval:PT10S}",
 			initialDelayString = "${server.ssl.bundle-reload.initial-delay:PT10S}")

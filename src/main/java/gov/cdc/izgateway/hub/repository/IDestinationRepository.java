@@ -21,6 +21,7 @@ public interface IDestinationRepository<T extends IDestination> extends IReposit
 	List<T> findAllByDestTypeId(int destType);
 
 	/**
+	 * Create a new destination entity of the type that this repository stores.
 	 * @return a new Destination for a repository
 	 */
 	T newDestination();

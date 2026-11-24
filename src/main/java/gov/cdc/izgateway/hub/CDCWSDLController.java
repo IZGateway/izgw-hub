@@ -22,12 +22,26 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
 
+/**
+ * Handles SOAP requests at {@code /izgw} that use the CDC IIS 2011 WSDL.
+ */
 @RestController
 @RolesAllowed({Roles.SOAP, Roles.ADMIN})
 @RequestMapping("/izgw")
 @Lazy(false)
 public class CDCWSDLController extends BaseGatewayController {
 
+	/**
+	 * Create the controller. Spring supplies the parameters.
+	 * @param mshService	The service that maps message header values to sources
+	 * @param destinationService	The destination service used to obtain routing information
+	 * @param endpointStatusService	The service that gets and stores endpoint status
+	 * @param messageSender	The sender for outbound messages
+	 * @param adsController	The ADS controller, used for DEX status checks
+	 * @param registry	The access control registry that this controller registers with
+	 * @param accessControlService	The service that checks access to destinations
+	 * @param hubConfig	The sender configuration that supplies the maximum message size
+	 */
 	@Autowired
 	public CDCWSDLController(
 		IMessageHeaderService mshService,

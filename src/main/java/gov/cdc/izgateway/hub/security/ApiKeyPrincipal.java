@@ -6,6 +6,9 @@ import lombok.EqualsAndHashCode;
 
 import java.util.Set;
 
+/**
+ * The principal for a request that authenticates with an API key (a signed JWT).
+ */
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class ApiKeyPrincipal extends IzgPrincipal {
@@ -20,10 +23,25 @@ public class ApiKeyPrincipal extends IzgPrincipal {
      */
     private Set<String> useTypes;
 
+    /**
+     * Create an API key principal with no use-types.
+     * @param sub	The JWT subject, used as the organization
+     * @param jtiValue	The JWT identifier of the credential
+     * @param upnValue	The user principal name, used as the name
+     * @param issuerValue	The JWT issuer
+     */
     public ApiKeyPrincipal(String sub, String jtiValue, String upnValue, String issuerValue) {
         this(sub, jtiValue, upnValue, issuerValue, null);
     }
 
+    /**
+     * Create an API key principal.
+     * @param sub	The JWT subject, used as the organization
+     * @param jtiValue	The JWT identifier of the credential
+     * @param upnValue	The user principal name, used as the name
+     * @param issuerValue	The JWT issuer
+     * @param useTypesValue	The use-types this credential can submit
+     */
     public ApiKeyPrincipal(String sub, String jtiValue, String upnValue, String issuerValue,
             Set<String> useTypesValue) {
         setName(upnValue);

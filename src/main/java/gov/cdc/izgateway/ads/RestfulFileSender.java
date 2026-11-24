@@ -57,9 +57,11 @@ import gov.cdc.izgateway.common.HttpStatusException;
 public abstract class RestfulFileSender implements FileSender {
     private static final String FILENAME_INVALID = "Filename invalid";
     private static final File STORAGE = new File(".");
+	/** The size of an upload chunk in bytes (2 MB). */
 	protected static final int CHUNK_SIZE = 2 << 20; // 2 MB
 	/** Set to true to see output in debug console */
     protected boolean fiddle = false;
+    /** The TLS support that creates connections to the destination. */
     protected final ClientTlsSupport tlsSupport;
     private static final boolean DO_INTEGRITY_CHECK = false; 
     
@@ -74,8 +76,15 @@ public abstract class RestfulFileSender implements FileSender {
     @EqualsAndHashCode(callSuper=false)
     protected static class HttpException extends IOException {
 		private static final long serialVersionUID = 1L;
+		/** The HTTP status code of the response. */
 		private final int statusCode;
     	private final transient InputStream errorStream;
+    	/**
+    	 * Creates an HTTP exception.
+    	 * @param statusCode the HTTP status code of the response
+    	 * @param errorStream the error stream of the response
+    	 * @param cause the exception that caused this exception
+    	 */
     	protected HttpException(int statusCode, InputStream errorStream, Throwable cause) {
     		super(cause);
     		this.statusCode = statusCode;
@@ -83,8 +92,8 @@ public abstract class RestfulFileSender implements FileSender {
     	}
     }
     /**
+     * Configuration for the sender.
      * @author Audacious Inquiry
-     * Configuration for the Sender
      */
     @Configuration
     @Data
@@ -111,9 +120,15 @@ public abstract class RestfulFileSender implements FileSender {
     }
     
     private static final List<String> LOCALHOST = Arrays.asList(HostInfo.LOCALHOST_IP4, HostInfo.LOCALHOST_IP6, HostInfo.LOCALHOST);
+	/** The configuration of the sender. */
 	protected final SenderConfig config;
 	static final int  BUFFERSIZE = 134217728; // 128MB
     
+    /**
+     * Creates a file sender.
+     * @param config the configuration of the sender
+     * @param tlsSupport the TLS support that creates connections to the destination
+     */
     protected RestfulFileSender(SenderConfig config, ClientTlsSupport tlsSupport) {
     	this.config = config;
     	this.fiddle = tlsSupport.getConfig().isSslDebug() || config.isSslDebug();
@@ -122,25 +137,31 @@ public abstract class RestfulFileSender implements FileSender {
     /**
      *  Connect the socket to the phiz_trust_ws_client trust store for endpoint certificate validation.
      *  and set up of other parameters (e.g., encryption, TLS version, et cetera).
-     * @param string 
+     * @param string The operation, for example POST, GET, DELETE, PING or STATUS
      *  
      * @param route  The URL to Connect
-     * @param object 
-     * @param meta 
+     * @param object The file data, or null if the operation sends no data
+     * @param meta The metadata of the file, or null
      * @return  The connection
      * @throws IOException  If any errors occur setting up the connection
      * @throws MetadataFault If there are issues in the metadata configuration.
-     * @throws DestinationConnectionFault
-     * @throws SecurityFault 
+     * @throws DestinationConnectionFault If the hub cannot connect to the destination
+     * @throws URISyntaxException If the URI of the destination is not valid
+     * @throws SecurityFault If a security error occurs
      */
     protected abstract HttpURLConnection getConnection(String string, IDestination route, Metadata meta, DataHandler object) throws IOException, MetadataFault, DestinationConnectionFault, URISyntaxException, SecurityFault;
 
     /**
      * Copy data stored in DataHandler to the URLConnection.
-     * @return 
-     * @throws MetadataFault 
-     * @throws ProtocolException 
-     * @throws DestinationConnectionFault
+     * @param con The connection to write to
+     * @param route The destination
+     * @param data The file data
+     * @param meta The metadata of the file
+     * @return The HTTP response code
+     * @throws IOException If an error occurs when the data is written
+     * @throws MetadataFault If the metadata is not valid
+     * @throws io.tus.java.client.ProtocolException If the TUS upload protocol fails
+     * @throws DestinationConnectionFault If the hub cannot connect to the destination
      */
     protected abstract int writeData(HttpURLConnection con, IDestination route, DataHandler data, Metadata meta) throws IOException, MetadataFault, DestinationConnectionFault, io.tus.java.client.ProtocolException;
 
@@ -202,6 +223,12 @@ public abstract class RestfulFileSender implements FileSender {
         }
     }
 
+    /**
+     * Sets the expiration time of the uploaded file on the connection.
+     * The hub calls this method only for test endpoints.
+     * @param con The connection
+     * @param date The upload date
+     */
     protected abstract void setExpiration(HttpURLConnection con, Date date);
 
     /**
@@ -224,8 +251,10 @@ public abstract class RestfulFileSender implements FileSender {
 
     /**
      * Checks for, and possibly makes space for the upload.
+     * @param con The connection to the storage
      * @param fileSize The amount of space needed.
-     * @throws MessageTooLargeFault 
+     * @throws MessageTooLargeFault If enough space cannot be made
+     * @throws IOException If an error occurs when space is made
      */
     protected abstract void checkForSpace(HttpURLConnection con, long fileSize) throws MessageTooLargeFault, IOException;
 	/**
@@ -254,6 +283,12 @@ public abstract class RestfulFileSender implements FileSender {
         } 
     }
 
+	/**
+	 * Gets the status of a file submission from a connection.
+	 * @param con The connection to the status endpoint
+	 * @return The submission status
+	 * @throws IOException If an error occurs when the status is read
+	 */
 	protected abstract String getSubmissionStatus(HttpURLConnection con) throws IOException;
 
 	@Override
@@ -347,7 +382,7 @@ public abstract class RestfulFileSender implements FileSender {
      * @param meta  The metadata object to extract headers from.
      * @param data The data
      * @return  The HTTP Headers to use with Blob storage
-     * @throws IOException 
+     * @throws IOException If an error occurs when the data is read
      */
     public List<Header> getHeaders(Metadata meta, DataHandler data) throws IOException {
         List<Header> headers = new ArrayList<>();
@@ -367,6 +402,13 @@ public abstract class RestfulFileSender implements FileSender {
         return getHeaders(meta, headers, ic == null ? null : ic.getMimeType());
     }
     
+	/**
+	 * Adds the HTTP headers for the metadata to a list of headers.
+	 * @param meta The metadata object to extract headers from
+	 * @param headers The list to add the headers to, or null to make a new list
+	 * @param mimeType The MIME type of the data, or null
+	 * @return The list of headers
+	 */
 	protected List<Header> getHeaders(Metadata meta, List<Header> headers, String mimeType) {
 		if (headers == null) {
 	        headers = new ArrayList<>();
@@ -401,6 +443,12 @@ public abstract class RestfulFileSender implements FileSender {
         return headers;
 	}
     
+	/**
+	 * Adds an x-ms-meta- header for each JSON property of the metadata.
+	 * Production destinations do not get the izgw extension properties.
+	 * @param meta The metadata
+	 * @param headers The list to add the headers to
+	 */
 	protected void addHeadersFromMetadata(Metadata meta, List<Header> headers) {
     	boolean isProd = !"test".equals(meta.getDestinationId());
         for (Method m: Metadata.class.getMethods()) {
@@ -508,10 +556,18 @@ public abstract class RestfulFileSender implements FileSender {
         }
     }
 
+    /**
+     * Gets the free disk space of the local storage.
+     * @return The free disk space in bytes
+     */
     protected long getDiskFreeSpace() {
     	return STORAGE.getFreeSpace();
     }
     
+    /**
+     * Gets the maximum upload size.
+     * @return The maximum upload size in bytes
+     */
     protected long getMaxUploadSize() {
     	return config.getMaxUploadSizeInGB() * 1073741824l;
     }

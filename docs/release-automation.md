@@ -64,9 +64,10 @@ branches carry no rulesets, so a rehearsal cannot prove that access. Check the
 branch rulesets directly before the first real release.
 
 Everything else already exists for development CI: `COMMON_PASS`,
-`ELASTIC_API_KEY`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `NVDAPIKEY`,
+`ELASTIC_API_KEY`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
 `TESTING_CERT`, `TESTING_KEY`, `TESTING_PASS`, the `BEARER_TOKEN_*` values, and
-the `APHL_*` values. Repository variables: `AWS_REGION`, `AWS_REGIONS`,
+the `APHL_*` values. The release does not use `NVDAPIKEY`. The dependency scan
+uses the NVD database that is inside the image of the scan action. Repository variables: `AWS_REGION`, `AWS_REGIONS`,
 `ECS_DESIRED_COUNT`, `AWS_SECURITY_GROUP_ID`.
 
 ## Standard release

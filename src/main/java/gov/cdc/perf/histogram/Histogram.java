@@ -6,23 +6,59 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
 
+/**
+ * A histogram that is a list of buckets. Each bucket has a value range and a count.
+ */
 public interface Histogram {
+    /** The default random number generator for {@link #randomValue()}. */
     static final Random RAND = new Random();
 
+    /**
+     * One bucket of the histogram.
+     */
     public interface Row {
+        /**
+         * Get the low end of the bucket range.
+         * @return The low value (inclusive).
+         */
         int getLow();
+        /**
+         * Get the high end of the bucket range.
+         * @return The high value (exclusive).
+         */
         int getHigh();
+        /**
+         * Get the number of values in the bucket.
+         * @return The count.
+         */
         int getCount();
     }
+    /**
+     * Get the buckets of the histogram.
+     * @return The list of buckets, from low to high.
+     */
     List<Row> getRows();
+    /**
+     * Get the sum of the counts in all buckets.
+     * @return The total count.
+     */
     default int getTotal() {
         return getRows().stream().collect(Collectors.summingInt(Row::getCount));
     }
+    /**
+     * Get the difference between the high value of the last bucket and the low value of the first bucket.
+     * @return The range of the histogram.
+     */
     default int getRange() {
         List<Row> l = getRows();
         return l.get(l.size()-1).getHigh() - l.get(0).getLow();
     }
 
+    /**
+     * Given a histogram return a random variate from the distribution described it.
+     * @param rand The random number generator
+     * @return The random variate or -1 if out of range.
+     */
     default int randomValue(Random rand) {
         return randomValue(rand, getTotal());
     }
@@ -38,8 +74,8 @@ public interface Histogram {
     /**
      * Given a histogram return a random variate from the distribution described it.
      * @param rand The random number generator
-     * @param max
-     * @return The random variate or 0 if out of range.
+     * @param max The upper limit (exclusive) of the random number that selects the bucket
+     * @return The random variate or -1 if out of range.
      */
     default int randomValue(Random rand, int max) {
         int r = rand.nextInt(max);
@@ -133,6 +169,10 @@ public interface Histogram {
         return ksCriticalValue(alpha, sizes[0], sizes[1]);
     }
     
+    /**
+     * Make a text table with one line for each bucket: the low value, the high value and the fraction of the total count.
+     * @return The text table.
+     */
     default String _toString() {
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);

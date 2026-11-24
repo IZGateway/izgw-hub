@@ -78,6 +78,10 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
     /** Supplies the destination jurisdiction's allowedUseTypes (IGDD-3257). */
     private final IJurisdictionService jurisdictionService;
 
+    /**
+     * The action to take when a sender is not permitted to send to a destination: {@code deny}
+     * rejects the message, any other value logs a warning and sends the message.
+     */
     @Getter
     @Value("${hub.access-control.action:warn}")
     protected String accessControlAction;
@@ -306,6 +310,7 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 	 * @param user		The user (sender) to block
 	 * @param reason	Reason for the block
 	 * @param createdBy	The actor to record as having created the block
+	 * @return the deny-list record, or model-specific equivalent
 	 */
 	public Object addUserToDenyList(String user, String reason, String createdBy) {
 		try {
@@ -320,6 +325,9 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 		return currentModelHelper.getDenyList();
 	}
 
+	/** The actor recorded as the creator of a deny-list entry from a source-attack lockout. */
+	private static final String SOURCE_ATTACK_ACTOR = "system:source-attack";
+
 	/**
 	 * Handle a detected source attack (IGDD-2805): if auto-lockout is enabled and the sender has no
 	 * configured exception, add the sender to the deny list. This does not alter the SecurityFault
@@ -327,8 +335,6 @@ public class AccessControlService implements InitializingBean, IAccessControlSer
 	 * @param sender	The sender's common name (from {@code RequestContext.getSourceInfo().getCommonName()})
 	 * @param reason	The fault's diagnostic detail, used as the deny-list reason
 	 */
-	private static final String SOURCE_ATTACK_ACTOR = "system:source-attack";
-
 	public void handleSourceAttack(String sender, String reason) {
 		if (!sourceAttackLockoutEnabled) {
 			log.warn(Markers2.append("sender", sender), "Source attack lockout is disabled; {} was not added to the deny list", sender);

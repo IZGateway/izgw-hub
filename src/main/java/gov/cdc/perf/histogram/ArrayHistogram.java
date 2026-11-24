@@ -6,6 +6,10 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
+/**
+ * A {@link Histogram} that keeps its buckets in an array.
+ * Each array row has the low value, the high value and the count of a bucket.
+ */
 public class ArrayHistogram implements Histogram {
     private int[][] data;
     /* Constants for Histogram bucket positions */
@@ -13,6 +17,9 @@ public class ArrayHistogram implements Histogram {
     private static final int BUCKET_HIGH = 1;
     private static final int BUCKET_COUNT = 2;
 
+    /**
+     * A {@link Histogram.Row} that reads one row of the array.
+     */
     public class ArrayRow implements Row {
         private final int index;
         ArrayRow(int index) {
@@ -45,6 +52,10 @@ public class ArrayHistogram implements Histogram {
         }
     }
 
+    /**
+     * Make a histogram from a copy of an array of buckets.
+     * @param data The buckets. Each row has the low value, the high value and the count.
+     */
     public ArrayHistogram(int[][] data) {
         // Deep copy the array.
         this.data = Arrays.copyOf(data, data.length);
@@ -53,10 +64,24 @@ public class ArrayHistogram implements Histogram {
         }
     }
 
+    /**
+     * Make a histogram from a list of counts with buckets of the same size.
+     * @param it    The counts, one for each bucket.
+     * @param start The low value of the first bucket.
+     * @param unit  The size of each bucket.
+     * @param isCdf If true, the counts are cumulative and each count includes the counts before it.
+     */
     public ArrayHistogram(Iterable<Integer> it, int start, int unit, boolean isCdf) {
         this(it.iterator(), start, unit, isCdf);
     }
 
+    /**
+     * Make a histogram from a list of counts with buckets of the same size.
+     * @param it    The counts, one for each bucket.
+     * @param start The low value of the first bucket.
+     * @param unit  The size of each bucket.
+     * @param isCdf If true, the counts are cumulative and each count includes the counts before it.
+     */
     public ArrayHistogram(Iterator<Integer> it, int start, int unit, boolean isCdf) {
         List<int[]> l = new ArrayList<>();
         int lastCount = 0;

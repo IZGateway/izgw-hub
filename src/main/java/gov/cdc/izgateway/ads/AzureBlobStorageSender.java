@@ -168,6 +168,17 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
     	return writeInMultipleBlocks(con.getURL(), route, data, meta, buffer);
     }
     
+    /**
+     * Writes the first block of data to the connection and gets the response code.
+     * @param con The connection
+     * @param route The route we are sending to
+     * @param data The data we are sending
+     * @param meta The metadata
+     * @param buffer The buffer to use
+     * @param bytesToSend The number of bytes to write, or 0 to write no data
+     * @return The HTTP response code
+     * @throws IOException If an error occurs when the data is written
+     */
     protected int writeAsSingleBlock(HttpURLConnection con, IDestination route, DataHandler data, Metadata meta, byte[] buffer, int bytesToSend) throws IOException {
     	try (OutputStream os = con.getOutputStream();
             InputStream is = data.getInputStream()) {
@@ -189,13 +200,13 @@ public class AzureBlobStorageSender extends RestfulFileSender implements FileSen
     
 	/**
 	 * This method appends any additional data beyond BUFFERSIZE to the Blob
-	 * @param con	The original connection.
+	 * @param url	The URL of the original connection.
 	 * @param route	The route we are sending to
 	 * @param data	The data we are sending
 	 * @param meta	The metadata
 	 * @param buffer	The buffer to use
-	 * @return
-	 * @throws IOException
+	 * @return The result of the request that marks the upload as complete
+	 * @throws IOException If an error occurs when the data is written
 	 */
 	protected int writeInMultipleBlocks(URL url, IDestination route, DataHandler data, Metadata meta, byte[] buffer) throws IOException {
     	// So here, the connection passed in has already been used, but no data has been written yet.

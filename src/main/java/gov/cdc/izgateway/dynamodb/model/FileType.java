@@ -23,7 +23,9 @@ import gov.cdc.izgateway.model.IAccessControl;
 @NoArgsConstructor
 @DynamoDbBean
 public class FileType extends DynamoDbAudit implements DynamoDbEntity, Serializable, IFileType {
+    /** The name of the file type. */
     private String fileTypeName;
+    /** The description of the file type. */
     private String description;
 	@Override
 	public String getPrimaryId() {

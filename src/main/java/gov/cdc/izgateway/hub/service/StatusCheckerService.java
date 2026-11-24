@@ -44,6 +44,10 @@ import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Checks the connection status of destinations, records the results, and schedules
+ * checks that look for a reset of the circuit breaker.
+ */
 @Slf4j
 @Service
 public class StatusCheckerService implements IStatusCheckerService {
@@ -55,7 +59,16 @@ public class StatusCheckerService implements IStatusCheckerService {
 
     private static final int[]  CHECK_INTERVALS = { 15, 60, 120, 180, 240, 300, 600, 900 };
 
+    /**
+     * Checks the status of an ADS destination (DEX or Azure).
+     */
     public static interface ADSChecker {
+		/**
+		 * Check the status of an ADS destination.
+		 * @param dest	The destination identifier
+		 * @return The destination status
+		 * @throws Fault	If the status check fails
+		 */
 		public String check(String dest) throws Fault;
 	}
 
@@ -68,6 +81,16 @@ public class StatusCheckerService implements IStatusCheckerService {
 	private final ADSChecker adsChecker;
 	private final ScheduledExecutorService scheduler;
     
+    /**
+     * Create the status checker service. Spring supplies the parameters.
+     * @param config	The status checker configuration
+     * @param messageSender	The sender for connectivity tests
+     * @param destinationService	The service that finds destinations
+     * @param endpointStatusService	The service that stores endpoint status
+     * @param clientTlsSupport	The client TLS support that supplies the client certificate
+     * @param adsChecker	The checker for ADS destinations
+     * @param app	The application properties that supply the scheduler
+     */
     @Autowired
     public StatusCheckerService(
     	StatusCheckerConfiguration config, 
@@ -90,6 +113,10 @@ public class StatusCheckerService implements IStatusCheckerService {
         messageSender.setStatusChecker(this);
     }
     
+    /**
+     * Get the names of the hosts that report endpoint status. The list starts with this host.
+     * @return The list of host names
+     */
     public List<String> getHosts() {
     	List<String> l = new ArrayList<>();
 		l.add(SystemUtils.getHostname());
@@ -101,18 +128,35 @@ public class StatusCheckerService implements IStatusCheckerService {
     	return l;
     }
     
+	/**
+	 * Get the number of failures before the circuit breaker is thrown.
+	 * @return The maximum number of failures
+	 */
 	public int getMaxFailures() {
 		return config.getMaxFailuresBeforeCircuitBreaker();
 	}
 	
+	/**
+	 * Get the period between status checks.
+	 * @return The status check period in minutes
+	 */
 	public int getStatusCheckPeriodInMinutes() {
 		return config.getStatusCheckPeriodInMinutes();
 	}
 	
+	/**
+	 * Add a destination to the list of destinations that are exempt from status checks.
+	 * @param destId	The destination identifier
+	 */
 	public void addExemption(String destId) {
 		config.getExempt().add(destId);
 	}
 
+    /**
+     * Check the status of a destination now and save the result.
+     * @param dest	The destination to check
+     * @return The new status of the destination
+     */
     public IEndpointStatus updateDestinationStatus(IDestination dest) {
         EndpointStatus s = new EndpointStatus(dest);
         if (dest.isDex() || dest.isAzure()) {
@@ -179,6 +223,12 @@ public class StatusCheckerService implements IStatusCheckerService {
         return status;
 	}
 
+    /**
+     * Check the status of a destination as an internal request, with logging. If the destination
+     * is under maintenance, return its current status and do not check it.
+     * @param dest	The destination to check
+     * @return The status of the destination, or null if dest is null
+     */
     public IEndpointStatus checkDestination(IDestination dest) {
         if (dest == null) {
             return null;
@@ -213,6 +263,11 @@ public class StatusCheckerService implements IStatusCheckerService {
         }
     }
     
+    /**
+     * Copy the URL and identifier of a destination into the destination information for logging.
+     * @param info	The destination information to update
+     * @param route	The destination to copy from, or null to clear the values
+     */
     public static void setDestinationInfoFromDestination(DestinationInfo info, IDestination route) {
 		if (route == null) {
 			info.setUrl(null);
@@ -313,6 +368,10 @@ public class StatusCheckerService implements IStatusCheckerService {
         restoreMDC(mdcValues);
     }
     
+    /**
+     * Set the MDC logging values for an internal request, if they are not already set.
+     * @return The MDC values before the change, for use with {@link #restoreMDC(Map)}
+     */
     public static Map<String, String> setupMDC() {
         // Set various MDC values that are expected to appear in logs to reasonable values that would tell folks about
         // where this request came from.
@@ -331,6 +390,10 @@ public class StatusCheckerService implements IStatusCheckerService {
         return m;
     }
 
+    /**
+     * Restore the MDC logging values that {@link #setupMDC()} returned.
+     * @param m	The MDC values to restore
+     */
     public static void restoreMDC(Map<String, String> m) {
         for (Map.Entry<String, String> e: m.entrySet()) {
             if (e.getValue() == null) {
@@ -341,6 +404,10 @@ public class StatusCheckerService implements IStatusCheckerService {
         }
     }
 
+	/**
+	 * Get the scheduler that runs the status checks.
+	 * @return The scheduler
+	 */
 	public ScheduledExecutorService getScheduler() {
 		return scheduler;
 	}

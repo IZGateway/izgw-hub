@@ -46,6 +46,12 @@ public class StatusCheckScheduler {
     private final DestinationService dests;
 	private final ScheduledExecutorService scheduler;
 
+    /**
+     * Make the scheduler. Spring supplies the services.
+     * @param statusCheckerService The service that checks destinations and supplies the scheduler.
+     * @param endpointStatusService The service that keeps the endpoint status.
+     * @param dests The service that gets the destinations.
+     */
     @Autowired
     public StatusCheckScheduler(StatusCheckerService statusCheckerService, EndpointStatusService endpointStatusService, DestinationService dests) {
         this.statusCheckerService = statusCheckerService;
@@ -65,6 +71,12 @@ public class StatusCheckScheduler {
         return s == null ? null : s.getDiagnostics();
     }
 
+    /**
+     * Start the status checks. Testing endpoints are exempt from the checks.
+     * The method loads the endpoint status, checks the dev destination, and schedules
+     * a resync every 5 minutes.
+     * @throws ServiceConfigurationError When the endpoint status cannot be loaded.
+     */
     public void start() {
         log.info("Starting Status Checker");
         // Exempt testing endpoints from status checks, a) don't waste time, these will fail, and don't circuit break them

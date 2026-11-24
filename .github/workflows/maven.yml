@@ -38,23 +38,9 @@ jobs:
 
     steps:
 
-    # Name a missing credential.
-    # Initially check for NVDAPIKEY so that we fail here instead
-    # of later in the flow when we try dependency-checker.
-    # Only the presence of each value is reported, never a value.
-    - name: Check necessary credentials are configured
-      env:
-        NVDAPIKEY: ${{ secrets.NVDAPIKEY }}
-      shell: bash
-      run: |
-        missing=""
-        if [ -z "${NVDAPIKEY}" ]; then missing="${missing} NVDAPIKEY"; fi
-        if [ -n "${missing}" ]; then
-          echo "::error::Missing necessary credential(s):${missing}. The release will not fall back to another identity."
-          exit 1
-        fi
-        echo "Necessary credentials are configured."
-
+    # There is no credential check step here (IGDD-2974). It checked only
+    # NVDAPIKEY, and the Dependency Check step does not use that key. See the
+    # comment above the Dependency Check step.
     - name: Checkout the software
       uses: actions/checkout@v7
       # No ssh-key: development CI no longer commits a release version, so it
@@ -112,7 +98,11 @@ jobs:
             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
             xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
             https://maven.apache.org/xsd/settings-1.0.0.xsd">
-            <localRepository>~/.m2/repository</localRepository>
+            <!-- No localRepository element (IGDD-2974). Maven does not expand
+                 "~" in this element. The old value made Maven use the folder
+                 "<workspace>/~/.m2/repository", so the Maven cache of
+                 actions/setup-java had nothing to save. The default location
+                 is ~/.m2/repository. -->
             <interactiveMode />
             <usePluginRegistry />
             <offline />
@@ -169,14 +159,34 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{vars.AWS_REGION}}
         
-    - name: Maven Install
+    - name: Maven Build and Site
       env:
         COMMON_PASS: ${{ secrets.COMMON_PASS }}
         ELASTIC_API_KEY: ${{ secrets.ELASTIC_API_KEY }}
         AMAZON_DYNAMODB_TABLE: izgateway-dev-test
         JWT_ISSUER: https://dev.console.izgateway.org
+      # Two things avoid "[WARNING] Overwriting artifact's file ... to
+      # target/classes" (IGDD-2974):
+      # 1. The first command lists only "verify". "verify" already runs test
+      #    and package. Nothing in this workflow reads the hub jar from the
+      #    local Maven repository, so "install" is not necessary.
+      # 2. The site is built in a separate Maven run on purpose, without
+      #    "clean" and without tests. It reads the test and JaCoCo results of
+      #    the first run.
+      # Both commands get the same -Dtimestamp. The site run writes
+      # target/classes/build.txt again, and "Capture build metadata" reads
+      # that file. Without the same value, build.txt gets a later time than
+      # the jar, and the Newman check of the timestamp fails.
       run: |
-        env && mvn -B -U clean package install site -Dbuildno=${{github.run_number}} \
+        env
+        BUILD_TIMESTAMP="$(date -u +%Y%m%d%H%M)"
+        mvn -B -U clean verify -Dbuildno=${{github.run_number}} \
+            -Dtimestamp="${BUILD_TIMESTAMP}" \
+            -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn \
+            -DskipDependencyCheck=true \
+            -Dimage.tag=${{env.IMAGE_TAG}}
+        mvn -B site -DskipTests -Dbuildno=${{github.run_number}} \
+            -Dtimestamp="${BUILD_TIMESTAMP}" \
             -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn \
             -DskipDependencyCheck=true \
             -Dimage.tag=${{env.IMAGE_TAG}}
@@ -198,6 +208,11 @@ jobs:
 #
 # continue-on-error is gone: a finding at or above CVSS 7 now fails development
 # CI, matching the release gate.
+#
+# This scan does not use an NVD API key (IGDD-2974). The action runs the
+# scanner with --noupdate. The scanner uses the NVD database that is inside the
+# Docker image of the action. The owners of the action build this image every
+# night with a new database.
     - name: Dependency Check
       env:
         # Per https://github.com/marketplace/actions/dependency-check, fix JAVA_HOME location for action
@@ -214,7 +229,6 @@ jobs:
           --failOnCVSS 7
           --format JSON
           --suppression ./dependency-suppression.xml
-          --nvdApiKey ${{ secrets.NVDAPIKEY }}
           --disableNuspec
           --disableNugetconf
           --disableAssembly
@@ -331,13 +345,6 @@ jobs:
       with:
         name: build-failure
         path: .
-
-    - name: Upload dependency check log
-      uses: actions/upload-artifact@v7
-      if: ${{ always() }}
-      with:
-        name: DependencyCheck
-        path: ./target/dependency-check-report.*
 
     - name: Output the image tag
       id: output_image_tag

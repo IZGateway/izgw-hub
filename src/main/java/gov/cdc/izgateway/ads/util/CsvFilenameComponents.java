@@ -16,15 +16,19 @@ import lombok.Value;
  * "Annual", detected case-insensitively at any position) plus a report-type
  * abbreviation. For example: {@code MonthlyFlu_XXA_2026FEB.csv},
  * {@code riQuarterlyAggregate_XXA_2025Q4.csv}, {@code AnnualRI_XXA_2026.csv}
- * </p>
  *
  * <p>Call {@link #isValid()} to check whether validation passed. When invalid,
- * {@link #getErrors()} contains one or more human-readable messages.  Parsed
- * component fields ({@link #getFrequency()}, etc.) will be {@code null} when
+ * {@code getErrors()} contains one or more human-readable messages.  Parsed
+ * component fields ({@code getFrequency()}, etc.) will be {@code null} when
  * the filename could not be parsed at all (i.e. pattern match failed).</p>
  *
  * @see CsvFilenameValidator
  */
+// javadoc reads the source without Lombok, so it does not see the constructor that
+// Lombok generates (@Value and @Builder). It then reports "use of default constructor, which does
+// not provide a comment". The real constructor exists. This suppression hides only
+// missing-comment warnings in this class (IGDD-2974). Other javadoc checks still apply.
+@SuppressWarnings("doclint:missing")
 @Value
 @Builder
 public class CsvFilenameComponents {

@@ -9,6 +9,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+/**
+ * Configuration for DEX uploads. The DEX sender and the mock DEX endpoint use it.
+ */
 @Data
 @Configuration
 @EnableScheduling
@@ -34,6 +37,10 @@ public class DexConfiguration {
     @Value("${dex.numRetries:2}")
 	private int numRetries;
     
+    /**
+     * Creates the DEX configuration.
+     * @param app The application properties that supply the server mode
+     */
     public DexConfiguration(@Autowired AppProperties app) {
     	mode = app.getServerMode();
     }

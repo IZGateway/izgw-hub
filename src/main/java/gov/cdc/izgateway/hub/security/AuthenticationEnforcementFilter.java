@@ -28,6 +28,10 @@ public class AuthenticationEnforcementFilter extends OncePerRequestFilter {
 
     private final PrincipalService principalService;
 
+    /**
+     * Create the filter. Spring supplies the parameter.
+     * @param principalService	The service that gets the principal for a request
+     */
     @Autowired
     public AuthenticationEnforcementFilter(PrincipalService principalService) {
         this.principalService = principalService;

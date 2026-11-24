@@ -11,6 +11,10 @@ package gov.cdc.izgateway.hub.security;
  * presented but rejected" (must not fall back to certificate authentication).
  */
 public class ApiKeyAuthenticationException extends RuntimeException {
+    /**
+     * Create the exception.
+     * @param message	The reason that the API key failed authentication
+     */
     public ApiKeyAuthenticationException(String message) {
         super(message);
     }

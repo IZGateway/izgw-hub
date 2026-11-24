@@ -43,22 +43,47 @@ public class PerformanceSimulatorDailyFailures extends AbstractPerformanceSimula
      *  2891    Connection Refused      DestinationConnectionFault  Reset connection (we cannot simulate this)
      *  5987    End of File/EOF         HubClientFault  Sleep then reset the connection.
      */
+    /**
+     * Make a simulator with the error frequencies of a typical week.
+     */
+    public PerformanceSimulatorDailyFailures() {
+        // Nothing to initialize. The superclass constructor calls initErrors().
+    }
+
+    /**
+     * The simulated error types. The number is the frequency of the error in one million requests.
+     */
     public enum ErrorType implements Simulator {
         /* Keep these in sorted order by frequency */
+        /** Reset the connection. */
         CONNECTION_RESET(2, AbstractPerformanceSimulator::simulateConnectionReset),
+        /** Return HTTP 404 (Not Found). */
         HTTP_404(4, AbstractPerformanceSimulator::simulateHttp404),
+        /** Return HTTP 408 (Request Timeout). */
         HTTP_408(4, AbstractPerformanceSimulator::simulateHttp408),
+        /** Return HTTP 403 (Forbidden). */
         HTTP_403(10, AbstractPerformanceSimulator::simulateHttp403),
+        /** Return HTTP 503 (Service Unavailable). */
         HTTP_503(57, AbstractPerformanceSimulator::simulateHttp503),
+        /** Return HTTP 502 (Bad Gateway). */
         HTTP_502(78, AbstractPerformanceSimulator::simulateHttp502),
+        /** Write a byte after 1, 2 and 4 seconds, wait 8 seconds, then reset the connection. */
         CONNECTION_TIMEOUT(113, AbstractPerformanceSimulator::simulateConnectTimeout),
+        /** Return a fault for invalid characters in XML. */
         CONTROL_CHARS(185, AbstractPerformanceSimulator::simulateControlChars),
+        /** Reset the connection to simulate a TLS connection error. */
         TLS_CONNECTION_ERROR(253, AbstractPerformanceSimulator::simulateTLSConnectionError),
+        /** Return a security fault. */
         AUTHENTICATION_ERROR(322, AbstractPerformanceSimulator::simulateAuthenticationError),
+        /** Wait 5 seconds, then return a fault for no running communication point. */
         NO_RUNNING_COMMUNICATION_POINT(439, AbstractPerformanceSimulator::simulateNoRunningCommunicationPoint),
+        /** Return an unknown fault. */
         OTHER_FAULT(632, AbstractPerformanceSimulator::simulateOtherFault),
+        /** Write part of a response, then wait 63 seconds. */
         READ_TIMEOUT(2690, AbstractPerformanceSimulator::simulateReadTimeout),
+        /** Reset the connection to simulate a refused connection. */
         CONNECTION_REFUSED(2891, AbstractPerformanceSimulator::simulateConnectionRefused),
+        /** Write part of a response, wait, then reset the connection. */
         END_OF_FILE(5987, AbstractPerformanceSimulator::simulateEndOfFile);
         private int freq;
 		private Callable1<HttpServletResponse> callable1;

@@ -35,7 +35,14 @@ public class Jurisdiction extends DynamoDbAudit implements DynamoDbEntity, IJuri
 			@StringToClassMapItem(key="Maryland", value=Destination.class),
 			@StringToClassMapItem(key="Wyoming", value=Destination.class)
 		})
-	public static class Map extends MappableEntity<Jurisdiction>{}
+	public static class Map extends MappableEntity<Jurisdiction>{
+		/**
+		 * Create an empty map.
+		 */
+		public Map() {
+			// Nothing to initialize.
+		}
+	}
 
 	/**
 	 * Create a new Jurisdiction

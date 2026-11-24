@@ -11,6 +11,15 @@ import java.util.Set;
 import gov.cdc.izgateway.model.DynamoDbAudit;
 import gov.cdc.izgateway.model.DynamoDbEntity;
 
+/**
+ * DynamoDB entity for an API key credential. The {@code jti} identifies the credential, and the
+ * record holds its status, its permitted environments and use-types, and its lifecycle timestamps.
+ */
+// javadoc reads the source without Lombok, so it does not see the constructor that
+// Lombok generates (@NoArgsConstructor). It then reports "use of default constructor, which does
+// not provide a comment". The real constructor exists. This suppression hides only
+// missing-comment warnings in this class (IGDD-2974). Other javadoc checks still apply.
+@SuppressWarnings("doclint:missing")
 @Data
 @EqualsAndHashCode(callSuper = false)
 @NoArgsConstructor

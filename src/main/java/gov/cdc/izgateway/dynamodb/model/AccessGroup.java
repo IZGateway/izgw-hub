@@ -28,11 +28,17 @@ import gov.cdc.izgateway.model.DynamoDbEntity;
 @NoArgsConstructor
 @DynamoDbBean
 public class AccessGroup extends DynamoDbAudit implements DynamoDbEntity, Serializable, IAccessGroup {
+    /** The name of the access group. */
     private String groupName;
+    /** The environment (destination type) of the access group. */
     private int environment;
+    /** The description of the access group. */
     private String description;
+    /** The roles that the members of the group have. */
     private Set<String> roles = new TreeSet<>();
+    /** The users that are members of the group. */
     private Set<String> users = new TreeSet<>();
+    /** The groups that are members of the group. */
     private Set<String> groups = new TreeSet<>();
     
     @DynamoDbConvertedBy(EmptySetToNullConverter.class)

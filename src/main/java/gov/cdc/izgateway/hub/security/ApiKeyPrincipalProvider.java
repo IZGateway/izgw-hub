@@ -26,6 +26,10 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
 
+/**
+ * Authenticates a request that has a Bearer-scheme API key (a signed JWT) and creates the
+ * {@link ApiKeyPrincipal} for it. It caches signing secrets and credential lookups.
+ */
 @Component
 @Slf4j
 public class ApiKeyPrincipalProvider {
@@ -46,6 +50,13 @@ public class ApiKeyPrincipalProvider {
     private final Cache<String, Boolean> revokedCache;
     private final Cache<String, Boolean> absentCache;
 
+    /**
+     * Create the provider. Spring supplies the parameters.
+     * @param config	The JWT configuration
+     * @param credentialRepository	The repository that stores API key credentials
+     * @param jwtTokenExtractor	The extractor that gets the Bearer token from the request
+     * @param secretsManagerClient	The Secrets Manager client for signing secrets, or null if not available
+     */
     @Autowired
     public ApiKeyPrincipalProvider(
             JwtConfig config,
@@ -79,6 +90,12 @@ public class ApiKeyPrincipalProvider {
                 .build();
     }
 
+    /**
+     * Get the principal for the API key in the request.
+     * @param request	The HTTP request
+     * @return The principal, or null if the request has no Bearer token
+     * @throws ApiKeyAuthenticationException	If the request has a Bearer token that fails authentication
+     */
     public IzgPrincipal getPrincipal(HttpServletRequest request) {
         // Step 1: Extract Bearer token — return null if absent (fallback to cert auth is still allowed;
         // no API key was presented at all).
@@ -282,6 +299,10 @@ public class ApiKeyPrincipalProvider {
         }
     }
 
+    /**
+     * Remove a credential from the caches and mark it as revoked, so that later requests with it fail.
+     * @param jti	The JWT identifier of the credential
+     */
     public void evictCredential(String jti) {
         credentialCache.invalidate(jti);
         absentCache.invalidate(jti);

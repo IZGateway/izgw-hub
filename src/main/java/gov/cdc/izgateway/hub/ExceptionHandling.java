@@ -32,6 +32,15 @@ import software.amazon.awssdk.utils.StringUtils;
 @ControllerAdvice
 public class ExceptionHandling {
     /**
+     * Create the exception handler. Spring creates this class.
+     */
+    public ExceptionHandling() {
+        // Nothing to initialize.
+    }
+
+    /**
+     * Convert an exception from a controller to an error response with an HTTP status that
+     * matches the type of exception.
      * @param ex The exception to handle
      * @param request	The HTTP request
      * @return	The response entity

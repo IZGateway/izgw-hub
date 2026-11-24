@@ -40,18 +40,39 @@ public abstract class BaseGatewayController extends SoapControllerBase {
      * The destination service used to obtain routing information.
      */
     protected final DestinationService destinationService;
+    /** The service that gets and stores endpoint status. */
     protected final EndpointStatusService endpointStatusService;
+    /** The sender for outbound messages to destinations. */
     protected final MessageSender messageSender;
+    /** The ADS controller, used for status checks on DEX destinations. */
     protected final ADSController adsController;
+    /** The service that checks if a user can send to a destination. */
     protected final AccessControlService accessControlService;
 
+    /** The public host name of this server, used to make absolute destination URIs. */
     @Value("${server.hostname:dev.izgateway.org}")
     protected String serverName;
+    /** The port of this server, used to make absolute destination URIs. */
     @Value("${server.port:8080}")
     protected int serverPort;
+    /** The protocol of this server, used to make absolute destination URIs. */
     @Value("${server.protocol:https}")
     protected String serverProtocol;
 
+    /**
+     * Create the controller.
+     * @param mshService	The service that maps message header values to sources
+     * @param baseNamespace	The base SOAP namespace of the WSDL
+     * @param wsdlResource	The name of the WSDL resource
+     * @param supportedNamespaces	The SOAP namespaces that the controller accepts
+     * @param destinationService	The destination service used to obtain routing information
+     * @param endpointStatusService	The service that gets and stores endpoint status
+     * @param messageSender	The sender for outbound messages
+     * @param adsController	The ADS controller, used for DEX status checks
+     * @param registry	The access control registry that this controller registers with
+     * @param accessControlService	The service that checks access to destinations
+     * @param hubConfig	The sender configuration that supplies the maximum message size
+     */
     protected BaseGatewayController(
             IMessageHeaderService mshService,
             String baseNamespace,
@@ -130,6 +151,7 @@ public abstract class BaseGatewayController extends SoapControllerBase {
      * 4. If they are not a member, this method throws a security fault notifying the user that they
      * cannot send messages to the specified group.
      *
+     * @param destId	The destination identifier
      * @throws SecurityFault if the user is not permitted to access the destination.
      */
     protected void checkAccess(String destId) throws SecurityFault {
@@ -164,6 +186,8 @@ public abstract class BaseGatewayController extends SoapControllerBase {
 
     /**
      * Template method for validating HubHeader. Subclasses can override to provide specific validation.
+     * @param submitSingleMessage	The request to validate
+     * @throws Fault	If the HubHeader is not valid
      */
     protected void validateHubHeader(SubmitSingleMessageRequest submitSingleMessage) throws Fault {
         // Default implementation does nothing
@@ -171,6 +195,8 @@ public abstract class BaseGatewayController extends SoapControllerBase {
 
     /**
      * Template method for customizing the response. Subclasses can override to provide specific customization.
+     * @param response	The response to customize
+     * @param dest	The destination that sent the response
      */
     protected void customizeResponse(SubmitSingleMessageResponse response, IDestination dest) {
         // Default implementation does nothing
@@ -195,6 +221,10 @@ public abstract class BaseGatewayController extends SoapControllerBase {
         return dest;
     }
 
+    /**
+     * Record the destination in the destination information for logging.
+     * @param routing	The destination
+     */
     protected void logDestination(IDestination routing) {
         DestinationInfo destination = RequestContext.getDestinationInfo();
         destination.setId(routing.getDestId());

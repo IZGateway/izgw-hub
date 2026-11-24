@@ -49,6 +49,12 @@ public class GracePeriodRevocationScheduler {
     private final ApiKeyAuditLogger auditLogger;
     private final ApiKeyPrincipalProvider apiKeyPrincipalProvider;
 
+    /**
+     * Create the scheduler. Spring supplies the parameters.
+     * @param credentialRepository	The repository that stores API key credentials
+     * @param auditLogger	The logger for API key audit events
+     * @param apiKeyPrincipalProvider	The provider whose credential cache this job clears
+     */
     @Autowired
     public GracePeriodRevocationScheduler(
             ApiKeyCredentialRepository credentialRepository,

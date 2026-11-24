@@ -29,17 +29,47 @@ import java.net.UnknownHostException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * The base class for simulators that add random delays and errors to mock IIS responses.
+ * The delays and response sizes follow profiles that come from measured IIS traffic.
+ */
 @Slf4j
 public
 abstract class AbstractPerformanceSimulator  implements PerformanceSimulatorInterface {
+	/**
+	 * Make a simulator and load its list of errors with {@code initErrors()}.
+	 */
 	protected AbstractPerformanceSimulator() {
 		initErrors();
 	}
+    /**
+     * A function of one argument that makes a response and can throw a fault.
+     * @param <T> The type of the argument.
+     */
     protected interface Callable1<T extends Object> {
+        /**
+         * Call the function.
+         * @param t The argument.
+         * @return The response.
+         * @throws Fault When the function makes a SOAP fault.
+         */
         ResponseEntity<String> call(T t) throws Fault;
     }
+    /**
+     * One type of simulated error and its frequency.
+     */
     public interface Simulator {
+	    /**
+	     * Make the simulated error.
+	     * @param resp The HTTP response to write the error to.
+	     * @return The error response.
+	     * @throws Fault When the simulated error is a SOAP fault.
+	     */
 	    ResponseEntity<String> simulate(HttpServletResponse resp) throws Fault;
+	    /**
+	     * Get the number of times that this error occurs in a sample of {@code getSampleSize()} requests.
+	     * @return The frequency.
+	     */
 	    public int getFrequency();
     }
 	/** The test case/MSH-6 value to use to trigger use of this simulator */
@@ -120,6 +150,7 @@ abstract class AbstractPerformanceSimulator  implements PerformanceSimulatorInte
             { 702000, 2980000, 0 },
             { 2980000, 3020000, 529 }
     };
+    /** The histogram of IIS response sizes for QBP messages. */
     public static final Histogram QBP_SIZES = new ArrayHistogram(_QBP_SIZES);
 
     /**
@@ -154,12 +185,15 @@ abstract class AbstractPerformanceSimulator  implements PerformanceSimulatorInte
             { 19000, 34000, 9796 },
             { 34000, 58000, 1104 }
     };
+    /** The histogram of IIS request sizes for VXU messages. */
     public static final Histogram VXU_REQUEST_SIZES = new ArrayHistogram(_VXU_REQUEST_SIZES);
 
     private static AtomicLong messageNumber = new AtomicLong();
     private static final String HOSTNAME = getHostname();
 
+    /** The error types that this simulator makes. {@code initErrors()} sets this list. */
     protected List<Simulator> errors = null;
+    /** The sum of the frequencies of all error types. A random value above this makes no error. */
     protected int maxErrorValue;
     private static final String QBP_FAIL1 = getMessage(MockMessage.TC_ACK04).getHl7Message();
     private static final String QBP_FAIL2 = getMessage(MockMessage.TC_ACK06).getHl7Message();
@@ -192,10 +226,18 @@ abstract class AbstractPerformanceSimulator  implements PerformanceSimulatorInte
     static final Random RAND_DATA = new Random();
 
     abstract void initErrors();
+    /**
+     * Get the size of the sample that the error frequencies are counted in.
+     * @return The sample size.
+     */
     protected int getSampleSize() {
     	return 1000000;
     }
     
+    /**
+     * Set the seed of all random number generators, to make the simulation repeatable.
+     * @param l The seed.
+     */
     public static void setSeed(long l) {
         RAND_QBP.setSeed(l);
         RAND_VXU.setSeed(l);
@@ -517,6 +559,12 @@ abstract class AbstractPerformanceSimulator  implements PerformanceSimulatorInte
         return message("Simulated Unknown Fault");
     }
 
+    /**
+     * Throw a simulated fault. The method does not return normally.
+     * @param message The message of the simulated fault. The method does not use it.
+     * @return Never returns.
+     * @throws UnexpectedExceptionFault Always.
+     */
     public static ResponseEntity<String> simulateFault(String message) throws UnexpectedExceptionFault {
     	throw new UnexpectedExceptionFault("Simulated Fault", new Exception("Simulated Fault"), "User requested that a fault be generated for interface testing.");
     }

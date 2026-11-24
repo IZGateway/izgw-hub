@@ -75,7 +75,7 @@ public class IntegrityCheck {
      * Compute MD5 Hash and length of DataHandler content 
      * @param data  The data handler
      * @return An IntegrityCheck object containing the MD5 Hash and length
-     * @throws IOException 
+     * @throws IOException If an error occurs when the data is read
      */
     public static IntegrityCheck getIntegrityCheck(DataHandler data) throws IOException {
         MessageDigest md;
@@ -115,6 +115,7 @@ public class IntegrityCheck {
 
     
     /**
+     * Gets the MD5 hash of the content.
      * @return the hash code.
      */
     public byte[] getHash() {
@@ -122,6 +123,7 @@ public class IntegrityCheck {
     }
 
     /**
+     * Gets the length of the content in bytes.
      * @return the length.
      */
     public long getLength() {
@@ -129,6 +131,7 @@ public class IntegrityCheck {
     }
 
     /**
+     * Gets the MD5 hash as a Base64 string.
      * @return the MD5 hash.
      */
     public String toString() {
@@ -136,6 +139,7 @@ public class IntegrityCheck {
     }
     
     /** 
+     * Gets the MIME type that the magic number of the content identifies.
      * @return the mimeType.
      */
     public String getMimeType() {
@@ -144,6 +148,7 @@ public class IntegrityCheck {
 
     
     /** 
+     * Tells if the content has a MIME type.
      * @return true if there is a mimeType value
      */
     public boolean hasMimeType() {

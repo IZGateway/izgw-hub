@@ -44,7 +44,7 @@ public class HubPrincipalService implements PrincipalService {
      * <p>If an API key was presented but failed authentication, certificate authentication is not attempted —
      * the caller has identified itself as an API key holder, and a failed API key must not be silently
      * retried against mTLS.
-     * @param request
+     * @param request	The HTTP request
      * @return The new principal
      */
     @Override
