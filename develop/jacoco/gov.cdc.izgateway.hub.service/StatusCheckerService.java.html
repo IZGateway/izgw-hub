@@ -1,0 +1,415 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StatusCheckerService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.hub.service</a> &gt; <span class="el_source">StatusCheckerService.java</span></div><h1>StatusCheckerService.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.hub.service;
+
+import gov.cdc.izgateway.configuration.AppProperties;
+import gov.cdc.izgateway.configuration.StatusCheckerConfiguration;
+import gov.cdc.izgateway.dynamodb.model.EndpointStatus;
+import gov.cdc.izgateway.logging.LoggingValve;
+import gov.cdc.izgateway.logging.RequestContext;
+import gov.cdc.izgateway.logging.event.EventId;
+import gov.cdc.izgateway.logging.event.TransactionData;
+import gov.cdc.izgateway.logging.event.TransactionData.MessageType;
+import gov.cdc.izgateway.logging.info.DestinationInfo;
+import gov.cdc.izgateway.logging.info.HostInfo;
+import gov.cdc.izgateway.logging.info.SourceInfo;
+import gov.cdc.izgateway.logging.markers.Markers2;
+import gov.cdc.izgateway.model.IDestination;
+import gov.cdc.izgateway.model.IEndpointStatus;
+import gov.cdc.izgateway.model.RetryStrategy;
+import gov.cdc.izgateway.security.ClientTlsSupport;
+import gov.cdc.izgateway.service.IDestinationService;
+import gov.cdc.izgateway.service.IStatusCheckerService;
+import gov.cdc.izgateway.service.impl.EndpointStatusService;
+import gov.cdc.izgateway.soap.fault.Fault;
+import gov.cdc.izgateway.soap.fault.FaultSupport;
+import gov.cdc.izgateway.soap.message.ConnectivityTestRequest;
+import gov.cdc.izgateway.soap.message.ConnectivityTestResponse;
+import gov.cdc.izgateway.soap.net.MessageSender;
+import lombok.extern.slf4j.Slf4j;
+
+import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import gov.cdc.izgateway.utils.SystemUtils;
+import gov.cdc.izgateway.utils.X500Utils;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * Checks the connection status of destinations, records the results, and schedules
+ * checks that look for a reset of the circuit breaker.
+ */
+<span class="fc" id="L51">@Slf4j</span>
+@Service
+public class StatusCheckerService implements IStatusCheckerService {
+	@Setter(AccessLevel.PRIVATE)
+<span class="fc" id="L55">    private static String statusCheckerEventId = EventId.DEFAULT_TX_ID;</span>
+	
+	@Setter(AccessLevel.PRIVATE)
+<span class="fc" id="L58">    private static String commonName = &quot;unknown&quot;;</span>
+
+<span class="fc" id="L60">    private static final int[]  CHECK_INTERVALS = { 15, 60, 120, 180, 240, 300, 600, 900 };</span>
+
+    /**
+     * Checks the status of an ADS destination (DEX or Azure).
+     */
+    public static interface ADSChecker {
+		/**
+		 * Check the status of an ADS destination.
+		 * @param dest	The destination identifier
+		 * @return The destination status
+		 * @throws Fault	If the status check fails
+		 */
+		public String check(String dest) throws Fault;
+	}
+
+    @Getter
+    private final StatusCheckerConfiguration config;
+    private final MessageSender messageSender;
+    private final IDestinationService destinationService;
+	private final ClientTlsSupport clientTlsSupport;
+	private final EndpointStatusService endpointStatusService;
+	private final ADSChecker adsChecker;
+	private final ScheduledExecutorService scheduler;
+    
+    /**
+     * Create the status checker service. Spring supplies the parameters.
+     * @param config	The status checker configuration
+     * @param messageSender	The sender for connectivity tests
+     * @param destinationService	The service that finds destinations
+     * @param endpointStatusService	The service that stores endpoint status
+     * @param clientTlsSupport	The client TLS support that supplies the client certificate
+     * @param adsChecker	The checker for ADS destinations
+     * @param app	The application properties that supply the scheduler
+     */
+    @Autowired
+    public StatusCheckerService(
+    	StatusCheckerConfiguration config, 
+    	MessageSender messageSender, 
+    	IDestinationService destinationService, 
+    	EndpointStatusService endpointStatusService, 
+    	ClientTlsSupport clientTlsSupport,
+    	ADSChecker adsChecker,
+    	AppProperties app
+<span class="fc" id="L103">    ) {</span>
+<span class="fc" id="L104">    	this.scheduler = app.getScheduler();</span>
+<span class="fc" id="L105">        this.config = config;</span>
+<span class="fc" id="L106">        this.messageSender = messageSender;</span>
+<span class="fc" id="L107">        this.destinationService = destinationService;</span>
+<span class="fc" id="L108">        this.clientTlsSupport = clientTlsSupport;</span>
+<span class="fc" id="L109">        this.endpointStatusService =  endpointStatusService;</span>
+<span class="fc" id="L110">        this.adsChecker = adsChecker;</span>
+<span class="fc" id="L111">        setCommonName(X500Utils.getCommonName(clientTlsSupport.getCertificate()));</span>
+<span class="fc" id="L112">        setStatusCheckerEventId(new TransactionData().getEventId());</span>
+<span class="fc" id="L113">        messageSender.setStatusChecker(this);</span>
+<span class="fc" id="L114">    }</span>
+    
+    /**
+     * Get the names of the hosts that report endpoint status. The list starts with this host.
+     * @return The list of host names
+     */
+    public List&lt;String&gt; getHosts() {
+<span class="nc" id="L121">    	List&lt;String&gt; l = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L122">		l.add(SystemUtils.getHostname());</span>
+<span class="nc bnc" id="L123" title="All 2 branches missed.">    	for (IEndpointStatus s: endpointStatusService.findAll()) {</span>
+<span class="nc bnc" id="L124" title="All 2 branches missed.">    		if (!l.contains(s.getStatusBy())) {</span>
+<span class="nc" id="L125">    			l.add(s.getStatusBy());</span>
+    		}
+<span class="nc" id="L127">    	}</span>
+<span class="nc" id="L128">    	return l;</span>
+    }
+    
+	/**
+	 * Get the number of failures before the circuit breaker is thrown.
+	 * @return The maximum number of failures
+	 */
+	public int getMaxFailures() {
+<span class="nc" id="L136">		return config.getMaxFailuresBeforeCircuitBreaker();</span>
+	}
+	
+	/**
+	 * Get the period between status checks.
+	 * @return The status check period in minutes
+	 */
+	public int getStatusCheckPeriodInMinutes() {
+<span class="nc" id="L144">		return config.getStatusCheckPeriodInMinutes();</span>
+	}
+	
+	/**
+	 * Add a destination to the list of destinations that are exempt from status checks.
+	 * @param destId	The destination identifier
+	 */
+	public void addExemption(String destId) {
+<span class="fc" id="L152">		config.getExempt().add(destId);</span>
+<span class="fc" id="L153">	}</span>
+
+    /**
+     * Check the status of a destination now and save the result.
+     * @param dest	The destination to check
+     * @return The new status of the destination
+     */
+    public IEndpointStatus updateDestinationStatus(IDestination dest) {
+<span class="fc" id="L161">        EndpointStatus s = new EndpointStatus(dest);</span>
+<span class="pc bpc" id="L162" title="2 of 4 branches missed.">        if (dest.isDex() || dest.isAzure()) {</span>
+<span class="nc" id="L163">            doAdsStatusCheck(dest, s);</span>
+        } else {
+<span class="fc" id="L165">            doHubStatusCheck(s);</span>
+        }
+<span class="fc" id="L167">        endpointStatusService.save(s);</span>
+<span class="fc" id="L168">        return s;</span>
+    }
+
+	private void doAdsStatusCheck(IDestination dest, IEndpointStatus s) {
+		try {
+<span class="nc" id="L173">		    adsChecker.check(dest.getDestId());</span>
+<span class="nc" id="L174">		    s.connected();</span>
+<span class="nc" id="L175">		} catch (Exception ex) {</span>
+<span class="nc" id="L176">		    this.reportFault(s, ex);</span>
+<span class="nc" id="L177">		}</span>
+<span class="nc" id="L178">	}</span>
+	private String doHubStatusCheck(EndpointStatus d) {
+<span class="fc" id="L180">        ConnectivityTestRequest ct = new ConnectivityTestRequest();</span>
+<span class="fc" id="L181">        String message = String.format(&quot;Wishing %s (%s) an Audacious Hello at %tC&quot;, d.getDestUri(), d.getDestId(),</span>
+                new Date());
+<span class="fc" id="L183">        ct.setEchoBack(message);</span>
+
+<span class="fc" id="L185">        String status = null;</span>
+        try {
+<span class="fc" id="L187">        	IDestination destination = destinationService.findByDestId(d.getDestId());</span>
+<span class="pc bpc" id="L188" title="1 of 2 branches missed.">        	if (destination == null) {</span>
+<span class="nc" id="L189">        		return null; // Nobody to send to.</span>
+        	}
+<span class="nc" id="L191">            ConnectivityTestResponse cr = messageSender.sendConnectivityTest(destination, ct);</span>
+<span class="nc bnc" id="L192" title="All 2 branches missed.">            if (cr.getEchoBack() == null) {</span>
+<span class="nc" id="L193">                status = &quot;No Echo&quot;;</span>
+            } else {
+            	// We are not verifying that the echoback response matches b/c some IIS fail at this.
+<span class="nc" id="L196">                status = d.connected();</span>
+            } 
+<span class="fc" id="L198">        } catch (Exception e) {</span>
+<span class="fc" id="L199">            status = reportFault(d, e);</span>
+<span class="nc" id="L200">        }</span>
+<span class="fc" id="L201">        d.setStatus(status);</span>
+<span class="fc" id="L202">        return status;</span>
+    }
+
+    private String reportFault(IEndpointStatus s, Exception e) {
+<span class="fc" id="L206">        String status = null;</span>
+<span class="pc bpc" id="L207" title="1 of 2 branches missed.">        if (e instanceof FaultSupport f) {</span>
+<span class="fc" id="L208">        	status = f.getSummary();</span>
+<span class="fc" id="L209">            s.setStatus(status);</span>
+<span class="fc" id="L210">            s.setDetail(f.getDetail());</span>
+<span class="fc" id="L211">            s.setDiagnostics(f.getDiagnostics());</span>
+<span class="fc" id="L212">            s.setRetryStrategy(f.getRetry().toString());</span>
+        } else {
+<span class="nc" id="L214">        	status = e.getMessage();</span>
+<span class="nc" id="L215">            s.setStatus(status);</span>
+<span class="nc" id="L216">            s.setDetail(&quot;Unexpected Exception&quot;);</span>
+<span class="nc" id="L217">            s.setDiagnostics(&quot;IZ Gateway threw an unexpected exception.&quot;);</span>
+<span class="nc" id="L218">            s.setRetryStrategy(RetryStrategy.CONTACT_SUPPORT.toString());</span>
+		}
+
+<span class="fc" id="L221">        log.error(Markers2.append(e), &quot;Status check failure on {}&quot;, s.getDestId());</span>
+
+<span class="fc" id="L223">        return status;</span>
+	}
+
+    /**
+     * Check the status of a destination as an internal request, with logging. If the destination
+     * is under maintenance, return its current status and do not check it.
+     * @param dest	The destination to check
+     * @return The status of the destination, or null if dest is null
+     */
+    public IEndpointStatus checkDestination(IDestination dest) {
+<span class="pc bpc" id="L233" title="1 of 2 branches missed.">        if (dest == null) {</span>
+<span class="nc" id="L234">            return null;</span>
+        }
+
+<span class="pc bpc" id="L237" title="1 of 2 branches missed.">        if (dest.isUnderMaintenance()) {</span>
+            // Destination is under maintenance, report status, and do nothing further
+<span class="nc" id="L239">            return endpointStatusService.getEndpointStatus(dest);</span>
+        }
+
+<span class="fc" id="L242">        Map&lt;String, String&gt; map = setupMDC();</span>
+<span class="fc" id="L243">        TransactionData tDataOriginal = RequestContext.getTransactionData();</span>
+<span class="fc" id="L244">        TransactionData tData = new TransactionData(new Date(), statusCheckerEventId);</span>
+<span class="fc" id="L245">        tData.setServiceType(&quot;Gateway&quot;);</span>
+<span class="fc" id="L246">        RequestContext.setTransactionData(tData);</span>
+<span class="fc" id="L247">        setDestinationInfoFromDestination(RequestContext.getDestinationInfo(), dest);</span>
+<span class="fc" id="L248">        tData.setMessageType(MessageType.CONNECTIVITY_TEST);</span>
+
+        try {
+
+<span class="fc" id="L252">            String requestUri = &quot;/rest/status/&quot; + dest.getDestId();</span>
+<span class="fc" id="L253">            MDC.put(LoggingValve.REQUEST_URI, requestUri);</span>
+
+            // Override source type, this is an internal call.
+<span class="fc" id="L256">            logInternalSource(tData);</span>
+
+<span class="fc" id="L258">            return updateDestinationStatus(dest);</span>
+        } finally {
+<span class="fc" id="L260">            tData.logIt();</span>
+<span class="fc" id="L261">            RequestContext.setTransactionData(tDataOriginal);</span>
+<span class="fc" id="L262">            restoreMDC(map);</span>
+        }
+    }
+    
+    /**
+     * Copy the URL and identifier of a destination into the destination information for logging.
+     * @param info	The destination information to update
+     * @param route	The destination to copy from, or null to clear the values
+     */
+    public static void setDestinationInfoFromDestination(DestinationInfo info, IDestination route) {
+<span class="pc bpc" id="L272" title="1 of 2 branches missed.">		if (route == null) {</span>
+<span class="nc" id="L273">			info.setUrl(null);</span>
+<span class="nc" id="L274">			info.setId(null);</span>
+<span class="nc" id="L275">			return;</span>
+		}
+<span class="fc" id="L277">		info.setUrl(route.getDestUri());</span>
+<span class="fc" id="L278">		info.setId(route.getDestId());</span>
+<span class="fc" id="L279">    }</span>
+    
+    private void logInternalSource(TransactionData tData) {
+<span class="fc" id="L282">        SourceInfo source = tData.getSource();</span>
+
+<span class="fc" id="L284">        tData.setCipherSuite(&quot;INTERNAL_JAVA_CALL&quot;);</span>
+<span class="fc" id="L285">        source.setCipherSuite(&quot;INTERNAL_JAVA_CALL&quot;);</span>
+<span class="fc" id="L286">        source.setCertificate(clientTlsSupport.getCertificate());</span>
+<span class="fc" id="L287">        source.setFacilityId(&quot;IZGW&quot;);</span>
+<span class="fc" id="L288">        source.setHost(SystemUtils.getHostname());</span>
+<span class="fc" id="L289">        source.setId(&quot;izgw&quot;);</span>
+<span class="fc" id="L290">        source.setIpAddress(HostInfo.LOCALHOST_IP4);</span>
+<span class="fc" id="L291">        source.setType(SourceInfo.SOURCE_TYPE_INTERNAL);</span>
+<span class="fc" id="L292">    }</span>
+
+    private void checkStatus(IDestination dest, int failureCount) {
+        try {
+<span class="nc bnc" id="L296" title="All 2 branches missed.">        	if (checkDestination(dest).isConnected()) {</span>
+<span class="nc" id="L297">        		return;</span>
+        	}
+<span class="nc" id="L299">        } catch (Exception ex) {</span>
+            // Ignore failures.
+<span class="nc" id="L301">        }</span>
+
+        // We did not succeed, set checks for the future if there are any to be scheduled.
+<span class="nc" id="L304">    	lookForReset(dest, Math.max(failureCount, CHECK_INTERVALS.length - 1));</span>
+<span class="nc" id="L305">    }</span>
+    
+	private void lookForReset(IDestination dest, int count) {
+<span class="nc" id="L308">        scheduler.schedule(</span>
+<span class="nc" id="L309">            () -&gt; checkStatus(dest, count), StatusCheckerService.CHECK_INTERVALS[count], TimeUnit.SECONDS</span>
+        );
+<span class="nc" id="L311">	}</span>
+
+	public void lookForReset(IDestination dest) {
+<span class="nc" id="L314">		lookForReset(dest, 0);</span>
+<span class="nc" id="L315">	}</span>
+	
+	public boolean isExempt(String destId) {
+<span class="nc" id="L318">		return config.getExempt().contains(destId);</span>
+	}
+	
+	
+	/**
+	 * Update status after successful or failed message send. This keeps status fresh and avoids
+	 * unnecessary status checks.
+	 * @param status	Current status
+	 * @param dest		Destination (needed on failure states to look for a reset of the circuit breaker)
+	 * @param reason	The reason for the failure
+	 */
+	@Override
+	public void updateStatus(IEndpointStatus status, IDestination dest, Fault reason) {
+<span class="nc" id="L331">		boolean wasCircuitBreakerThrown = status.isCircuitBreakerThrown();</span>
+<span class="nc bnc" id="L332" title="All 2 branches missed.">		if (reason == null) {</span>
+<span class="nc" id="L333">			status.connected();</span>
+<span class="nc bnc" id="L334" title="All 2 branches missed.">			if (wasCircuitBreakerThrown) {</span>
+<span class="nc" id="L335">				logCircuitBreakerReset(status);</span>
+			}
+		} else {
+<span class="nc" id="L338">			status = new EndpointStatus(dest).fromFault(reason);</span>
+<span class="nc bnc" id="L339" title="All 4 branches missed.">			if (!wasCircuitBreakerThrown &amp;&amp; reason.shouldBreakCircuit()) {</span>
+<span class="nc" id="L340">				status.setStatus(IEndpointStatus.CIRCUIT_BREAKER_THROWN);</span>
+<span class="nc" id="L341">				logCircuitBreakerThrown(status, reason);</span>
+<span class="nc" id="L342">				lookForReset(dest);</span>
+			}
+		}
+<span class="nc" id="L345">		endpointStatusService.save(status);</span>
+<span class="nc" id="L346">	}</span>
+	
+
+	@Override
+    public void logCircuitBreakerReset(IEndpointStatus status) {
+        // Ensure that there is an event id if not set.
+<span class="nc" id="L352">        Map&lt;String, String&gt; mdcValues = setupMDC();</span>
+        // This was previously a broken connection.  We've reset the circuit breaker,
+        // log that event.
+<span class="nc" id="L355">        log.info(Markers2.append(&quot;status&quot;, status),</span>
+                &quot;Circuit Breaker Reset for {} ({}) in {}&quot;,
+<span class="nc" id="L357">                status.getDestId(), status.getDestUri(), SystemUtils.getDestTypeAsString());</span>
+<span class="nc" id="L358">        restoreMDC(mdcValues);</span>
+<span class="nc" id="L359">    }</span>
+
+	@Override
+    public void logCircuitBreakerThrown(IEndpointStatus status, Throwable why) {
+<span class="nc" id="L363">        Map&lt;String, String&gt; mdcValues = setupMDC();</span>
+<span class="nc" id="L364">        log.info(Markers2.append(why, &quot;status&quot;, status),</span>
+<span class="nc" id="L365">                &quot;Circuit Breaker Thrown for {} ({}) in {}: {}&quot;, status.getDestId(),</span>
+<span class="nc" id="L366">                status.getDestUri(), SystemUtils.getDestTypeAsString(),</span>
+<span class="nc" id="L367">                status.getStatus());</span>
+<span class="nc" id="L368">        restoreMDC(mdcValues);</span>
+<span class="nc" id="L369">    }</span>
+    
+    /**
+     * Set the MDC logging values for an internal request, if they are not already set.
+     * @return The MDC values before the change, for use with {@link #restoreMDC(Map)}
+     */
+    public static Map&lt;String, String&gt; setupMDC() {
+        // Set various MDC values that are expected to appear in logs to reasonable values that would tell folks about
+        // where this request came from.
+<span class="fc" id="L378">        Map&lt;String, String&gt; m = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L379">        LoggingValve.MDC_EVENTS.forEach(s -&gt; m.put(s,  MDC.get(s)));</span>
+        // Don't mess with MDC if values are already present.
+<span class="pc bpc" id="L381" title="2 of 4 branches missed.">        if (MDC.get(LoggingValve.EVENT_ID) != null &amp;&amp; MDC.get(LoggingValve.REQUEST_URI) != null) {</span>
+<span class="nc" id="L382">        	return m;</span>
+        }
+<span class="fc" id="L384">        MDC.put(LoggingValve.EVENT_ID, statusCheckerEventId);</span>
+<span class="fc" id="L385">        MDC.put(LoggingValve.REQUEST_URI, Thread.currentThread().getName());</span>
+<span class="fc" id="L386">        MDC.put(LoggingValve.METHOD, &quot;INTERNAL&quot;);</span>
+<span class="fc" id="L387">        MDC.put(LoggingValve.IP_ADDRESS, HostInfo.LOCALHOST_IP4);</span>
+<span class="fc" id="L388">        MDC.put(LoggingValve.COMMON_NAME, commonName);</span>
+
+<span class="fc" id="L390">        return m;</span>
+    }
+
+    /**
+     * Restore the MDC logging values that {@link #setupMDC()} returned.
+     * @param m	The MDC values to restore
+     */
+    public static void restoreMDC(Map&lt;String, String&gt; m) {
+<span class="fc bfc" id="L398" title="All 2 branches covered.">        for (Map.Entry&lt;String, String&gt; e: m.entrySet()) {</span>
+<span class="fc bfc" id="L399" title="All 2 branches covered.">            if (e.getValue() == null) {</span>
+<span class="fc" id="L400">                MDC.remove(e.getKey());</span>
+            } else {
+<span class="fc" id="L402">                MDC.put(e.getKey(), e.getValue());</span>
+            }
+<span class="fc" id="L404">        }</span>
+<span class="fc" id="L405">    }</span>
+
+	/**
+	 * Get the scheduler that runs the status checks.
+	 * @return The scheduler
+	 */
+	public ScheduledExecutorService getScheduler() {
+<span class="fc" id="L412">		return scheduler;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

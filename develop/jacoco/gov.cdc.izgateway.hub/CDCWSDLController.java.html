@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CDCWSDLController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.hub</a> &gt; <span class="el_source">CDCWSDLController.java</span></div><h1>CDCWSDLController.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.hub;
+
+import gov.cdc.izgateway.ads.ADSController;
+import gov.cdc.izgateway.configuration.SenderConfig;
+import gov.cdc.izgateway.hub.service.DestinationService;
+import gov.cdc.izgateway.hub.service.accesscontrol.AccessControlService;
+import gov.cdc.izgateway.model.IDestination;
+import gov.cdc.izgateway.security.AccessControlRegistry;
+import gov.cdc.izgateway.security.Roles;
+import gov.cdc.izgateway.service.IMessageHeaderService;
+import gov.cdc.izgateway.service.impl.EndpointStatusService;
+import gov.cdc.izgateway.soap.fault.Fault;
+import gov.cdc.izgateway.soap.fault.UnsupportedOperationFault;
+import gov.cdc.izgateway.soap.message.*;
+import gov.cdc.izgateway.soap.net.MessageSender;
+import jakarta.annotation.security.RolesAllowed;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Arrays;
+
+/**
+ * Handles SOAP requests at {@code /izgw} that use the CDC IIS 2011 WSDL.
+ */
+@RestController
+@RolesAllowed({Roles.SOAP, Roles.ADMIN})
+@RequestMapping(&quot;/izgw&quot;)
+@Lazy(false)
+public class CDCWSDLController extends BaseGatewayController {
+
+	/**
+	 * Create the controller. Spring supplies the parameters.
+	 * @param mshService	The service that maps message header values to sources
+	 * @param destinationService	The destination service used to obtain routing information
+	 * @param endpointStatusService	The service that gets and stores endpoint status
+	 * @param messageSender	The sender for outbound messages
+	 * @param adsController	The ADS controller, used for DEX status checks
+	 * @param registry	The access control registry that this controller registers with
+	 * @param accessControlService	The service that checks access to destinations
+	 * @param hubConfig	The sender configuration that supplies the maximum message size
+	 */
+	@Autowired
+	public CDCWSDLController(
+		IMessageHeaderService mshService,
+		DestinationService destinationService,
+		EndpointStatusService endpointStatusService,
+		MessageSender messageSender,
+		ADSController adsController,
+		AccessControlRegistry registry,
+		AccessControlService accessControlService,
+		SenderConfig hubConfig
+	) {
+<span class="fc" id="L56">		super(mshService, SoapMessage.IIS2011_NS, &quot;cdc-iis-2011.wsdl&quot;, Arrays.asList(SoapMessage.IIS2014_NS),</span>
+			destinationService, endpointStatusService, messageSender, adsController, registry, accessControlService, hubConfig);
+<span class="fc" id="L58">	}</span>
+
+    @Override
+    protected boolean isHubWsdl() {
+        // IIS Controller is never to be considered Hub
+<span class="nc" id="L63">        return false;</span>
+    }
+
+	@Override
+	protected void validateHubHeader(SubmitSingleMessageRequest submitSingleMessage) throws Fault {
+<span class="nc bnc" id="L68" title="All 4 branches missed.">		if (submitSingleMessage.getHubHeader() != null &amp;&amp; !submitSingleMessage.getHubHeader().isEmpty()) {</span>
+<span class="nc" id="L69">            throw new UnsupportedOperationFault(&quot;IZGW-specific HubHeader is not allowed in CDC WSDL requests.&quot;, null);</span>
+		}
+<span class="nc" id="L71">	}</span>
+
+	@Override
+	protected void customizeResponse(SubmitSingleMessageResponse response, IDestination dest) {
+        // No customization needed as this is not a Hub response (no hub headers to be set)
+<span class="nc" id="L76">	}</span>
+
+	/**
+	 * Handle SOAP requests with destinationId as a path parameter
+	 * This allows requests to be made to /izgw/{destinationId}
+	 * @param soapMessage The SOAP message
+	 * @param destinationId The destination ID
+	 * @return The response entity
+	 * @throws Fault If an error occurs
+	 */
+	@PostMapping(value = &quot;/{destinationId}&quot;, produces = {
+		&quot;application/soap+xml&quot;,
+		&quot;application/soap&quot;,
+		MediaType.APPLICATION_XML_VALUE,
+		MediaType.TEXT_XML_VALUE,
+		MediaType.TEXT_PLAIN_VALUE,
+		MediaType.TEXT_HTML_VALUE
+	})
+	public ResponseEntity&lt;?&gt; submitSoapRequestWithDestination(
+		@RequestBody SoapMessage soapMessage,
+		@PathVariable String destinationId
+	) throws Fault {
+<span class="nc bnc" id="L98" title="All 2 branches missed.">		if (soapMessage.getWsaHeaders() != null) {</span>
+<span class="nc" id="L99">			soapMessage.getWsaHeaders().setTo(destinationId);</span>
+		}
+
+<span class="nc" id="L102">		return submitSoapRequest(soapMessage, null);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

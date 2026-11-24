@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ApiKeyPrincipalProvider.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.hub.security</a> &gt; <span class="el_source">ApiKeyPrincipalProvider.java</span></div><h1>ApiKeyPrincipalProvider.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.hub.security;
+
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.crypto.MACVerifier;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
+import gov.cdc.izgateway.dynamodb.model.ApiKeyCredential;
+import gov.cdc.izgateway.dynamodb.repository.ApiKeyCredentialRepository;
+import gov.cdc.izgateway.security.IzgPrincipal;
+import gov.cdc.izgateway.security.principal.MissingJwtTokenException;
+import gov.cdc.izgateway.security.principal.JwtTokenExtractor;
+import gov.cdc.izgateway.utils.SystemUtils;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
+import software.amazon.awssdk.services.secretsmanager.model.ResourceNotFoundException;
+
+import java.nio.charset.StandardCharsets;
+import java.text.ParseException;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Date;
+
+/**
+ * Authenticates a request that has a Bearer-scheme API key (a signed JWT) and creates the
+ * {@link ApiKeyPrincipal} for it. It caches signing secrets and credential lookups.
+ */
+@Component
+<span class="fc" id="L34">@Slf4j</span>
+public class ApiKeyPrincipalProvider {
+
+<span class="fc" id="L37">    private static final Duration MAX_TOKEN_LIFETIME = Duration.ofDays(366);</span>
+    private static final long CLOCK_SKEW_SECONDS = 30;
+
+    private final JwtConfig config;
+    private final ApiKeyCredentialRepository credentialRepository;
+    private final JwtTokenExtractor jwtTokenExtractor;
+    private final SecretsManagerClient secretsManagerClient;
+
+<span class="fc" id="L45">    private static final Duration NEGATIVE_SECRET_CACHE_TTL = Duration.ofSeconds(60);</span>
+
+    private final Cache&lt;String, String&gt; secretCache;
+    private final Cache&lt;String, Boolean&gt; negativeSecretCache;
+    private final Cache&lt;String, ApiKeyPrincipal&gt; credentialCache;
+    private final Cache&lt;String, Boolean&gt; revokedCache;
+    private final Cache&lt;String, Boolean&gt; absentCache;
+
+    /**
+     * Create the provider. Spring supplies the parameters.
+     * @param config	The JWT configuration
+     * @param credentialRepository	The repository that stores API key credentials
+     * @param jwtTokenExtractor	The extractor that gets the Bearer token from the request
+     * @param secretsManagerClient	The Secrets Manager client for signing secrets, or null if not available
+     */
+    @Autowired
+    public ApiKeyPrincipalProvider(
+            JwtConfig config,
+            ApiKeyCredentialRepository credentialRepository,
+            JwtTokenExtractor jwtTokenExtractor,
+            @Autowired(required = false) SecretsManagerClient secretsManagerClient
+<span class="fc" id="L66">    ) {</span>
+<span class="fc" id="L67">        this.config = config;</span>
+<span class="fc" id="L68">        this.credentialRepository = credentialRepository;</span>
+<span class="fc" id="L69">        this.jwtTokenExtractor = jwtTokenExtractor;</span>
+<span class="fc" id="L70">        this.secretsManagerClient = secretsManagerClient;</span>
+
+<span class="fc" id="L72">        this.secretCache = Caffeine.newBuilder()</span>
+<span class="fc" id="L73">                .expireAfterWrite(config.getSecretCacheTtl())</span>
+<span class="fc" id="L74">                .build();</span>
+
+<span class="fc" id="L76">        this.negativeSecretCache = Caffeine.newBuilder()</span>
+<span class="fc" id="L77">                .expireAfterWrite(NEGATIVE_SECRET_CACHE_TTL)</span>
+<span class="fc" id="L78">                .build();</span>
+
+<span class="fc" id="L80">        this.credentialCache = Caffeine.newBuilder()</span>
+<span class="fc" id="L81">                .expireAfterWrite(config.getCredentialCacheTtl())</span>
+<span class="fc" id="L82">                .build();</span>
+
+<span class="fc" id="L84">        this.revokedCache = Caffeine.newBuilder()</span>
+<span class="fc" id="L85">                .expireAfterWrite(MAX_TOKEN_LIFETIME)</span>
+<span class="fc" id="L86">                .build();</span>
+
+<span class="fc" id="L88">        this.absentCache = Caffeine.newBuilder()</span>
+<span class="fc" id="L89">                .expireAfterWrite(config.getCredentialCacheTtl())</span>
+<span class="fc" id="L90">                .build();</span>
+<span class="fc" id="L91">    }</span>
+
+    /**
+     * Get the principal for the API key in the request.
+     * @param request	The HTTP request
+     * @return The principal, or null if the request has no Bearer token
+     * @throws ApiKeyAuthenticationException	If the request has a Bearer token that fails authentication
+     */
+    public IzgPrincipal getPrincipal(HttpServletRequest request) {
+        // Step 1: Extract Bearer token — return null if absent (fallback to cert auth is still allowed;
+        // no API key was presented at all).
+        String token;
+        try {
+<span class="fc" id="L104">            token = jwtTokenExtractor.extractToken(request);</span>
+<span class="fc" id="L105">        } catch (MissingJwtTokenException e) {</span>
+<span class="fc" id="L106">            return null;</span>
+<span class="fc" id="L107">        }</span>
+
+        // From here on, a Bearer-scheme Authorization header WAS presented. Every failure below throws
+        // ApiKeyAuthenticationException instead of returning null: a caller that presents an API key and
+        // fails authentication must not be silently retried against the client certificate.
+
+        // Step 2: Parse JWT header only
+        SignedJWT signedJwt;
+        try {
+<span class="fc" id="L116">            signedJwt = SignedJWT.parse(token);</span>
+<span class="nc" id="L117">        } catch (ParseException e) {</span>
+<span class="nc" id="L118">            log.warn(&quot;JWT rejected: failed to parse token: {}&quot;, e.getMessage());</span>
+<span class="nc" id="L119">            throw new ApiKeyAuthenticationException(&quot;Failed to parse JWT token: &quot; + e.getMessage());</span>
+<span class="fc" id="L120">        }</span>
+
+        // Step 3: Pre-check alg and iss before expensive operations
+<span class="fc bfc" id="L123" title="All 2 branches covered.">        if (!JWSAlgorithm.HS256.equals(signedJwt.getHeader().getAlgorithm())) {</span>
+<span class="fc" id="L124">            log.warn(&quot;JWT rejected: unsupported algorithm={}&quot;, signedJwt.getHeader().getAlgorithm());</span>
+<span class="fc" id="L125">            throw new ApiKeyAuthenticationException(&quot;Unsupported algorithm=&quot; + signedJwt.getHeader().getAlgorithm());</span>
+        }
+
+        JWTClaimsSet unverifiedClaims;
+        try {
+<span class="fc" id="L130">            unverifiedClaims = signedJwt.getJWTClaimsSet();</span>
+<span class="nc" id="L131">        } catch (ParseException e) {</span>
+<span class="nc" id="L132">            log.warn(&quot;JWT rejected: failed to parse claims: {}&quot;, e.getMessage());</span>
+<span class="nc" id="L133">            throw new ApiKeyAuthenticationException(&quot;Failed to parse JWT claims: &quot; + e.getMessage());</span>
+<span class="fc" id="L134">        }</span>
+
+<span class="fc bfc" id="L136" title="All 2 branches covered.">        if (!config.getIssuer().equals(unverifiedClaims.getIssuer())) {</span>
+<span class="fc" id="L137">            log.warn(&quot;JWT rejected: issuer mismatch (expected={}, got={})&quot;, config.getIssuer(), unverifiedClaims.getIssuer());</span>
+<span class="fc" id="L138">            throw new ApiKeyAuthenticationException(&quot;Issuer mismatch (expected=&quot; + config.getIssuer() + &quot;, got=&quot; + unverifiedClaims.getIssuer() + &quot;)&quot;);</span>
+        }
+
+        // Step 4: Resolve signing secret by kid
+<span class="fc" id="L142">        String kid = signedJwt.getHeader().getKeyID();</span>
+<span class="pc bpc" id="L143" title="2 of 4 branches missed.">        if (kid == null || kid.isBlank()) {</span>
+<span class="nc" id="L144">            log.warn(&quot;JWT rejected: missing kid header&quot;);</span>
+<span class="nc" id="L145">            throw new ApiKeyAuthenticationException(&quot;Missing kid header&quot;);</span>
+        }
+<span class="fc" id="L147">        byte[] secretBytes = resolveSecret(kid);</span>
+<span class="pc bpc" id="L148" title="1 of 2 branches missed.">        if (secretBytes == null) {</span>
+<span class="nc" id="L149">            log.warn(&quot;JWT rejected: unable to resolve signing secret for kid={}&quot;, kid);</span>
+<span class="nc" id="L150">            throw new ApiKeyAuthenticationException(&quot;Unable to resolve signing secret for kid=&quot; + kid);</span>
+        }
+
+        // Step 5: Verify HS256 signature
+        try {
+<span class="pc bpc" id="L155" title="1 of 2 branches missed.">            if (!signedJwt.verify(new MACVerifier(secretBytes))) {</span>
+<span class="nc" id="L156">                log.warn(&quot;JWT signature verification failed for kid={}&quot;, kid);</span>
+<span class="nc" id="L157">                throw new ApiKeyAuthenticationException(&quot;Signature verification failed for kid=&quot; + kid);</span>
+            }
+<span class="nc" id="L159">        } catch (JOSEException e) {</span>
+<span class="nc" id="L160">            log.warn(&quot;JWT verification exception for kid={}: {}&quot;, kid, e.getMessage());</span>
+<span class="nc" id="L161">            throw new ApiKeyAuthenticationException(&quot;Verification exception for kid=&quot; + kid + &quot;: &quot; + e.getMessage());</span>
+<span class="fc" id="L162">        }</span>
+
+        // Step 6: Validate claims against verified payload
+<span class="fc" id="L165">        JWTClaimsSet claims = unverifiedClaims;</span>
+<span class="fc" id="L166">        Date expiry = claims.getExpirationTime();</span>
+<span class="pc bpc" id="L167" title="1 of 4 branches missed.">        if (expiry == null || expiry.toInstant().plusSeconds(CLOCK_SKEW_SECONDS).isBefore(Instant.now())) {</span>
+<span class="fc" id="L168">            log.warn(&quot;JWT rejected: expired exp={}&quot;, expiry);</span>
+<span class="fc" id="L169">            throw new ApiKeyAuthenticationException(&quot;Expired exp=&quot; + expiry);</span>
+        }
+
+<span class="fc" id="L172">        Date notBefore = claims.getNotBeforeTime();</span>
+<span class="pc bpc" id="L173" title="3 of 4 branches missed.">        if (notBefore != null &amp;&amp; notBefore.toInstant().isAfter(Instant.now().plusSeconds(CLOCK_SKEW_SECONDS))) {</span>
+<span class="nc" id="L174">            log.warn(&quot;JWT rejected: not yet valid nbf={}&quot;, notBefore);</span>
+<span class="nc" id="L175">            throw new ApiKeyAuthenticationException(&quot;Not yet valid nbf=&quot; + notBefore);</span>
+        }
+
+        // Step 7: Credential cache lookup by jti
+        // Note: the token carries no `env` claim — environment authorization is a server-side property
+        // of the credential and is enforced against its `environments` list after the DynamoDB lookup
+        // (see lookupAndCacheCredential).
+<span class="fc" id="L182">        String jti = claims.getJWTID();</span>
+<span class="pc bpc" id="L183" title="1 of 2 branches missed.">        if (jti == null) {</span>
+<span class="nc" id="L184">            log.warn(&quot;JWT rejected: missing jti claim&quot;);</span>
+<span class="nc" id="L185">            throw new ApiKeyAuthenticationException(&quot;Missing jti claim&quot;);</span>
+        }
+
+<span class="fc bfc" id="L188" title="All 2 branches covered.">        if (revokedCache.getIfPresent(jti) != null) {</span>
+<span class="fc" id="L189">            log.warn(&quot;JWT rejected: jti={} is in REVOKED cache&quot;, jti);</span>
+<span class="fc" id="L190">            throw new ApiKeyAuthenticationException(&quot;jti=&quot; + jti + &quot; is in REVOKED cache&quot;);</span>
+        }
+
+<span class="pc bpc" id="L193" title="1 of 2 branches missed.">        if (absentCache.getIfPresent(jti) != null) {</span>
+<span class="nc" id="L194">            log.debug(&quot;JWT rejected: jti={} is in ABSENT cache&quot;, jti);</span>
+<span class="nc" id="L195">            throw new ApiKeyAuthenticationException(&quot;jti=&quot; + jti + &quot; is in ABSENT cache&quot;);</span>
+        }
+
+<span class="fc" id="L198">        ApiKeyPrincipal cached = credentialCache.getIfPresent(jti);</span>
+<span class="pc bpc" id="L199" title="1 of 2 branches missed.">        if (cached != null) {</span>
+<span class="nc" id="L200">            return cached;</span>
+        }
+
+        // Step 8: DynamoDB lookup on cache miss
+<span class="fc" id="L204">        return lookupAndCacheCredential(claims, jti);</span>
+    }
+
+    private IzgPrincipal lookupAndCacheCredential(JWTClaimsSet claims, String jti) {
+<span class="fc" id="L208">        var credentialOpt = credentialRepository.findByJti(jti);</span>
+
+<span class="pc bpc" id="L210" title="1 of 4 branches missed.">        if (credentialOpt.isPresent() &amp;&amp; isUsableStatus(credentialOpt.get().getStatus())) {</span>
+<span class="fc" id="L211">            ApiKeyCredential credential = credentialOpt.get();</span>
+
+            // Environment authorization: the request's target environment must be in the credential's
+            // server-side `environments` set (a DynamoDB Number Set). A mismatch is cached in the short-lived
+            // absentCache (not the 366-day revoked sentinel) so an `environments` edit takes effect within the
+            // credential TTL.
+            //
+            // DynamoDB cannot store an empty set, so an absent attribute arrives here as null; null and empty
+            // both mean &quot;valid in no environment&quot; and are handled by the same deny below.
+<span class="fc" id="L220">            Integer targetEnv = SystemUtils.getDestType();</span>
+<span class="pc bpc" id="L221" title="1 of 4 branches missed.">            if (credential.getEnvironments() == null || !credential.getEnvironments().contains(targetEnv)) {</span>
+<span class="fc" id="L222">                absentCache.put(jti, Boolean.TRUE);</span>
+<span class="fc" id="L223">                log.warn(&quot;JWT rejected: jti={} not valid for target env={} (environments={})&quot;,</span>
+<span class="fc" id="L224">                        jti, targetEnv, credential.getEnvironments());</span>
+<span class="fc" id="L225">                throw new ApiKeyAuthenticationException(&quot;jti=&quot; + jti + &quot; not valid for target env=&quot; + targetEnv);</span>
+            }
+
+<span class="fc" id="L228">            String sub = claims.getSubject();</span>
+<span class="fc" id="L229">            String upn = (String) claims.getClaim(&quot;upn&quot;);</span>
+<span class="fc bfc" id="L230" title="All 4 branches covered.">            if (upn == null || upn.isBlank()) {</span>
+<span class="fc" id="L231">                log.warn(&quot;JWT rejected: missing or blank upn claim for jti={}&quot;, jti);</span>
+<span class="fc" id="L232">                throw new ApiKeyAuthenticationException(&quot;Missing or blank upn claim for jti=&quot; + jti);</span>
+            }
+
+            // useTypes is carried on the principal so the routing-time intersection check (IGDD-3257) uses the
+            // credential looked up by jti without a second DynamoDB read per message; it refreshes on the
+            // credential cache TTL, the same window that governs an `environments` edit.
+<span class="fc" id="L238">            ApiKeyPrincipal principal = new ApiKeyPrincipal(</span>
+                    sub,
+                    jti,
+                    upn,
+<span class="fc" id="L242">                    config.getIssuer(),</span>
+<span class="fc" id="L243">                    credential.getUseTypes()</span>
+            );
+<span class="fc" id="L245">            credentialCache.put(jti, principal);</span>
+<span class="fc" id="L246">            log.debug(&quot;Authenticated ApiKeyPrincipal jti={} org={} upn={}&quot;, jti, sub, upn);</span>
+<span class="fc" id="L247">            return principal;</span>
+        }
+
+<span class="pc bpc" id="L250" title="1 of 2 branches missed.">        if (credentialOpt.isEmpty()) {</span>
+<span class="nc" id="L251">            absentCache.put(jti, Boolean.TRUE);</span>
+<span class="nc" id="L252">            log.warn(&quot;JWT rejected: jti={} not found in DynamoDB&quot;, jti);</span>
+<span class="nc" id="L253">            throw new ApiKeyAuthenticationException(&quot;jti=&quot; + jti + &quot; not found in DynamoDB&quot;);</span>
+        }
+
+        // Credential found but not in a usable state (e.g. validated, expired, revoked) — cache for full token lifetime
+<span class="fc" id="L257">        revokedCache.put(jti, Boolean.TRUE);</span>
+<span class="fc" id="L258">        log.warn(&quot;JWT rejected: jti={} has non-usable status={}, cached in REVOKED cache&quot;, jti, credentialOpt.get().getStatus());</span>
+<span class="fc" id="L259">        throw new ApiKeyAuthenticationException(&quot;jti=&quot; + jti + &quot; has non-usable status=&quot; + credentialOpt.get().getStatus());</span>
+    }
+
+    private static boolean isUsableStatus(String status) {
+<span class="pc bpc" id="L263" title="1 of 4 branches missed.">        return &quot;active&quot;.equals(status) || &quot;grace_period&quot;.equals(status);</span>
+    }
+
+    private byte[] resolveSecret(String kid) {
+<span class="pc bpc" id="L267" title="2 of 4 branches missed.">        if (config.getTestSecret() != null &amp;&amp; !config.getTestSecret().isEmpty()) {</span>
+<span class="fc" id="L268">            return config.getTestSecret().getBytes(StandardCharsets.UTF_8);</span>
+        }
+
+<span class="nc" id="L271">        String cached = secretCache.getIfPresent(kid);</span>
+<span class="nc bnc" id="L272" title="All 2 branches missed.">        if (cached != null) {</span>
+<span class="nc" id="L273">            return cached.getBytes(StandardCharsets.UTF_8);</span>
+        }
+
+<span class="nc bnc" id="L276" title="All 2 branches missed.">        if (negativeSecretCache.getIfPresent(kid) != null) {</span>
+<span class="nc" id="L277">            log.debug(&quot;Secrets Manager: kid={} in negative cache, skipping lookup&quot;, kid);</span>
+<span class="nc" id="L278">            return null;</span>
+        }
+
+<span class="nc bnc" id="L281" title="All 2 branches missed.">        if (secretsManagerClient == null) {</span>
+<span class="nc" id="L282">            log.error(&quot;SecretsManagerClient not available and jwt.test-secret not set&quot;);</span>
+<span class="nc" id="L283">            return null;</span>
+        }
+
+        try {
+<span class="nc" id="L287">            String secretValue = secretsManagerClient.getSecretValue(</span>
+<span class="nc" id="L288">                    req -&gt; req.secretId(config.getSecretsManagerSecretName()).versionId(kid)</span>
+<span class="nc" id="L289">            ).secretString();</span>
+<span class="nc" id="L290">            secretCache.put(kid, secretValue);</span>
+<span class="nc" id="L291">            return secretValue.getBytes(StandardCharsets.UTF_8);</span>
+<span class="nc" id="L292">        } catch (ResourceNotFoundException e) {</span>
+<span class="nc" id="L293">            log.warn(&quot;Secrets Manager: no version found for kid={}, caching negative result&quot;, kid);</span>
+<span class="nc" id="L294">            negativeSecretCache.put(kid, Boolean.TRUE);</span>
+<span class="nc" id="L295">            return null;</span>
+<span class="nc" id="L296">        } catch (Exception e) {</span>
+<span class="nc" id="L297">            log.error(&quot;Secrets Manager lookup failed for kid={}: {}&quot;, kid, e.getMessage());</span>
+<span class="nc" id="L298">            return null;</span>
+        }
+    }
+
+    /**
+     * Remove a credential from the caches and mark it as revoked, so that later requests with it fail.
+     * @param jti	The JWT identifier of the credential
+     */
+    public void evictCredential(String jti) {
+<span class="fc" id="L307">        credentialCache.invalidate(jti);</span>
+<span class="fc" id="L308">        absentCache.invalidate(jti);</span>
+<span class="fc" id="L309">        revokedCache.put(jti, Boolean.TRUE);</span>
+<span class="fc" id="L310">        log.info(&quot;Evicted credential cache entries for jti={}&quot;, jti);</span>
+<span class="fc" id="L311">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

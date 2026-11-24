@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MessageHeader.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.dynamodb.model</a> &gt; <span class="el_source">MessageHeader.java</span></div><h1>MessageHeader.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.dynamodb.model;
+
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
+import java.io.Serializable;
+
+import gov.cdc.izgateway.model.DynamoDbAudit;
+import gov.cdc.izgateway.model.DynamoDbEntity;
+import gov.cdc.izgateway.model.IMessageHeader;
+import gov.cdc.izgateway.model.MappableEntity;
+import io.swagger.v3.oas.annotations.StringToClassMapItem;
+import io.swagger.v3.oas.annotations.media.Schema;
+
+
+/**
+ * 
+ * Message header captures information associated with message header values
+ * including the destination identifier, the jurisdiction, and the type of 
+ * sender.  It also allows user names, passwords, and facility identifiers
+ * to be associated with jurisdictions pointing to the mock endpoint.
+ *  
+ * @author Audacious Inquiry
+ *
+ */
+@SuppressWarnings(&quot;serial&quot;)
+@Data
+@EqualsAndHashCode(callSuper=true)
+@Schema(description=&quot;Mappings from Message Header values to sources&quot;)
+@DynamoDbBean
+public class MessageHeader extends DynamoDbAudit implements DynamoDbEntity, Serializable, IMessageHeader {
+	/**
+	 * An alias for the message header map supporting Swagger 
+	 * documentation of this resource.
+	 */
+	@Schema(properties= {
+			@StringToClassMapItem(key=&quot;AKIIS&quot;, value=Destination.class),
+			@StringToClassMapItem(key=&quot;IZGW&quot;, value=Destination.class),
+			@StringToClassMapItem(key=&quot;MDIIS&quot;, value=Destination.class),
+			@StringToClassMapItem(key=&quot;WIR&quot;, value=Destination.class)
+		})
+	public static class Map extends MappableEntity&lt;MessageHeader&gt;{
+		/**
+		 * Create an empty map.
+		 */
+<span class="nc" id="L46">		public Map() {</span>
+			// Nothing to initialize.
+<span class="nc" id="L48">		}</span>
+	}
+	
+    /** The message header (MSH-3/4) value for this source. */
+    @Schema(description=&quot;The messsage header to use for this source&quot;)
+    private String msh;
+	
+	/**
+	 * Get the MSH value associated with this header entry.
+	 * Sadly, @@DynamoDBPartionKey only works on method calls, not
+	 * data elements.  
+	 */
+	public String getMsh() {
+<span class="fc" id="L61">		return msh;</span>
+	}
+    
+    /** The destination identifier for this MSH-3/4 value. */
+    @Schema(description=&quot;The destination identifier associated with this MSH-3/4 value&quot;)
+    private String destId;
+
+    /** The jurisdiction for this MSH-3/4 value. */
+    @Schema(description=&quot;The jurisdiction associated with this MSH-3/4 value&quot;)
+    private String iis;
+    
+    /** The type of sender that uses this MSH-3/4 value. */
+    @Schema(description=&quot;The type of sender using this MSH-3/4 value&quot;)
+    private String sourceType;
+
+    /** The user name that the dev endpoint requires when it mocks this endpoint. Used in testing. */
+    @Schema(description=&quot;The username required by the dev endpoint when mocking this endpoint&quot;, hidden=true)
+    private String username;  // Not a real user name, used in testing
+    
+    /** The password that the dev endpoint requires when it mocks this endpoint. Used in testing. */
+    @Schema(description=&quot;The password required by the dev endpoint when mocking this endpoint&quot;, hidden=true)
+    private String password;  // Not a secret password, used in testing
+    
+    /** The facility identifier for this source. */
+    @Schema(description=&quot;The facility identifier for this source&quot;, hidden=true)
+    private String facilityId;
+
+    /**
+     * Create a new MessageHeader
+     */
+<span class="fc" id="L91">    public MessageHeader() {</span>
+<span class="fc" id="L92">    }</span>
+    /**
+     * Create a new message header that copies what is in another MessageHeader
+     * @param that	The other message header
+     */
+<span class="nc" id="L97">	public MessageHeader(IMessageHeader that) {</span>
+<span class="nc" id="L98">		this.setDestId(that.getDestId());</span>
+<span class="nc" id="L99">		this.setFacilityId(that.getFacilityId());</span>
+<span class="nc" id="L100">		this.setIis(that.getIis());</span>
+<span class="nc" id="L101">		this.setMsh(that.getMsh());</span>
+<span class="nc" id="L102">		this.setPassword(that.getPassword());</span>
+<span class="nc" id="L103">		this.setSourceType(that.getSourceType());</span>
+<span class="nc" id="L104">		this.setUsername(that.getUsername());</span>
+<span class="nc" id="L105">	}</span>
+
+    @Override
+	public String getPrimaryId() {
+<span class="nc" id="L109">		return getMsh();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

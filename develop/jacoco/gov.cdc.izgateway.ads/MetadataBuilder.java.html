@@ -1,0 +1,566 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MetadataBuilder.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.ads</a> &gt; <span class="el_source">MetadataBuilder.java</span></div><h1>MetadataBuilder.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.ads;
+
+import gov.cdc.izgateway.ads.util.CsvFilenameComponents;
+import gov.cdc.izgateway.ads.util.CsvFilenameValidator;
+import gov.cdc.izgateway.logging.event.EventIdMdcConverter;
+import gov.cdc.izgateway.logging.event.TransactionData;
+import gov.cdc.izgateway.model.IDestination;
+import gov.cdc.izgateway.model.IFileType;
+import gov.cdc.izgateway.service.IAccessControlService;
+import gov.cdc.izgateway.service.IDestinationService;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
+import org.slf4j.MDC;
+
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * This class implements the builder pattern to create Metadata for processing an ADS Request.
+ * It handles all the business rules for validating content before building the Metadata object.
+ */
+<span class="fc" id="L29">@Slf4j</span>
+public class MetadataBuilder {
+    private static final String MONTH_PATTERN = &quot;(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)&quot;;
+    // Trailing group is optional so a bare 4-digit year (annual) validates too.
+    private static final String PERIOD_PATTERN = &quot;^\\d{4}(Q[1-4]|-&quot; + MONTH_PATTERN + &quot;|((-\\d{2}){1,2}))?$&quot;;
+    // Reference CsvFilenameValidator's canonical constants rather than duplicating the
+    // literals, now that CSV also recognizes an Annual frequency keyword.
+    // Package-private (not private) so MetadataImpl.getPeriodAsCalendar() can share them.
+    static final String MONTHLY = CsvFilenameValidator.FREQ_MONTHLY;
+    static final String QUARTERLY = CsvFilenameValidator.FREQ_QUARTERLY;
+    static final String ANNUAL = CsvFilenameValidator.FREQ_ANNUAL;
+    /**
+     * This is the facility id assigned to IZ Gateway by NDLP.
+     */
+    public static final String FACILITY_IZG = &quot;IZG&quot;;
+<span class="fc" id="L44">    private MetadataImpl meta = new MetadataImpl();</span>
+<span class="fc" id="L45">    private List&lt;String&gt; errors = new ArrayList&lt;&gt;();</span>
+    private String destUrl;
+<span class="fc" id="L47">    @Getter</span>
+    @Setter
+    private boolean metadataValidationEnabled = true;
+    private static final String DEFAULT_SCHEMA_VERSION = &quot;2.0&quot;;
+
+    /** Optional access control service used to look up registered file types. */
+    private final IAccessControlService accessControlService;
+
+    static final String GENERIC = &quot;genericImmunization&quot;;
+
+    /**
+     * Create a new MetadataBuilder without file-type lookup support.
+     * Report-type metadata will be computed purely from the report type name.
+     */
+    public MetadataBuilder() {
+<span class="fc" id="L62">        this(null);</span>
+<span class="fc" id="L63">    }</span>
+
+    /**
+     * Create a new MetadataBuilder with access to the file-type registry.
+     * When {@code accessControlService} is non-null, {@link #setReportType(String)} will
+     * validate the report type against the registry and warn if it is unrecognised.
+     *
+     * @param accessControlService the service used to look up registered file types, or
+     *                             {@code null} to skip registry validation
+     */
+<span class="fc" id="L73">    public MetadataBuilder(IAccessControlService accessControlService) {</span>
+<span class="fc" id="L74">        this.accessControlService = accessControlService;</span>
+<span class="fc" id="L75">        meta.setExtSource(&quot;IZGW&quot;);</span>
+<span class="fc" id="L76">    }</span>
+
+    /**
+     * Return the built metadata object.
+     * @return the built metadata object.
+     * @throws MetadataFault if any errors were founding during the building process.
+     */
+    public MetadataImpl build() throws MetadataFault {
+<span class="fc" id="L84">        meta.setSchemaVersion(DEFAULT_SCHEMA_VERSION);</span>
+<span class="fc" id="L85">        meta.setEventId(MDC.get(EventIdMdcConverter.EVENT_ID_MDC_KEY));</span>
+<span class="pc bpc" id="L86" title="1 of 4 branches missed.">        if (errors.isEmpty() || !isMetadataValidationEnabled()) {</span>
+<span class="fc" id="L87">            return meta;</span>
+        }
+<span class="nc" id="L89">        throw new MetadataFault(meta, errors.toArray(new String[0]));</span>
+    }
+    
+    /**
+     * Returns true if there were any errors while building.
+     * @return true if there were any errors while building
+     */
+    public boolean hasErrors() {
+<span class="nc bnc" id="L97" title="All 2 branches missed.">        return !errors.isEmpty();</span>
+    }
+    
+    /**
+     * Get the list of errors found in the metadata.
+     * @return the list of errors found in the metadata
+     */
+    public List&lt;String&gt; getErrors() {
+<span class="fc" id="L105">        return errors;</span>
+    }
+
+    /**
+     * Set the report type and compute all derived metadata fields from it.
+     * &lt;p&gt;
+     * If an {@link IAccessControlService} was supplied at construction time the report type
+     * is looked up in the file-type registry using a case-insensitive match.  When a match
+     * is found the supplied value is replaced with the canonical name from
+     * {@link IFileType#getFileTypeName()} before any computation, ensuring correct camelCase
+     * casing for downstream hyphenation.  A warning is logged when the type is not found,
+     * but processing continues so that unregistered types still work.
+     * &lt;/p&gt;
+     * &lt;p&gt;
+     * Derived fields set here:
+     * &lt;ul&gt;
+     *   &lt;li&gt;{@code meta_ext_event} – from {@code computeMetaExtEvent()}&lt;/li&gt;
+     *   &lt;li&gt;{@code meta_ext_event_type} – the canonical report type name&lt;/li&gt;
+     *   &lt;li&gt;{@code data_stream_id} – computed lazily via {@link Metadata#getDataStreamId()}&lt;/li&gt;
+     * &lt;/ul&gt;
+     *
+     * @param reportType the report type name (case-insensitive; normalized to registry casing)
+     * @return this builder
+     */
+    public MetadataBuilder setReportType(String reportType) {
+<span class="fc bfc" id="L130" title="All 2 branches covered.">        if (StringUtils.isBlank(reportType)) {</span>
+<span class="fc" id="L131">            errors.add(&quot;Report Type must be present and not empty&quot;);</span>
+<span class="fc" id="L132">            return this;</span>
+        }
+
+        // Validate against the registered file-type registry when available.
+        // Normalize to canonical casing from the registry so that computeDataStreamId()
+        // always receives the correctly-cased camelCase string it needs for correct hyphenation.
+<span class="fc bfc" id="L138" title="All 2 branches covered.">        if (accessControlService != null) {</span>
+<span class="fc" id="L139">            IFileType fileType = accessControlService.getFileType(reportType);</span>
+<span class="fc bfc" id="L140" title="All 2 branches covered.">            if (fileType == null) {</span>
+<span class="fc" id="L141">                log.warn(&quot;Report type '{}' is not registered in the file-type registry&quot;, reportType);</span>
+            } else {
+<span class="fc" id="L143">                reportType = fileType.getFileTypeName();</span>
+            }
+        }
+
+        // Compute all metadata fields from the reportType name.
+<span class="fc" id="L148">        String metaExtEvent = computeMetaExtEvent(reportType);</span>
+<span class="fc" id="L149">        meta.setExtEvent(metaExtEvent);</span>
+<span class="fc" id="L150">        meta.setExtEventType(reportType);</span>
+
+        // Force V2 if Generic is used.
+<span class="fc bfc" id="L153" title="All 2 branches covered.">        if (GENERIC.equals(metaExtEvent)) {</span>
+<span class="fc" id="L154">            meta.setExtSourceVersion(Metadata.DEX_VERSION2);</span>
+        }
+
+<span class="fc" id="L157">        return this;</span>
+    }
+
+    /**
+     * Set the period associated with the report.
+     * &lt;p&gt;
+     * In addition to validating the period's structural format, this cross-checks the
+     * period's shape (monthly, quarterly, or annual) against the established submission
+     * frequency for the already-set report type (see {@link #setReportType(String)},
+     * which must be called first). The check is skipped for {@code genericImmunization}
+     * and for the legacy numeric {@code YYYY-MM}/{@code YYYY-MM-DD} period form, which
+     * predates this cross-check and is not one of the three recognized frequency shapes.
+     * &lt;/p&gt;
+     *
+     * @param period the period associated with the report, in the form YYYY-MMM, YYYYQ[1-4], or YYYY
+     * @return	The metadata builder
+     */
+    public MetadataBuilder setPeriod(String period) {
+<span class="fc" id="L175">        meta.setPeriod(period);</span>
+<span class="pc bpc" id="L176" title="1 of 2 branches missed.">        if (StringUtils.isBlank(period)) {</span>
+<span class="nc" id="L177">            errors.add(&quot;Period must be present and not empty&quot;);</span>
+<span class="nc" id="L178">            return this;</span>
+        }
+
+        // Normalize it
+<span class="fc" id="L182">        period = period.trim().toUpperCase();</span>
+<span class="fc" id="L183">        meta.setPeriod(period);</span>
+<span class="fc bfc" id="L184" title="All 2 branches covered.">        if (!period.matches(PERIOD_PATTERN)) {</span>
+<span class="fc" id="L185">            String reportType = meta.getExtEvent();</span>
+<span class="fc bfc" id="L186" title="All 2 branches covered.">            String expectedForm = GENERIC.equalsIgnoreCase(reportType)</span>
+<span class="fc" id="L187">                    ? &quot;YYYYQ#, YYYY-MMM, or YYYY&quot;</span>
+<span class="fc" id="L188">                    : periodFormatExample(establishedFrequency(reportType));</span>
+<span class="fc" id="L189">            errors.add(String.format(</span>
+                    &quot;Period (%s) is not valid.  Report type (%s) requires a period in the form %s.&quot;,
+                    period, reportType, expectedForm));
+<span class="fc" id="L192">            return this;</span>
+        }
+
+<span class="fc" id="L195">        String actualFrequency = classifyPeriodFrequency(period);</span>
+<span class="fc" id="L196">        String reportType = meta.getExtEvent();</span>
+<span class="fc bfc" id="L197" title="All 4 branches covered.">        if (actualFrequency != null &amp;&amp; !GENERIC.equalsIgnoreCase(reportType)) {</span>
+<span class="fc" id="L198">            String expectedFrequency = establishedFrequency(reportType);</span>
+<span class="fc bfc" id="L199" title="All 2 branches covered.">            if (!actualFrequency.equals(expectedFrequency)) {</span>
+<span class="fc" id="L200">                errors.add(String.format(</span>
+                        &quot;Period (%s) is %s-formatted, but report type (%s) requires a %s period.&quot;,
+                        period, actualFrequency, reportType, expectedFrequency));
+            }
+        }
+<span class="fc" id="L205">        return this;</span>
+    }
+
+    /**
+     * Classify a structurally-valid period string's shape.
+     *
+     * @param period the normalized (uppercase, trimmed) period string; must already be
+     *               known to match {@link #PERIOD_PATTERN}
+     * @return {@link #QUARTERLY}, {@link #MONTHLY}, or {@link #ANNUAL}; or {@code null}
+     *         for the legacy numeric {@code YYYY-MM}/{@code YYYY-MM-DD} form, which is
+     *         not one of the three recognized frequency shapes
+     */
+    static String classifyPeriodFrequency(String period) {
+<span class="fc bfc" id="L218" title="All 2 branches covered.">        if (period.matches(&quot;\\d{4}Q[1-4]&quot;)) {</span>
+<span class="fc" id="L219">            return QUARTERLY;</span>
+        }
+<span class="fc bfc" id="L221" title="All 2 branches covered.">        if (period.matches(&quot;\\d{4}-&quot; + MONTH_PATTERN)) {</span>
+<span class="fc" id="L222">            return MONTHLY;</span>
+        }
+<span class="fc bfc" id="L224" title="All 2 branches covered.">        if (period.matches(&quot;\\d{4}&quot;)) {</span>
+<span class="fc" id="L225">            return ANNUAL;</span>
+        }
+<span class="fc" id="L227">        return null;</span>
+    }
+
+    /**
+     * Determine the established submission frequency for a canonical report type.
+     * Mirrors the eligibility logic in {@link #isAnnual(String)}: annual aggregate
+     * types take priority over the quarterly check since their names also start with
+     * {@code &quot;ri&quot;}.
+     *
+     * @param reportType the canonical report type name (e.g. {@code meta_ext_event})
+     * @return {@link #ANNUAL}, {@link #QUARTERLY}, or {@link #MONTHLY} (the default)
+     */
+    static String establishedFrequency(String reportType) {
+<span class="fc bfc" id="L240" title="All 2 branches covered.">        if (isAnnual(reportType)) {</span>
+<span class="fc" id="L241">            return ANNUAL;</span>
+        }
+<span class="fc bfc" id="L243" title="All 4 branches covered.">        if (&quot;routineImmunization&quot;.equalsIgnoreCase(reportType) || Strings.CI.contains(reportType, &quot;quarter&quot;)) {</span>
+<span class="fc" id="L244">            return QUARTERLY;</span>
+        }
+<span class="fc" id="L246">        return MONTHLY;</span>
+    }
+
+    /**
+     * Describe, with an example, the single period format expected for a given
+     * established frequency. Used to give a specific, actionable error message
+     * instead of listing every structurally-valid form.
+     *
+     * @param frequency {@link #ANNUAL}, {@link #QUARTERLY}, or {@link #MONTHLY}
+     * @return a human-readable format description with an example value
+     */
+    private static String periodFormatExample(String frequency) {
+<span class="fc bfc" id="L258" title="All 2 branches covered.">        if (ANNUAL.equals(frequency)) {</span>
+<span class="fc" id="L259">            return &quot;YYYY (e.g. 2026)&quot;;</span>
+        }
+<span class="fc bfc" id="L261" title="All 2 branches covered.">        if (QUARTERLY.equals(frequency)) {</span>
+<span class="fc" id="L262">            return &quot;YYYYQ# (e.g. 2026Q1)&quot;;</span>
+        }
+<span class="fc" id="L264">        return &quot;YYYY-MMM (e.g. 2026-FEB)&quot;;</span>
+    }
+
+    /**
+     * Set the filename of the report
+     * The filename structure is well defined for each report type and is used
+     * to valid metadata parameters.
+     * @param filename	The filename.
+     * @return	The MetadataBuilder
+     */
+    public MetadataBuilder setFilename(String filename) {
+<span class="fc" id="L275">        filename = filename.trim();</span>
+<span class="fc" id="L276">        meta.setFilename(filename);</span>
+<span class="pc bpc" id="L277" title="1 of 2 branches missed.">        if (!ADSUtils.validateFilename(filename)) {</span>
+<span class="nc" id="L278">            errors.add(String.format(&quot;Filename (%s) is invalid. Characters must be in the range of [0x20, 0xD7FF] and must not include  *, \\, ?, &gt;, &lt;, :, |, /, \\ or &lt;DEL&gt;&quot;, filename));</span>
+        }
+
+<span class="fc" id="L281">        String ext = StringUtils.substringAfterLast(filename, &quot;.&quot;).toLowerCase();</span>
+<span class="fc" id="L282">        boolean isCsv = &quot;csv&quot;.equals(ext);</span>
+
+<span class="pc bpc" id="L284" title="1 of 2 branches missed.">        if (isCsv) {</span>
+            // CSV validation is handled entirely by CsvFilenameValidator.
+            // Use CsvFilenameValidator.parseFilename() to obtain the isTestFile flag only.
+<span class="nc" id="L287">            CsvFilenameComponents fc = CsvFilenameValidator.parseFilename(filename);</span>
+<span class="nc bnc" id="L288" title="All 4 branches missed.">            meta.setTestFile(fc != null &amp;&amp; fc.isTestFile());</span>
+<span class="nc bnc" id="L289" title="All 2 branches missed.">            if (isMetadataValidationEnabled()) {</span>
+<span class="nc" id="L290">                validateCsvMetadata();</span>
+            }
+<span class="nc" id="L292">        } else {</span>
+            // ZIP (routine immunization) files: use ZipFilenameComponents for parsing and validation.
+<span class="fc" id="L294">            ZipFilenameComponents zfc = ZipFilenameComponents.parse(filename, errors);</span>
+<span class="fc" id="L295">            meta.setTestFile(zfc.isTestfile());</span>
+<span class="pc bpc" id="L296" title="1 of 2 branches missed.">            if (isMetadataValidationEnabled()) {</span>
+<span class="fc" id="L297">                validateZipMetadata(zfc);</span>
+            }
+        }
+<span class="fc" id="L300">        return this;</span>
+    }
+
+	/**
+     * Set messageId from passed in messageId value.  If it is already a UUID,
+     * use it, otherwise hash the string 
+     * 
+     * @param messageId	The messageId
+     * @return	The metadata builder.
+     */
+    public MetadataBuilder setMessageId(String messageId) {
+<span class="nc" id="L311">    	UUID uuid = null;</span>
+<span class="nc bnc" id="L312" title="All 4 branches missed.">    	if (messageId == null || messageId.isEmpty()) {</span>
+<span class="nc" id="L313">    		uuid = UUID.randomUUID();</span>
+    	} else {
+	    	try {
+<span class="nc" id="L316">	    		uuid = UUID.fromString(messageId);</span>
+<span class="nc" id="L317">	    	} catch (IllegalArgumentException ex) {</span>
+	    		// Not a valid UUID, set from string hashCode
+<span class="nc" id="L319">	    		uuid = UUID.nameUUIDFromBytes(messageId.getBytes(StandardCharsets.UTF_8));</span>
+<span class="nc" id="L320">	    	}</span>
+    	}
+<span class="nc" id="L322">        meta.setExtObjectKey(uuid.toString());</span>
+<span class="nc" id="L323">        return this;</span>
+    }
+    
+    /**
+     * Validate metadata for CSV (RIVER) files using {@link CsvFilenameValidator}.
+     * All inputs come from previously set {@code meta} fields.
+     */
+    private void validateCsvMetadata() {
+<span class="nc" id="L331">        CsvFilenameComponents result = CsvFilenameValidator.validate(</span>
+<span class="nc" id="L332">                meta.getFilename(),</span>
+<span class="nc" id="L333">                meta.getExtEntity(),</span>
+<span class="nc" id="L334">                meta.getPeriod());</span>
+<span class="nc" id="L335">        errors.addAll(result.getErrors());</span>
+<span class="nc" id="L336">    }</span>
+
+    /**
+     * Validate metadata for ZIP files (routine immunization or annual aggregate reports)
+     * using {@link ZipFilenameComponents}. ZIP filenames follow a different structure
+     * than CSV files: {@code EEE_YYYYMMDD_yyyymmdd_Z.zip}
+     * (entity_startdate_submissiondate_zone).
+     * &lt;p&gt;
+     * Eligibility for ZIP submission is name-based: {@code routineImmunization} (the
+     * original quarterly-cadence type) or any report type whose canonical name contains
+     * {@code &quot;annual&quot;} (case-insensitive, see {@link #isAnnual(String)}) may submit a
+     * {@code .zip}. The date-bucket tolerance used to match the filename's date against
+     * the submission period is driven by the same check: a same-quarter match by
+     * default, or a same-year match (ignoring month) for an annual type.
+     * &lt;/p&gt;
+     *
+     * @param pf the parsed filename
+     */
+    private void validateZipMetadata(ZipFilenameComponents pf) {
+<span class="pc bpc" id="L355" title="1 of 2 branches missed.">        if (!pf.getEntityId().equalsIgnoreCase(meta.getExtEntity())) {</span>
+<span class="fc" id="L356">            errors.add(String.format(&quot;Entity ID (%s) does not match Entity (%s) in filename (%s)&quot;,</span>
+<span class="fc" id="L357">                    meta.getExtEntity(), pf.getEntityId(), meta.getFilename()));</span>
+        }
+<span class="fc" id="L359">        String reportType = meta.getExtEvent();</span>
+<span class="fc" id="L360">        boolean annual = isAnnual(reportType);</span>
+<span class="fc bfc" id="L361" title="All 4 branches covered.">        boolean zipEligible = &quot;routineImmunization&quot;.equalsIgnoreCase(reportType) || annual;</span>
+        // Eligibility validation isn't relevant when type is genericImmunization.
+<span class="fc bfc" id="L363" title="All 4 branches covered.">        if (!GENERIC.equalsIgnoreCase(reportType) &amp;&amp; !zipEligible) {</span>
+<span class="fc" id="L364">            errors.add(String.format(&quot;Report type (%s) is not eligible for ZIP submission (%s)&quot;,</span>
+<span class="fc" id="L365">                    reportType, meta.getFilename()));</span>
+        }
+<span class="fc" id="L367">        Calendar cal = Calendar.getInstance();</span>
+<span class="pc bpc" id="L368" title="1 of 2 branches missed.">        if (pf.getDate() != null) {</span>
+<span class="fc" id="L369">            cal.setTime(pf.getDate());</span>
+        }
+<span class="fc" id="L371">        Calendar metaDate = meta.getPeriodAsCalendar();</span>
+        // 12 makes month/12 always equal (0 == 0 for any 0-11 value), so checkDate()
+        // effectively compares year only for annual types; 3 buckets by calendar quarter.
+<span class="fc bfc" id="L374" title="All 2 branches covered.">        int divisor = annual ? 12 : 3;</span>
+<span class="fc bfc" id="L375" title="All 2 branches covered.">        if (!checkDate(cal, metaDate, divisor)) {</span>
+            // Failed first time through, try just one day later on date from file name.
+<span class="fc" id="L377">            cal.add(Calendar.DAY_OF_MONTH, 1);</span>
+<span class="pc bpc" id="L378" title="1 of 2 branches missed.">            if (!checkDate(cal, metaDate, divisor)) {</span>
+<span class="fc" id="L379">                errors.add(String.format(&quot;File date from filename (%s) does not match period (%s)&quot;,</span>
+<span class="fc" id="L380">                        meta.getFilename(), meta.getPeriod()));</span>
+            }
+        }
+<span class="fc" id="L383">    }</span>
+
+    private boolean checkDate(Calendar cal, Calendar metaDate, int divisor) {
+<span class="fc bfc" id="L386" title="All 2 branches covered.">        return cal.get(Calendar.MONTH) / divisor == metaDate.get(Calendar.MONTH) / divisor</span>
+<span class="fc bfc" id="L387" title="All 2 branches covered.">                &amp;&amp; cal.get(Calendar.YEAR) == metaDate.get(Calendar.YEAR);</span>
+    }
+
+    /**
+     * Returns true if the given canonical report type name indicates an annual
+     * submission cadence.
+     *
+     * @param reportType the canonical report type name (e.g. {@code meta_ext_event}),
+     *                    may be null
+     * @return true if {@code reportType} contains {@code &quot;annual&quot;} (case-insensitive)
+     */
+    static boolean isAnnual(String reportType) {
+<span class="fc bfc" id="L399" title="All 4 branches covered.">        return reportType != null &amp;&amp; Strings.CI.contains(reportType, &quot;annual&quot;);</span>
+    }
+
+    /**
+     * Compute the meta_ext_event value from the fileTypeName.
+     * Special case: &quot;farmerFlu&quot; becomes &quot;farmerFluVaccination&quot; for backward compatibility.
+     *
+     * @param fileTypeName the file type name
+     * @return the computed meta_ext_event value
+     */
+    private static String computeMetaExtEvent(String fileTypeName) {
+<span class="pc bpc" id="L410" title="2 of 4 branches missed.">        if (fileTypeName == null || fileTypeName.isEmpty()) {</span>
+<span class="nc" id="L411">            return GENERIC;</span>
+        }
+        // Special case for backward compatibility
+<span class="fc bfc" id="L414" title="All 2 branches covered.">        if (&quot;farmerFlu&quot;.equalsIgnoreCase(fileTypeName)) {</span>
+<span class="fc" id="L415">            return &quot;farmerFluVaccination&quot;;</span>
+        }
+<span class="fc" id="L417">        return fileTypeName;</span>
+    }
+
+    /**
+     * Compute the ADS data stream ID from a file type name by converting camelCase
+     * (including acronyms) to kebab-case and lowercasing the result.
+     * &lt;p&gt;
+     * A hyphen is inserted before an uppercase letter when:
+     * &lt;ul&gt;
+     *   &lt;li&gt;the preceding character is a lowercase letter or digit
+     *       (e.g. {@code farmerFlu} → {@code farmer-flu}), or&lt;/li&gt;
+     *   &lt;li&gt;the preceding character is uppercase &lt;em&gt;and&lt;/em&gt; the following character
+     *       is lowercase, marking the boundary between an acronym and the next word
+     *       (e.g. {@code RIQuarterlyAggregate} → {@code ri-quarterly-aggregate}).&lt;/li&gt;
+     * &lt;/ul&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * &lt;ul&gt;
+     *   &lt;li&gt;{@code &quot;routineImmunization&quot;} → {@code &quot;routine-immunization&quot;}&lt;/li&gt;
+     *   &lt;li&gt;{@code &quot;RIQuarterlyAggregate&quot;} → {@code &quot;ri-quarterly-aggregate&quot;}&lt;/li&gt;
+     *   &lt;li&gt;{@code &quot;COVID19Vaccine&quot;} → {@code &quot;covid19-vaccine&quot;}&lt;/li&gt;
+     * &lt;/ul&gt;
+     *
+     * @param fileTypeName the file type name to convert
+     * @return the computed data stream ID, or {@code &quot;generic-immunization&quot;} if the input is null/empty
+     */
+    static String computeDataStreamId(String fileTypeName) {
+<span class="fc bfc" id="L443" title="All 4 branches covered.">        if (fileTypeName == null || fileTypeName.isEmpty()) {</span>
+<span class="fc" id="L444">            return &quot;generic-immunization&quot;;</span>
+        }
+<span class="fc" id="L446">        StringBuilder result = new StringBuilder();</span>
+<span class="fc" id="L447">        int len = fileTypeName.length();</span>
+<span class="fc bfc" id="L448" title="All 2 branches covered.">        for (int i = 0; i &lt; len; i++) {</span>
+<span class="fc" id="L449">            char c = fileTypeName.charAt(i);</span>
+<span class="fc bfc" id="L450" title="All 4 branches covered.">            if (i &gt; 0 &amp;&amp; Character.isUpperCase(c)) {</span>
+<span class="fc" id="L451">                char prev = fileTypeName.charAt(i - 1);</span>
+<span class="fc bfc" id="L452" title="All 2 branches covered.">                char next = (i + 1 &lt; len) ? fileTypeName.charAt(i + 1) : '\0';</span>
+<span class="fc bfc" id="L453" title="All 4 branches covered.">                boolean prevLowerOrDigit = Character.isLowerCase(prev) || Character.isDigit(prev);</span>
+<span class="fc" id="L454">                boolean nextLower = Character.isLowerCase(next);</span>
+<span class="pc bpc" id="L455" title="1 of 6 branches missed.">                if (prevLowerOrDigit || (Character.isUpperCase(prev) &amp;&amp; nextLower)) {</span>
+<span class="fc" id="L456">                    result.append('-');</span>
+                }
+            }
+<span class="fc" id="L459">            result.append(Character.toLowerCase(c));</span>
+        }
+<span class="fc" id="L461">        return result.toString();</span>
+    }
+
+    /**
+     * Set the route identifier
+     * @param dests	A reference to the destination service to validate routes
+     * @param routeId	The route
+     * @return	The MetadataBuilder
+     */
+    public MetadataBuilder setRouteId(IDestinationService dests, String routeId) {
+<span class="nc" id="L471">        meta.setRouteId(routeId);</span>
+<span class="nc bnc" id="L472" title="All 2 branches missed.">        if (StringUtils.isBlank(routeId)) {</span>
+<span class="nc" id="L473">            errors.add(&quot;Route ID must be present and not empty&quot;);</span>
+        }
+        // Ensure that some value is set in ExtSourceVersion 
+<span class="nc" id="L476">        meta.setExtSourceVersion(Metadata.DEX_VERSION2);</span>
+
+<span class="nc" id="L478">        IDestination dest = dests.findByDestId(routeId.trim().toLowerCase());</span>
+<span class="nc" id="L479">        meta.setDestination(dest);</span>
+<span class="nc bnc" id="L480" title="All 2 branches missed.">        if (dest == null) {</span>
+<span class="nc" id="L481">            errors.add(String.format(&quot;Destination ID (%s) is not valid&quot;,  routeId));</span>
+<span class="nc bnc" id="L482" title="All 4 branches missed.">        } else if (!dest.isDex() &amp;&amp; !dest.isAzure()) {</span>
+<span class="nc" id="L483">            errors.add(String.format(&quot;Destination ID (%s) is not a valid ADS endpoint&quot;, routeId));</span>
+        } else {
+            // Normalize it
+<span class="nc" id="L486">            meta.setRouteId(dest.getDestId());</span>
+<span class="nc" id="L487">            destUrl = dest.getDestUri();</span>
+<span class="nc" id="L488">            setDestinationId(&quot;ndlp&quot;);</span>
+            // Set the value for ExtSourceVersion based on version of DEX Endpoint
+<span class="nc bnc" id="L490" title="All 2 branches missed.">	        switch (dest.getDestVersion()) {</span>
+	        case IDestination.IZGW_ADS_VERSION1:
+<span class="nc" id="L492">	        	meta.setExtSourceVersion(Metadata.DEX_VERSION1);</span>
+<span class="nc" id="L493">	        	break;</span>
+	        case IDestination.IZGW_ADS_VERSION2, IDestination.IZGW_AZURE_VERSION1:
+	        default:
+<span class="nc" id="L496">	        	meta.setExtSourceVersion(Metadata.DEX_VERSION2);</span>
+	        	break;
+	        }
+        }
+<span class="nc" id="L500">        return this;</span>
+    }
+
+    /**
+     * Set the provenance of the report
+     * @param facilityId	The facility identifier
+     * @param transactionData	The source of user metadata (it has the certificate name), and IP address
+     * @return	The MetadataBuilder
+     */
+    public MetadataBuilder setProvenance(String facilityId, TransactionData transactionData) {
+<span class="nc" id="L510">        meta.setUsername(transactionData.getSource().getCommonName());</span>
+<span class="nc" id="L511">        meta.setIpAddress(transactionData.getSource().getIpAddress());</span>
+        
+<span class="nc bnc" id="L513" title="All 2 branches missed.">        if (StringUtils.isBlank(facilityId)) {</span>
+<span class="nc" id="L514">            errors.add(&quot;Facility ID must be present and not empty&quot;);</span>
+        } else {
+<span class="nc" id="L516">            facilityId = facilityId.trim().toUpperCase();</span>
+<span class="nc bnc" id="L517" title="All 2 branches missed.">            if (facilityId.trim().length() != 3 || </span>
+<span class="nc bnc" id="L518" title="All 6 branches missed.">                !(facilityId.endsWith(&quot;A&quot;) || facilityId.equals(FACILITY_IZG) || facilityId.equals(&quot;NIH&quot;))) {</span>
+<span class="nc" id="L519">                errors.add(</span>
+<span class="nc" id="L520">                    String.format(&quot;Facility ID (%s) is not valid.  It must in the form of XXA.&quot;, facilityId)</span>
+                );
+            }
+        }
+<span class="nc" id="L524">        String org = ADSUtils.mapFacilityId(facilityId, transactionData.getSource().getOrganization());</span>
+<span class="nc" id="L525">        meta.setExtEntity(org);</span>
+
+<span class="nc bnc" id="L527" title="All 2 branches missed.">        if (org == null) {</span>
+<span class="nc" id="L528">            errors.add(&quot;FacilityID cannot be mapped from &quot; + facilityId);</span>
+<span class="nc bnc" id="L529" title="All 2 branches missed.">        } else if (!ADSUtils.isFacilityIdValidForSender(facilityId, transactionData.getSource().getOrganization())) {</span>
+<span class="nc" id="L530">            errors.add(&quot;Invalid FacilityID: &quot; + facilityId);</span>
+        }
+
+<span class="nc" id="L533">        return this;</span>
+    }
+    
+    /**
+     * Set the intended destination for the report.
+     * @param destinationId the intended destination for the report
+     * @return The MetadataBuilder
+     */
+    public MetadataBuilder setDestinationId(String destinationId) {
+<span class="nc" id="L542">        meta.setDestinationId(destinationId);</span>
+<span class="nc" id="L543">        return this;</span>
+    }
+
+    /**
+     * Set the file size
+     * @param size the file size
+     * @return The MetadataBuilder
+     */
+    public MetadataBuilder setFileSize(long size) {
+<span class="nc" id="L552">        meta.setFileSize(size);</span>
+<span class="nc" id="L553">        return this;</span>
+    }
+
+    /**
+     * Get the destination for the upload
+     *  
+     * @return The MetadataBuilder
+     */
+    public String getDestUrl() {
+<span class="nc" id="L562">        return destUrl;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

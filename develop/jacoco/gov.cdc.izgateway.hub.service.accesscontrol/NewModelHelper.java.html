@@ -1,0 +1,310 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NewModelHelper.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.hub.service.accesscontrol</a> &gt; <span class="el_source">NewModelHelper.java</span></div><h1>NewModelHelper.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.hub.service.accesscontrol;
+
+import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.function.Function;
+
+import gov.cdc.izgateway.ads.ADSUtils;
+import gov.cdc.izgateway.dynamodb.model.AccessGroup;
+import gov.cdc.izgateway.dynamodb.model.AllowedUser;
+import gov.cdc.izgateway.dynamodb.model.DenyListRecord;
+import gov.cdc.izgateway.dynamodb.model.FileType;
+import gov.cdc.izgateway.dynamodb.model.SourceAttackExceptionRecord;
+import gov.cdc.izgateway.logging.RequestContext;
+import gov.cdc.izgateway.model.IAccessGroup;
+import gov.cdc.izgateway.model.IDenyListRecord;
+import gov.cdc.izgateway.model.IFileType;
+import gov.cdc.izgateway.repository.IRepository;
+import gov.cdc.izgateway.utils.SystemUtils;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+
+import java.util.List;
+import java.util.ArrayList;
+
+<span class="fc" id="L28">@Slf4j</span>
+class NewModelHelper implements AccessControlModelHelper {
+
+	/**
+	 * 
+	 */
+	private final AccessControlService accessControlService;
+
+	/**
+	 * @param accessControlService
+	 */
+<span class="fc" id="L39">	NewModelHelper(AccessControlService accessControlService) {</span>
+<span class="fc" id="L40">		this.accessControlService = accessControlService;</span>
+<span class="fc" id="L41">	}</span>
+
+<span class="fc" id="L43">	private Map&lt;String, AccessGroup&gt; accessGroupCache = Collections.emptyMap();</span>
+<span class="fc" id="L44">	private Map&lt;String, DenyListRecord&gt; denyListRecordCache = Collections.emptyMap();</span>
+<span class="fc" id="L45">	Map&lt;String, FileType&gt; fileTypeCache = new TreeMap&lt;&gt;();</span>
+<span class="fc" id="L46">	private Map&lt;String, Set&lt;AllowedUser&gt;&gt; allowedUserCache = Collections.emptyMap();</span>
+	// Package-private and pre-populated with a mutable map (not Collections.emptyMap()), like
+	// fileTypeCache above, so a stub subclass in the same package can pre-populate it directly in
+	// unit tests without requiring DynamoDB (IGDD-2805).
+<span class="fc" id="L50">	Map&lt;String, SourceAttackExceptionRecord&gt; sourceAttackExceptionCache = new TreeMap&lt;&gt;();</span>
+
+	@Override
+	public void refresh() {
+<span class="pc" id="L54">    	accessGroupCache = refreshCache(accessControlService.accessGroupRepository, ag -&gt; ag.getGroupName());</span>
+<span class="fc" id="L55">    	denyListRecordCache = refreshCache(accessControlService.denyListRecordRepository, dr -&gt; dr.getPrincipal());</span>
+    	// Defensively trim fileTypeName: it's hand-entered in the configuration console/DynamoDB,
+    	// and a stray leading/trailing space (e.g. a copy-paste typo) breaks the three-tier
+    	// reportType match in getFileType() below as well as every downstream use of the
+    	// canonical name (meta_ext_event, data_stream_id, ...). Mutate the entity itself, not
+    	// just the cache key, since getFileType() callers read fileType.getFileTypeName() directly.
+<span class="fc" id="L61">    	fileTypeCache = refreshCache(accessControlService.fileTypeRepository, ft -&gt; {</span>
+<span class="fc" id="L62">    		String trimmed = StringUtils.trim(ft.getFileTypeName());</span>
+<span class="fc" id="L63">    		ft.setFileTypeName(trimmed);</span>
+<span class="fc" id="L64">    		return trimmed;</span>
+    	});
+<span class="fc" id="L66">    	sourceAttackExceptionCache = refreshCache(accessControlService.sourceAttackExceptionRepository, SourceAttackExceptionRecord::getSender);</span>
+<span class="fc" id="L67">    	Map&lt;String, Set&lt;AllowedUser&gt;&gt; newAllowedUserCache = new TreeMap&lt;&gt;();</span>
+<span class="pc bpc" id="L68" title="1 of 2 branches missed.">    	for (AllowedUser user : refreshCache(accessControlService.allowedUserRepository, au -&gt; au.getDestinationId()).values()) {</span>
+<span class="nc" id="L69">    		newAllowedUserCache.computeIfAbsent(</span>
+<span class="nc" id="L70">    			user.getDestinationId(), </span>
+<span class="nc" id="L71">    			k -&gt; new TreeSet&lt;&gt;()</span>
+<span class="nc" id="L72">    		).add(user);</span>
+<span class="nc" id="L73">    	}</span>
+<span class="fc" id="L74">    	allowedUserCache = newAllowedUserCache;</span>
+<span class="fc" id="L75">	}</span>
+	
+	&lt;T&gt; Map&lt;String, T&gt; refreshCache(IRepository&lt;T&gt; repo, Function&lt;T, String&gt; nameFunction) {
+<span class="fc" id="L78">		TreeMap&lt;String, T&gt; cache = new TreeMap&lt;&gt;();</span>
+<span class="fc" id="L79">		repo.findAllForEnvironment().stream().forEach(r -&gt; cache.put(nameFunction.apply(r), r));</span>
+<span class="fc" id="L80">		return cache;</span>
+	}
+
+	@Override
+	public Map&lt;String, TreeSet&lt;String&gt;&gt; getUserRoles() {
+		
+<span class="nc" id="L86">		Map &lt;String, TreeSet&lt;String&gt;&gt; result = new TreeMap&lt;&gt;();</span>
+<span class="nc bnc" id="L87" title="All 2 branches missed.">		if (accessGroupCache.isEmpty()) {</span>
+<span class="nc" id="L88">			refresh();</span>
+		}
+<span class="nc bnc" id="L90" title="All 2 branches missed.">		for (IAccessGroup group : accessGroupCache.values()) {</span>
+<span class="nc" id="L91">			Set&lt;String&gt; groupRoles = new TreeSet&lt;&gt;(group.getRoles());</span>
+<span class="nc bnc" id="L92" title="All 2 branches missed.">			for (String user : group.getUsers()) {</span>
+<span class="nc" id="L93">				Set&lt;String&gt; roles = result.computeIfAbsent(user, k -&gt; new TreeSet&lt;String&gt;());</span>
+<span class="nc" id="L94">				roles.addAll(groupRoles);</span>
+<span class="nc" id="L95">			}</span>
+<span class="nc bnc" id="L96" title="All 2 branches missed.">			for (String memberGroup : group.getGroups()) {</span>
+<span class="nc" id="L97">				IAccessGroup ag = accessGroupCache.get(memberGroup);</span>
+<span class="nc bnc" id="L98" title="All 2 branches missed.">				if (ag != null) {</span>
+<span class="nc bnc" id="L99" title="All 2 branches missed.">					for (String user : ag.getUsers()) {</span>
+<span class="nc" id="L100">						Set&lt;String&gt; roles = result.computeIfAbsent(user, k -&gt; new TreeSet&lt;String&gt;());</span>
+<span class="nc" id="L101">						roles.addAll(groupRoles);</span>
+<span class="nc" id="L102">					}</span>
+				}
+<span class="nc" id="L104">			}</span>
+<span class="nc" id="L105">		}</span>
+<span class="nc" id="L106">		return result;</span>
+	}
+
+	@Override
+	public boolean isUserDenied(String user) {
+<span class="pc bpc" id="L111" title="1 of 2 branches missed.">		if (denyListRecordCache.isEmpty()) {</span>
+<span class="nc" id="L112">			refresh();</span>
+		}
+<span class="pc bpc" id="L114" title="2 of 4 branches missed.">		return this.accessControlService.blacklistEnabled &amp;&amp; denyListRecordCache.containsKey(user);</span>
+	}
+	
+	@Override
+	public Set&lt;String&gt; getEventTypes() {
+<span class="fc" id="L119">		return 	fileTypeCache.keySet();</span>
+	}
+
+	/**
+	 * Look up a FileType by report type name using a three-tier match:
+	 * &lt;ol&gt;
+	 *   &lt;li&gt;Exact match against the cached {@code fileTypeName}.&lt;/li&gt;
+	 *   &lt;li&gt;Case-insensitive match (handles casing variants such as
+	 *       {@code &quot;ROUTINEIMMUNIZATION&quot;} → {@code &quot;routineImmunization&quot;}).&lt;/li&gt;
+	 *   &lt;li&gt;Noise-word stripped match — removes {@code &quot;vaccination&quot;},
+	 *       {@code &quot;immunization&quot;}, and {@code &quot;prevention&quot;} from both the
+	 *       submitted value and each registry key before comparing.  This
+	 *       allows legacy submission values such as {@code &quot;farmerFlu&quot;} to
+	 *       match the canonical entry {@code &quot;farmerFluVaccination&quot;} and
+	 *       preserves backward compatibility.&lt;/li&gt;
+	 * &lt;/ol&gt;
+	 *
+	 * @param reportType the report type name to look up
+	 * @return the matching FileType, or {@code null} if not found or input is blank
+	 */
+	IFileType getFileType(String reportType) {
+<span class="fc bfc" id="L140" title="All 4 branches covered.">		if (reportType == null || reportType.isBlank()) {</span>
+<span class="fc" id="L141">			return null;</span>
+		}
+<span class="fc bfc" id="L143" title="All 2 branches covered.">		if (fileTypeCache.isEmpty()) {</span>
+<span class="fc" id="L144">			refresh();</span>
+		}
+		// Tier 1: exact match
+<span class="fc" id="L147">		FileType exact = fileTypeCache.get(reportType);</span>
+<span class="fc bfc" id="L148" title="All 2 branches covered.">		if (exact != null) {</span>
+<span class="fc" id="L149">			return exact;</span>
+		}
+		// Tier 2: case-insensitive scan
+<span class="fc" id="L152">		FileType caseInsensitive = fileTypeCache.entrySet().stream()</span>
+<span class="fc" id="L153">				.filter(e -&gt; e.getKey().equalsIgnoreCase(reportType))</span>
+<span class="fc" id="L154">				.map(Map.Entry::getValue)</span>
+<span class="fc" id="L155">				.findFirst()</span>
+<span class="fc" id="L156">				.orElse(null);</span>
+<span class="fc bfc" id="L157" title="All 2 branches covered.">		if (caseInsensitive != null) {</span>
+<span class="fc" id="L158">			return caseInsensitive;</span>
+		}
+		// Tier 3: noise-word stripped match for backward compatibility
+		// (e.g. &quot;farmerFlu&quot; matches &quot;farmerFluVaccination&quot;)
+<span class="fc" id="L162">		String strippedInput = ADSUtils.stripNoiseWords(reportType);</span>
+<span class="fc" id="L163">		return fileTypeCache.entrySet().stream()</span>
+<span class="fc" id="L164">				.filter(e -&gt; ADSUtils.stripNoiseWords(e.getKey()).equals(strippedInput))</span>
+<span class="fc" id="L165">				.map(Map.Entry::getValue)</span>
+<span class="fc" id="L166">				.findFirst()</span>
+<span class="fc" id="L167">				.orElse(null);</span>
+	}
+
+	@Override
+	public boolean isUserInRole(String user, String role) {
+<span class="nc" id="L172">		return accessGroupCache.values().stream()</span>
+<span class="nc" id="L173">			.filter(g -&gt; g.getRoles().contains(role))</span>
+<span class="nc" id="L174">			.anyMatch(g -&gt; isUserInGroup(user, g));</span>
+	}
+	
+	@Override
+	public boolean isUserInGroup(String user, String group) {
+<span class="nc" id="L179">		IAccessGroup accessGroup = accessGroupCache.get(group);</span>
+<span class="nc bnc" id="L180" title="All 2 branches missed.">		if (accessGroup == null) {</span>
+<span class="nc" id="L181">			log.warn(&quot;Group {} does not exist&quot;, group);</span>
+<span class="nc" id="L182">			return false;</span>
+		}
+<span class="nc" id="L184">		return isUserInGroup(user, accessGroup);</span>
+	}
+
+	private boolean isUserInGroup(String user, IAccessGroup accessGroup) {
+<span class="nc" id="L188">		Set&lt;String&gt; users = accessGroup.getUsers();</span>
+<span class="nc bnc" id="L189" title="All 4 branches missed.">		if (users.contains(user) || users.contains(&quot;*&quot;)) {</span>
+<span class="nc" id="L190">			return true;</span>
+		}
+		
+<span class="nc" id="L193">		return accessGroup.getGroups().stream().anyMatch(g -&gt; isUserInGroup(user, g));</span>
+	}
+	
+	@Override
+	public Map&lt;String, Object&gt; getGroups() {
+<span class="nc" id="L198">		return Collections.unmodifiableMap(accessGroupCache);</span>
+	}
+
+	@Override
+	public boolean canAccessDestination(String user, String destId) {
+<span class="nc bnc" id="L203" title="All 2 branches missed.">		if (allowedUserCache.isEmpty()) {</span>
+<span class="nc" id="L204">			refresh();</span>
+		}
+<span class="nc" id="L206">		Set&lt;AllowedUser&gt; users = allowedUserCache.get(destId); </span>
+<span class="nc bnc" id="L207" title="All 2 branches missed.">		if (users == null) {</span>
+<span class="nc" id="L208">			return true;  // There is no restriction on this destination.</span>
+		}
+		// There is an access control list for this destination, so check the sender and verify that
+		// they have not been disabled.
+<span class="nc bnc" id="L212" title="All 4 branches missed.">		return users.stream().anyMatch(au -&gt; AccessControlModelHelper.commonNameMatches(user, au.getPrincipal()) &amp;&amp; au.isEnabled());</span>
+	}
+
+	@Override
+	public IDenyListRecord unblock(String user) {
+<span class="nc bnc" id="L217" title="All 2 branches missed.">		if (denyListRecordCache.isEmpty()) {</span>
+<span class="nc" id="L218">			refresh();</span>
+		}
+<span class="nc" id="L220">		DenyListRecord dlr = denyListRecordCache.get(user);</span>
+<span class="nc bnc" id="L221" title="All 2 branches missed.">		if (dlr != null) {</span>
+<span class="nc" id="L222">			dlr.setUpdated();</span>
+<span class="nc" id="L223">			accessControlService.denyListRecordRepository.delete(dlr);</span>
+		}
+<span class="nc" id="L225">		denyListRecordCache.remove(user);</span>
+<span class="nc" id="L226">		return dlr;</span>
+	}
+
+	@Override
+	public IDenyListRecord block(String user, String reason) {
+<span class="fc" id="L231">		return block(user, reason, RequestContext.getPrincipal().getName());</span>
+	}
+
+	@Override
+	public IDenyListRecord block(String user, String reason, String createdBy) {
+<span class="pc bpc" id="L236" title="1 of 2 branches missed.">		if (denyListRecordCache.isEmpty()) {</span>
+<span class="fc" id="L237">			refresh();</span>
+		}
+<span class="fc" id="L239">		DenyListRecord dlr = denyListRecordCache.get(user);</span>
+<span class="pc bpc" id="L240" title="1 of 2 branches missed.">		if (dlr != null) {</span>
+			// Already blocked
+<span class="nc" id="L242">			return dlr;</span>
+		}
+<span class="fc" id="L244">		dlr = accessControlService.denyListRecordRepository.createEntity();</span>
+<span class="fc" id="L245">		dlr.setPrincipal(user);</span>
+<span class="fc" id="L246">		dlr.setEnvironment(SystemUtils.getDestType());</span>
+<span class="fc" id="L247">		dlr.setReason(reason);</span>
+<span class="fc" id="L248">		dlr.setCreatedBy(createdBy);</span>
+<span class="fc" id="L249">		dlr = accessControlService.denyListRecordRepository.store(dlr);</span>
+<span class="fc" id="L250">		denyListRecordCache.put(user, dlr);</span>
+<span class="fc" id="L251">		return dlr;</span>
+	}
+
+	@Override
+	public Set&lt;String&gt; getDenyList() {
+<span class="nc" id="L256">		return denyListRecordCache.keySet();</span>
+	}
+
+	@Override
+	public boolean isExemptFromSourceAttackLockout(String sender) {
+<span class="fc bfc" id="L261" title="All 2 branches covered.">		if (sourceAttackExceptionCache.isEmpty()) {</span>
+<span class="fc" id="L262">			refresh();</span>
+		}
+<span class="fc" id="L264">		return sourceAttackExceptionCache.containsKey(sender);</span>
+	}
+
+	/**
+	 * Create (or replace) a source-attack exception record for a sender (IGDD-2805).
+	 * @param sender	The sender's common name
+	 * @param reason	Operator justification for the exception
+	 * @return	The stored exception record
+	 */
+	SourceAttackExceptionRecord addSourceAttackException(String sender, String reason) {
+<span class="pc bpc" id="L274" title="1 of 2 branches missed.">		if (sourceAttackExceptionCache.isEmpty()) {</span>
+<span class="fc" id="L275">			refresh();</span>
+		}
+<span class="fc" id="L277">		SourceAttackExceptionRecord record = accessControlService.sourceAttackExceptionRepository.createEntity();</span>
+<span class="fc" id="L278">		record.setSender(sender);</span>
+<span class="fc" id="L279">		record.setReason(reason);</span>
+<span class="fc" id="L280">		record.setEnvironment(SystemUtils.getDestType());</span>
+<span class="fc" id="L281">		record.setCreatedBy(RequestContext.getPrincipal().getName());</span>
+<span class="fc" id="L282">		record = accessControlService.sourceAttackExceptionRepository.store(record);</span>
+<span class="fc" id="L283">		sourceAttackExceptionCache.put(sender, record);</span>
+<span class="fc" id="L284">		return record;</span>
+	}
+
+	/**
+	 * Remove a sender's source-attack exception, if any (IGDD-2805).
+	 * @param sender	The sender's common name
+	 */
+	void removeSourceAttackException(String sender) {
+<span class="pc bpc" id="L292" title="1 of 2 branches missed.">		if (sourceAttackExceptionCache.isEmpty()) {</span>
+<span class="nc" id="L293">			refresh();</span>
+		}
+<span class="fc" id="L295">		SourceAttackExceptionRecord record = sourceAttackExceptionCache.get(sender);</span>
+<span class="pc bpc" id="L296" title="1 of 2 branches missed.">		if (record != null) {</span>
+<span class="fc" id="L297">			accessControlService.sourceAttackExceptionRepository.delete(record);</span>
+		}
+<span class="fc" id="L299">		sourceAttackExceptionCache.remove(sender);</span>
+<span class="fc" id="L300">	}</span>
+
+	/**
+	 * List all configured source-attack exceptions (IGDD-2805).
+	 * @return	The current exception records
+	 */
+	List&lt;SourceAttackExceptionRecord&gt; getSourceAttackExceptions() {
+<span class="fc" id="L307">		return new ArrayList&lt;&gt;(sourceAttackExceptionCache.values());</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

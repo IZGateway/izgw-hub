@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CsvFilenameValidator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.ads.util</a> &gt; <span class="el_source">CsvFilenameValidator.java</span></div><h1>CsvFilenameValidator.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.ads.util;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
+
+/**
+ * Utility class for parsing and validating CSV ADS (Automated Data Submission) filenames.
+ * &lt;p&gt;
+ * CSV ADS filenames must follow the structure:
+ * &lt;pre&gt;{@code [prefix]_[Entity]_[Date].[extension]}&lt;/pre&gt;
+ * where {@code [prefix]} contains a frequency keyword (&quot;Monthly&quot;, &quot;Quarterly&quot;, or
+ * &quot;Annual&quot;, detected case-insensitively at any position) plus a report-type abbreviation.
+ * For example: {@code MonthlyFlu_XXA_2026FEB.csv}, {@code riQuarterlyAggregate_XXA_2025Q4.csv},
+ * {@code AnnualRI_XXA_2026.csv}
+ *
+ * &lt;p&gt;The frequency keyword in the filename determines whether the submission is monthly,
+ * quarterly, or annual — no external period-type lookup is performed.  Monthly is the
+ * default assumption when no frequency keyword can be detected.&lt;/p&gt;
+ *
+ * &lt;h2&gt;Validation Checks&lt;/h2&gt;
+ * &lt;ol&gt;
+ *   &lt;li&gt;&lt;strong&gt;Pattern parse&lt;/strong&gt; – filename must match the expected regex structure
+ *       and contain a recognisable frequency keyword in the first segment; fail-fast&lt;/li&gt;
+ *   &lt;li&gt;&lt;strong&gt;Entity ID match&lt;/strong&gt; – entity code in the filename must match the
+ *       expected facility/entity value (when provided)&lt;/li&gt;
+ *   &lt;li&gt;&lt;strong&gt;Date / period match&lt;/strong&gt; – date encoded in the filename must match the
+ *       {@code period} parameter supplied at submission time (when provided)&lt;/li&gt;
+ * &lt;/ol&gt;
+ *
+ * &lt;p&gt;ZIP filename validation is handled by {@link gov.cdc.izgateway.ads.ZipFilenameComponents}.&lt;/p&gt;
+ * &lt;p&gt;All methods are static; this class is not instantiable.&lt;/p&gt;
+ *
+ * @see CsvFilenameComponents
+ */
+public final class CsvFilenameValidator {
+
+    /**
+     * Regex pattern for the structural parts of a CSV ADS filename.
+     * &lt;pre&gt;
+     * Group 1 – Prefix segment:     everything before the first underscore (frequency + report type)
+     * Group 2 – Entity ID:          exactly 2 letters followed by 'A' (case-insensitive)
+     * Group 3 – Full date string:   YYYYQ#, YYYYMMM, or bare YYYY
+     * Group 4 – Quarterly year:     4 digits  (present only for quarterly dates)
+     * Group 5 – Quarter number:     1-4       (present only for quarterly dates)
+     * Group 6 – Monthly year:       4 digits  (present only for monthly dates)
+     * Group 7 – Month abbreviation: JAN-DEC   (present only for monthly dates)
+     * Group 8 – Annual year:        4 digits  (present only for bare-year annual dates)
+     * Group 9 – Extension:          csv | zip (case-insensitive)
+     * &lt;/pre&gt;
+     */
+<span class="fc" id="L57">    private static final Pattern FILENAME_PATTERN = Pattern.compile(</span>
+        &quot;^([A-Za-z]+)_([A-Z]{2}A)_&quot; +
+        &quot;((?:(\\d{4})Q([1-4]))|(?:(\\d{4})(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC))|(?:(\\d{4})))&quot; +
+        &quot;\\.(csv|zip)$&quot;,
+        Pattern.CASE_INSENSITIVE
+    );
+
+    /**
+     * The frequency keyword for quarterly files. This constant is public because
+     * MetadataBuilder also uses it, so the CSV and ZIP/period-validation paths share
+     * one definition of each string.
+     */
+    public static final String FREQ_QUARTERLY = &quot;Quarterly&quot;;
+    /** The frequency keyword for monthly files. MetadataBuilder also uses this constant. */
+    public static final String FREQ_MONTHLY   = &quot;Monthly&quot;;
+    /** The frequency keyword for annual files. MetadataBuilder also uses this constant. */
+    public static final String FREQ_ANNUAL    = &quot;Annual&quot;;
+
+    private CsvFilenameValidator() {
+        // utility class – not instantiable
+    }
+
+    /**
+     * Parse the filename into its structural components without performing any business-rule
+     * validation. Returns {@code null} if the filename does not match the expected pattern
+     * or contains no recognisable frequency keyword.
+     * &lt;p&gt;
+     * The frequency keyword (&quot;Monthly&quot;, &quot;Quarterly&quot;, or &quot;Annual&quot;) is detected
+     * case-insensitively anywhere within the first underscore-delimited segment and then
+     * removed to leave the report-type abbreviation.  The extension is always returned
+     * in lowercase.
+     * &lt;/p&gt;
+     *
+     * @param filename the raw filename (with extension) to parse; may be {@code null}
+     * @return the parsed {@link CsvFilenameComponents}, or {@code null} if the filename is
+     *         blank, does not match the expected structure, or contains no frequency keyword
+     */
+    public static CsvFilenameComponents parseFilename(String filename) {
+<span class="pc bpc" id="L95" title="1 of 2 branches missed.">        if (StringUtils.isBlank(filename)) {</span>
+<span class="nc" id="L96">            return null;</span>
+        }
+<span class="fc" id="L98">        String normalized = filename.trim();</span>
+
+        // Detect and strip &quot;test&quot; (case-insensitive), matching ParsedZipFilename convention.
+<span class="fc" id="L101">        boolean isTestFile = Strings.CI.contains(normalized, &quot;test&quot;);</span>
+<span class="fc bfc" id="L102" title="All 2 branches covered.">        if (isTestFile) {</span>
+<span class="fc" id="L103">            normalized = Strings.CI.remove(normalized, &quot;test&quot;);</span>
+        }
+
+<span class="fc" id="L106">        Matcher m = FILENAME_PATTERN.matcher(normalized);</span>
+<span class="fc bfc" id="L107" title="All 2 branches covered.">        if (!m.matches()) {</span>
+<span class="fc" id="L108">            return null;</span>
+        }
+
+<span class="fc" id="L111">        String prefix     = m.group(1);   // e.g. &quot;MonthlyFlu&quot;, &quot;riQuarterlyAggregate&quot;</span>
+<span class="fc" id="L112">        String entityId   = m.group(2);   // e.g. &quot;XXA&quot;</span>
+<span class="fc" id="L113">        String dateString = m.group(3);   // e.g. &quot;2026FEB&quot;, &quot;2025Q4&quot;, or &quot;2026&quot;</span>
+<span class="fc" id="L114">        String qYear      = m.group(4);</span>
+<span class="fc" id="L115">        String quarter    = m.group(5);</span>
+<span class="fc" id="L116">        String mYear      = m.group(6);</span>
+<span class="fc" id="L117">        String month      = m.group(7);</span>
+<span class="fc" id="L118">        String aYear      = m.group(8);</span>
+<span class="fc" id="L119">        String extension  = m.group(9).toLowerCase();</span>
+
+        // Detect frequency keyword anywhere in the prefix, case-insensitively.
+        String frequency;
+        String reportAbbrev;
+<span class="fc bfc" id="L124" title="All 2 branches covered.">        if (Strings.CI.contains(prefix, FREQ_QUARTERLY)) {</span>
+<span class="fc" id="L125">            frequency    = FREQ_QUARTERLY;</span>
+<span class="fc" id="L126">            reportAbbrev = Strings.CI.remove(prefix, FREQ_QUARTERLY);</span>
+<span class="fc bfc" id="L127" title="All 2 branches covered.">        } else if (Strings.CI.contains(prefix, FREQ_MONTHLY)) {</span>
+<span class="fc" id="L128">            frequency    = FREQ_MONTHLY;</span>
+<span class="fc" id="L129">            reportAbbrev = Strings.CI.remove(prefix, FREQ_MONTHLY);</span>
+<span class="pc bpc" id="L130" title="1 of 2 branches missed.">        } else if (Strings.CI.contains(prefix, FREQ_ANNUAL)) {</span>
+<span class="fc" id="L131">            frequency    = FREQ_ANNUAL;</span>
+<span class="fc" id="L132">            reportAbbrev = Strings.CI.remove(prefix, FREQ_ANNUAL);</span>
+        } else {
+            // No frequency keyword found – cannot determine submission cadence.
+<span class="nc" id="L135">            return null;</span>
+        }
+
+        // The keyword's implied cadence must agree with the date shape actually matched
+        // above (e.g. reject &quot;QuarterlyRI_XXA_2026.csv&quot; -- a Quarterly keyword paired
+        // with a bare-year date, which would otherwise parse silently since the
+        // bare-year alternative matches regardless of which keyword is in the prefix).
+<span class="fc" id="L142">        boolean keywordMatchesDate =</span>
+<span class="fc bfc" id="L143" title="All 4 branches covered.">                (FREQ_QUARTERLY.equals(frequency) &amp;&amp; quarter != null) ||</span>
+<span class="fc bfc" id="L144" title="All 4 branches covered.">                (FREQ_MONTHLY.equals(frequency) &amp;&amp; month != null) ||</span>
+<span class="fc bfc" id="L145" title="All 4 branches covered.">                (FREQ_ANNUAL.equals(frequency) &amp;&amp; aYear != null);</span>
+<span class="fc bfc" id="L146" title="All 2 branches covered.">        if (!keywordMatchesDate) {</span>
+<span class="fc" id="L147">            return null;</span>
+        }
+
+<span class="fc bfc" id="L150" title="All 4 branches covered.">        String year = qYear != null ? qYear : (mYear != null ? mYear : aYear);</span>
+
+<span class="fc" id="L152">        return CsvFilenameComponents.builder()</span>
+<span class="fc" id="L153">                .frequency(frequency)</span>
+<span class="fc" id="L154">                .reportTypeAbbrev(reportAbbrev)</span>
+<span class="fc" id="L155">                .entityId(entityId)</span>
+<span class="fc" id="L156">                .dateString(dateString.toUpperCase())</span>
+<span class="fc" id="L157">                .year(year)</span>
+<span class="fc bfc" id="L158" title="All 2 branches covered.">                .month(month != null ? month.toUpperCase() : null)</span>
+<span class="fc" id="L159">                .quarter(quarter)</span>
+<span class="fc" id="L160">                .extension(extension)</span>
+<span class="fc" id="L161">                .testFile(isTestFile)</span>
+<span class="fc" id="L162">                .build();</span>
+    }
+
+    /**
+     * Validate a CSV ADS submission filename against three business rules.
+     *
+     * &lt;ol&gt;
+     *   &lt;li&gt;The filename must match the expected structural pattern (fail-fast).&lt;/li&gt;
+     *   &lt;li&gt;The entity ID encoded in the filename must match {@code expectedEntity}
+     *       (case-insensitive). Pass {@code null} to skip this check.&lt;/li&gt;
+     *   &lt;li&gt;The date encoded in the filename must match the {@code period} parameter
+     *       supplied at submission time. Pass {@code null} to skip this check.&lt;/li&gt;
+     * &lt;/ol&gt;
+     *
+     * &lt;p&gt;The frequency keyword in the filename (&quot;Monthly&quot;/&quot;Quarterly&quot;/&quot;Annual&quot;)
+     * determines the submission cadence; no external period-type is required.
+     * Monthly is assumed as the default when no frequency keyword is detectable.&lt;/p&gt;
+     *
+     * @param filename       the raw filename to validate (with extension)
+     * @param expectedEntity the expected entity/facility code (e.g. {@code &quot;XXA&quot;});
+     *                       pass {@code null} to skip the entity check
+     * @param period         the submission period parameter (e.g. {@code &quot;2026-FEB&quot;} or
+     *                       {@code &quot;2026Q2&quot;}); pass {@code null} to skip the period check
+     * @return a {@link CsvFilenameComponents} describing the parse result and any errors;
+     *         call {@link CsvFilenameComponents#isValid()} to check success
+     */
+    public static CsvFilenameComponents validate(
+            String filename,
+            String expectedEntity,
+            String period) {
+
+<span class="fc" id="L193">        List&lt;String&gt; errors = new ArrayList&lt;&gt;();</span>
+
+        // Check 1: structural pattern parse (fail-fast)
+<span class="fc" id="L196">        CsvFilenameComponents components = parseFilename(filename);</span>
+<span class="fc bfc" id="L197" title="All 2 branches covered.">        if (components == null) {</span>
+<span class="fc" id="L198">            errors.add(String.format(</span>
+                &quot;Filename '%s' does not match the expected pattern &quot; +
+                &quot;[Monthly|Quarterly|Annual][ReportType]_[XXA]_[YYYY(MMM|Q#)|YYYY].(csv|zip). &quot; +
+                &quot;Examples: MonthlyFlu_XXA_2026FEB.csv, QuarterlyRI_XXA_2026Q2.csv, AnnualRI_XXA_2026.csv&quot;,
+                filename));
+<span class="fc" id="L203">            return CsvFilenameComponents.builder()</span>
+<span class="fc" id="L204">                    .errors(Collections.unmodifiableList(errors))</span>
+<span class="fc" id="L205">                    .build();</span>
+        }
+
+        // Check 2: entity ID match
+<span class="fc" id="L209">        validateEntity(filename, components, expectedEntity, errors);</span>
+
+        // Check 3: date / period match
+<span class="fc" id="L212">        validatePeriod(filename, components, period, errors);</span>
+
+<span class="pc bpc" id="L214" title="1 of 2 branches missed.">        if (errors.isEmpty()) {</span>
+<span class="fc" id="L215">            return components;</span>
+        }
+
+        // Rebuild with errors attached
+<span class="nc" id="L219">        return CsvFilenameComponents.builder()</span>
+<span class="nc" id="L220">                .frequency(components.getFrequency())</span>
+<span class="nc" id="L221">                .reportTypeAbbrev(components.getReportTypeAbbrev())</span>
+<span class="nc" id="L222">                .entityId(components.getEntityId())</span>
+<span class="nc" id="L223">                .dateString(components.getDateString())</span>
+<span class="nc" id="L224">                .year(components.getYear())</span>
+<span class="nc" id="L225">                .month(components.getMonth())</span>
+<span class="nc" id="L226">                .quarter(components.getQuarter())</span>
+<span class="nc" id="L227">                .extension(components.getExtension())</span>
+<span class="nc" id="L228">                .testFile(components.isTestFile())</span>
+<span class="nc" id="L229">                .errors(Collections.unmodifiableList(errors))</span>
+<span class="nc" id="L230">                .build();</span>
+    }
+
+    // -------------------------------------------------------------------------
+    // Private helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Check 2: The entity ID in the filename must match the expected entity value
+     * (case-insensitive comparison).
+     */
+    private static void validateEntity(
+            String filename,
+            CsvFilenameComponents components,
+            String expectedEntity,
+            List&lt;String&gt; errors) {
+
+<span class="pc bpc" id="L247" title="1 of 2 branches missed.">        if (StringUtils.isBlank(expectedEntity)) {</span>
+<span class="nc" id="L248">            return;</span>
+        }
+<span class="pc bpc" id="L250" title="1 of 2 branches missed.">        if (!components.getEntityId().equalsIgnoreCase(expectedEntity)) {</span>
+<span class="nc" id="L251">            errors.add(String.format(</span>
+                &quot;Entity ID in filename '%s' is '%s' but expected '%s'&quot;,
+<span class="nc" id="L253">                filename, components.getEntityId(), expectedEntity));</span>
+        }
+<span class="fc" id="L255">    }</span>
+
+    /**
+     * Check 3: The date encoded in the filename must match the submission period parameter.
+     * &lt;p&gt;
+     * The period parameter may arrive in several formats (e.g. {@code &quot;2026-FEB&quot;},
+     * {@code &quot;2026FEB&quot;}, {@code &quot;2026Q4&quot;}). Both sides are normalised by uppercasing and
+     * removing hyphens before comparison.
+     * &lt;/p&gt;
+     */
+    private static void validatePeriod(
+            String filename,
+            CsvFilenameComponents components,
+            String period,
+            List&lt;String&gt; errors) {
+
+<span class="pc bpc" id="L271" title="1 of 2 branches missed.">        if (StringUtils.isBlank(period)) {</span>
+<span class="nc" id="L272">            return;</span>
+        }
+<span class="fc" id="L274">        String normalizedPeriod = period.trim().toUpperCase().replace(&quot;-&quot;, &quot;&quot;);</span>
+<span class="fc" id="L275">        String filenameDateNorm = components.getDateString().toUpperCase();</span>
+
+<span class="pc bpc" id="L277" title="1 of 2 branches missed.">        if (!normalizedPeriod.equals(filenameDateNorm)) {</span>
+<span class="nc" id="L278">            errors.add(String.format(</span>
+                &quot;Date in filename '%s' is '%s' but does not match period parameter '%s'&quot;,
+<span class="nc" id="L280">                filename, components.getDateString(), period));</span>
+        }
+<span class="fc" id="L282">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

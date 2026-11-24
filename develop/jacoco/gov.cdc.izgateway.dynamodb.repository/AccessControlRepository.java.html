@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AccessControlRepository.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.dynamodb.repository</a> &gt; <span class="el_source">AccessControlRepository.java</span></div><h1>AccessControlRepository.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.dynamodb.repository;
+
+import org.springframework.beans.factory.annotation.Autowired;
+
+import gov.cdc.izgateway.dynamodb.model.AccessControl;
+import gov.cdc.izgateway.hub.repository.IAccessControlRepository;
+import gov.cdc.izgateway.repository.DynamoDbRepository;
+import gov.cdc.izgateway.service.IAccessControlService;
+import gov.cdc.izgateway.utils.SystemUtils;
+import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
+
+/**
+ * Class representing the DynamoDb repository for AccessControls.
+ * 
+ * @author Audacious Inquiry
+ */
+public class AccessControlRepository extends DynamoDbRepository&lt;AccessControl&gt; implements IAccessControlRepository&lt;AccessControl&gt; {
+	/**
+	 * Construct a new AccessControlRepository from the DynamoDb enhanced client.
+	 * @param client The client
+	 * @param tableName The table name
+	 */
+	public AccessControlRepository(@Autowired DynamoDbEnhancedClient client, String tableName) {
+<span class="fc" id="L24">		super(AccessControl.class, client, tableName);</span>
+<span class="fc" id="L25">	}</span>
+	
+	@Override
+	public AccessControl store(AccessControl h) {
+<span class="nc" id="L29">		return super.saveAndFlush(h);</span>
+	}
+
+	@Override
+	public AccessControl addUserToGroup(String user, String group) {
+<span class="nc" id="L34">		AccessControl c = new AccessControl(IAccessControlService.GROUP_CATEGORY, group, user, SystemUtils.getDestType());</span>
+<span class="nc" id="L35">		return super.saveAndFlush(c);</span>
+	}
+
+	@Override
+	public AccessControl removeUserFromGroup(String user, String group) {
+<span class="nc" id="L40">		AccessControl c = new AccessControl(IAccessControlService.GROUP_CATEGORY, group, user, SystemUtils.getDestType());</span>
+<span class="nc" id="L41">		super.delete(c.getPrimaryId());</span>
+<span class="nc" id="L42">		return c;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

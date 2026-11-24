@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AllowedUserRepository.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.dynamodb.repository</a> &gt; <span class="el_source">AllowedUserRepository.java</span></div><h1>AllowedUserRepository.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.dynamodb.repository;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import org.apache.commons.lang3.Strings;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import gov.cdc.izgateway.dynamodb.model.AllowedUser;
+import gov.cdc.izgateway.hub.repository.IAllowedUserRepository;
+import gov.cdc.izgateway.model.IAccessControl;
+import gov.cdc.izgateway.repository.DynamoDbRepository;
+import gov.cdc.izgateway.service.IAccessControlService;
+import gov.cdc.izgateway.utils.SystemUtils;
+import lombok.extern.slf4j.Slf4j;
+import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
+
+/**
+ * Repository for managing {@link AllowedUser} entities in DynamoDB.
+ * Implements business logic for storing, deleting, and retrieving allowed users.
+ */
+<span class="fc" id="L23">@Slf4j</span>
+public class AllowedUserRepository extends DynamoDbRepository&lt;AllowedUser&gt; implements IAllowedUserRepository&lt;AllowedUser&gt; {
+    /**
+     * Constructs a new AllowedUserRepository with the given DynamoDB client and table name.
+     * @param client the DynamoDB enhanced client
+     * @param tableName the name of the DynamoDB table
+     */
+    public AllowedUserRepository(@Autowired DynamoDbEnhancedClient client, String tableName) {
+<span class="fc" id="L31">        super(AllowedUser.class, client, tableName);</span>
+<span class="fc" id="L32">    }</span>
+
+	/**
+	 * Migrate access controls to allowed users.
+	 * @param list	The list of access controls
+	 * @param who Who created the original record in DynamoDB
+	 * @param when When that happened
+	 */
+	public void migrateAccessControls(List&lt;? extends IAccessControl&gt; list, String who, Date when) {
+		// Enable access to DEX endpoint for all users in groups starting with &quot;ads&quot;
+<span class="nc" id="L42">		List&lt;AllowedUser&gt; userMap = migrateForAutomatedDataSubmission(list, who, when);</span>
+<span class="nc" id="L43">		migrate(userMap);</span>
+<span class="nc" id="L44">	}</span>
+
+	private List&lt;AllowedUser&gt; migrateForAutomatedDataSubmission(List&lt;? extends IAccessControl&gt; list, String who, Date when) {
+<span class="nc" id="L47">		List&lt;AllowedUser&gt; userMap = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L48">		List&lt;Integer&gt; destTypes = Collections.emptyList();</span>
+<span class="nc bnc" id="L49" title="All 4 branches missed.">		switch (SystemUtils.getDestType()) {</span>
+		case SystemUtils.DESTTYPE_PROD, SystemUtils.DESTTYPE_ONBOARD:
+<span class="nc" id="L51">			destTypes = List.of(SystemUtils.DESTTYPE_PROD, SystemUtils.DESTTYPE_ONBOARD);</span>
+<span class="nc" id="L52">			break;</span>
+		case SystemUtils.DESTTYPE_STAGE:
+<span class="nc" id="L54">			destTypes = List.of(SystemUtils.DESTTYPE_STAGE);</span>
+<span class="nc" id="L55">			break;</span>
+		case SystemUtils.DESTTYPE_DEV, SystemUtils.DESTTYPE_TEST:
+<span class="nc" id="L57">			destTypes = List.of(SystemUtils.DESTTYPE_DEV, SystemUtils.DESTTYPE_TEST);</span>
+<span class="nc" id="L58">			break;</span>
+		default:
+<span class="nc" id="L60">			log.warn(&quot;Unknown destination type: {}&quot;, SystemUtils.getDestType());</span>
+			break;
+		}
+<span class="nc bnc" id="L63" title="All 2 branches missed.">		for (IAccessControl ac : list) {</span>
+<span class="nc bnc" id="L64" title="All 6 branches missed.">			if (IAccessControlService.GROUP_CATEGORY.equals(ac.getCategory()) &amp;&amp; Strings.CI.startsWith(ac.getName(), &quot;ads&quot;) &amp;&amp; !IAccessControl.isGroup(ac.getMember())) {</span>
+<span class="nc" id="L65">				String userName = ac.getMember();</span>
+<span class="nc" id="L66">				String[] dexEndpoints = { &quot;dex&quot;, &quot;dex-dev&quot; };</span>
+<span class="nc bnc" id="L67" title="All 2 branches missed.">				for (String dexEndpoint : dexEndpoints) {</span>
+<span class="nc bnc" id="L68" title="All 2 branches missed.">					for (int destType : destTypes) {</span>
+<span class="nc" id="L69">						AllowedUser u = new AllowedUser();</span>
+<span class="nc" id="L70">						u.setEnvironment(destType);</span>
+<span class="nc" id="L71">						u.setPrincipal(userName);</span>
+<span class="nc" id="L72">						u.setEnabled(true);</span>
+<span class="nc" id="L73">						u.setValidatedOn(when);</span>
+<span class="nc" id="L74">						u.setDestinationId(dexEndpoint);</span>
+<span class="nc" id="L75">						u.setCreatedBy(who);</span>
+<span class="nc" id="L76">						u.setCreatedOn(when);</span>
+<span class="nc" id="L77">						userMap.add(u);</span>
+<span class="nc" id="L78">					}</span>
+				}
+			}
+<span class="nc" id="L81">		}</span>
+<span class="nc" id="L82">		return userMap;</span>
+	}
+
+	@Override
+	public AllowedUser store(AllowedUser user) {
+<span class="nc" id="L87">		return super.saveAndFlush(user);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

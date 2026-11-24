@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>HubPrincipalService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.hub.service</a> &gt; <span class="el_source">HubPrincipalService.java</span></div><h1>HubPrincipalService.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.hub.service;
+
+import gov.cdc.izgateway.hub.security.ApiKeyAuthenticationException;
+import gov.cdc.izgateway.hub.security.ApiKeyPrincipalProvider;
+import gov.cdc.izgateway.security.IzgPrincipal;
+import gov.cdc.izgateway.security.UnauthenticatedPrincipal;
+import gov.cdc.izgateway.principal.provider.CertificatePrincipalProvider;
+import gov.cdc.izgateway.security.service.PrincipalService;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+/**
+ * The Hub implementation of PrincipalService. Resolves the caller identity by trying JWT (API key)
+ * auth first, then falling back to TLS client certificate, then UnauthenticatedPrincipal.
+ *
+ * &lt;p&gt;The certificate fallback only applies when no API key was presented at all. If a Bearer-scheme
+ * Authorization header was presented but failed authentication, that is a hard failure — it resolves
+ * to {@link UnauthenticatedPrincipal} without attempting certificate authentication.
+ *
+ * @author Audacious Inquiry
+ */
+@Service
+<span class="fc" id="L25">@Slf4j</span>
+public class HubPrincipalService implements PrincipalService {
+
+    private final ApiKeyPrincipalProvider apiKeyPrincipalProvider;
+    private final CertificatePrincipalProvider certificatePrincipalProvider;
+
+    /**
+     * Constructor
+     * @param apiKeyPrincipalProvider  The API key (JWT) principal provider
+     * @param certificatePrincipalProvider	 The certificate principal provider
+     */
+    @Autowired
+<span class="fc" id="L37">    public HubPrincipalService(ApiKeyPrincipalProvider apiKeyPrincipalProvider, CertificatePrincipalProvider certificatePrincipalProvider) {</span>
+<span class="fc" id="L38">        this.apiKeyPrincipalProvider = apiKeyPrincipalProvider;</span>
+<span class="fc" id="L39">        this.certificatePrincipalProvider = certificatePrincipalProvider;</span>
+<span class="fc" id="L40">    }</span>
+
+    /**
+     * Get the principal from the request. Tries API key (JWT) auth first, then cert auth, then unauthenticated.
+     * &lt;p&gt;If an API key was presented but failed authentication, certificate authentication is not attempted —
+     * the caller has identified itself as an API key holder, and a failed API key must not be silently
+     * retried against mTLS.
+     * @param request	The HTTP request
+     * @return The new principal
+     */
+    @Override
+    public IzgPrincipal getPrincipal(HttpServletRequest request) {
+<span class="fc bfc" id="L52" title="All 2 branches covered.">        if (request != null) {</span>
+            IzgPrincipal principal;
+            try {
+<span class="fc" id="L55">                principal = apiKeyPrincipalProvider.getPrincipal(request);</span>
+<span class="fc" id="L56">            } catch (ApiKeyAuthenticationException e) {</span>
+<span class="fc" id="L57">                log.warn(&quot;API key present but failed authentication; not falling back to certificate auth: {}&quot;, e.getMessage());</span>
+<span class="fc" id="L58">                return new UnauthenticatedPrincipal();</span>
+<span class="fc" id="L59">            }</span>
+<span class="fc bfc" id="L60" title="All 2 branches covered.">            if (principal != null) {</span>
+<span class="fc" id="L61">                return principal;</span>
+            }
+<span class="fc" id="L63">            principal = certificatePrincipalProvider.createPrincipalFromCertificate(request);</span>
+<span class="fc bfc" id="L64" title="All 2 branches covered.">            if (principal != null) {</span>
+<span class="fc" id="L65">                return principal;</span>
+            }
+        }
+<span class="fc" id="L68">        return new UnauthenticatedPrincipal();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

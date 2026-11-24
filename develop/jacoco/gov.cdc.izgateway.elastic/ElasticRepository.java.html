@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ElasticRepository.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.elastic</a> &gt; <span class="el_source">ElasticRepository.java</span></div><h1>ElasticRepository.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.elastic;
+
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.ServiceConfigurationError;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.NullNode;
+
+/**
+ * The base class for repositories that send a query to Elasticsearch.
+ * The query comes from a template resource that contains {@code ${name}} placeholders.
+ */
+public class ElasticRepository {
+	/**
+	 * Get a node from a JSON tree with a dotted path, for example {@code hits.hits.1._source}.
+	 * A numeric part selects an array element. The index starts at 1.
+	 * @param key The dotted path.
+	 * @param node The root node.
+	 * @return The node at the path.
+	 * @throws IllegalArgumentException When a part of the path is missing or null.
+	 */
+	protected static JsonNode getNode(String key, JsonNode node) {
+<span class="fc" id="L27">		String[] parts = key.split(&quot;\\.&quot;);</span>
+<span class="fc bfc" id="L28" title="All 2 branches covered.">		for (String k: parts) {</span>
+<span class="fc bfc" id="L29" title="All 2 branches covered.">			if (!StringUtils.isNumeric(k)) {</span>
+<span class="fc" id="L30">				node = node.get(k);</span>
+<span class="fc bfc" id="L31" title="All 2 branches covered.">			} else if (node.isArray()) {</span>
+<span class="fc" id="L32">				node = node.get(Integer.parseInt(k) - 1);</span>
+			} else {
+<span class="fc" id="L34">				node = node.get(k);</span>
+			}
+<span class="pc bpc" id="L36" title="1 of 4 branches missed.">			if (node == null || node instanceof NullNode) {</span>
+<span class="fc" id="L37">				throw new IllegalArgumentException(k + &quot; missing from ElasticSearch response in &quot; + key);</span>
+			}
+		}
+<span class="fc" id="L40">		return node;</span>
+	}
+
+<span class="fc" id="L43">	private String[] requestTemplate = null;</span>
+	/** The connection settings for Elasticsearch. */
+	protected final ElasticConfiguration config;
+	
+	/**
+	 * Make a repository and load its query template from a class path resource.
+	 * @param config The connection settings for Elasticsearch.
+	 * @param query The class path resource name of the query template.
+	 * @throws ServiceConfigurationError When the resource cannot be read.
+	 */
+<span class="fc" id="L53">	protected ElasticRepository(ElasticConfiguration config, String query) {</span>
+<span class="fc" id="L54">		this.config = config;</span>
+		String template;
+		try {
+<span class="fc" id="L57">			template = IOUtils.toString(HostRepository.class.getClassLoader().getResourceAsStream(query), StandardCharsets.UTF_8);</span>
+<span class="nc" id="L58">		} catch (Exception e) {</span>
+<span class="nc" id="L59">			throw new ServiceConfigurationError(&quot;Cannot access &quot; + query, e);</span>
+<span class="fc" id="L60">		}</span>
+<span class="fc" id="L61">		setRequestTemplate(template);</span>
+<span class="fc" id="L62">	}</span>
+	
+	private void setRequestTemplate(String template) {  // NOSONAR Cognitive complexity is OK
+<span class="fc" id="L65">		ArrayList&lt;String&gt; parts = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L66">		String last = null;</span>
+<span class="fc" id="L67">		int state = 0;</span>
+<span class="fc" id="L68">		StringBuilder b = new StringBuilder();</span>
+<span class="fc bfc" id="L69" title="All 2 branches covered.">		for (int i = 0; i &lt; template.length(); i++) {</span>
+<span class="fc" id="L70">			char c = template.charAt(i);</span>
+<span class="pc bpc" id="L71" title="1 of 4 branches missed.">			switch (state) {	// NOSONAR No default case needed</span>
+			case 0:
+<span class="fc bfc" id="L73" title="All 2 branches covered.">				if (c == '$') {</span>
+<span class="fc" id="L74">					last = b.toString();</span>
+<span class="fc" id="L75">					parts.add(last);</span>
+<span class="fc" id="L76">					b.setLength(0);</span>
+<span class="fc" id="L77">					state = 1;</span>
+				} else {
+<span class="fc" id="L79">					b.append(c);</span>
+				}
+<span class="fc" id="L81">				break;</span>
+			case 1:
+<span class="pc bpc" id="L83" title="1 of 2 branches missed.">				if (c == '{') {</span>
+<span class="fc" id="L84">					state = 2;</span>
+				} else {
+<span class="nc" id="L86">					parts.remove(parts.size() - 1);</span>
+<span class="nc" id="L87">					b.append(last);</span>
+<span class="nc" id="L88">					b.append('$');</span>
+<span class="nc" id="L89">					b.append(c);</span>
+<span class="nc" id="L90">					state = 0;</span>
+				}
+<span class="nc" id="L92">				break;</span>
+			case 2:
+<span class="fc bfc" id="L94" title="All 2 branches covered.">				if (c == '}') {</span>
+<span class="fc" id="L95">					last = b.toString();</span>
+<span class="fc" id="L96">					parts.add(last);</span>
+<span class="fc" id="L97">					b.setLength(0);</span>
+<span class="fc" id="L98">					state = 0;</span>
+				} else {
+<span class="fc" id="L100">					b.append(c);</span>
+				}
+				break;
+			}
+		}
+<span class="pc bpc" id="L105" title="1 of 2 branches missed.">		if (b.length() &gt; 0) {</span>
+<span class="fc" id="L106">			parts.add(b.toString());</span>
+		}
+		
+<span class="fc" id="L109">		requestTemplate = parts.toArray(new String[0]);</span>
+<span class="fc" id="L110">	}</span>
+
+	/**
+	 * Get the parsed query template. The parts alternate between literal text and
+	 * placeholder names, and the first part is literal text.
+	 * @return The template parts.
+	 */
+	public String[] getRequestTemplate() {
+<span class="fc" id="L118">		return requestTemplate;</span>
+	}
+	
+	/**
+	 * Populate the template from replacement values in map.
+	 * @param map	The map of replacement values.
+	 * @return	The populated template.
+	 */
+	protected String populateTemplate(Map&lt;String, String&gt; map) {
+<span class="fc" id="L127">		boolean lookup = false;</span>
+<span class="fc" id="L128">		boolean hasError = false;</span>
+<span class="fc" id="L129">		StringBuilder b = new StringBuilder();</span>
+<span class="fc bfc" id="L130" title="All 2 branches covered.">		for (String part: getRequestTemplate()) {</span>
+<span class="fc bfc" id="L131" title="All 2 branches covered.">			if (lookup) {</span>
+<span class="fc" id="L132">				String value = map.get(part);</span>
+<span class="pc bpc" id="L133" title="1 of 2 branches missed.">				if (value == null) {</span>
+<span class="nc" id="L134">					part = &quot;${&quot; + part + &quot;}&quot;;</span>
+<span class="nc" id="L135">					hasError = true;</span>
+				} else {
+<span class="fc" id="L137">					part = value;</span>
+				}
+			}
+<span class="fc" id="L140">			b.append(part);</span>
+<span class="fc bfc" id="L141" title="All 2 branches covered.">			lookup = !lookup;</span>
+		}
+<span class="pc bpc" id="L143" title="1 of 2 branches missed.">		if (hasError) {</span>
+<span class="nc" id="L144">			throw new IllegalStateException(&quot;Missing replacement values in template: &quot; + b.toString());</span>
+		}
+<span class="fc" id="L146">		return b.toString();</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

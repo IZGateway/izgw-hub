@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ApiKeyAuditLogger.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.hub.security</a> &gt; <span class="el_source">ApiKeyAuditLogger.java</span></div><h1>ApiKeyAuditLogger.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.hub.security;
+
+import gov.cdc.izgateway.logging.markers.Markers2;
+import gov.cdc.izgateway.utils.SystemUtils;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
+import java.time.Instant;
+
+/**
+ * Emits structured audit events for API-key credential lifecycle actions.
+ *
+ * &lt;p&gt;Events are written as structured Logstash fields via {@link Markers2} so they flow through
+ * Hub's existing JSON logging pipeline alongside the rest of the application's security logging.
+ * This is a dedicated, injectable component so the audit behaviour can be unit-tested independently
+ * of the code paths that trigger it.&lt;/p&gt;
+ *
+ * &lt;p&gt;Currently this emits the {@code API_KEY_REVOKED} and {@code API_KEY_EXPIRED} events used by the
+ * grace-period revocation job (IGDD-2711, IGDD-3167). Authentication audit events
+ * ({@code API_KEY_USED} / {@code API_KEY_AUTH_FAILED}) are introduced by IGDD-2704, wired into
+ * {@link ApiKeyPrincipalProvider} in that change.&lt;/p&gt;
+ */
+@Component
+<span class="fc" id="L24">@Slf4j</span>
+public class ApiKeyAuditLogger {
+
+    /**
+     * Create the audit logger. Spring creates this component.
+     */
+<span class="nc" id="L30">    public ApiKeyAuditLogger() {</span>
+        // Nothing to initialize.
+<span class="nc" id="L32">    }</span>
+
+    /** Audit event type emitted when an API key is revoked (cut off before its own expiry). */
+    public static final String API_KEY_REVOKED = &quot;API_KEY_REVOKED&quot;;
+
+    /** Audit event type emitted when an API key is marked expired (reached its own expiry). */
+    public static final String API_KEY_EXPIRED = &quot;API_KEY_EXPIRED&quot;;
+
+    /**
+     * {@code revokedBy} value used when a credential is revoked automatically by the
+     * grace-period revocation scheduled job (IGDD-2711), as opposed to a manual,
+     * operator-driven revocation through Config Console.
+     */
+    public static final String SYSTEM_GRACE_REVOCATION = &quot;system:grace-revocation&quot;;
+
+    /**
+     * {@code expiredBy} value used when a credential is marked expired automatically by the
+     * grace-period revocation scheduled job because it reached its own {@code expiresAt} on or
+     * before its {@code graceExpiresAt} (IGDD-3167).
+     */
+    public static final String SYSTEM_GRACE_EXPIRATION = &quot;system:grace-expiration&quot;;
+
+    /**
+     * Emit an {@code API_KEY_REVOKED} audit event for a credential revocation.
+     *
+     * &lt;p&gt;Used by the grace-period revocation scheduled job (IGDD-2711) when a superseded
+     * credential is revoked after its grace period expires. The event carries no token or
+     * secret material.&lt;/p&gt;
+     *
+     * @param keyId          the revoked API key identifier (JWT {@code jti})
+     * @param jurisdictionId the jurisdiction the credential belonged to
+     * @param revokedBy      the identity performing the revocation (e.g. {@link #SYSTEM_GRACE_REVOCATION})
+     * @param supersededBy   the {@code jti} of the renewed credential that superseded this one; may be {@code null}
+     */
+    public void apiKeyRevoked(String keyId, String jurisdictionId, String revokedBy, String supersededBy) {
+<span class="nc" id="L67">        log.info(Markers2.append(</span>
+                &quot;eventType&quot;, API_KEY_REVOKED,
+                &quot;keyId&quot;, keyId,
+                &quot;jurisdictionId&quot;, jurisdictionId,
+                &quot;revokedBy&quot;, revokedBy,
+                &quot;supersededBy&quot;, supersededBy,
+                // Which Hub performed this. The grace-period sweep is environment-agnostic and the
+                // DynamoDB table is shared across environments, so without these the record cannot be
+                // attributed to an instance (IGDD-3257 review).
+<span class="nc" id="L76">                &quot;environment&quot;, SystemUtils.getDestTag(),</span>
+<span class="nc" id="L77">                &quot;serverName&quot;, SystemUtils.getHostname()</span>
+<span class="nc" id="L78">        ).and(Markers2.append(&quot;timestamp&quot;, Instant.now().toString())),</span>
+                &quot;API key revoked for jurisdiction {} (keyId={}, revokedBy={})&quot;, jurisdictionId, keyId, revokedBy);
+<span class="nc" id="L80">    }</span>
+
+    /**
+     * Emit an {@code API_KEY_EXPIRED} audit event for a credential that reached its own expiry.
+     *
+     * &lt;p&gt;Used by the grace-period revocation scheduled job (IGDD-3167) when a superseded
+     * credential's own {@code expiresAt} was on or before its {@code graceExpiresAt} — the JWT
+     * {@code exp} capped its validity before the grace window would have. The event carries no
+     * token or secret material.&lt;/p&gt;
+     *
+     * @param keyId          the expired API key identifier (JWT {@code jti})
+     * @param jurisdictionId the jurisdiction the credential belonged to
+     * @param expiredBy      the identity recording the expiry (e.g. {@link #SYSTEM_GRACE_EXPIRATION})
+     * @param supersededBy   the {@code jti} of the renewed credential that superseded this one; may be {@code null}
+     */
+    public void apiKeyExpired(String keyId, String jurisdictionId, String expiredBy, String supersededBy) {
+<span class="nc" id="L96">        log.info(Markers2.append(</span>
+                &quot;eventType&quot;, API_KEY_EXPIRED,
+                &quot;keyId&quot;, keyId,
+                &quot;jurisdictionId&quot;, jurisdictionId,
+                &quot;expiredBy&quot;, expiredBy,
+                &quot;supersededBy&quot;, supersededBy,
+                // See apiKeyRevoked: identifies the Hub instance that performed the termination.
+<span class="nc" id="L103">                &quot;environment&quot;, SystemUtils.getDestTag(),</span>
+<span class="nc" id="L104">                &quot;serverName&quot;, SystemUtils.getHostname()</span>
+<span class="nc" id="L105">        ).and(Markers2.append(&quot;timestamp&quot;, Instant.now().toString())),</span>
+                &quot;API key expired for jurisdiction {} (keyId={}, expiredBy={})&quot;, jurisdictionId, keyId, expiredBy);
+<span class="nc" id="L107">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

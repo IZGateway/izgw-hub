@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuthenticationEnforcementFilter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.hub.security</a> &gt; <span class="el_source">AuthenticationEnforcementFilter.java</span></div><h1>AuthenticationEnforcementFilter.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.hub.security;
+
+import gov.cdc.izgateway.security.UnauthenticatedPrincipal;
+import gov.cdc.izgateway.security.service.PrincipalService;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.util.Set;
+
+/**
+ * Returns 401 for unauthenticated callers when server.ssl.client-auth=want.
+ * Required when Hub accepts JWT-only clients (no TLS cert) — without this filter,
+ * anonymous connections would reach business logic as UnauthenticatedPrincipal.
+ */
+@Component
+@ConditionalOnProperty(name = &quot;server.ssl.client-auth&quot;, havingValue = &quot;want&quot;)
+@Order(Ordered.HIGHEST_PRECEDENCE)
+public class AuthenticationEnforcementFilter extends OncePerRequestFilter {
+
+    private final PrincipalService principalService;
+
+    /**
+     * Create the filter. Spring supplies the parameter.
+     * @param principalService	The service that gets the principal for a request
+     */
+    @Autowired
+<span class="fc" id="L36">    public AuthenticationEnforcementFilter(PrincipalService principalService) {</span>
+<span class="fc" id="L37">        this.principalService = principalService;</span>
+<span class="fc" id="L38">    }</span>
+
+    /**
+     * Health check endpoints the ALB target group and the container probe reach without a
+     * credential. Matched exactly, for the same reason as
+     * {@code AccessControlValve.HEALTH_CHECK_PATHS}: a prefix match hands this exemption to
+     * anything else that happens to start with {@code /rest/health}, which is more than the
+     * probes need.
+     */
+<span class="fc" id="L47">    private static final Set&lt;String&gt; HEALTH_CHECK_PATHS = Set.of(&quot;/rest/health&quot;, &quot;/rest/healthy&quot;);</span>
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+<span class="fc" id="L51">        return HEALTH_CHECK_PATHS.contains(request.getServletPath());</span>
+    }
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
+<span class="fc bfc" id="L57" title="All 2 branches covered.">        if (principalService.getPrincipal(request) instanceof UnauthenticatedPrincipal) {</span>
+<span class="fc" id="L58">            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, &quot;Authentication required&quot;);</span>
+<span class="fc" id="L59">            return;</span>
+        }
+<span class="fc" id="L61">        filterChain.doFilter(request, response);</span>
+<span class="fc" id="L62">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

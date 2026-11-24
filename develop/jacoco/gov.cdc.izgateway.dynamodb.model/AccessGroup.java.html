@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AccessGroup.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.dynamodb.model</a> &gt; <span class="el_source">AccessGroup.java</span></div><h1>AccessGroup.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.dynamodb.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbConvertedBy;
+
+import java.io.Serializable;
+import java.util.Set;
+import java.util.TreeSet;
+
+import gov.cdc.izgateway.model.IAccessGroup;
+import gov.cdc.izgateway.repository.EmptySetToNullConverter;
+import gov.cdc.izgateway.model.DynamoDbAudit;
+import gov.cdc.izgateway.model.DynamoDbEntity;
+
+/**
+ * DynamoDB entity for AccessGroup, representing an access control group record.
+ * 
+ * @author Audacious Inquiry
+ */
+@SuppressWarnings(&quot;serial&quot;)
+@Data
+@EqualsAndHashCode(callSuper=false)
+@AllArgsConstructor
+@NoArgsConstructor
+@DynamoDbBean
+public class AccessGroup extends DynamoDbAudit implements DynamoDbEntity, Serializable, IAccessGroup {
+    /** The name of the access group. */
+    private String groupName;
+    /** The environment (destination type) of the access group. */
+    private int environment;
+    /** The description of the access group. */
+    private String description;
+    /** The roles that the members of the group have. */
+<span class="nc" id="L38">    private Set&lt;String&gt; roles = new TreeSet&lt;&gt;();</span>
+    /** The users that are members of the group. */
+<span class="nc" id="L40">    private Set&lt;String&gt; users = new TreeSet&lt;&gt;();</span>
+    /** The groups that are members of the group. */
+<span class="nc" id="L42">    private Set&lt;String&gt; groups = new TreeSet&lt;&gt;();</span>
+    
+    @DynamoDbConvertedBy(EmptySetToNullConverter.class)
+    public Set&lt;String&gt; getRoles() {
+<span class="nc bnc" id="L46" title="All 2 branches missed.">		if (roles == null) {</span>
+<span class="nc" id="L47">			roles = new TreeSet&lt;&gt;();</span>
+		}
+<span class="nc" id="L49">		return roles;</span>
+	}
+    @DynamoDbConvertedBy(EmptySetToNullConverter.class)
+    public Set&lt;String&gt; getUsers() {
+<span class="nc bnc" id="L53" title="All 2 branches missed.">    	if (users == null) {</span>
+<span class="nc" id="L54">			users = new TreeSet&lt;&gt;();</span>
+    	}
+<span class="nc" id="L56">		return users;</span>
+	}
+    @DynamoDbConvertedBy(EmptySetToNullConverter.class)
+    public Set&lt;String&gt; getGroups() {
+<span class="nc bnc" id="L60" title="All 2 branches missed.">    	if (groups == null) {</span>
+<span class="nc" id="L61">    		groups = new TreeSet&lt;&gt;();</span>
+    	}
+<span class="nc" id="L63">		return groups;</span>
+	}
+    
+    /**
+     * Copy constructor
+     * @param other	the other AccessGroup object to copy from
+     */
+    public AccessGroup(IAccessGroup other) {
+<span class="nc" id="L71">        super(other);</span>
+<span class="nc bnc" id="L72" title="All 2 branches missed.">        if (other != null) {</span>
+<span class="nc" id="L73">            this.groupName = other.getGroupName();</span>
+<span class="nc" id="L74">            this.environment = other.getEnvironment();</span>
+<span class="nc" id="L75">            this.description = other.getDescription();</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">            if (other.getRoles() != null) {</span>
+<span class="nc" id="L77">            	this.roles.addAll(other.getRoles());</span>
+            }
+<span class="nc bnc" id="L79" title="All 2 branches missed.">            if (other.getUsers() != null) {</span>
+<span class="nc" id="L80">            	this.users.addAll(other.getUsers());</span>
+            }
+<span class="nc bnc" id="L82" title="All 2 branches missed.">            if (other.getGroups() != null) {</span>
+<span class="nc" id="L83">            	this.groups.addAll(other.getGroups());</span>
+            }
+        }
+<span class="nc" id="L86">    }</span>
+    
+	@Override
+	public String getPrimaryId() {
+<span class="nc" id="L90">		return String.format(&quot;%d#%s&quot;, this.environment, this.groupName);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

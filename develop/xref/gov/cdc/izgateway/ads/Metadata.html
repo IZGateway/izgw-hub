@@ -1,0 +1,472 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="" lang="">
+<head><meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+<title>Metadata xref</title>
+<link type="text/css" rel="stylesheet" href="../../../../stylesheet.css" />
+</head>
+<body>
+<div id="overview"><a href="../../../../../apidocs/gov/cdc/izgateway/ads/Metadata.html">View Javadoc</a></div><pre>
+<a class="jxr_linenumber" name="L1" href="#L1">1</a>   <strong class="jxr_keyword">package</strong> gov.cdc.izgateway.ads;
+<a class="jxr_linenumber" name="L2" href="#L2">2</a>   
+<a class="jxr_linenumber" name="L3" href="#L3">3</a>   <strong class="jxr_keyword">import</strong> com.fasterxml.jackson.annotation.JsonFormat;
+<a class="jxr_linenumber" name="L4" href="#L4">4</a>   <strong class="jxr_keyword">import</strong> com.fasterxml.jackson.annotation.JsonProperty;
+<a class="jxr_linenumber" name="L5" href="#L5">5</a>   <strong class="jxr_keyword">import</strong> com.fasterxml.jackson.annotation.JsonPropertyOrder;
+<a class="jxr_linenumber" name="L6" href="#L6">6</a>   
+<a class="jxr_linenumber" name="L7" href="#L7">7</a>   <strong class="jxr_keyword">import</strong> org.apache.commons.lang3.StringUtils;
+<a class="jxr_linenumber" name="L8" href="#L8">8</a>   <strong class="jxr_keyword">import</strong> org.apache.commons.lang3.time.FastDateFormat;
+<a class="jxr_linenumber" name="L9" href="#L9">9</a>   
+<a class="jxr_linenumber" name="L10" href="#L10">10</a>  <strong class="jxr_keyword">import</strong> java.io.Serializable;
+<a class="jxr_linenumber" name="L11" href="#L11">11</a>  <strong class="jxr_keyword">import</strong> java.util.Date;
+<a class="jxr_linenumber" name="L12" href="#L12">12</a>  
+<a class="jxr_linenumber" name="L13" href="#L13">13</a>  <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L14" href="#L14">14</a>  <em class="jxr_javadoccomment"> * Object used to store metadata.  JSON Names are the same values as would be used</em>
+<a class="jxr_linenumber" name="L15" href="#L15">15</a>  <em class="jxr_javadoccomment"> * in the Azure metadata.</em>
+<a class="jxr_linenumber" name="L16" href="#L16">16</a>  <em class="jxr_javadoccomment"> * </em>
+<a class="jxr_linenumber" name="L17" href="#L17">17</a>  <em class="jxr_javadoccomment"> * Data Element Name		Data Element Description	Purpose	Optionality	Level </em>
+<a class="jxr_linenumber" name="L18" href="#L18">18</a>  <em class="jxr_javadoccomment"> * meta_destination_id	Set to - "NDLP"	Establishes that this file should be directed to CDC NDLP.	Required	File Level</em>
+<a class="jxr_linenumber" name="L19" href="#L19">19</a>  <em class="jxr_javadoccomment"> * </em>
+<a class="jxr_linenumber" name="L20" href="#L20">20</a>  <em class="jxr_javadoccomment"> * meta_ext_source	Set to - "IZGW"	Establishes where data came from.	Required	File Level</em>
+<a class="jxr_linenumber" name="L21" href="#L21">21</a>  <em class="jxr_javadoccomment"> * </em>
+<a class="jxr_linenumber" name="L22" href="#L22">22</a>  <em class="jxr_javadoccomment"> * meta_ext_sourceversion	V2022-12-31	Aligns with version of the specification.	Required	File Level</em>
+<a class="jxr_linenumber" name="L23" href="#L23">23</a>  <em class="jxr_javadoccomment"> * </em>
+<a class="jxr_linenumber" name="L24" href="#L24">24</a>  <em class="jxr_javadoccomment"> * meta_ext_event	Set to:</em>
+<a class="jxr_linenumber" name="L25" href="#L25">25</a>  <em class="jxr_javadoccomment"> * o    "routineImmunization" - for Routine Immunization files</em>
+<a class="jxr_linenumber" name="L26" href="#L26">26</a>  <em class="jxr_javadoccomment"> * o    "influenzaVaccination" - for Influenza files	Determines storage container for IZGW to submit files on NDLP Storage Account	Required	File Level</em>
+<a class="jxr_linenumber" name="L27" href="#L27">27</a>  <em class="jxr_javadoccomment"> * </em>
+<a class="jxr_linenumber" name="L28" href="#L28">28</a>  <em class="jxr_javadoccomment"> * meta_ext_entity	This is the three digit entity code.  See tab - Submitting Entity Codes, e.g., </em>
+<a class="jxr_linenumber" name="L29" href="#L29">29</a>  <em class="jxr_javadoccomment"> * o 	NYA (New York State)</em>
+<a class="jxr_linenumber" name="L30" href="#L30">30</a>  <em class="jxr_javadoccomment"> * o 	CV1 (CVS Health Corporation)</em>
+<a class="jxr_linenumber" name="L31" href="#L31">31</a>  <em class="jxr_javadoccomment"> * o 	DD2 (Department of Defense)	Drives metrics for vaccine admin progress at  entity grouping level.	Required	File Level</em>
+<a class="jxr_linenumber" name="L32" href="#L32">32</a>  <em class="jxr_javadoccomment"> * </em>
+<a class="jxr_linenumber" name="L33" href="#L33">33</a>  <em class="jxr_javadoccomment"> * meta_username	Username of user who submitted the file to the IZGW.  If this is a system to system submission then this should be the service account.	This field is used for troubleshooting.	Required	File Level</em>
+<a class="jxr_linenumber" name="L34" href="#L34">34</a>  <em class="jxr_javadoccomment"> * </em>
+<a class="jxr_linenumber" name="L35" href="#L35">35</a>  <em class="jxr_javadoccomment"> * meta_ext_objectkey	81bc2718-aef5-479b-8d67-955a2e75ac53 	This field is used to track back to the source filename / objectid.	Required	File Level</em>
+<a class="jxr_linenumber" name="L36" href="#L36">36</a>  <em class="jxr_javadoccomment"> * </em>
+<a class="jxr_linenumber" name="L37" href="#L37">37</a>  <em class="jxr_javadoccomment"> * meta_ext_filename	The name of the file submitted to the IZGW.  File and extension should be named in accordance with guidelines outlined in the DUA.	Tracking the name of the file that was submitted.	Required	File Level</em>
+<a class="jxr_linenumber" name="L38" href="#L38">38</a>  <em class="jxr_javadoccomment"> * </em>
+<a class="jxr_linenumber" name="L39" href="#L39">39</a>  <em class="jxr_javadoccomment"> * meta_ext_submissionperiod	This is the actual time period associated with submission for this file:</em>
+<a class="jxr_linenumber" name="L40" href="#L40">40</a>  <em class="jxr_javadoccomment"> * o    YYYYQ#  - For Routine Immunization quarterly </em>
+<a class="jxr_linenumber" name="L41" href="#L41">41</a>  <em class="jxr_javadoccomment"> *       submissions (e.g., 2022Q1)</em>
+<a class="jxr_linenumber" name="L42" href="#L42">42</a>  <em class="jxr_javadoccomment"> * o    YYYY-MON - for Influenza Vaccination monthly </em>
+<a class="jxr_linenumber" name="L43" href="#L43">43</a>  <em class="jxr_javadoccomment"> *       submissions (e.g., 2023-FEB)	Tracks frequency associated with file submission, as well as the actual file submission timeframe based on the frequency requirements associated with the program (i.e., Quarterly for Routine Immunizations, and Monthly for Influenza Vaccinations)	Required	File Level</em>
+<a class="jxr_linenumber" name="L44" href="#L44">44</a>  <em class="jxr_javadoccomment"> *       </em>
+<a class="jxr_linenumber" name="L45" href="#L45">45</a>  <em class="jxr_javadoccomment"> * meta_schema_version	This is an optional metadata field used for DEX Uploads.  It represents the version of the metadata  associated with the file being uploaded to DEX. If the optional meta_schema_version metadata field is not provided, then the earliest version found in the metadata config file for the given meta_destination_id will be used.	Indicates the version of metadata for the file being uploaded to DEX. 	Optional	File Level</em>
+<a class="jxr_linenumber" name="L46" href="#L46">46</a>  <em class="jxr_javadoccomment"> * </em>
+<a class="jxr_linenumber" name="L47" href="#L47">47</a>  <em class="jxr_javadoccomment"> *  </em>
+<a class="jxr_linenumber" name="L48" href="#L48">48</a>  <em class="jxr_javadoccomment"> */</em>
+<a class="jxr_linenumber" name="L49" href="#L49">49</a>  
+<a class="jxr_linenumber" name="L50" href="#L50">50</a>  @JsonPropertyOrder({ 
+<a class="jxr_linenumber" name="L51" href="#L51">51</a>      <span class="jxr_string">"data_producer_id"</span>,
+<a class="jxr_linenumber" name="L52" href="#L52">52</a>      <span class="jxr_string">"data_stream_id"</span>,
+<a class="jxr_linenumber" name="L53" href="#L53">53</a>      <span class="jxr_string">"data_stream_route"</span>,
+<a class="jxr_linenumber" name="L54" href="#L54">54</a>  	<span class="jxr_string">"meta_destination_id"</span>, 
+<a class="jxr_linenumber" name="L55" href="#L55">55</a>  	<span class="jxr_string">"meta_ext_entity"</span>, 
+<a class="jxr_linenumber" name="L56" href="#L56">56</a>  	<span class="jxr_string">"meta_ext_event"</span>, 
+<a class="jxr_linenumber" name="L57" href="#L57">57</a>  	<span class="jxr_string">"meta_ext_event_type"</span>, 
+<a class="jxr_linenumber" name="L58" href="#L58">58</a>  	<span class="jxr_string">"meta_ext_file_timestamp"</span>,
+<a class="jxr_linenumber" name="L59" href="#L59">59</a>  	<span class="jxr_string">"meta_ext_filename"</span>,
+<a class="jxr_linenumber" name="L60" href="#L60">60</a>  	<span class="jxr_string">"meta_ext_objectkey"</span>,
+<a class="jxr_linenumber" name="L61" href="#L61">61</a>  	<span class="jxr_string">"meta_ext_source"</span>, 
+<a class="jxr_linenumber" name="L62" href="#L62">62</a>  	<span class="jxr_string">"meta_ext_sourceversion"</span>, 
+<a class="jxr_linenumber" name="L63" href="#L63">63</a>  	<span class="jxr_string">"meta_ext_submissionperiod"</span>, 
+<a class="jxr_linenumber" name="L64" href="#L64">64</a>  	<span class="jxr_string">"meta_schema_version"</span>, 
+<a class="jxr_linenumber" name="L65" href="#L65">65</a>  	<span class="jxr_string">"meta_username"</span>, 
+<a class="jxr_linenumber" name="L66" href="#L66">66</a>  	<span class="jxr_string">"izgw_event_id"</span>,
+<a class="jxr_linenumber" name="L67" href="#L67">67</a>  	<span class="jxr_string">"izgw_filesize"</span>, 
+<a class="jxr_linenumber" name="L68" href="#L68">68</a>  	<span class="jxr_string">"izgw_ipaddress"</span>, 
+<a class="jxr_linenumber" name="L69" href="#L69">69</a>  	<span class="jxr_string">"izgw_path"</span>, 
+<a class="jxr_linenumber" name="L70" href="#L70">70</a>  	<span class="jxr_string">"izgw_route_id"</span>,
+<a class="jxr_linenumber" name="L71" href="#L71">71</a>  	<span class="jxr_string">"izgw_submission_location"</span>,
+<a class="jxr_linenumber" name="L72" href="#L72">72</a>  	<span class="jxr_string">"izgw_submission_status"</span>,
+<a class="jxr_linenumber" name="L73" href="#L73">73</a>  	<span class="jxr_string">"izgw_uploaded_timestamp"</span>,
+<a class="jxr_linenumber" name="L74" href="#L74">74</a>      <span class="jxr_string">"sender_id"</span>
+<a class="jxr_linenumber" name="L75" href="#L75">75</a>  })
+<a class="jxr_linenumber" name="L76" href="#L76">76</a>  <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">interface</strong> Metadata <strong class="jxr_keyword">extends</strong> Serializable {
+<a class="jxr_linenumber" name="L77" href="#L77">77</a>  	
+<a class="jxr_linenumber" name="L78" href="#L78">78</a>  	<em class="jxr_javadoccomment">/** The metadata name of the flag that marks a file as a test file. */</em>
+<a class="jxr_linenumber" name="L79" href="#L79">79</a>  	<strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">final</strong> String TESTFILE = <span class="jxr_string">"meta_ext_testfile"</span>;
+<a class="jxr_linenumber" name="L80" href="#L80">80</a>  	<em class="jxr_javadoccomment">/** The date pattern for RFC 2616 (HTTP) dates in metadata. */</em>
+<a class="jxr_linenumber" name="L81" href="#L81">81</a>  	<strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">final</strong> String RFC2616_DATE_FORMAT_PATTERN = <span class="jxr_string">"EEE, dd MMM yyyy HH:mm:ss zzz"</span>;
+<a class="jxr_linenumber" name="L82" href="#L82">82</a>  	<em class="jxr_javadoccomment">/** The date format for RFC 2616 (HTTP) dates in metadata. */</em>
+<a class="jxr_linenumber" name="L83" href="#L83">83</a>  	<strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">final</strong> FastDateFormat RFC2616_DATE_FORMAT = FastDateFormat.getInstance(RFC2616_DATE_FORMAT_PATTERN);
+<a class="jxr_linenumber" name="L84" href="#L84">84</a>  	<em class="jxr_javadoccomment">/** The first DEX metadata source version. */</em>
+<a class="jxr_linenumber" name="L85" href="#L85">85</a>  	<strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">final</strong> String DEX_VERSION1 = <span class="jxr_string">"V2023-09-01"</span>;
+<a class="jxr_linenumber" name="L86" href="#L86">86</a>  	<em class="jxr_javadoccomment">/** The second DEX metadata source version. */</em>
+<a class="jxr_linenumber" name="L87" href="#L87">87</a>  	<strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">final</strong> String DEX_VERSION2 = <span class="jxr_string">"V2024-09-04"</span>;
+<a class="jxr_linenumber" name="L88" href="#L88">88</a>  
+<a class="jxr_linenumber" name="L89" href="#L89">89</a>  	<em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L90" href="#L90">90</a>  <em class="jxr_javadoccomment">	 * Gets the DEX metadata version (version). DEX requires this field.</em>
+<a class="jxr_linenumber" name="L91" href="#L91">91</a>  <em class="jxr_javadoccomment">	 * @return "1.0" for {@link #DEX_VERSION1}, else "2.0"</em>
+<a class="jxr_linenumber" name="L92" href="#L92">92</a>  <em class="jxr_javadoccomment">	 */</em>
+<a class="jxr_linenumber" name="L93" href="#L93">93</a>  	@JsonProperty(<span class="jxr_string">"version"</span>)
+<a class="jxr_linenumber" name="L94" href="#L94">94</a>  	<strong class="jxr_keyword">default</strong> String getVersion() {
+<a class="jxr_linenumber" name="L95" href="#L95">95</a>  		<strong class="jxr_keyword">switch</strong> (StringUtils.defaultString(getExtSourceVersion())) {
+<a class="jxr_linenumber" name="L96" href="#L96">96</a>  		<strong class="jxr_keyword">case</strong> DEX_VERSION1:
+<a class="jxr_linenumber" name="L97" href="#L97">97</a>  			<strong class="jxr_keyword">return</strong> <span class="jxr_string">"1.0"</span>;
+<a class="jxr_linenumber" name="L98" href="#L98">98</a>  		<strong class="jxr_keyword">case</strong> DEX_VERSION2:
+<a class="jxr_linenumber" name="L99" href="#L99">99</a>  		<strong class="jxr_keyword">default</strong>:
+<a class="jxr_linenumber" name="L100" href="#L100">100</a> 			<strong class="jxr_keyword">return</strong> <span class="jxr_string">"2.0"</span>;
+<a class="jxr_linenumber" name="L101" href="#L101">101</a> 		}
+<a class="jxr_linenumber" name="L102" href="#L102">102</a> 	}
+<a class="jxr_linenumber" name="L103" href="#L103">103</a> 	
+<a class="jxr_linenumber" name="L104" href="#L104">104</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L105" href="#L105">105</a> <em class="jxr_javadoccomment">     * Gets the destination ID (meta_destination_id).</em>
+<a class="jxr_linenumber" name="L106" href="#L106">106</a> <em class="jxr_javadoccomment">     * @return the destination ID</em>
+<a class="jxr_linenumber" name="L107" href="#L107">107</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L108" href="#L108">108</a>     @JsonProperty(<span class="jxr_string">"meta_destination_id"</span>)
+<a class="jxr_linenumber" name="L109" href="#L109">109</a>     String getDestinationId();
+<a class="jxr_linenumber" name="L110" href="#L110">110</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L111" href="#L111">111</a> <em class="jxr_javadoccomment">     * Sets the destination ID (meta_destination_id).</em>
+<a class="jxr_linenumber" name="L112" href="#L112">112</a> <em class="jxr_javadoccomment">     * @param destId the destination ID</em>
+<a class="jxr_linenumber" name="L113" href="#L113">113</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L114" href="#L114">114</a>     <strong class="jxr_keyword">void</strong> setDestinationId(String destId);
+<a class="jxr_linenumber" name="L115" href="#L115">115</a>     
+<a class="jxr_linenumber" name="L116" href="#L116">116</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L117" href="#L117">117</a> <em class="jxr_javadoccomment">     * Gets the source of the data (meta_ext_source).</em>
+<a class="jxr_linenumber" name="L118" href="#L118">118</a> <em class="jxr_javadoccomment">     * @return the source</em>
+<a class="jxr_linenumber" name="L119" href="#L119">119</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L120" href="#L120">120</a>     @JsonProperty(<span class="jxr_string">"meta_ext_source"</span>)
+<a class="jxr_linenumber" name="L121" href="#L121">121</a>     String getExtSource();
+<a class="jxr_linenumber" name="L122" href="#L122">122</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L123" href="#L123">123</a> <em class="jxr_javadoccomment">     * Sets the source of the data (meta_ext_source).</em>
+<a class="jxr_linenumber" name="L124" href="#L124">124</a> <em class="jxr_javadoccomment">     * @param extSource the source</em>
+<a class="jxr_linenumber" name="L125" href="#L125">125</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L126" href="#L126">126</a>     <strong class="jxr_keyword">void</strong> setExtSource(String extSource);
+<a class="jxr_linenumber" name="L127" href="#L127">127</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L128" href="#L128">128</a> <em class="jxr_javadoccomment">     * Gets the sender ID (sender_id). DEX requires this field. The value is IZGW.</em>
+<a class="jxr_linenumber" name="L129" href="#L129">129</a> <em class="jxr_javadoccomment">     * @return the sender ID, which is the same as the source</em>
+<a class="jxr_linenumber" name="L130" href="#L130">130</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L131" href="#L131">131</a>     @JsonProperty(<span class="jxr_string">"sender_id"</span>)
+<a class="jxr_linenumber" name="L132" href="#L132">132</a>     <strong class="jxr_keyword">default</strong> String getSenderId() {
+<a class="jxr_linenumber" name="L133" href="#L133">133</a>     	<strong class="jxr_keyword">return</strong> getExtSource();
+<a class="jxr_linenumber" name="L134" href="#L134">134</a>     }
+<a class="jxr_linenumber" name="L135" href="#L135">135</a> 
+<a class="jxr_linenumber" name="L136" href="#L136">136</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L137" href="#L137">137</a> <em class="jxr_javadoccomment">     * Gets the version of the specification (meta_ext_sourceversion).</em>
+<a class="jxr_linenumber" name="L138" href="#L138">138</a> <em class="jxr_javadoccomment">     * @return the source version</em>
+<a class="jxr_linenumber" name="L139" href="#L139">139</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L140" href="#L140">140</a>     @JsonProperty(<span class="jxr_string">"meta_ext_sourceversion"</span>)
+<a class="jxr_linenumber" name="L141" href="#L141">141</a>     String getExtSourceVersion();
+<a class="jxr_linenumber" name="L142" href="#L142">142</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L143" href="#L143">143</a> <em class="jxr_javadoccomment">     * Sets the version of the specification (meta_ext_sourceversion).</em>
+<a class="jxr_linenumber" name="L144" href="#L144">144</a> <em class="jxr_javadoccomment">     * @param extSourceVersion the source version</em>
+<a class="jxr_linenumber" name="L145" href="#L145">145</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L146" href="#L146">146</a>     <strong class="jxr_keyword">void</strong> setExtSourceVersion(String extSourceVersion);
+<a class="jxr_linenumber" name="L147" href="#L147">147</a>     
+<a class="jxr_linenumber" name="L148" href="#L148">148</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L149" href="#L149">149</a> <em class="jxr_javadoccomment">     * Gets the event, which selects the storage container (meta_ext_event).</em>
+<a class="jxr_linenumber" name="L150" href="#L150">150</a> <em class="jxr_javadoccomment">     * @return the event</em>
+<a class="jxr_linenumber" name="L151" href="#L151">151</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L152" href="#L152">152</a>     @JsonProperty(<span class="jxr_string">"meta_ext_event"</span>)
+<a class="jxr_linenumber" name="L153" href="#L153">153</a>     String getExtEvent();
+<a class="jxr_linenumber" name="L154" href="#L154">154</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L155" href="#L155">155</a> <em class="jxr_javadoccomment">     * Sets the event, which selects the storage container (meta_ext_event).</em>
+<a class="jxr_linenumber" name="L156" href="#L156">156</a> <em class="jxr_javadoccomment">     * @param extEvent the event</em>
+<a class="jxr_linenumber" name="L157" href="#L157">157</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L158" href="#L158">158</a>     <strong class="jxr_keyword">void</strong> setExtEvent(String extEvent);
+<a class="jxr_linenumber" name="L159" href="#L159">159</a> 
+<a class="jxr_linenumber" name="L160" href="#L160">160</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L161" href="#L161">161</a> <em class="jxr_javadoccomment">     * Gets the event type (meta_ext_event_type). This field is new in DEX 2.0.</em>
+<a class="jxr_linenumber" name="L162" href="#L162">162</a> <em class="jxr_javadoccomment">     * The values are usually the same as meta_ext_event, but other submission</em>
+<a class="jxr_linenumber" name="L163" href="#L163">163</a> <em class="jxr_javadoccomment">     * types can also go through to NDLP.</em>
+<a class="jxr_linenumber" name="L164" href="#L164">164</a> <em class="jxr_javadoccomment">     * @return the event type</em>
+<a class="jxr_linenumber" name="L165" href="#L165">165</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L166" href="#L166">166</a>     @JsonProperty(<span class="jxr_string">"meta_ext_event_type"</span>)
+<a class="jxr_linenumber" name="L167" href="#L167">167</a>     String getExtEventType();
+<a class="jxr_linenumber" name="L168" href="#L168">168</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L169" href="#L169">169</a> <em class="jxr_javadoccomment">     * Sets the event type (meta_ext_event_type).</em>
+<a class="jxr_linenumber" name="L170" href="#L170">170</a> <em class="jxr_javadoccomment">     * @param extEventTyype the event type</em>
+<a class="jxr_linenumber" name="L171" href="#L171">171</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L172" href="#L172">172</a>     <strong class="jxr_keyword">void</strong> setExtEventType(String extEventTyype);
+<a class="jxr_linenumber" name="L173" href="#L173">173</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L174" href="#L174">174</a> <em class="jxr_javadoccomment">     * Gets the data stream ID (data_stream_id). The value comes from meta_ext_event</em>
+<a class="jxr_linenumber" name="L175" href="#L175">175</a> <em class="jxr_javadoccomment">     * through the camelCase to kebab-case conversion in</em>
+<a class="jxr_linenumber" name="L176" href="#L176">176</a> <em class="jxr_javadoccomment">     * {@code MetadataBuilder.computeDataStreamId()}. {@link MetadataImpl} overrides</em>
+<a class="jxr_linenumber" name="L177" href="#L177">177</a> <em class="jxr_javadoccomment">     * this method to return a stored value first, so a value set during deserialization wins.</em>
+<a class="jxr_linenumber" name="L178" href="#L178">178</a> <em class="jxr_javadoccomment">     * @return the data stream ID</em>
+<a class="jxr_linenumber" name="L179" href="#L179">179</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L180" href="#L180">180</a>     @JsonProperty(<span class="jxr_string">"data_stream_id"</span>)
+<a class="jxr_linenumber" name="L181" href="#L181">181</a>     <strong class="jxr_keyword">default</strong> String getDataStreamId() {
+<a class="jxr_linenumber" name="L182" href="#L182">182</a>         <strong class="jxr_keyword">return</strong> MetadataBuilder.computeDataStreamId(getExtEvent());
+<a class="jxr_linenumber" name="L183" href="#L183">183</a>     }
+<a class="jxr_linenumber" name="L184" href="#L184">184</a>     
+<a class="jxr_linenumber" name="L185" href="#L185">185</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L186" href="#L186">186</a> <em class="jxr_javadoccomment">     * Gets the submitting entity code (meta_ext_entity).</em>
+<a class="jxr_linenumber" name="L187" href="#L187">187</a> <em class="jxr_javadoccomment">     * @return the entity code</em>
+<a class="jxr_linenumber" name="L188" href="#L188">188</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L189" href="#L189">189</a>     @JsonProperty(<span class="jxr_string">"meta_ext_entity"</span>)
+<a class="jxr_linenumber" name="L190" href="#L190">190</a>     String getExtEntity();
+<a class="jxr_linenumber" name="L191" href="#L191">191</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L192" href="#L192">192</a> <em class="jxr_javadoccomment">     * Sets the submitting entity code (meta_ext_entity).</em>
+<a class="jxr_linenumber" name="L193" href="#L193">193</a> <em class="jxr_javadoccomment">     * @param extEntity the entity code</em>
+<a class="jxr_linenumber" name="L194" href="#L194">194</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L195" href="#L195">195</a>     <strong class="jxr_keyword">void</strong> setExtEntity(String extEntity);
+<a class="jxr_linenumber" name="L196" href="#L196">196</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L197" href="#L197">197</a> <em class="jxr_javadoccomment">     * Gets the data producer ID (data_producer_id). DEX requires this field.</em>
+<a class="jxr_linenumber" name="L198" href="#L198">198</a> <em class="jxr_javadoccomment">     * @return the data producer ID, which is the same as meta_ext_entity</em>
+<a class="jxr_linenumber" name="L199" href="#L199">199</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L200" href="#L200">200</a>     @JsonProperty(<span class="jxr_string">"data_producer_id"</span>)
+<a class="jxr_linenumber" name="L201" href="#L201">201</a>     <strong class="jxr_keyword">default</strong> String getDataProducerId() {
+<a class="jxr_linenumber" name="L202" href="#L202">202</a>     	<strong class="jxr_keyword">return</strong> getExtEntity();
+<a class="jxr_linenumber" name="L203" href="#L203">203</a>     }
+<a class="jxr_linenumber" name="L204" href="#L204">204</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L205" href="#L205">205</a> <em class="jxr_javadoccomment">     * Gets the jurisdiction (jurisdiction). DEX requires this field.</em>
+<a class="jxr_linenumber" name="L206" href="#L206">206</a> <em class="jxr_javadoccomment">     * @return the jurisdiction, which is the same as meta_ext_entity</em>
+<a class="jxr_linenumber" name="L207" href="#L207">207</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L208" href="#L208">208</a>     @JsonProperty(<span class="jxr_string">"jurisdiction"</span>)
+<a class="jxr_linenumber" name="L209" href="#L209">209</a>     <strong class="jxr_keyword">default</strong> String getJurisdiction() {
+<a class="jxr_linenumber" name="L210" href="#L210">210</a>     	<strong class="jxr_keyword">return</strong> getExtEntity();
+<a class="jxr_linenumber" name="L211" href="#L211">211</a>     }
+<a class="jxr_linenumber" name="L212" href="#L212">212</a>     
+<a class="jxr_linenumber" name="L213" href="#L213">213</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L214" href="#L214">214</a> <em class="jxr_javadoccomment">     * Gets the name of the user or service account that submitted the file (meta_username).</em>
+<a class="jxr_linenumber" name="L215" href="#L215">215</a> <em class="jxr_javadoccomment">     * @return the user name</em>
+<a class="jxr_linenumber" name="L216" href="#L216">216</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L217" href="#L217">217</a>     @JsonProperty(<span class="jxr_string">"meta_username"</span>)
+<a class="jxr_linenumber" name="L218" href="#L218">218</a>     String getUsername();
+<a class="jxr_linenumber" name="L219" href="#L219">219</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L220" href="#L220">220</a> <em class="jxr_javadoccomment">     * Sets the name of the user or service account that submitted the file (meta_username).</em>
+<a class="jxr_linenumber" name="L221" href="#L221">221</a> <em class="jxr_javadoccomment">     * @param username the user name</em>
+<a class="jxr_linenumber" name="L222" href="#L222">222</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L223" href="#L223">223</a>     <strong class="jxr_keyword">void</strong> setUsername(String username);
+<a class="jxr_linenumber" name="L224" href="#L224">224</a>     
+<a class="jxr_linenumber" name="L225" href="#L225">225</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L226" href="#L226">226</a> <em class="jxr_javadoccomment">     * Gets the object key that identifies the source file (meta_ext_objectkey).</em>
+<a class="jxr_linenumber" name="L227" href="#L227">227</a> <em class="jxr_javadoccomment">     * @return the object key</em>
+<a class="jxr_linenumber" name="L228" href="#L228">228</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L229" href="#L229">229</a>     @JsonProperty(<span class="jxr_string">"meta_ext_objectkey"</span>)
+<a class="jxr_linenumber" name="L230" href="#L230">230</a>     String getExtObjectKey();
+<a class="jxr_linenumber" name="L231" href="#L231">231</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L232" href="#L232">232</a> <em class="jxr_javadoccomment">     * Sets the object key that identifies the source file (meta_ext_objectkey).</em>
+<a class="jxr_linenumber" name="L233" href="#L233">233</a> <em class="jxr_javadoccomment">     * @param extObjectKey the object key</em>
+<a class="jxr_linenumber" name="L234" href="#L234">234</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L235" href="#L235">235</a>     <strong class="jxr_keyword">void</strong> setExtObjectKey(String extObjectKey);
+<a class="jxr_linenumber" name="L236" href="#L236">236</a>     
+<a class="jxr_linenumber" name="L237" href="#L237">237</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L238" href="#L238">238</a> <em class="jxr_javadoccomment">     * Gets the name of the submitted file (meta_ext_filename).</em>
+<a class="jxr_linenumber" name="L239" href="#L239">239</a> <em class="jxr_javadoccomment">     * @return the file name</em>
+<a class="jxr_linenumber" name="L240" href="#L240">240</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L241" href="#L241">241</a>     @JsonProperty(<span class="jxr_string">"meta_ext_filename"</span>)
+<a class="jxr_linenumber" name="L242" href="#L242">242</a>     String getFilename();
+<a class="jxr_linenumber" name="L243" href="#L243">243</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L244" href="#L244">244</a> <em class="jxr_javadoccomment">     * Sets the name of the submitted file (meta_ext_filename).</em>
+<a class="jxr_linenumber" name="L245" href="#L245">245</a> <em class="jxr_javadoccomment">     * @param filename the file name</em>
+<a class="jxr_linenumber" name="L246" href="#L246">246</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L247" href="#L247">247</a>     <strong class="jxr_keyword">void</strong> setFilename(String filename);
+<a class="jxr_linenumber" name="L248" href="#L248">248</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L249" href="#L249">249</a> <em class="jxr_javadoccomment">     * Gets the received file name (received_filename). DEX requires this field.</em>
+<a class="jxr_linenumber" name="L250" href="#L250">250</a> <em class="jxr_javadoccomment">     * @return the original name of the uploaded file</em>
+<a class="jxr_linenumber" name="L251" href="#L251">251</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L252" href="#L252">252</a>     @JsonProperty(<span class="jxr_string">"received_filename"</span>)
+<a class="jxr_linenumber" name="L253" href="#L253">253</a>     <strong class="jxr_keyword">default</strong> String getReceivedFilename() {
+<a class="jxr_linenumber" name="L254" href="#L254">254</a>     	<strong class="jxr_keyword">return</strong> getFilename();
+<a class="jxr_linenumber" name="L255" href="#L255">255</a>     }
+<a class="jxr_linenumber" name="L256" href="#L256">256</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L257" href="#L257">257</a> <em class="jxr_javadoccomment">     * Gets the data stream route (data_stream_route). DEX requires this field.</em>
+<a class="jxr_linenumber" name="L258" href="#L258">258</a> <em class="jxr_javadoccomment">     * @return "csv" for CSV files, else "other"</em>
+<a class="jxr_linenumber" name="L259" href="#L259">259</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L260" href="#L260">260</a>     @JsonProperty(<span class="jxr_string">"data_stream_route"</span>) 
+<a class="jxr_linenumber" name="L261" href="#L261">261</a>     <strong class="jxr_keyword">default</strong> String getDataStreamRoute() {
+<a class="jxr_linenumber" name="L262" href="#L262">262</a>     	String v = StringUtils.defaultString(getFilename());
+<a class="jxr_linenumber" name="L263" href="#L263">263</a>     	<strong class="jxr_keyword">if</strong> (v.toLowerCase().endsWith(<span class="jxr_string">".csv"</span>)) {
+<a class="jxr_linenumber" name="L264" href="#L264">264</a>     		<strong class="jxr_keyword">return</strong> <span class="jxr_string">"csv"</span>;
+<a class="jxr_linenumber" name="L265" href="#L265">265</a>     	}
+<a class="jxr_linenumber" name="L266" href="#L266">266</a>     	<strong class="jxr_keyword">return</strong> <span class="jxr_string">"other"</span>;
+<a class="jxr_linenumber" name="L267" href="#L267">267</a>     }
+<a class="jxr_linenumber" name="L268" href="#L268">268</a>     
+<a class="jxr_linenumber" name="L269" href="#L269">269</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L270" href="#L270">270</a> <em class="jxr_javadoccomment">     * Gets the submission period of the file (meta_ext_submissionperiod).</em>
+<a class="jxr_linenumber" name="L271" href="#L271">271</a> <em class="jxr_javadoccomment">     * @return the submission period</em>
+<a class="jxr_linenumber" name="L272" href="#L272">272</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L273" href="#L273">273</a>     @JsonProperty(<span class="jxr_string">"meta_ext_submissionperiod"</span>)
+<a class="jxr_linenumber" name="L274" href="#L274">274</a>     String getPeriod();
+<a class="jxr_linenumber" name="L275" href="#L275">275</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L276" href="#L276">276</a> <em class="jxr_javadoccomment">     * Sets the submission period of the file (meta_ext_submissionperiod).</em>
+<a class="jxr_linenumber" name="L277" href="#L277">277</a> <em class="jxr_javadoccomment">     * @param period the submission period</em>
+<a class="jxr_linenumber" name="L278" href="#L278">278</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L279" href="#L279">279</a>     <strong class="jxr_keyword">void</strong> setPeriod(String period);
+<a class="jxr_linenumber" name="L280" href="#L280">280</a>     
+<a class="jxr_linenumber" name="L281" href="#L281">281</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L282" href="#L282">282</a> <em class="jxr_javadoccomment">     * Gets the metadata schema version (meta_schema_version).</em>
+<a class="jxr_linenumber" name="L283" href="#L283">283</a> <em class="jxr_javadoccomment">     * @return the schema version</em>
+<a class="jxr_linenumber" name="L284" href="#L284">284</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L285" href="#L285">285</a>     @JsonProperty(<span class="jxr_string">"meta_schema_version"</span>)
+<a class="jxr_linenumber" name="L286" href="#L286">286</a>     String getSchemaVersion();
+<a class="jxr_linenumber" name="L287" href="#L287">287</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L288" href="#L288">288</a> <em class="jxr_javadoccomment">     * Sets the metadata schema version (meta_schema_version).</em>
+<a class="jxr_linenumber" name="L289" href="#L289">289</a> <em class="jxr_javadoccomment">     * @param version the schema version</em>
+<a class="jxr_linenumber" name="L290" href="#L290">290</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L291" href="#L291">291</a>     <strong class="jxr_keyword">void</strong> setSchemaVersion(String version);
+<a class="jxr_linenumber" name="L292" href="#L292">292</a>     
+<a class="jxr_linenumber" name="L293" href="#L293">293</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L294" href="#L294">294</a> <em class="jxr_javadoccomment">     * Tells if the file is a test file (meta_ext_testfile).</em>
+<a class="jxr_linenumber" name="L295" href="#L295">295</a> <em class="jxr_javadoccomment">     * @return true if the file is a test file</em>
+<a class="jxr_linenumber" name="L296" href="#L296">296</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L297" href="#L297">297</a>     @JsonProperty(TESTFILE)
+<a class="jxr_linenumber" name="L298" href="#L298">298</a>     <strong class="jxr_keyword">boolean</strong> isTestFile();
+<a class="jxr_linenumber" name="L299" href="#L299">299</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L300" href="#L300">300</a> <em class="jxr_javadoccomment">     * Sets the flag that marks the file as a test file (meta_ext_testfile).</em>
+<a class="jxr_linenumber" name="L301" href="#L301">301</a> <em class="jxr_javadoccomment">     * @param testFile true if the file is a test file</em>
+<a class="jxr_linenumber" name="L302" href="#L302">302</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L303" href="#L303">303</a>     <strong class="jxr_keyword">void</strong> setTestFile(<strong class="jxr_keyword">boolean</strong> testFile);
+<a class="jxr_linenumber" name="L304" href="#L304">304</a>     
+<a class="jxr_linenumber" name="L305" href="#L305">305</a>     <em class="jxr_comment">// Our additions to NDLP Specification</em>
+<a class="jxr_linenumber" name="L306" href="#L306">306</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L307" href="#L307">307</a> <em class="jxr_javadoccomment">     * Gets the ID of the destination route (izgw_route_id).</em>
+<a class="jxr_linenumber" name="L308" href="#L308">308</a> <em class="jxr_javadoccomment">     * @return the route ID</em>
+<a class="jxr_linenumber" name="L309" href="#L309">309</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L310" href="#L310">310</a>     @JsonProperty(<span class="jxr_string">"izgw_route_id"</span>)
+<a class="jxr_linenumber" name="L311" href="#L311">311</a>     String getRouteId();
+<a class="jxr_linenumber" name="L312" href="#L312">312</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L313" href="#L313">313</a> <em class="jxr_javadoccomment">     * Sets the ID of the destination route (izgw_route_id).</em>
+<a class="jxr_linenumber" name="L314" href="#L314">314</a> <em class="jxr_javadoccomment">     * @param routeId the route ID</em>
+<a class="jxr_linenumber" name="L315" href="#L315">315</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L316" href="#L316">316</a>     <strong class="jxr_keyword">void</strong> setRouteId(String routeId);
+<a class="jxr_linenumber" name="L317" href="#L317">317</a>     
+<a class="jxr_linenumber" name="L318" href="#L318">318</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L319" href="#L319">319</a> <em class="jxr_javadoccomment">     * Gets the path of the file at the destination (izgw_path).</em>
+<a class="jxr_linenumber" name="L320" href="#L320">320</a> <em class="jxr_javadoccomment">     * @return the path</em>
+<a class="jxr_linenumber" name="L321" href="#L321">321</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L322" href="#L322">322</a>     @JsonProperty(<span class="jxr_string">"izgw_path"</span>)
+<a class="jxr_linenumber" name="L323" href="#L323">323</a>     String getPath();
+<a class="jxr_linenumber" name="L324" href="#L324">324</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L325" href="#L325">325</a> <em class="jxr_javadoccomment">     * Sets the path of the file at the destination (izgw_path).</em>
+<a class="jxr_linenumber" name="L326" href="#L326">326</a> <em class="jxr_javadoccomment">     * @param path the path</em>
+<a class="jxr_linenumber" name="L327" href="#L327">327</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L328" href="#L328">328</a>     <strong class="jxr_keyword">void</strong> setPath(String path);
+<a class="jxr_linenumber" name="L329" href="#L329">329</a>     
+<a class="jxr_linenumber" name="L330" href="#L330">330</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L331" href="#L331">331</a> <em class="jxr_javadoccomment">     * Gets the IP address of the submitter (izgw_ipaddress).</em>
+<a class="jxr_linenumber" name="L332" href="#L332">332</a> <em class="jxr_javadoccomment">     * @return the IP address</em>
+<a class="jxr_linenumber" name="L333" href="#L333">333</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L334" href="#L334">334</a>     @JsonProperty(<span class="jxr_string">"izgw_ipaddress"</span>)
+<a class="jxr_linenumber" name="L335" href="#L335">335</a>     String getIpAddress();
+<a class="jxr_linenumber" name="L336" href="#L336">336</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L337" href="#L337">337</a> <em class="jxr_javadoccomment">     * Sets the IP address of the submitter (izgw_ipaddress).</em>
+<a class="jxr_linenumber" name="L338" href="#L338">338</a> <em class="jxr_javadoccomment">     * @param ipAddress the IP address</em>
+<a class="jxr_linenumber" name="L339" href="#L339">339</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L340" href="#L340">340</a>     <strong class="jxr_keyword">void</strong> setIpAddress(String ipAddress);
+<a class="jxr_linenumber" name="L341" href="#L341">341</a>     
+<a class="jxr_linenumber" name="L342" href="#L342">342</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L343" href="#L343">343</a> <em class="jxr_javadoccomment">     * Gets the size of the file in bytes (izgw_filesize).</em>
+<a class="jxr_linenumber" name="L344" href="#L344">344</a> <em class="jxr_javadoccomment">     * @return the file size</em>
+<a class="jxr_linenumber" name="L345" href="#L345">345</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L346" href="#L346">346</a>     @JsonProperty(<span class="jxr_string">"izgw_filesize"</span>)
+<a class="jxr_linenumber" name="L347" href="#L347">347</a>     <strong class="jxr_keyword">long</strong> getFileSize();
+<a class="jxr_linenumber" name="L348" href="#L348">348</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L349" href="#L349">349</a> <em class="jxr_javadoccomment">     * Sets the size of the file in bytes (izgw_filesize).</em>
+<a class="jxr_linenumber" name="L350" href="#L350">350</a> <em class="jxr_javadoccomment">     * @param fileSize the file size</em>
+<a class="jxr_linenumber" name="L351" href="#L351">351</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L352" href="#L352">352</a>     <strong class="jxr_keyword">void</strong> setFileSize(<strong class="jxr_keyword">long</strong> fileSize);
+<a class="jxr_linenumber" name="L353" href="#L353">353</a>     
+<a class="jxr_linenumber" name="L354" href="#L354">354</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L355" href="#L355">355</a> <em class="jxr_javadoccomment">     * Gets the date and time of the upload (izgw_uploaded_timestamp).</em>
+<a class="jxr_linenumber" name="L356" href="#L356">356</a> <em class="jxr_javadoccomment">     * @return the upload date</em>
+<a class="jxr_linenumber" name="L357" href="#L357">357</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L358" href="#L358">358</a>     @JsonProperty(<span class="jxr_string">"izgw_uploaded_timestamp"</span>)
+<a class="jxr_linenumber" name="L359" href="#L359">359</a>     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = RFC2616_DATE_FORMAT_PATTERN)
+<a class="jxr_linenumber" name="L360" href="#L360">360</a>     Date getUploadedDate();
+<a class="jxr_linenumber" name="L361" href="#L361">361</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L362" href="#L362">362</a> <em class="jxr_javadoccomment">     * Sets the date and time of the upload (izgw_uploaded_timestamp).</em>
+<a class="jxr_linenumber" name="L363" href="#L363">363</a> <em class="jxr_javadoccomment">     * @param uploadedDate the upload date</em>
+<a class="jxr_linenumber" name="L364" href="#L364">364</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L365" href="#L365">365</a>     <strong class="jxr_keyword">void</strong> setUploadedDate(Date uploadedDate);
+<a class="jxr_linenumber" name="L366" href="#L366">366</a>     
+<a class="jxr_linenumber" name="L367" href="#L367">367</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L368" href="#L368">368</a> <em class="jxr_javadoccomment">     * Gets the file timestamp (meta_ext_file_timestamp). This is the same as the upload date.</em>
+<a class="jxr_linenumber" name="L369" href="#L369">369</a> <em class="jxr_javadoccomment">     * @return the file timestamp</em>
+<a class="jxr_linenumber" name="L370" href="#L370">370</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L371" href="#L371">371</a>     @JsonProperty(<span class="jxr_string">"meta_ext_file_timestamp"</span>)
+<a class="jxr_linenumber" name="L372" href="#L372">372</a>     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = RFC2616_DATE_FORMAT_PATTERN)
+<a class="jxr_linenumber" name="L373" href="#L373">373</a>     <strong class="jxr_keyword">default</strong> Date getFileTimestamp() {
+<a class="jxr_linenumber" name="L374" href="#L374">374</a>     	<strong class="jxr_keyword">return</strong> getUploadedDate();
+<a class="jxr_linenumber" name="L375" href="#L375">375</a>     }
+<a class="jxr_linenumber" name="L376" href="#L376">376</a>     
+<a class="jxr_linenumber" name="L377" href="#L377">377</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L378" href="#L378">378</a> <em class="jxr_javadoccomment">     * Gets the IZ Gateway event ID of the request (izgw_event_id).</em>
+<a class="jxr_linenumber" name="L379" href="#L379">379</a> <em class="jxr_javadoccomment">     * @return the event ID</em>
+<a class="jxr_linenumber" name="L380" href="#L380">380</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L381" href="#L381">381</a>     @JsonProperty(<span class="jxr_string">"izgw_event_id"</span>)
+<a class="jxr_linenumber" name="L382" href="#L382">382</a>     String getEventId();
+<a class="jxr_linenumber" name="L383" href="#L383">383</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L384" href="#L384">384</a> <em class="jxr_javadoccomment">     * Sets the IZ Gateway event ID of the request (izgw_event_id).</em>
+<a class="jxr_linenumber" name="L385" href="#L385">385</a> <em class="jxr_javadoccomment">     * @param eventId the event ID</em>
+<a class="jxr_linenumber" name="L386" href="#L386">386</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L387" href="#L387">387</a>     <strong class="jxr_keyword">void</strong> setEventId(String eventId);
+<a class="jxr_linenumber" name="L388" href="#L388">388</a>     
+<a class="jxr_linenumber" name="L389" href="#L389">389</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L390" href="#L390">390</a> <em class="jxr_javadoccomment">     * Gets the submission status (izgw_submission_status).</em>
+<a class="jxr_linenumber" name="L391" href="#L391">391</a> <em class="jxr_javadoccomment">     * @return the submission status</em>
+<a class="jxr_linenumber" name="L392" href="#L392">392</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L393" href="#L393">393</a>     @JsonProperty(<span class="jxr_string">"izgw_submission_status"</span>)
+<a class="jxr_linenumber" name="L394" href="#L394">394</a>     String getSubmissionStatus();
+<a class="jxr_linenumber" name="L395" href="#L395">395</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L396" href="#L396">396</a> <em class="jxr_javadoccomment">     * Sets the submission status (izgw_submission_status).</em>
+<a class="jxr_linenumber" name="L397" href="#L397">397</a> <em class="jxr_javadoccomment">     * @param status the submission status</em>
+<a class="jxr_linenumber" name="L398" href="#L398">398</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L399" href="#L399">399</a>     <strong class="jxr_keyword">void</strong> setSubmissionStatus(String status);
+<a class="jxr_linenumber" name="L400" href="#L400">400</a>     
+<a class="jxr_linenumber" name="L401" href="#L401">401</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L402" href="#L402">402</a> <em class="jxr_javadoccomment">     * Gets the submission location (izgw_submission_location).</em>
+<a class="jxr_linenumber" name="L403" href="#L403">403</a> <em class="jxr_javadoccomment">     * @return the submission location</em>
+<a class="jxr_linenumber" name="L404" href="#L404">404</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L405" href="#L405">405</a>     @JsonProperty(<span class="jxr_string">"izgw_submission_location"</span>)
+<a class="jxr_linenumber" name="L406" href="#L406">406</a>     String getSubmissionLocation();
+<a class="jxr_linenumber" name="L407" href="#L407">407</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L408" href="#L408">408</a> <em class="jxr_javadoccomment">     * Sets the submission location (izgw_submission_location).</em>
+<a class="jxr_linenumber" name="L409" href="#L409">409</a> <em class="jxr_javadoccomment">     * @param location the submission location</em>
+<a class="jxr_linenumber" name="L410" href="#L410">410</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L411" href="#L411">411</a>     <strong class="jxr_keyword">void</strong> setSubmissionLocation(String location);
+<a class="jxr_linenumber" name="L412" href="#L412">412</a> 
+<a class="jxr_linenumber" name="L413" href="#L413">413</a> 
+<a class="jxr_linenumber" name="L414" href="#L414">414</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L415" href="#L415">415</a> <em class="jxr_javadoccomment">     * Compares the metadata fields of this object with the fields of another object.</em>
+<a class="jxr_linenumber" name="L416" href="#L416">416</a> <em class="jxr_javadoccomment">     * @param o the object to compare</em>
+<a class="jxr_linenumber" name="L417" href="#L417">417</a> <em class="jxr_javadoccomment">     * @return true if o is a Metadata object with the same field values</em>
+<a class="jxr_linenumber" name="L418" href="#L418">418</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L419" href="#L419">419</a>     <strong class="jxr_keyword">default</strong> <strong class="jxr_keyword">boolean</strong> isEqual(Object o) {
+<a class="jxr_linenumber" name="L420" href="#L420">420</a>         <strong class="jxr_keyword">if</strong> (!(o instanceof Metadata)) {
+<a class="jxr_linenumber" name="L421" href="#L421">421</a>             <strong class="jxr_keyword">return</strong> false;
+<a class="jxr_linenumber" name="L422" href="#L422">422</a>         }
+<a class="jxr_linenumber" name="L423" href="#L423">423</a>         Metadata that = (Metadata)o;
+<a class="jxr_linenumber" name="L424" href="#L424">424</a>         <strong class="jxr_keyword">return</strong> 
+<a class="jxr_linenumber" name="L425" href="#L425">425</a>             equals(<strong class="jxr_keyword">this</strong>.getRouteId(), that.getRouteId()) &amp;&amp;
+<a class="jxr_linenumber" name="L426" href="#L426">426</a>             equals(<strong class="jxr_keyword">this</strong>.getDestinationId(), that.getDestinationId()) &amp;&amp;
+<a class="jxr_linenumber" name="L427" href="#L427">427</a>             equals(<strong class="jxr_keyword">this</strong>.getPeriod(), that.getPeriod()) &amp;&amp;
+<a class="jxr_linenumber" name="L428" href="#L428">428</a>             equals(<strong class="jxr_keyword">this</strong>.getExtEntity(), that.getExtEntity()) &amp;&amp;
+<a class="jxr_linenumber" name="L429" href="#L429">429</a>             equals(<strong class="jxr_keyword">this</strong>.getExtEvent(), that.getExtEvent()) &amp;&amp;
+<a class="jxr_linenumber" name="L430" href="#L430">430</a>             equals(<strong class="jxr_keyword">this</strong>.getExtEventType(), that.getExtEventType()) &amp;&amp;
+<a class="jxr_linenumber" name="L431" href="#L431">431</a>             equals(<strong class="jxr_keyword">this</strong>.getExtObjectKey(), that.getExtObjectKey()) &amp;&amp;
+<a class="jxr_linenumber" name="L432" href="#L432">432</a>             equals(<strong class="jxr_keyword">this</strong>.getExtSource(), that.getExtSource()) &amp;&amp;
+<a class="jxr_linenumber" name="L433" href="#L433">433</a>             equals(<strong class="jxr_keyword">this</strong>.getExtSourceVersion(), that.getExtSourceVersion()) &amp;&amp;
+<a class="jxr_linenumber" name="L434" href="#L434">434</a>             equals(<strong class="jxr_keyword">this</strong>.getFilename(), that.getFilename()) &amp;&amp;
+<a class="jxr_linenumber" name="L435" href="#L435">435</a>             <strong class="jxr_keyword">this</strong>.getFileSize() == that.getFileSize() &amp;&amp;
+<a class="jxr_linenumber" name="L436" href="#L436">436</a>             equals(<strong class="jxr_keyword">this</strong>.getUploadedDate(), that.getUploadedDate()) &amp;&amp;
+<a class="jxr_linenumber" name="L437" href="#L437">437</a>             equals(<strong class="jxr_keyword">this</strong>.getUsername(), that.getUsername()) &amp;&amp;
+<a class="jxr_linenumber" name="L438" href="#L438">438</a>             equals(<strong class="jxr_keyword">this</strong>.getIpAddress(), that.getIpAddress()) &amp;&amp;
+<a class="jxr_linenumber" name="L439" href="#L439">439</a>             equals(<strong class="jxr_keyword">this</strong>.getFilename(), that.getExtEntity()) &amp;&amp;
+<a class="jxr_linenumber" name="L440" href="#L440">440</a>             equals(<strong class="jxr_keyword">this</strong>.getPath(), that.getPath()) &amp;&amp;
+<a class="jxr_linenumber" name="L441" href="#L441">441</a>             equals(<strong class="jxr_keyword">this</strong>.getEventId(), that.getEventId());
+<a class="jxr_linenumber" name="L442" href="#L442">442</a>     }
+<a class="jxr_linenumber" name="L443" href="#L443">443</a>     
+<a class="jxr_linenumber" name="L444" href="#L444">444</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L445" href="#L445">445</a> <em class="jxr_javadoccomment">     * Compares two objects for equality. Two null values are equal.</em>
+<a class="jxr_linenumber" name="L446" href="#L446">446</a> <em class="jxr_javadoccomment">     * @param a the first object</em>
+<a class="jxr_linenumber" name="L447" href="#L447">447</a> <em class="jxr_javadoccomment">     * @param b the second object</em>
+<a class="jxr_linenumber" name="L448" href="#L448">448</a> <em class="jxr_javadoccomment">     * @return true if the objects are equal</em>
+<a class="jxr_linenumber" name="L449" href="#L449">449</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L450" href="#L450">450</a>     <strong class="jxr_keyword">default</strong> <strong class="jxr_keyword">boolean</strong> equals(Object a, Object b) {
+<a class="jxr_linenumber" name="L451" href="#L451">451</a>         <strong class="jxr_keyword">if</strong> (a == b) {
+<a class="jxr_linenumber" name="L452" href="#L452">452</a>             <strong class="jxr_keyword">return</strong> <strong class="jxr_keyword">true</strong>;
+<a class="jxr_linenumber" name="L453" href="#L453">453</a>         }
+<a class="jxr_linenumber" name="L454" href="#L454">454</a>         <strong class="jxr_keyword">if</strong> (a == <strong class="jxr_keyword">null</strong> || b == <strong class="jxr_keyword">null</strong>) {
+<a class="jxr_linenumber" name="L455" href="#L455">455</a>             <strong class="jxr_keyword">return</strong> false;
+<a class="jxr_linenumber" name="L456" href="#L456">456</a>         }
+<a class="jxr_linenumber" name="L457" href="#L457">457</a>         <strong class="jxr_keyword">return</strong> a.equals(b);
+<a class="jxr_linenumber" name="L458" href="#L458">458</a>     }
+<a class="jxr_linenumber" name="L459" href="#L459">459</a> }
+</pre>
+<hr/>
+<div id="footer">© 2026</div>
+</body>
+</html>

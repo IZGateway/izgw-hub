@@ -1,0 +1,655 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RestfulFileSender.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.ads</a> &gt; <span class="el_source">RestfulFileSender.java</span></div><h1>RestfulFileSender.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.ads;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import gov.cdc.izgateway.hub.service.StatusCheckerService;
+import gov.cdc.izgateway.logging.RequestContext;
+import gov.cdc.izgateway.logging.event.TransactionData;
+import gov.cdc.izgateway.logging.info.HostInfo;
+import gov.cdc.izgateway.logging.markers.Markers2;
+import gov.cdc.izgateway.model.IDestination;
+import gov.cdc.izgateway.security.ClientTlsSupport;
+import gov.cdc.izgateway.service.IDestinationService;
+import gov.cdc.izgateway.soap.fault.*;
+import gov.cdc.izgateway.utils.*;
+import jakarta.activation.DataHandler;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.commons.lang3.tuple.Pair;
+
+import org.apache.http.Header;
+import org.apache.http.HttpHeaders;
+import org.apache.http.client.HttpResponseException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
+
+import org.springframework.stereotype.Component;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.Method;
+import java.net.*;
+import java.nio.charset.StandardCharsets;
+import java.security.cert.CertificateException;
+import java.util.*;
+import org.apache.http.message.BasicHeader;
+import org.bouncycastle.tls.TlsFatalAlert;
+import org.bouncycastle.tls.TlsFatalAlertReceived;
+
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLSocketFactory;
+import gov.cdc.izgateway.common.HttpStatusException;
+
+/**
+ * This class implements the FileSender interface to Azure and the Azurite Azure emulator.
+ */
+<span class="fc" id="L55">@Slf4j</span>
+@Component
+public abstract class RestfulFileSender implements FileSender {
+    private static final String FILENAME_INVALID = &quot;Filename invalid&quot;;
+<span class="fc" id="L59">    private static final File STORAGE = new File(&quot;.&quot;);</span>
+	/** The size of an upload chunk in bytes (2 MB). */
+	protected static final int CHUNK_SIZE = 2 &lt;&lt; 20; // 2 MB
+	/** Set to true to see output in debug console */
+<span class="fc" id="L63">    protected boolean fiddle = false;</span>
+    /** The TLS support that creates connections to the destination. */
+    protected final ClientTlsSupport tlsSupport;
+    private static final boolean DO_INTEGRITY_CHECK = false; 
+    
+    /**
+     * This class is used to throw an HttpException in derived
+     * classes where the errorStream comes from a new UrlConnection.
+     * 
+     * @author Audacious Inquiry
+     */
+    
+    @Data
+    @EqualsAndHashCode(callSuper=false)
+    protected static class HttpException extends IOException {
+		private static final long serialVersionUID = 1L;
+		/** The HTTP status code of the response. */
+		private final int statusCode;
+    	private final transient InputStream errorStream;
+    	/**
+    	 * Creates an HTTP exception.
+    	 * @param statusCode the HTTP status code of the response
+    	 * @param errorStream the error stream of the response
+    	 * @param cause the exception that caused this exception
+    	 */
+    	protected HttpException(int statusCode, InputStream errorStream, Throwable cause) {
+<span class="nc" id="L89">    		super(cause);</span>
+<span class="nc" id="L90">    		this.statusCode = statusCode;</span>
+<span class="nc" id="L91">    		this.errorStream = errorStream;</span>
+<span class="nc" id="L92">    	}</span>
+    }
+    /**
+     * Configuration for the sender.
+     * @author Audacious Inquiry
+     */
+    @Configuration
+    @Data
+    public static class SenderConfig {
+    	@Value(&quot;${ads.maxAge:120}&quot;)
+        private int maxAgeInMinutes;
+        
+        /** Maximum expected size of a file upload (15Gb) */
+        @Value(&quot;${ads.max-message-size-GB:15}&quot;)
+        private int maxUploadSizeInGB;
+        
+        @Value(&quot;${ads.ssl.debug:true}&quot;)
+        private boolean sslDebug;
+        private final IDestinationService destinationService;
+        
+        /**
+         * Create a new configuration 
+         * @param destinationService	The destination service it applies to
+         */
+        @Autowired
+<span class="fc" id="L117">        public SenderConfig(IDestinationService destinationService) {</span>
+<span class="fc" id="L118">        	this.destinationService = destinationService;</span>
+<span class="fc" id="L119">        }</span>
+    }
+    
+<span class="fc" id="L122">    private static final List&lt;String&gt; LOCALHOST = Arrays.asList(HostInfo.LOCALHOST_IP4, HostInfo.LOCALHOST_IP6, HostInfo.LOCALHOST);</span>
+	/** The configuration of the sender. */
+	protected final SenderConfig config;
+	static final int  BUFFERSIZE = 134217728; // 128MB
+    
+    /**
+     * Creates a file sender.
+     * @param config the configuration of the sender
+     * @param tlsSupport the TLS support that creates connections to the destination
+     */
+<span class="fc" id="L132">    protected RestfulFileSender(SenderConfig config, ClientTlsSupport tlsSupport) {</span>
+<span class="fc" id="L133">    	this.config = config;</span>
+<span class="pc bpc" id="L134" title="2 of 4 branches missed.">    	this.fiddle = tlsSupport.getConfig().isSslDebug() || config.isSslDebug();</span>
+<span class="fc" id="L135">    	this.tlsSupport = tlsSupport;</span>
+<span class="fc" id="L136">    }</span>
+    /**
+     *  Connect the socket to the phiz_trust_ws_client trust store for endpoint certificate validation.
+     *  and set up of other parameters (e.g., encryption, TLS version, et cetera).
+     * @param string The operation, for example POST, GET, DELETE, PING or STATUS
+     *  
+     * @param route  The URL to Connect
+     * @param object The file data, or null if the operation sends no data
+     * @param meta The metadata of the file, or null
+     * @return  The connection
+     * @throws IOException  If any errors occur setting up the connection
+     * @throws MetadataFault If there are issues in the metadata configuration.
+     * @throws DestinationConnectionFault If the hub cannot connect to the destination
+     * @throws URISyntaxException If the URI of the destination is not valid
+     * @throws SecurityFault If a security error occurs
+     */
+    protected abstract HttpURLConnection getConnection(String string, IDestination route, Metadata meta, DataHandler object) throws IOException, MetadataFault, DestinationConnectionFault, URISyntaxException, SecurityFault;
+
+    /**
+     * Copy data stored in DataHandler to the URLConnection.
+     * @param con The connection to write to
+     * @param route The destination
+     * @param data The file data
+     * @param meta The metadata of the file
+     * @return The HTTP response code
+     * @throws IOException If an error occurs when the data is written
+     * @throws MetadataFault If the metadata is not valid
+     * @throws io.tus.java.client.ProtocolException If the TUS upload protocol fails
+     * @throws DestinationConnectionFault If the hub cannot connect to the destination
+     */
+    protected abstract int writeData(HttpURLConnection con, IDestination route, DataHandler data, Metadata meta) throws IOException, MetadataFault, DestinationConnectionFault, io.tus.java.client.ProtocolException;
+
+    
+    @Override
+    public HttpURLConnection sendFile(IDestination route, DataHandler data, Metadata meta) throws MessageTooLargeFault, HubClientFault, DestinationConnectionFault, MetadataFault, SecurityFault {
+        
+        // Create the HTTP URL to send
+<span class="nc" id="L173">        long elapsedTimeIIS = 0;</span>
+<span class="nc" id="L174">        HttpURLConnection con = null;</span>
+        try  {
+<span class="nc" id="L176">            meta.setUploadedDate(new Date());</span>
+<span class="nc" id="L177">            con = getConnection(&quot;POST&quot;, route, meta, data);</span>
+<span class="nc" id="L178">            checkForSpace(con, route, meta.getFileSize());</span>
+
+<span class="nc" id="L180">            elapsedTimeIIS = -System.currentTimeMillis();</span>
+            
+<span class="nc" id="L182">            TransactionData tData = RequestContext.getTransactionData();</span>
+<span class="nc" id="L183">            tData.setMessageId(meta.getExtObjectKey());</span>
+<span class="nc" id="L184">            StatusCheckerService.setDestinationInfoFromDestination(tData.getDestination(), route);</span>
+
+<span class="nc bnc" id="L186" title="All 2 branches missed.">            if (isTestEndpoint(route)) {</span>
+<span class="nc" id="L187">            	setExpiration(con, meta.getUploadedDate());</span>
+            }
+            
+<span class="nc" id="L190">            con.connect();</span>
+<span class="nc" id="L191">            tData.getDestination().setFromConnection(con);</span>
+
+<span class="nc" id="L193">            int responseCode = writeData(con, route, data, meta);</span>
+            
+<span class="nc" id="L195">            RequestContext.getTransactionData().setElapsedTimeIIS(elapsedTimeIIS);</span>
+            // If not CREATED or OK, generate an error. 
+<span class="nc bnc" id="L197" title="All 4 branches missed.">            if (responseCode != HttpStatus.CREATED.value() &amp;&amp; responseCode != HttpStatus.OK.value()) {</span>
+<span class="nc" id="L198">                throw new HttpStatusException(responseCode);</span>
+            }
+<span class="nc" id="L200">            return con;</span>
+<span class="nc" id="L201">        } catch (URISyntaxException e) {</span>
+<span class="nc" id="L202">        	throw HubClientFault.invalidMessage(e, route, 0, null);</span>
+<span class="nc" id="L203">        } catch (io.tus.java.client.ProtocolException e) {</span>
+<span class="nc bnc" id="L204" title="All 2 branches missed.">        	try (InputStream s = IOUtils.toInputStream(e.getMessage(), StandardCharsets.UTF_8)) {</span>
+<span class="nc" id="L205">        		throw HubClientFault.invalidMessage(e, route, 0, s);</span>
+<span class="nc" id="L206">        	} catch (IOException e1) {</span>
+<span class="nc" id="L207">        		throw HubClientFault.invalidMessage(e, route, 0, null);</span>
+			}
+<span class="nc" id="L209">        } catch (MalformedURLException e) {</span>
+<span class="nc" id="L210">            throw new MetadataFault(meta, e, FILENAME_INVALID);</span>
+<span class="nc" id="L211">        } catch (HttpException ex) {</span>
+<span class="nc" id="L212">            InputStream errorStream = ex.getErrorStream();</span>
+<span class="nc" id="L213">			throw HubClientFault.invalidMessage(ex, route, ex.getStatusCode(), con.getURL().toString(), errorStream);</span>
+<span class="nc" id="L214">        } catch (IOException | HttpStatusException e) {</span>
+<span class="nc" id="L215">            checkException(route, con.getURL().toString(), elapsedTimeIIS, ObjectUtils.getIfNull(ExceptionUtils.getRootCause(e), e), con.getErrorStream());</span>
+            // CheckException always throws, this is never reached.
+<span class="nc" id="L217">            return null;</span>
+        }  finally {
+<span class="nc bnc" id="L219" title="All 2 branches missed.">        	if (elapsedTimeIIS &lt; 0) {</span>
+<span class="nc" id="L220">        		elapsedTimeIIS += System.currentTimeMillis();</span>
+        	}
+<span class="nc" id="L222">            RequestContext.getTransactionData().setElapsedTimeIIS(elapsedTimeIIS);</span>
+        }
+    }
+
+    /**
+     * Sets the expiration time of the uploaded file on the connection.
+     * The hub calls this method only for test endpoints.
+     * @param con The connection
+     * @param date The upload date
+     */
+    protected abstract void setExpiration(HttpURLConnection con, Date date);
+
+    /**
+     * Check for available space in storage.
+     * @param con	The connection
+     * @param route	The route
+     * @param fileSize	The amount of storage needed
+     * @throws MessageTooLargeFault	If enough storage cannot be reserved.
+     */
+    private void checkForSpace(HttpURLConnection con, IDestination route, long fileSize) throws MessageTooLargeFault, IOException {
+<span class="nc" id="L242">    	long maxUploadSize = config.getMaxUploadSizeInGB();</span>
+<span class="nc" id="L243">    	maxUploadSize &lt;&lt;= 30l; // Shorthand to Multiply by 1 gigabyte.</span>
+<span class="nc bnc" id="L244" title="All 2 branches missed.">        if (fileSize &gt; maxUploadSize) {</span>
+<span class="nc" id="L245">            throw new MessageTooLargeFault(MessageTooLargeFault.Direction.REQUEST, maxUploadSize, fileSize);</span>
+        }
+<span class="nc bnc" id="L247" title="All 2 branches missed.">        if (isTestEndpoint(route)) {</span>
+<span class="nc" id="L248">        	checkForSpace(con, fileSize);</span>
+        }
+<span class="nc" id="L250">    }</span>
+
+    /**
+     * Checks for, and possibly makes space for the upload.
+     * @param con The connection to the storage
+     * @param fileSize The amount of space needed.
+     * @throws MessageTooLargeFault If enough space cannot be made
+     * @throws IOException If an error occurs when space is made
+     */
+    protected abstract void checkForSpace(HttpURLConnection con, long fileSize) throws MessageTooLargeFault, IOException;
+	/**
+     * Check to see if the endpoint is for testing (runs on localhost)
+     * @param route  The url being tested
+     * @return  True if a test endpoint, false otherwise
+     */
+    private boolean isTestEndpoint(IDestination route) {
+<span class="nc" id="L266">        return LOCALHOST.contains(route.getDestinationUri());</span>
+    }
+
+    @Override
+    public String getSubmissionStatus(IDestination route, Metadata meta) throws DestinationConnectionFault, MetadataFault, HubClientFault, SecurityFault {
+<span class="nc" id="L271">        HttpURLConnection con = null;</span>
+		try {
+<span class="nc" id="L273">			con = getConnection(&quot;STATUS&quot;, route, meta, null);</span>
+<span class="nc bnc" id="L274" title="All 2 branches missed.">			if (con == null) {</span>
+<span class="nc" id="L275">				throw new UnsupportedOperationException();</span>
+			}
+<span class="nc" id="L277">	        return getSubmissionStatus(con);</span>
+<span class="nc" id="L278">		} catch (HttpResponseException ex) {</span>
+<span class="nc" id="L279">			String path = StringUtils.substringBefore(con.getURL().toString(), &quot;?&quot;);  // NOSONAR con cannot be null here</span>
+<span class="nc" id="L280">			throw HubClientFault.httpError(route, ex.getStatusCode(), ex.getMessage(), path);</span>
+<span class="nc" id="L281">        } catch (URISyntaxException | IOException e) {</span>
+<span class="nc" id="L282">			throw HubClientFault.invalidMessage(e, route, 0, null);</span>
+        } 
+    }
+
+	/**
+	 * Gets the status of a file submission from a connection.
+	 * @param con The connection to the status endpoint
+	 * @return The submission status
+	 * @throws IOException If an error occurs when the status is read
+	 */
+	protected abstract String getSubmissionStatus(HttpURLConnection con) throws IOException;
+
+	@Override
+    public final Pair&lt;InputStream, Map&lt;String, List&lt;String&gt;&gt;&gt; getFile(IDestination route, Metadata meta) throws MetadataFault, HubClientFault, DestinationConnectionFault, SecurityFault {
+        // Create the HTTP URL to send
+<span class="nc" id="L297">        long elapsedTimeIIS = 0;</span>
+<span class="nc" id="L298">        InputStream error = null;</span>
+<span class="nc" id="L299">        String path = null;</span>
+        try {
+<span class="nc" id="L301">            HttpURLConnection con = getConnection(&quot;GET&quot;, route, meta, null);</span>
+<span class="nc" id="L302">            path = StringUtils.substringBefore(con.getURL().getPath(), &quot;?&quot;);</span>
+<span class="nc" id="L303">            elapsedTimeIIS = -System.currentTimeMillis();</span>
+            
+<span class="nc" id="L305">            TransactionData tData = RequestContext.getTransactionData();</span>
+<span class="nc" id="L306">            tData.setMessageId(meta.getExtObjectKey());</span>
+<span class="nc" id="L307">            StatusCheckerService.setDestinationInfoFromDestination(tData.getDestination(), route);</span>
+            
+<span class="nc" id="L309">            con.connect();</span>
+<span class="nc" id="L310">            tData.getDestination().setFromConnection(con);</span>
+
+<span class="nc" id="L312">            int responseCode = con.getResponseCode();</span>
+<span class="nc" id="L313">            elapsedTimeIIS += System.currentTimeMillis();</span>
+            
+<span class="nc bnc" id="L315" title="All 2 branches missed.">            if (responseCode != HttpStatus.OK.value()) {</span>
+<span class="nc" id="L316">                try (InputStream is = con.getErrorStream();) {</span>
+<span class="nc bnc" id="L317" title="All 2 branches missed.">                    if (is != null) {</span>
+<span class="nc" id="L318">                        error = is;</span>
+                    }
+                }
+<span class="nc" id="L321">                throw new HttpStatusException(responseCode);</span>
+            }
+            
+<span class="nc" id="L324">            return Pair.of(con.getInputStream(), con.getHeaderFields());</span>
+<span class="nc" id="L325">        } catch (MalformedURLException e) {</span>
+<span class="nc" id="L326">            throw new MetadataFault(meta, e, FILENAME_INVALID);</span>
+<span class="nc" id="L327">        } catch (IOException | URISyntaxException e) {</span>
+<span class="nc bnc" id="L328" title="All 2 branches missed.">            if (elapsedTimeIIS &lt; 0) {</span>
+<span class="nc" id="L329">                elapsedTimeIIS += System.currentTimeMillis();</span>
+            }
+<span class="nc" id="L331">            checkException(route, path, elapsedTimeIIS, ObjectUtils.getIfNull(ExceptionUtils.getRootCause(e), e), error);</span>
+            // Never gets here.  checkException() always throws.
+<span class="nc" id="L333">            return null;</span>
+        }
+    }
+    
+
+    @Override
+    public final String deleteFile(IDestination route, Metadata meta) throws MetadataFault, HubClientFault, DestinationConnectionFault, SecurityFault {
+        // Create the HTTP URL to send
+<span class="nc" id="L341">        long elapsedTimeIIS = 0;</span>
+<span class="nc" id="L342">        InputStream error = null;</span>
+<span class="nc" id="L343">        String path = null;</span>
+        try {
+<span class="nc" id="L345">            HttpURLConnection con = getConnection(&quot;DELETE&quot;, route, meta, null);</span>
+<span class="nc" id="L346">            path = StringUtils.substringBefore(con.getURL().getPath(), &quot;?&quot;);</span>
+<span class="nc" id="L347">            elapsedTimeIIS = -System.currentTimeMillis();</span>
+            
+<span class="nc" id="L349">            TransactionData tData = RequestContext.getTransactionData();</span>
+<span class="nc" id="L350">            tData.setMessageId(meta.getExtObjectKey());</span>
+
+<span class="nc" id="L352">            StatusCheckerService.setDestinationInfoFromDestination(tData.getDestination(), route);</span>
+
+<span class="nc" id="L354">            con.connect();</span>
+<span class="nc" id="L355">            tData.getDestination().setFromConnection(con);</span>
+
+<span class="nc" id="L357">            int responseCode = con.getResponseCode();</span>
+<span class="nc" id="L358">            elapsedTimeIIS += System.currentTimeMillis();</span>
+            
+<span class="nc bnc" id="L360" title="All 2 branches missed.">            if (responseCode != HttpStatus.ACCEPTED.value()) {</span>
+<span class="nc" id="L361">                try (InputStream is = con.getErrorStream();) {</span>
+<span class="nc bnc" id="L362" title="All 2 branches missed.">                    if (is != null) {</span>
+<span class="nc" id="L363">                        error = is;</span>
+                    }
+                }
+<span class="nc" id="L366">                throw new HttpStatusException(responseCode);</span>
+            }
+<span class="nc" id="L368">            return &quot;ACCEPTED&quot;;</span>
+<span class="nc" id="L369">        } catch (MalformedURLException e) {</span>
+<span class="nc" id="L370">            throw new MetadataFault(meta, e, FILENAME_INVALID);</span>
+<span class="nc" id="L371">        } catch (IOException | URISyntaxException | HttpStatusException e) {</span>
+<span class="nc bnc" id="L372" title="All 2 branches missed.">            if (elapsedTimeIIS &lt; 0) {</span>
+<span class="nc" id="L373">                elapsedTimeIIS += System.currentTimeMillis();</span>
+            }
+<span class="nc" id="L375">            checkException(route, path, elapsedTimeIIS, ObjectUtils.getIfNull(ExceptionUtils.getRootCause(e),e), error);</span>
+<span class="nc" id="L376">            return &quot;FAIL&quot;; // Never gets here.  ValidationHelper.checkException always throws.</span>
+        }
+    }
+    
+    /**
+     * extract the metadata values as Headers for an HTTP PUT operation
+     * @param meta  The metadata object to extract headers from.
+     * @param data The data
+     * @return  The HTTP Headers to use with Blob storage
+     * @throws IOException If an error occurs when the data is read
+     */
+    public List&lt;Header&gt; getHeaders(Metadata meta, DataHandler data) throws IOException {
+<span class="nc" id="L388">        List&lt;Header&gt; headers = new ArrayList&lt;&gt;();</span>
+        
+        // Compute integrity check data first, because it is needed to
+        // set the file size before the header is generated.
+<span class="nc" id="L392">        IntegrityCheck ic = null;</span>
+<span class="nc bnc" id="L393" title="All 2 branches missed.">        if (data != null) {</span>
+        	// IntegrityCheck is costly on large files, takes a few minutes to compute.
+<span class="nc" id="L395">            ic = DO_INTEGRITY_CHECK ? IntegrityCheck.getIntegrityCheck(data) : IntegrityCheck.getLength(data);</span>
+<span class="nc bnc" id="L396" title="All 2 branches missed.">            if (ic.getHash().length != 0) {</span>
+<span class="nc" id="L397">            	headers.add(new BasicHeader(&quot;Content-MD5&quot;, ic.toString()));</span>
+            }
+<span class="nc" id="L399">            meta.setFileSize(ic.getLength());</span>
+        }
+        
+<span class="nc bnc" id="L402" title="All 2 branches missed.">        return getHeaders(meta, headers, ic == null ? null : ic.getMimeType());</span>
+    }
+    
+	/**
+	 * Adds the HTTP headers for the metadata to a list of headers.
+	 * @param meta The metadata object to extract headers from
+	 * @param headers The list to add the headers to, or null to make a new list
+	 * @param mimeType The MIME type of the data, or null
+	 * @return The list of headers
+	 */
+	protected List&lt;Header&gt; getHeaders(Metadata meta, List&lt;Header&gt; headers, String mimeType) {
+<span class="nc bnc" id="L413" title="All 2 branches missed.">		if (headers == null) {</span>
+<span class="nc" id="L414">	        headers = new ArrayList&lt;&gt;();</span>
+		}
+		
+<span class="nc" id="L417">		headers.add(new BasicHeader(&quot;Content-Length&quot;, Long.toString(meta.getFileSize())));</span>
+<span class="nc" id="L418">        addHeadersFromMetadata(meta, headers);</span>
+        // Set the Content-Type from the filename.
+<span class="nc bnc" id="L420" title="All 5 branches missed.">        switch (StringUtils.substringAfterLast(meta.getFilename(), &quot;.&quot;).toLowerCase()) {</span>
+        case &quot;txt&quot;:
+            
+<span class="nc" id="L423">            headers.add(new BasicHeader(HttpHeaders.CONTENT_TYPE, &quot;text/plain&quot;));</span>
+<span class="nc" id="L424">            break;</span>
+        case &quot;xlsx&quot;:
+<span class="nc" id="L426">            headers.add(new BasicHeader(HttpHeaders.CONTENT_TYPE, &quot;application/vnd.openxmlformats-officedocument.spreadsheetml.sheet&quot;));</span>
+<span class="nc" id="L427">            break;</span>
+        case &quot;xls&quot;:
+<span class="nc" id="L429">            headers.add(new BasicHeader(HttpHeaders.CONTENT_TYPE, &quot;application/vnd.ms-excel&quot;));</span>
+<span class="nc" id="L430">            break;</span>
+        case &quot;zip&quot;:
+<span class="nc" id="L432">            headers.add(new BasicHeader(HttpHeaders.CONTENT_TYPE, &quot;application/x-zip-compressed&quot;));</span>
+<span class="nc" id="L433">            break;</span>
+        default:
+<span class="nc bnc" id="L435" title="All 2 branches missed.">            if (!StringUtils.isBlank(mimeType)) {</span>
+<span class="nc" id="L436">                headers.add(new BasicHeader(HttpHeaders.CONTENT_TYPE, mimeType));</span>
+            } else {
+<span class="nc" id="L438">                headers.add(new BasicHeader(HttpHeaders.CONTENT_TYPE, &quot;application/x-zip-compressed&quot;));</span>
+            }
+            break;
+        }
+<span class="nc" id="L442">        headers.add(new BasicHeader(&quot;x-ms-client-request-id&quot;, meta.getExtObjectKey()));</span>
+<span class="nc" id="L443">        return headers;</span>
+	}
+    
+	/**
+	 * Adds an x-ms-meta- header for each JSON property of the metadata.
+	 * Production destinations do not get the izgw extension properties.
+	 * @param meta The metadata
+	 * @param headers The list to add the headers to
+	 */
+	protected void addHeadersFromMetadata(Metadata meta, List&lt;Header&gt; headers) {
+<span class="nc bnc" id="L453" title="All 2 branches missed.">    	boolean isProd = !&quot;test&quot;.equals(meta.getDestinationId());</span>
+<span class="nc bnc" id="L454" title="All 2 branches missed.">        for (Method m: Metadata.class.getMethods()) {</span>
+<span class="nc" id="L455">            JsonProperty ann = m.getAnnotation(JsonProperty.class);</span>
+<span class="nc bnc" id="L456" title="All 2 branches missed.">            if (ann != null) {</span>
+<span class="nc" id="L457">                String name = ann.value();</span>
+<span class="nc bnc" id="L458" title="All 4 branches missed.">                if (name.startsWith(&quot;izgw&quot;) &amp;&amp; isProd) {</span>
+                	// Don't send IZGW Extension fields to production environments
+<span class="nc" id="L460">                	continue;</span>
+                }
+<span class="nc" id="L462">                String value = getHeaderValue(meta, m, name);</span>
+<span class="nc bnc" id="L463" title="All 2 branches missed.">                if (value != null) {</span>
+<span class="nc" id="L464">                	headers.add(new BasicHeader(&quot;x-ms-meta-&quot; + name, value));</span>
+                }
+            }
+        }
+<span class="nc" id="L468">    }</span>
+	
+	private String getHeaderValue(Metadata meta, Method m, String name) {
+		try {
+<span class="nc" id="L472">		    Object o = m.invoke(meta);</span>
+<span class="nc bnc" id="L473" title="All 2 branches missed.">		    if (o == null) {</span>
+<span class="nc" id="L474">		    	return null;</span>
+		    } 
+<span class="nc bnc" id="L476" title="All 2 branches missed.">		    if (m.getReturnType() == Date.class) {</span>
+<span class="nc" id="L477">		   		return Metadata.RFC2616_DATE_FORMAT.format(m.invoke(meta));</span>
+		    } 
+<span class="nc bnc" id="L479" title="All 4 branches missed.">		    if (Metadata.TESTFILE.equals(name) &amp;&amp; o instanceof Boolean b) {</span>
+<span class="nc bnc" id="L480" title="All 2 branches missed.">				return Boolean.TRUE.equals(b) ? &quot;yes&quot; : &quot;no&quot;;</span>
+			} 
+<span class="nc" id="L482">		    return o.toString();</span>
+<span class="nc" id="L483">		} catch (Exception e) {</span>
+<span class="nc" id="L484">		    log.error(Markers2.append(e), &quot;Error serializing Metadata: {}&quot;, e.getMessage(), e);</span>
+<span class="nc" id="L485">	    	return null;</span>
+		}
+	}
+
+    @Override
+    public final String getStatus(IDestination route) throws HubClientFault, MetadataFault, DestinationConnectionFault, SecurityFault {
+<span class="nc" id="L491">        HttpURLConnection con = null;</span>
+<span class="nc" id="L492">        long elapsedTimeIIS = 0;</span>
+		@SuppressWarnings(&quot;unused&quot;)
+<span class="nc" id="L494">		String result = null; </span>
+<span class="nc" id="L495">        InputStream is = null;</span>
+        try {
+
+<span class="nc" id="L498">            elapsedTimeIIS = -System.currentTimeMillis();</span>
+<span class="nc" id="L499">            con = getConnection(&quot;PING&quot;, route, null, null);</span>
+<span class="nc" id="L500">            StatusCheckerService.setDestinationInfoFromDestination(RequestContext.getDestinationInfo(), route);</span>
+            
+<span class="nc bnc" id="L502" title="All 4 branches missed.">            if (fiddle &amp;&amp; con instanceof HttpsURLConnection conx) {</span>
+<span class="nc" id="L503">            	conx.setSSLSocketFactory(new CapturingSSLSocketFactory(conx.getSSLSocketFactory()));</span>
+            }
+<span class="nc" id="L505">            con.connect();</span>
+<span class="nc" id="L506">            elapsedTimeIIS += System.currentTimeMillis();</span>
+
+<span class="nc" id="L508">            int responseCode = con.getResponseCode();</span>
+<span class="nc bnc" id="L509" title="All 2 branches missed.">            if (responseCode &gt; 0) {</span>
+<span class="nc" id="L510">                RequestContext.getDestinationInfo().setFromConnection(con);</span>
+            }
+<span class="nc bnc" id="L512" title="All 2 branches missed.">            if (responseCode != HttpStatus.OK.value() &amp;&amp; </span>
+<span class="nc bnc" id="L513" title="All 2 branches missed.">            	responseCode != HttpStatus.NO_CONTENT.value()) {</span>
+<span class="nc" id="L514">            	throw new HttpStatusException(responseCode);</span>
+            }
+            @SuppressWarnings(&quot;unused&quot;)
+<span class="nc" id="L517">			Map&lt;String, List&lt;String&gt;&gt; headers = con.getHeaderFields();</span>
+<span class="nc bnc" id="L518" title="All 4 branches missed.">        	is = (responseCode &gt;= 200 &amp;&amp; responseCode &lt; 300)  ? con.getInputStream() : con.getErrorStream();</span>
+<span class="nc bnc" id="L519" title="All 2 branches missed.">        	result = is != null ? IOUtils.toString(is, StandardCharsets.UTF_8) : null;  // NOSONAR: result is for debugging purposes</span>
+<span class="nc" id="L520">            return route.getDestUri();</span>
+<span class="nc" id="L521">        } catch (IOException | HttpStatusException | URISyntaxException e) {</span>
+<span class="nc bnc" id="L522" title="All 4 branches missed.">            String path = (con != null &amp;&amp; con.getURL() != null) ? StringUtils.substringBefore(con.getURL().getPath(), &quot;?&quot;) : null;</span>
+            // check if the Connect Exception is ActiveReject or Timeout
+<span class="nc bnc" id="L524" title="All 2 branches missed.">            checkException(route, path, elapsedTimeIIS, ObjectUtils.getIfNull(ExceptionUtils.getRootCause(e), e), con != null ? con.getErrorStream() : null);</span>
+            // Never gets here.  checkException() always throws.
+<span class="nc" id="L526">            return null; </span>
+        }
+    }
+    
+    /**
+     *  Connect the socket to the phiz_trust_ws_client trust store for endpoint certificate validation.
+     *  and set up of other parameters (e.g., encryption, TLS version, et cetera).
+     *  
+     * @param base  The URL to Connect
+     * @return  The connection
+     * @throws IOException  If any errors occur setting up the connection
+     */
+    protected HttpURLConnection getConnection(URL base) throws IOException {
+<span class="nc" id="L539">    	return tlsSupport.getSNIEnabledConnection(base);</span>
+    }
+    
+    /**
+     * Get the Url to connect to based on the metadata and destination
+     * @param meta	The metadata
+     * @param r	The destination
+     * @return	The URL
+     * @throws MetadataFault	If the URL is malformed
+     */
+    public static URL getUrl(Metadata meta, IDestination r)
+        throws MetadataFault {
+        try {
+<span class="nc" id="L552">            URI base = new URI(r.getDestinationUri());</span>
+<span class="nc" id="L553">            return base.resolve(ADSUtils.createUrl(base, meta)).toURL();</span>
+<span class="nc" id="L554">        } catch (Exception e) {</span>
+<span class="nc" id="L555">            throw new MetadataFault(meta, e, e.getMessage());</span>
+        }
+    }
+
+    /**
+     * Gets the free disk space of the local storage.
+     * @return The free disk space in bytes
+     */
+    protected long getDiskFreeSpace() {
+<span class="nc" id="L564">    	return STORAGE.getFreeSpace();</span>
+    }
+    
+    /**
+     * Gets the maximum upload size.
+     * @return The maximum upload size in bytes
+     */
+    protected long getMaxUploadSize() {
+<span class="nc" id="L572">    	return config.getMaxUploadSizeInGB() * 1073741824l;</span>
+    }
+    
+	/**
+	 * Gets an SSLSocketFactory suitable for connecting to the destination endpoint
+	 * @return	The SSLSocketFactory 
+	 */
+	public SSLSocketFactory getSslSocketFactory() {
+<span class="nc" id="L580">		return tlsSupport.getSSLContext().getSocketFactory();</span>
+	}
+	
+	/**
+	 * Reusable portion of ValidateResponse refactored out for
+	 * reuse by ADS Service.
+	 * @param routing The destination to counnect to
+	 * @param path The path being accessed
+	 * @param elapsedTimeIIS Time spent thus far
+	 * @param rootCause The exception
+	 * @param error The error message
+	 * @throws HubClientFault If there was a fault on the hub side
+	 * @throws DestinationConnectionFault If there was a fault on the client side
+	 * @throws SecurityFault 	If there was a security fault
+	 */
+	public static void checkException(IDestination routing, String path, long elapsedTimeIIS, Throwable rootCause, InputStream error) throws HubClientFault, DestinationConnectionFault, SecurityFault {
+<span class="nc" id="L596">	    StackTraceElement[] stackTrace = rootCause.getStackTrace();</span>
+	
+<span class="nc bnc" id="L598" title="All 2 branches missed.">	    if (rootCause instanceof DestinationConnectionFault dcf) {</span>
+	    	// Handle circuit breaker case.
+<span class="nc" id="L600">	    	throw dcf;</span>
+	    }
+	    
+<span class="nc bnc" id="L603" title="All 2 branches missed.">	    if (rootCause instanceof SecurityFault sf) {</span>
+<span class="nc" id="L604">	    	throw sf;</span>
+	    }
+	    
+<span class="nc bnc" id="L607" title="All 2 branches missed.">	    if (rootCause instanceof UnknownHostException uhe) {</span>
+<span class="nc" id="L608">	        rootCause.setStackTrace(Arrays.copyOfRange(stackTrace, 0, 3));</span>
+<span class="nc" id="L609">	        throw DestinationConnectionFault.unknownHost(routing, uhe);</span>
+	    }
+	
+<span class="nc bnc" id="L612" title="All 2 branches missed.">	    if (rootCause instanceof SocketTimeoutException ste) {</span>
+<span class="nc" id="L613">	        rootCause.setStackTrace(Arrays.copyOfRange(stackTrace, 0, 3));</span>
+<span class="nc" id="L614">	        throw DestinationConnectionFault.timeoutError(routing, ste, elapsedTimeIIS);</span>
+	    }
+	
+<span class="nc bnc" id="L617" title="All 2 branches missed.">	    if (rootCause instanceof ConnectException ce) {</span>
+<span class="nc" id="L618">	        rootCause = ExceptionUtils.getRootCause(rootCause);</span>
+<span class="nc" id="L619">	        rootCause.setStackTrace(Arrays.copyOfRange(stackTrace, 0, 3));</span>
+<span class="nc" id="L620">	        throw DestinationConnectionFault.connectError(routing, ce, elapsedTimeIIS);</span>
+	    }
+	    
+<span class="nc bnc" id="L623" title="All 2 branches missed.">	    if (rootCause instanceof TlsFatalAlertReceived tlsErr) {</span>
+<span class="nc" id="L624">	        rootCause.setStackTrace(Arrays.copyOfRange(stackTrace, 0, 3));</span>
+<span class="nc" id="L625">	    	throw DestinationConnectionFault.tlsErrorAtDestination(routing, tlsErr, elapsedTimeIIS);</span>
+	    } 
+	    
+<span class="nc bnc" id="L628" title="All 2 branches missed.">	    if (rootCause instanceof TlsFatalAlert tlsErr) {</span>
+<span class="nc" id="L629">	        rootCause.setStackTrace(Arrays.copyOfRange(stackTrace, 0, 3));</span>
+<span class="nc" id="L630">	    	throw DestinationConnectionFault.tlsErrorAtIZGW(routing, tlsErr, elapsedTimeIIS);</span>
+	    }
+	    
+<span class="nc" id="L633">	    int statusCode = 0;</span>
+<span class="nc bnc" id="L634" title="All 2 branches missed.">	    if (rootCause instanceof HttpStatusException httpEx) {</span>
+<span class="nc" id="L635">	    	statusCode = httpEx.getStatusCode();</span>
+<span class="nc bnc" id="L636" title="All 2 branches missed.">	    } else if (rootCause instanceof IOException ioEx) {</span>
+<span class="nc" id="L637">	    	String message = ioEx.getMessage();</span>
+<span class="nc bnc" id="L638" title="All 2 branches missed.">	    	if (Strings.CI.contains(message, &quot;writ&quot;)) {</span>
+<span class="nc" id="L639">	    		throw DestinationConnectionFault.writeError(routing, ioEx);</span>
+	    	} 
+<span class="nc bnc" id="L641" title="All 2 branches missed.">	    	if (Strings.CI.contains(message, &quot;read&quot;)) {</span>
+<span class="nc" id="L642">	    		throw DestinationConnectionFault.readError(routing, ioEx);</span>
+	    	} 
+<span class="nc" id="L644">	    	throw DestinationConnectionFault.ioError(routing, ioEx);</span>
+	    }
+<span class="nc bnc" id="L646" title="All 6 branches missed.">	    if (!(rootCause instanceof FaultSupport) &amp;&amp;</span>
+	    	!(rootCause instanceof HttpStatusException) &amp;&amp;
+	    	!(rootCause instanceof CertificateException)) {
+	        // This is an unexpected exception in the response.
+<span class="nc" id="L650">	        log.error(Markers2.append(rootCause), &quot;Unexpected Exception: {}&quot;, rootCause.getMessage(), rootCause);</span>
+	    }
+<span class="nc" id="L652">	    throw HubClientFault.invalidMessage(rootCause, routing, statusCode, path, error);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

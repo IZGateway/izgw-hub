@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ElasticConfiguration.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.elastic</a> &gt; <span class="el_source">ElasticConfiguration.java</span></div><h1>ElasticConfiguration.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.elastic;
+
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
+
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpHeaders;
+
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+
+/**
+ * Connection settings for the Elasticsearch index that holds the hub logs.
+ * The values come from the elastic.api.key, elastic.host and elastic.index properties.
+ */
+@Configuration
+public class ElasticConfiguration {
+	@Value(&quot;${elastic.api.key}&quot;)
+	private String apiKey;
+	@Value(&quot;${elastic.host:https://audacioussearchtest.es.us-east-1.aws.found.io:9243}&quot;)
+	private String hostName;
+	@Value(&quot;${elastic.index:izgw-dev-logstash}&quot;)
+	private String indexName;
+	
+	/**
+	 * Creates the configuration. Spring sets the fields from the properties.
+	 */
+<span class="fc" id="L36">	public ElasticConfiguration() {</span>
+		// Spring sets the fields.
+<span class="fc" id="L38">	}</span>
+
+	/**
+	 * Gets the API key for Elasticsearch.
+	 * @return the API key
+	 */
+	public String getApiKey() {
+<span class="fc" id="L45">		return apiKey;</span>
+	}
+	/**
+	 * Gets the base URL of the Elasticsearch host, with the scheme and the port.
+	 * @return the host URL
+	 */
+	public String getHostName() {
+<span class="fc" id="L52">		return hostName;</span>
+	}
+	/**
+	 * Gets the name of the index (or index pattern) to search.
+	 * @return the index name
+	 */
+	public String getIndexName() {
+<span class="fc" id="L59">		return indexName;</span>
+	}
+	
+	/**
+	 * Gets the URL of the search endpoint of the index.
+	 * @return the URL host/index/_search
+	 * @throws MalformedURLException if the host and the index do not make a valid absolute URL
+	 */
+	public URL getUrl() throws MalformedURLException {
+<span class="fc" id="L68">		String url = getHostName() + &quot;/&quot; + getIndexName() + &quot;/_search&quot;;</span>
+		try {
+			// new URL(String) is deprecated (IGDD-2974).
+<span class="fc" id="L71">			return new URI(url).toURL();</span>
+<span class="fc" id="L72">		} catch (URISyntaxException | IllegalArgumentException e) {</span>
+			// Keep the exception type that the callers handle.
+<span class="fc" id="L74">			MalformedURLException ex = new MalformedURLException(&quot;Invalid Elasticsearch URL: &quot; + e.getMessage());</span>
+<span class="fc" id="L75">			ex.initCause(e);</span>
+<span class="fc" id="L76">			throw ex;</span>
+		}
+	}
+	
+	/**
+	 * Checks that the API key, the host and the index are set, and that they make a valid URL.
+	 * @return true if the configuration is complete
+	 */
+	public boolean isConfigured() {
+<span class="fc bfc" id="L85" title="All 2 branches covered.">		if (StringUtils.isAnyEmpty(getApiKey(), getHostName(), getIndexName())) {</span>
+<span class="fc" id="L86">			return false;</span>
+		}
+
+		try {
+<span class="pc bpc" id="L90" title="1 of 2 branches missed.">			return getUrl() != null;</span>
+<span class="fc" id="L91">		} catch (MalformedURLException e) {</span>
+<span class="fc" id="L92">			return false;</span>
+		}
+	}
+	
+	/**
+	 * Opens a POST connection to the search endpoint, with the API key in the Authorization header.
+	 * @return the open connection
+	 * @throws IOException if the connection cannot be opened
+	 * @throws NoSuchAlgorithmException if the default SSL context is not available
+	 */
+	public HttpsURLConnection getConnection() throws IOException, NoSuchAlgorithmException {
+<span class="fc" id="L103">		HttpsURLConnection con = (HttpsURLConnection) getUrl().openConnection();</span>
+<span class="fc" id="L104">		con.setRequestMethod(&quot;POST&quot;);</span>
+<span class="fc" id="L105">		con.setDoInput(true);</span>
+<span class="fc" id="L106">		con.setDoOutput(true);</span>
+<span class="fc" id="L107">		con.setUseCaches(false);</span>
+<span class="fc" id="L108">		con.setSSLSocketFactory(SSLContext.getDefault().getSocketFactory());</span>
+<span class="fc" id="L109">		con.addRequestProperty(HttpHeaders.AUTHORIZATION, &quot;ApiKey &quot; + Base64.getEncoder().encodeToString(getApiKey().getBytes(StandardCharsets.UTF_8))); </span>
+<span class="fc" id="L110">		con.addRequestProperty(HttpHeaders.CONTENT_TYPE, &quot;application/json&quot;);</span>
+<span class="pc" id="L111">		con.setHostnameVerifier((a, b) -&gt; true);  // NOSONAR Using Certificate based validation only</span>
+<span class="fc" id="L112">		con.connect();</span>
+<span class="fc" id="L113">		return con;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

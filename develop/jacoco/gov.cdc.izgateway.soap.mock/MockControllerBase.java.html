@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MockControllerBase.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.soap.mock</a> &gt; <span class="el_source">MockControllerBase.java</span></div><h1>MockControllerBase.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.soap.mock;
+
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
+import gov.cdc.izgateway.logging.RequestContext;
+import gov.cdc.izgateway.security.AccessControlRegistry;
+import gov.cdc.izgateway.service.IMessageHeaderService;
+import gov.cdc.izgateway.soap.SoapControllerBase;
+import gov.cdc.izgateway.soap.fault.Fault;
+import gov.cdc.izgateway.soap.fault.SecurityFault;
+import gov.cdc.izgateway.soap.message.HasCredentials;
+import gov.cdc.izgateway.soap.message.SubmitSingleMessageRequest;
+import gov.cdc.izgateway.soap.mock.perf.PerformanceSimulatorInterface;
+import gov.cdc.izgateway.soap.mock.perf.PerformanceSimulatorMultiton;
+
+/**
+ * The base class for mock IIS endpoints.
+ * It checks credentials against the message headers and uses a performance simulator
+ * when the test case identifier selects one.
+ */
+public class MockControllerBase extends SoapControllerBase implements InitializingBean {
+	@Value(&quot;${iis.max-message-size:65536}&quot;)
+	private int iisMaxMesageSize;
+
+	/**
+	 * Make the controller and register it for access control.
+	 * @param mshService The service that gets the expected credentials for a message header.
+	 * @param messageNamespace The namespace of the SOAP messages.
+	 * @param wsdl The name of the WSDL file.
+	 * @param registry The access control registry, or null to not register the controller.
+	 */
+	protected MockControllerBase(IMessageHeaderService mshService, String messageNamespace, String wsdl,
+			AccessControlRegistry registry) {
+<span class="fc" id="L37">		super(mshService, messageNamespace, wsdl, null);</span>
+<span class="pc bpc" id="L38" title="1 of 2 branches missed.">		if (registry != null) {</span>
+<span class="fc" id="L39">			registry.register(this);</span>
+		}
+<span class="fc" id="L41">	}</span>
+
+	public void afterPropertiesSet() {
+<span class="fc" id="L44">		super.setMaxMessageSize(iisMaxMesageSize);</span>
+<span class="fc" id="L45">	}</span>
+
+    @Override
+    protected boolean isHubWsdl() {
+<span class="nc bnc" id="L49" title="All 2 branches missed.">        return getDestinationService() != null;</span>
+    }
+
+    @Override
+	protected void checkCredentials(HasCredentials s) throws SecurityFault {
+<span class="nc" id="L54">		MockCredentialValidator.checkCredentials(mshService, s);</span>
+<span class="nc" id="L55">	}</span>
+
+	@Override
+	protected ResponseEntity&lt;?&gt; submitSingleMessage( // NOSONAR ? is intentional
+		SubmitSingleMessageRequest submitSingleMessage,
+		String destinationId
+	) throws Fault {
+<span class="nc" id="L62">		PerformanceSimulatorInterface p = PerformanceSimulatorMultiton.getInstance(submitSingleMessage.findTestCaseIdentifier()); </span>
+<span class="nc bnc" id="L63" title="All 2 branches missed.">		if (p != null) {</span>
+<span class="nc" id="L64">			ResponseEntity&lt;?&gt; r = p.simulateError(RequestContext.getResponse()); </span>
+<span class="nc bnc" id="L65" title="All 2 branches missed.">			if (r != null) {</span>
+<span class="nc" id="L66">				return r;</span>
+			}
+<span class="nc" id="L68">			return new ResponseEntity&lt;&gt;(p.getResponse(submitSingleMessage), HttpStatus.OK);</span>
+		}
+<span class="nc" id="L70">		return super.submitSingleMessage(submitSingleMessage, destinationId);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BaseGatewayController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.hub</a> &gt; <span class="el_source">BaseGatewayController.java</span></div><h1>BaseGatewayController.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.hub;
+
+import gov.cdc.izgateway.Application;
+import gov.cdc.izgateway.ads.ADSController;
+import gov.cdc.izgateway.configuration.SenderConfig;
+import gov.cdc.izgateway.hub.service.DestinationService;
+import gov.cdc.izgateway.hub.service.accesscontrol.AccessControlService;
+import gov.cdc.izgateway.logging.RequestContext;
+import gov.cdc.izgateway.logging.info.DestinationInfo;
+import gov.cdc.izgateway.logging.info.HostInfo;
+import gov.cdc.izgateway.model.IDestination;
+import gov.cdc.izgateway.model.IEndpointStatus;
+import gov.cdc.izgateway.security.AccessControlRegistry;
+import gov.cdc.izgateway.service.IMessageHeaderService;
+import gov.cdc.izgateway.service.impl.EndpointStatusService;
+import gov.cdc.izgateway.soap.SoapControllerBase;
+import gov.cdc.izgateway.soap.fault.Fault;
+import gov.cdc.izgateway.soap.fault.SecurityFault;
+import gov.cdc.izgateway.soap.fault.UnknownDestinationFault;
+import gov.cdc.izgateway.soap.message.*;
+import gov.cdc.izgateway.soap.net.MessageSender;
+import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.List;
+
+/**
+ * Base controller class that contains common functionality shared between HubWSDLController and CDCWSDLController.
+ */
+<span class="fc" id="L36">@Slf4j</span>
+public abstract class BaseGatewayController extends SoapControllerBase {
+
+    /**
+     * The destination service used to obtain routing information.
+     */
+    protected final DestinationService destinationService;
+    /** The service that gets and stores endpoint status. */
+    protected final EndpointStatusService endpointStatusService;
+    /** The sender for outbound messages to destinations. */
+    protected final MessageSender messageSender;
+    /** The ADS controller, used for status checks on DEX destinations. */
+    protected final ADSController adsController;
+    /** The service that checks if a user can send to a destination. */
+    protected final AccessControlService accessControlService;
+
+    /** The public host name of this server, used to make absolute destination URIs. */
+    @Value(&quot;${server.hostname:dev.izgateway.org}&quot;)
+    protected String serverName;
+    /** The port of this server, used to make absolute destination URIs. */
+    @Value(&quot;${server.port:8080}&quot;)
+    protected int serverPort;
+    /** The protocol of this server, used to make absolute destination URIs. */
+    @Value(&quot;${server.protocol:https}&quot;)
+    protected String serverProtocol;
+
+    /**
+     * Create the controller.
+     * @param mshService	The service that maps message header values to sources
+     * @param baseNamespace	The base SOAP namespace of the WSDL
+     * @param wsdlResource	The name of the WSDL resource
+     * @param supportedNamespaces	The SOAP namespaces that the controller accepts
+     * @param destinationService	The destination service used to obtain routing information
+     * @param endpointStatusService	The service that gets and stores endpoint status
+     * @param messageSender	The sender for outbound messages
+     * @param adsController	The ADS controller, used for DEX status checks
+     * @param registry	The access control registry that this controller registers with
+     * @param accessControlService	The service that checks access to destinations
+     * @param hubConfig	The sender configuration that supplies the maximum message size
+     */
+    protected BaseGatewayController(
+            IMessageHeaderService mshService,
+            String baseNamespace,
+            String wsdlResource,
+            List&lt;String&gt; supportedNamespaces,
+            DestinationService destinationService,
+            EndpointStatusService endpointStatusService,
+            MessageSender messageSender,
+            ADSController adsController,
+            AccessControlRegistry registry,
+            AccessControlService accessControlService,
+            SenderConfig hubConfig
+    ) {
+<span class="fc" id="L89">        super(mshService, baseNamespace, wsdlResource, supportedNamespaces);</span>
+<span class="fc" id="L90">        this.destinationService = destinationService;</span>
+<span class="fc" id="L91">        this.endpointStatusService = endpointStatusService;</span>
+<span class="fc" id="L92">        this.messageSender = messageSender;</span>
+<span class="fc" id="L93">        this.adsController = adsController;</span>
+<span class="fc" id="L94">        this.accessControlService = accessControlService;</span>
+<span class="fc" id="L95">        setMaxMessageSize(hubConfig.getMaxMessageSize());</span>
+<span class="fc" id="L96">        registry.register(this);</span>
+<span class="fc" id="L97">    }</span>
+
+    @Override
+    protected DestinationService getDestinationService() {
+<span class="fc" id="L101">        return destinationService;</span>
+    }
+
+    @Override
+    public String getServiceType() {
+<span class="nc" id="L106">        return &quot;Gateway&quot;;</span>
+    }
+
+    @Override
+    protected ResponseEntity&lt;?&gt; connectivityTest(ConnectivityTestRequest connectivityTest, String destinationId) throws Fault {
+<span class="nc bnc" id="L111" title="All 2 branches missed.">        if (StringUtils.isEmpty(destinationId)) {</span>
+<span class="nc" id="L112">            return super.connectivityTest(connectivityTest, destinationId);</span>
+        }
+<span class="nc" id="L114">        IDestination dest = getDestination(destinationId);</span>
+
+<span class="nc" id="L116">        logDestination(dest);</span>
+
+<span class="nc" id="L118">        IEndpointStatus s = endpointStatusService.getEndpointStatus(dest);</span>
+<span class="nc" id="L119">        ResponseEntity&lt;?&gt; result = null;</span>
+<span class="nc bnc" id="L120" title="All 2 branches missed.">        if (dest.isDex()) {</span>
+            // Do a status check on DEX Endpoint.
+<span class="nc" id="L122">            adsController.getDestinationStatus(connectivityTest.getWsaHeaders().getMessageID(), null, null, destinationId);</span>
+<span class="nc" id="L123">            result = super.connectivityTest(connectivityTest, destinationId);</span>
+        } else {
+<span class="nc" id="L125">            ConnectivityTestResponse response = messageSender.sendConnectivityTest(dest, connectivityTest);</span>
+<span class="nc bnc" id="L126" title="All 2 branches missed.">            if (connectivityTest.is2014Message()) {</span>
+<span class="nc" id="L127">                response.setSchema(SoapMessage.HUB_NS);  // Shift from client to Hub Schema</span>
+            }
+<span class="nc" id="L129">            result = checkResponseEntitySize(new ResponseEntity&lt;&gt;(response, HttpStatus.OK));</span>
+        }
+
+        // We got a good result, update status
+<span class="nc" id="L133">        messageSender.getStatusChecker().updateStatus(s, dest, null);</span>
+<span class="nc" id="L134">        return result;</span>
+    }
+
+    /**
+     * Checks to see if a user can send to the destination.
+     * The method allows access controls to be set on a destination to allow or prohibit users
+     * access to a specific destination.  If no access controls have been set up, then users
+     * are simply expected to follow policy, but there is no other enforcement.
+     *
+     * Checks to see an access control group exists for the specified destination.
+     * 1. If none does, simply returns.
+     *
+     * 2. If the user has the ADMIN role, also returns.
+     *
+     * 3. Otherwise, checks to see if the user is a member of the group given by the destination name, and if
+     * they are, returns.
+     *
+     * 4. If they are not a member, this method throws a security fault notifying the user that they
+     * cannot send messages to the specified group.
+     *
+     * @param destId	The destination identifier
+     * @throws SecurityFault if the user is not permitted to access the destination.
+     */
+    protected void checkAccess(String destId) throws SecurityFault {
+<span class="nc bnc" id="L158" title="All 2 branches missed.">        if (Application.isAdministrator()) {</span>
+<span class="nc" id="L159">            return;</span>
+        }
+<span class="nc" id="L161">        accessControlService.checkAccessToDestination(destId);</span>
+<span class="nc" id="L162">    }</span>
+
+    @Override
+    protected ResponseEntity&lt;?&gt; submitSingleMessage(SubmitSingleMessageRequest submitSingleMessage, String destinationId) throws Fault {
+        // Validate HubHeader if needed (subclasses can override this)
+<span class="nc" id="L167">        validateHubHeader(submitSingleMessage);</span>
+
+<span class="nc" id="L169">        IDestination dest = getDestination(destinationId);</span>
+<span class="nc" id="L170">        logDestination(dest);</span>
+
+<span class="nc" id="L172">        checkAccess(destinationId);</span>
+<span class="nc" id="L173">        IEndpointStatus s = endpointStatusService.getEndpointStatus(dest);</span>
+<span class="nc" id="L174">        checkMessage(submitSingleMessage);</span>
+<span class="nc" id="L175">        SubmitSingleMessageResponse response = messageSender.sendSubmitSingleMessage(dest, submitSingleMessage);</span>
+<span class="nc" id="L176">        response.updateAction(isHubWsdl());</span>
+
+        // Allow subclasses to customize response processing
+<span class="nc" id="L179">        customizeResponse(response, dest);</span>
+
+<span class="nc" id="L181">        ResponseEntity&lt;?&gt; result = checkResponseEntitySize(new ResponseEntity&lt;&gt;(response, HttpStatus.OK));</span>
+        // A good result updates the status.
+<span class="nc" id="L183">        messageSender.getStatusChecker().updateStatus(s, dest, null);</span>
+<span class="nc" id="L184">        return result;</span>
+    }
+
+    /**
+     * Template method for validating HubHeader. Subclasses can override to provide specific validation.
+     * @param submitSingleMessage	The request to validate
+     * @throws Fault	If the HubHeader is not valid
+     */
+    protected void validateHubHeader(SubmitSingleMessageRequest submitSingleMessage) throws Fault {
+        // Default implementation does nothing
+<span class="nc" id="L194">    }</span>
+
+    /**
+     * Template method for customizing the response. Subclasses can override to provide specific customization.
+     * @param response	The response to customize
+     * @param dest	The destination that sent the response
+     */
+    protected void customizeResponse(SubmitSingleMessageResponse response, IDestination dest) {
+        // Default implementation does nothing
+<span class="nc" id="L203">    }</span>
+
+    @Override
+    protected IDestination getDestination(String destinationId) throws UnknownDestinationFault {
+<span class="nc bnc" id="L207" title="All 2 branches missed.">        if (&quot;&quot;.equals(destinationId)) {</span>
+<span class="nc" id="L208">            throw UnknownDestinationFault.invalidDestination(destinationId, &quot;Request has no destination value in the DestinationId element&quot;);</span>
+<span class="nc bnc" id="L209" title="All 2 branches missed.">        } else if (null == destinationId) {</span>
+<span class="nc" id="L210">            throw UnknownDestinationFault.missingDestination(&quot;Request is missing the DestinationId element&quot;);</span>
+<span class="nc bnc" id="L211" title="All 2 branches missed.">        } else if (!destinationId.matches(IDestination.ID_PATTERN)) {</span>
+<span class="nc" id="L212">            RequestContext.getDestinationInfo().setId(destinationId);</span>
+<span class="nc" id="L213">            throw UnknownDestinationFault.invalidDestination(destinationId, &quot;Destination &quot; + destinationId + &quot; is invalid.&quot;);</span>
+        }
+<span class="nc" id="L215">        IDestination dest = destinationService.findByDestId(destinationId);</span>
+<span class="nc bnc" id="L216" title="All 2 branches missed.">        if (dest == null) {</span>
+<span class="nc" id="L217">            RequestContext.getDestinationInfo().setId(destinationId);</span>
+<span class="nc" id="L218">            throw UnknownDestinationFault.unknownDestination(destinationId, destinationId, null);</span>
+        }
+<span class="nc" id="L220">        logDestination(dest);</span>
+<span class="nc" id="L221">        return dest;</span>
+    }
+
+    /**
+     * Record the destination in the destination information for logging.
+     * @param routing	The destination
+     */
+    protected void logDestination(IDestination routing) {
+<span class="nc" id="L229">        DestinationInfo destination = RequestContext.getDestinationInfo();</span>
+<span class="nc" id="L230">        destination.setId(routing.getDestId());</span>
+
+<span class="nc" id="L232">        String wsdlVersion = routing.getDestVersion();</span>
+<span class="nc bnc" id="L233" title="All 2 branches missed.">        if (!StringUtils.isBlank(wsdlVersion)) {</span>
+<span class="nc" id="L234">            destination.setProtocol(wsdlVersion);</span>
+        }
+
+<span class="nc" id="L237">        String url = routing.getDestUri();</span>
+        // Destination logging uses the local url for diagnostic use.
+        // This is only visible in logs.
+<span class="nc" id="L240">        destination.setUrl(destinationService.localUrl(url));</span>
+<span class="nc bnc" id="L241" title="All 2 branches missed.">        if (routing.getDestUri().startsWith(&quot;/&quot;)) {</span>
+<span class="nc" id="L242">            destination.setIpAddress(HostInfo.LOCALHOST_IP4);</span>
+<span class="nc" id="L243">            destination.setHost(HostInfo.LOCALHOST);</span>
+<span class="nc" id="L244">            return;</span>
+        }
+
+<span class="nc" id="L247">        String host = destinationService.serverOf(url);</span>
+<span class="nc" id="L248">        destination.setHost(host);</span>
+        InetAddress address;
+        try {
+<span class="nc" id="L251">            address = InetAddress.getByName(host);</span>
+<span class="nc" id="L252">            destination.setIpAddress(address.getHostAddress());</span>
+<span class="nc" id="L253">        } catch (UnknownHostException e) {</span>
+<span class="nc" id="L254">            destination.setAddressUnknown();</span>
+<span class="nc" id="L255">        }</span>
+<span class="nc" id="L256">    }</span>
+
+    @Override
+    protected void checkCredentials(HasCredentials s) throws SecurityFault {
+        // Hub Controller performs no credential checking. Credentials are not supplied in SOAP message, instead they
+        // are supplied in client certificate in TLS Connection/
+<span class="nc" id="L262">    }</span>
+
+    /**
+     * The fault code for {@code SecurityFault.sourceAttack(...)} — see izgw-core's
+     * {@code SecurityFault.MESSAGE_TEMPLATES[1]}, code {@code &quot;61&quot;}. Not a public constant in
+     * izgw-core, so it's mirrored here (IGDD-2805); a unit test asserts it against a real
+     * {@code SecurityFault.sourceAttack(...)} instance so a future izgw-core change to that literal
+     * fails loudly instead of silently disabling the lockout below.
+     */
+    private static final String SOURCE_ATTACK_CODE = &quot;61&quot;;
+
+    /**
+     * Handle a detected source attack (IGDD-2805) by adding the sender to the deny list, subject to
+     * the {@code hub.source-attack-lockout.enabled} flag and any configured exception, before
+     * delegating to the normal fault-handling behavior. The {@code sf.getEndpoint() == null} guard
+     * excludes the outbound/destination-response source-attack scan (see {@code MessageSender}),
+     * which reaches this same method with a non-null endpoint — without it, a malicious response
+     * from a destination IIS would wrongfully deny-list the original (innocent) sender.
+     */
+    @Override
+    protected ResponseEntity&lt;FaultMessage&gt; handleFault(Fault fault) {
+<span class="pc bpc" id="L283" title="1 of 2 branches missed.">        if (fault instanceof SecurityFault sf</span>
+<span class="fc bfc" id="L284" title="All 2 branches covered.">                &amp;&amp; SOURCE_ATTACK_CODE.equals(sf.getCode())</span>
+<span class="fc bfc" id="L285" title="All 2 branches covered.">                &amp;&amp; sf.getEndpoint() == null) {</span>
+<span class="fc" id="L286">            accessControlService.handleSourceAttack(RequestContext.getSourceInfo().getCommonName(), sf.getDiagnostics());</span>
+        }
+<span class="fc" id="L288">        return super.handleFault(fault);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

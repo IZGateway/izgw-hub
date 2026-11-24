@@ -1,0 +1,618 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PerformanceSimulatorMockIIS.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.soap.mock.perf</a> &gt; <span class="el_source">PerformanceSimulatorMockIIS.java</span></div><h1>PerformanceSimulatorMockIIS.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.soap.mock.perf;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
+import org.apache.commons.text.similarity.LevenshteinDistance;
+import org.springframework.http.ResponseEntity;
+
+import gov.cdc.izgateway.logging.event.TransactionData.RequestPayloadType;
+import gov.cdc.izgateway.soap.fault.Fault;
+import gov.cdc.izgateway.soap.message.SubmitSingleMessageRequest;
+import gov.cdc.izgateway.soap.message.SubmitSingleMessageResponse;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
+
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
+
+/**
+ * This simulator mocks the behavior of a real IIS, returning RSP messages for a QBP query.
+ * It uses test immunization data provided by AIRA during the inception of this project.
+ * @author boonek
+ *
+ */
+<span class="fc" id="L38">@Slf4j</span>
+public class PerformanceSimulatorMockIIS implements PerformanceSimulatorInterface {
+	/**
+	 * Make a mock IIS simulator.
+	 */
+<span class="fc" id="L43">	public PerformanceSimulatorMockIIS() {</span>
+		// Nothing to initialize. The test data is loaded in static fields.
+<span class="fc" id="L45">	}</span>
+
+	/** Test data is loaded from a text file containing one RSP message per patient per file line */ 
+<span class="fc" id="L48">	private static final Map&lt;String, String&gt; dataById = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L49">	private static final Map&lt;String, List&lt;String&gt;&gt; immunizationData = initMock();</span>
+
+	private static final int QUERY_NAME = 1;
+	private static final int QUERY_TAG = 2;
+	private static final int PID_LIST = 3;
+	private static final int PATIENT_NAME = 4;
+	private static final int MOTHERS_MAIDEN_NAME = 5;
+	private static final int DATE_OF_BIRTH = 6;
+	private static final int PATIENT_SEX = 7;
+	private static final int ADDRESS = 8;
+	private static final int PATIENT_PHONE = 9;
+	// Other values: PATIENT_MBI = 10, PATIENT_MBO = 11, LAST_UPDATED_DATE = 12, and LAST_UPDATED_BY = 13
+	
+	// PID values used for patient matching.
+	private static final int ID_LIST = 3;
+	private static final int NAME = 5;
+	private static final int MAIDEN_NAME = 6;
+	private static final int DOB = 7;
+	private static final int SEX = 8;
+	private static final int ALIAS = 9;
+	private static final int ADDR = 11;
+	private static final int HOME_PHONE = 13;
+	private static final int WORK_PHONE = 14;
+	/** The mock data file resource containing immunization messages uses for the mock */
+	public static final String MOCK_DATA_FILE = &quot;RSP-Test-Messages.hl7&quot;;
+
+	private static final String MSA_PART = &quot;MSA|AA|{{Original Message Control ID}}\r&quot;;
+	private static final String QPD_PART = &quot;QPD|{{Original QPD Parts}}&quot;;
+	private static final String MSH_PART = &quot;MSH|^~\\&amp;|TEST|MOCK|IZGW|IZGW|{{Message Timestamp}}||RSP^K11^RSP_K11|{{Unique Message Identifier}}|P|2.5.1|||NE|NE|||||Z33^CDCPHINVS\r&quot;;
+	
+<span class="fc" id="L79">	private static final String QUERY_NOT_FOUND </span>
+		= MSH_PART
+		+ MSA_PART
+<span class="fc" id="L82">		+ qakPart(&quot;NF&quot;)</span>
+		+ QPD_PART;
+<span class="fc" id="L84">	private static final String QUERY_MULTIPLE</span>
+		= MSH_PART
+		+ MSA_PART
+<span class="fc" id="L87">		+ qakPart(&quot;OK&quot;)</span>
+		+ QPD_PART;
+<span class="fc" id="L89">	private static final String QUERY_TOO_MANY</span>
+		= MSH_PART
+		+ MSA_PART
+<span class="fc" id="L92">		+ qakPart(&quot;TM&quot;)</span>
+		+ QPD_PART;
+	private static final String QUERY_ERROR
+		= &quot;MSH|^~\\&amp;|TEST|MOCK|IZGW|IZGW|{{Message Timestamp}}||ACK^Q11^ACK|{{Unique Message Identifier}}|P|2.5.1|||NE|NE|||||Z23^CDCPHINVS\r&quot;
+		+ &quot;MSA|AE|{{Original Message Control ID}}\r&quot;
+		+ &quot;ERR||{{Error Location}}|{{Error Code}}|E||||{{Error Message}}\r&quot;;
+	
+	private static String qakPart(String ack) {
+<span class="fc" id="L100">		return &quot;QAK|{{QPD-2 value from QBP message}}|&quot; + ack + &quot;|{{QPD-1 value from QBP message}}\r&quot;;</span>
+	}
+	
+	private static Map&lt;String, List&lt;String&gt;&gt; initMock() {
+<span class="fc" id="L104">		InputStream is = PerformanceSimulatorMockIIS.class.getClassLoader().getResourceAsStream(MOCK_DATA_FILE);</span>
+<span class="pc bpc" id="L105" title="1 of 2 branches missed.">		if (is == null) {</span>
+<span class="nc" id="L106">			log.error(&quot;Cannot load mock IIS data from &quot; + MOCK_DATA_FILE);</span>
+<span class="nc" id="L107">			return Collections.emptyMap();</span>
+		}
+<span class="fc" id="L109">		Map&lt;String, List&lt;String&gt;&gt; map = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L110">		int lines = 0;</span>
+		try (
+<span class="fc" id="L112">			InputStreamReader ir = new InputStreamReader(is, StandardCharsets.UTF_8);</span>
+<span class="fc" id="L113">			BufferedReader br = new BufferedReader(ir);</span>
+		) {
+			String line;
+<span class="fc bfc" id="L116" title="All 2 branches covered.">			while ((line = br.readLine()) != null) {</span>
+<span class="fc" id="L117">				lines++;</span>
+<span class="pc bpc" id="L118" title="2 of 4 branches missed.">				if (StringUtils.isBlank(line) || line.startsWith(&quot;#&quot;)) {</span>
+					// Ignore empty lines and comments
+<span class="nc" id="L120">					continue;</span>
+				}
+<span class="fc" id="L122">				StringBuilder b = new StringBuilder(line).append('\r');</span>
+
+<span class="pc bpc" id="L124" title="1 of 2 branches missed.">				while ((line = br.readLine()) != null) {</span>
+<span class="fc" id="L125">					lines++;</span>
+<span class="fc bfc" id="L126" title="All 2 branches covered.">					if (StringUtils.isBlank(line)) {</span>
+<span class="fc" id="L127">						break;</span>
+					}
+<span class="fc" id="L129">					b.append(line).append('\r');</span>
+				}
+				
+<span class="fc" id="L132">				String message = b.toString(); </span>
+<span class="fc" id="L133">				String pid = getSegment(&quot;PID&quot;, message);</span>
+<span class="pc bpc" id="L134" title="1 of 2 branches missed.">				if (pid == null) {</span>
+<span class="nc" id="L135">					log.error(&quot;Bad RSP response message in {}({}): {}&quot;, MOCK_DATA_FILE, lines, message);</span>
+<span class="nc" id="L136">					continue;</span>
+				}
+<span class="fc" id="L138">				String dob = getField(pid, DOB);</span>
+<span class="fc" id="L139">				List&lt;String&gt; l = map.computeIfAbsent(dob, k -&gt; new ArrayList&lt;&gt;());</span>
+<span class="fc" id="L140">				l.add(message);</span>
+<span class="fc" id="L141">				String mrNo = getField(pid, ID_LIST);</span>
+<span class="fc" id="L142">				dataById.put(mrNo, message);</span>
+<span class="fc" id="L143">			}</span>
+<span class="nc" id="L144">		} catch (IOException e) {</span>
+<span class="nc" id="L145">			log.error(&quot;Error reading mock IIS data from &quot; + MOCK_DATA_FILE, e);</span>
+<span class="fc" id="L146">		}</span>
+<span class="fc" id="L147">		return map;</span>
+	}
+
+	private static class QueryException extends Exception {
+<span class="nc" id="L151">		private static final String[] FIELD_NAMES = {</span>
+			&quot;&quot;, &quot;Query Name&quot;, &quot;Query Tag&quot;, &quot;ID List&quot;, &quot;Name&quot;, &quot;Mother's Maiden Name&quot;, &quot;Date of Birth&quot;, &quot;Sex&quot;
+		};
+		private static final long serialVersionUID = 1L;
+		private final int field;
+<span class="nc" id="L156">		private QueryException(int field) {</span>
+<span class="nc" id="L157">			this.field = field;</span>
+<span class="nc" id="L158">		}</span>
+		private int getField() {
+<span class="nc" id="L160">			return field;</span>
+		}
+		public String getFieldName() {
+<span class="nc bnc" id="L163" title="All 4 branches missed.">			if (field &lt; 0 || field &gt;= FIELD_NAMES.length) {</span>
+<span class="nc" id="L164">				return null;</span>
+			}
+<span class="nc" id="L166">			return FIELD_NAMES[field];</span>
+		}
+	}
+
+	@Override
+	public ResponseEntity&lt;?&gt; simulateError(HttpServletResponse resp) throws Fault {
+		// The Mock IIS doesn't have errors.
+<span class="nc" id="L173">		return null;</span>
+	}
+	@Override
+	public SubmitSingleMessageResponse getResponse(SubmitSingleMessageRequest requestMessage) throws Fault {
+<span class="nc" id="L177">		SubmitSingleMessageResponse r = new SubmitSingleMessageResponse(requestMessage, requestMessage.getSchema(), false);</span>
+<span class="nc" id="L178">		String hl7RequestMessage = requestMessage.getHl7Message();</span>
+<span class="nc" id="L179">		r.setHl7Message(getResponse(hl7RequestMessage));</span>
+<span class="nc" id="L180">		return r;</span>
+	}
+	
+	/**
+	 * Make the HL7 response to an HL7 request message.
+	 * The response is an RSP message with the matching test patients, or an ACK message that reports an error.
+	 * @param hl7RequestMessage The HL7 request message.
+	 * @return The HL7 response message.
+	 */
+	public String getResponse(String hl7RequestMessage) {
+<span class="nc bnc" id="L190" title="All 2 branches missed.">		if (!RequestPayloadType.QBP.equals(getRequestPayloadType(hl7RequestMessage))) {</span>
+			// Return a NAK to the message reporting the error.
+<span class="nc" id="L192">			return queryError(hl7RequestMessage, &quot;MSH^1^9&quot;, &quot;200^Unsupported Message Type^HL70357&quot;, &quot;Mock does not handle VXU Messages&quot;);</span>
+		}
+		// Parse the message.
+<span class="nc" id="L195">		String query = getSegment(&quot;QPD&quot;, hl7RequestMessage);</span>
+<span class="nc bnc" id="L196" title="All 2 branches missed.">		if (query == null) {</span>
+<span class="nc" id="L197">			return queryError(hl7RequestMessage, &quot;QPD^1^1&quot;, &quot;100^Segment Sequence Error^HL70357&quot;, &quot;Missing QPD Segment&quot;);</span>
+		}
+		
+		String[] qParts;
+		try {
+<span class="nc" id="L202">			qParts = getQueryParts(query);</span>
+<span class="nc" id="L203">		} catch (QueryException e) {</span>
+<span class="nc" id="L204">			return queryError(hl7RequestMessage, &quot;QPD^1^&quot; + Integer.toString(e.getField()), &quot;101^Required Field Missing^HL70357&quot;, &quot;Missing Required QPD Parameter: &quot; + e.getFieldName());</span>
+<span class="nc" id="L205">		}</span>
+		
+<span class="nc" id="L207">		List&lt;String&gt; data = findRecords(qParts);</span>
+		
+<span class="nc bnc" id="L209" title="All 2 branches missed.">		if (data == null) {</span>
+<span class="nc" id="L210">			return notFound(hl7RequestMessage);</span>
+		}
+<span class="nc" id="L212">		data = match(qParts, data);</span>
+<span class="nc bnc" id="L213" title="All 2 branches missed.">		if (data.isEmpty()) {</span>
+<span class="nc" id="L214">			return notFound(hl7RequestMessage);</span>
+		}
+		
+<span class="nc bnc" id="L217" title="All 2 branches missed.">		if (data.size() == 1) {</span>
+<span class="nc" id="L218">			return found(data.get(0), hl7RequestMessage);</span>
+		}
+<span class="nc bnc" id="L220" title="All 2 branches missed.">		if (data.size() &lt;= 3) {</span>
+<span class="nc" id="L221">			return multipleMatches(data, hl7RequestMessage);</span>
+		}
+<span class="nc" id="L223">		return tooManyMatches(hl7RequestMessage);</span>
+	}
+
+	private List&lt;String&gt; findRecords(String[] qParts) {
+<span class="nc" id="L227">		List&lt;String&gt; data = null;</span>
+<span class="nc bnc" id="L228" title="All 4 branches missed.">		if (qParts.length &gt; DATE_OF_BIRTH &amp;&amp; !StringUtils.isEmpty(qParts[DATE_OF_BIRTH])) {</span>
+<span class="nc" id="L229">			data = immunizationData.get(qParts[DATE_OF_BIRTH]);</span>
+		} else {
+<span class="nc" id="L231">			String m = dataById.get(qParts[PID_LIST]);</span>
+<span class="nc bnc" id="L232" title="All 2 branches missed.">			if (m == null) {</span>
+<span class="nc" id="L233">				data = null;</span>
+			} else {
+<span class="nc" id="L235">				data = Collections.singletonList(m);</span>
+			}
+		}
+<span class="nc" id="L238">		return data;</span>
+	}
+	
+	private static String getSegment(String segment, String hl7RequestMessage) {
+<span class="fc" id="L242">		segment += &quot;|&quot;;</span>
+<span class="fc" id="L243">		String[] segments = hl7RequestMessage.split(&quot;[\r\n]&quot;);</span>
+<span class="pc bpc" id="L244" title="1 of 2 branches missed.">		for (String seg: segments) {</span>
+<span class="fc bfc" id="L245" title="All 2 branches covered.">			if (seg.startsWith(segment)) {</span>
+<span class="fc" id="L246">				return seg;</span>
+			}
+		}
+<span class="nc" id="L249">		return null;</span>
+	}
+
+	private static String replaceSegment(String segment, String hl7Message, String newSegment) {
+<span class="nc" id="L253">		segment += &quot;|&quot;;</span>
+<span class="nc" id="L254">		String[] segments = hl7Message.split(&quot;[\r\n]&quot;);</span>
+<span class="nc bnc" id="L255" title="All 2 branches missed.">		for (int i = 0; i &lt; segments.length; i++) {</span>
+<span class="nc bnc" id="L256" title="All 2 branches missed.">			if (segments[i].startsWith(segment)) {</span>
+<span class="nc" id="L257">				segments[i] = newSegment + &quot;\r&quot;;</span>
+			} else {
+<span class="nc" id="L259">				segments[i] += &quot;\r&quot;;</span>
+			}
+		}
+<span class="nc" id="L262">		return StringUtils.join(segments);</span>
+	}
+
+	private static String getField(String segment, int fieldNo) {
+<span class="fc" id="L266">		String[] fields = segment.split(&quot;\\|&quot;);</span>
+<span class="pc bpc" id="L267" title="1 of 2 branches missed.">		return fields.length &gt; fieldNo ? fields[fieldNo] : &quot;&quot;;</span>
+	}
+
+<span class="fc" id="L270">	private static final int[] REQUIRED_FIELDS = {</span>
+			QUERY_NAME, QUERY_TAG, PATIENT_NAME, DATE_OF_BIRTH
+	};
+	private static String[] getQueryParts(String query) throws QueryException {
+<span class="nc" id="L274">		String[] qParts = query.split(&quot;\\|&quot;);</span>
+		/*
+		 * These are the query parts and their use: (R = required, O = optional, N = optional and NOT used)
+		 * 
+		 * 1. Message Query Name		R
+		 * 2. QueryTag					R
+		 * 3. PatientList				O
+		 * 4. PatientName 				R
+		 * 5. PatientMotherMaidenName	O 
+		 * 6. PatientDateofBirth		R
+		 * 7. PatientSex				O  // Previously Required, changed due to FAST IDI and SME guidance
+		 * 8. PatientAddress			O
+		 * 9. PatientHomePhone			O
+		 * 10. PatientMultipleBirthIndicator	N
+		 * 11. PatientBirthOrder		N
+		 * 12. ClientLastUpdatedDate	N
+		 * 13. ClientLastUpdateFacility	N
+		 */
+		// If it Has a PID LIST, it's a good query
+<span class="nc bnc" id="L293" title="All 4 branches missed.">		if (qParts.length &gt; PID_LIST &amp;&amp; !StringUtils.isEmpty(qParts[3])) {</span>
+<span class="nc" id="L294">			return qParts;</span>
+		}
+		
+<span class="nc bnc" id="L297" title="All 2 branches missed.">		for (int field: REQUIRED_FIELDS) {</span>
+<span class="nc bnc" id="L298" title="All 4 branches missed.">			if (qParts.length &lt; field || StringUtils.isEmpty(qParts[field])) {</span>
+<span class="nc" id="L299">				throw new QueryException(field);</span>
+			}
+		}
+<span class="nc" id="L302">		return qParts;</span>
+	}
+	
+	private static String queryError(String message, String errorLocation, String errorCode, String errorMessage) {
+<span class="nc" id="L306">		Map&lt;String, String&gt; map = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L307">		map.put(&quot;{{Error Location}}&quot;, errorLocation);</span>
+<span class="nc" id="L308">		map.put(&quot;{{Error Code}}&quot;, errorCode);</span>
+<span class="nc" id="L309">		map.put(&quot;{{Error Message}}&quot;, errorMessage);</span>
+<span class="nc" id="L310">		return generateResponse(message, PerformanceSimulatorMockIIS.QUERY_ERROR, map);</span>
+	}
+	
+	private static String notFound(String hl7Message) {
+<span class="nc" id="L314">		return generateResponse(hl7Message, PerformanceSimulatorMockIIS.QUERY_NOT_FOUND, null);</span>
+	}
+	
+	private static String generateResponse(String hl7RequestMessage, String hl7ResponseMessage, Map&lt;String, String&gt; map) {
+		// Construct a Not Found Response
+<span class="nc" id="L319">		String msh = StringUtils.defaultString(getSegment(&quot;MSH&quot;, hl7RequestMessage));</span>
+<span class="nc" id="L320">		String qpd = StringUtils.defaultString(getSegment(&quot;QPD&quot;, hl7RequestMessage));</span>
+<span class="nc" id="L321">		hl7ResponseMessage = replaceSegment(&quot;QPD&quot;, hl7ResponseMessage, qpd);</span>
+<span class="nc bnc" id="L322" title="All 2 branches missed.">		Map&lt;String, String&gt; replacements = getReplacementMap(map != null ? map : Collections.emptyMap(), qpd, msh);</span>
+<span class="nc" id="L323">		return updateMessage(hl7ResponseMessage, replacements);</span>
+	}
+	
+	private static Map&lt;String, String&gt; getReplacementMap(Map&lt;String, String&gt; init, String qpd, String msh) {
+<span class="nc" id="L327">		Map&lt;String, String&gt; map = new HashMap&lt;&gt;(init);</span>
+<span class="nc" id="L328">		Date now = new Date();</span>
+<span class="nc" id="L329">		map.put(&quot;{{Message Timestamp}}&quot;, String.format(&quot;%tF%tT&quot;, now, now).replace(&quot;-&quot;,&quot;&quot;).replace(&quot;:&quot;,&quot;&quot;) + String.format(&quot;%tz&quot;, now));</span>
+<span class="nc" id="L330">		map.put(&quot;{{Unique Message Identifier}}&quot;, UUID.randomUUID().toString());</span>
+<span class="nc bnc" id="L331" title="All 2 branches missed.">		if (qpd != null) {</span>
+<span class="nc" id="L332">			map.put(&quot;{{QPD-2 value from QBP message}}&quot;,getField(qpd, 2));</span>
+<span class="nc" id="L333">			map.put(&quot;{{QPD-1 value from QBP message}}&quot;,getField(qpd, 1));</span>
+		}
+<span class="nc bnc" id="L335" title="All 2 branches missed.">		if (msh != null) {</span>
+<span class="nc" id="L336">			map.put(&quot;{{Original Message Control ID}}&quot;,getField(msh, 10));</span>
+		}
+
+<span class="nc" id="L339">		return map;</span>
+	}
+	
+	private static String updateMessage(String message, Map&lt;String, String&gt; replacements) {
+<span class="nc bnc" id="L343" title="All 2 branches missed.">		for (Map.Entry&lt;String, String&gt; e: replacements.entrySet()) {</span>
+<span class="nc" id="L344">			message = message.replace(e.getKey(), e.getValue());</span>
+<span class="nc" id="L345">		}</span>
+<span class="nc" id="L346">		return message;</span>
+	}
+
+	private static String found(String responseMessage, String requestMessage) {
+<span class="nc" id="L350">		String msh = StringUtils.defaultString(getSegment(&quot;MSH&quot;, requestMessage));</span>
+<span class="nc" id="L351">		String qpd = StringUtils.defaultString(getSegment(&quot;QPD&quot;, requestMessage));</span>
+<span class="nc" id="L352">		responseMessage = replaceSegment(&quot;QPD&quot;, responseMessage, qpd);</span>
+<span class="nc" id="L353">		Map&lt;String, String&gt; replacements = getReplacementMap(Collections.emptyMap(), qpd, msh);</span>
+<span class="nc" id="L354">		return updateMessage(responseMessage, replacements);</span>
+	}
+	
+	private static String multipleMatches(List&lt;String&gt; data, String message) {
+<span class="nc" id="L358">		StringBuilder result = new StringBuilder(generateResponse(message, PerformanceSimulatorMockIIS.QUERY_MULTIPLE, null));</span>
+<span class="nc" id="L359">		StringBuilder newData = new StringBuilder();</span>
+<span class="nc bnc" id="L360" title="All 2 branches missed.">		for (int i = 0; i &lt; data.size(); i++) {</span>
+<span class="nc" id="L361">			String d = data.get(i);</span>
+<span class="nc" id="L362">			String pid = getSegment(&quot;PID&quot;, d);</span>
+<span class="nc" id="L363">			String nk1 = getSegment(&quot;NK1&quot;, d);</span>
+<span class="nc bnc" id="L364" title="All 2 branches missed.">			if (pid != null) {</span>
+<span class="nc" id="L365">				newData.setLength(0);</span>
+<span class="nc" id="L366">				newData.append(&quot;PID|&quot;).append(i+1).append(pid.substring(5)).append(&quot;\r&quot;);</span>
+<span class="nc bnc" id="L367" title="All 2 branches missed.">				if (nk1 != null) {</span>
+<span class="nc" id="L368">					newData.append(nk1).append(&quot;\r&quot;);</span>
+				}
+<span class="nc" id="L370">				result.append(newData);</span>
+			}
+		}
+<span class="nc" id="L373">		return result.toString();</span>
+	}
+	
+	private static String  tooManyMatches(String hl7RequestMessage) {
+<span class="nc" id="L377">		return generateResponse(hl7RequestMessage, PerformanceSimulatorMockIIS.QUERY_TOO_MANY, null);</span>
+	}
+
+	private static RequestPayloadType getRequestPayloadType(String message) {
+<span class="nc bnc" id="L381" title="All 2 branches missed.">		if (message.contains(&quot;|QBP^&quot;)) {</span>
+<span class="nc" id="L382">			return RequestPayloadType.QBP;</span>
+		}
+<span class="nc bnc" id="L384" title="All 2 branches missed.">		if (message.contains(&quot;|VXU^&quot;)) {</span>
+<span class="nc" id="L385">			return RequestPayloadType.VXU;</span>
+		}
+<span class="nc" id="L387">		return RequestPayloadType.OTHER;</span>
+	}
+
+	/**
+	 * Match the immunization results in data to the values provided in the query parts
+	 * @param qParts	the query parts
+	 * @param data		The data to match
+	 * @return
+	 */
+    private static List&lt;String&gt; match(String[] qParts, List&lt;String&gt; data) {
+<span class="nc" id="L397">    	List&lt;String&gt; matched = new ArrayList&lt;&gt;(data);</span>
+<span class="nc" id="L398">    	Iterator&lt;String&gt; matchIterator = matched.iterator(); </span>
+<span class="nc bnc" id="L399" title="All 2 branches missed.">    	while (matchIterator.hasNext()) {</span>
+<span class="nc" id="L400">    		String response = matchIterator.next();</span>
+<span class="nc bnc" id="L401" title="All 2 branches missed.">    		if (!responseMatches(response, qParts)) {</span>
+<span class="nc" id="L402">    			matchIterator.remove();</span>
+    		}
+<span class="nc" id="L404">    	}</span>
+<span class="nc" id="L405">    	return matched;</span>
+	}
+
+
+	private static boolean responseMatches(String data, String[] qParts) {
+<span class="nc" id="L410">		String pid =  getSegment(&quot;PID&quot;, data);</span>
+<span class="nc bnc" id="L411" title="All 2 branches missed.">		if (pid == null) {</span>
+<span class="nc" id="L412">			return false;</span>
+		}
+		// We know date of birth matches, so we don't need to check that.
+		
+<span class="nc bnc" id="L416" title="All 4 branches missed.">		for (int i = PID_LIST; i &lt;= PATIENT_PHONE &amp;&amp; i &lt; qParts.length; i++) {</span>
+<span class="nc" id="L417">			boolean match = true;</span>
+<span class="nc bnc" id="L418" title="All 7 branches missed.">			switch (i) {</span>
+			case PID_LIST:
+<span class="nc" id="L420">				match = matchRepeatableField(getField(pid, ID_LIST), qParts[PID_LIST], PerformanceSimulatorMockIIS::compareFirstComponent);</span>
+<span class="nc" id="L421">				break;</span>
+			case PATIENT_NAME:
+<span class="nc" id="L423">				match = </span>
+<span class="nc bnc" id="L424" title="All 2 branches missed.">					matchRepeatableField(getField(pid, NAME), qParts[PATIENT_NAME], PerformanceSimulatorMockIIS::compareNameParts) ||</span>
+<span class="nc bnc" id="L425" title="All 2 branches missed.">					matchRepeatableField(getField(pid, ALIAS), qParts[PATIENT_NAME], PerformanceSimulatorMockIIS::compareNameParts);</span>
+<span class="nc" id="L426">				break;</span>
+			case MOTHERS_MAIDEN_NAME:
+<span class="nc" id="L428">				match = matchRepeatableField(getField(pid, MAIDEN_NAME), qParts[MOTHERS_MAIDEN_NAME], PerformanceSimulatorMockIIS::compareFirstComponent);</span>
+<span class="nc" id="L429">				break;</span>
+			case PATIENT_SEX:
+<span class="nc" id="L431">				match = matchRepeatableField(getField(pid, SEX), qParts[PATIENT_SEX], PerformanceSimulatorMockIIS::compareFirstComponent);</span>
+<span class="nc" id="L432">				break;</span>
+			case ADDRESS:
+<span class="nc" id="L434">				match = matchRepeatableField(getField(pid, ADDR), qParts[ADDRESS], PerformanceSimulatorMockIIS::compareAddrParts);</span>
+<span class="nc" id="L435">				break;</span>
+			case PATIENT_PHONE:
+<span class="nc" id="L437">				match = </span>
+<span class="nc bnc" id="L438" title="All 2 branches missed.">					matchRepeatableField(getField(pid, HOME_PHONE), qParts[PATIENT_PHONE], PerformanceSimulatorMockIIS::comparePhoneNumber) ||</span>
+<span class="nc bnc" id="L439" title="All 2 branches missed.">					matchRepeatableField(getField(pid, WORK_PHONE), qParts[PATIENT_PHONE], PerformanceSimulatorMockIIS::comparePhoneNumber);</span>
+<span class="nc" id="L440">				break;</span>
+			default:
+<span class="nc" id="L442">				continue;</span>
+			}
+<span class="nc bnc" id="L444" title="All 2 branches missed.">			if (!match) {</span>
+<span class="nc" id="L445">				return false;</span>
+			}
+		}
+		
+<span class="nc" id="L449">		return true;</span>
+	}
+
+
+	private static boolean matchRepeatableField(String value, String match, Comparator&lt;String&gt; matchFunction) {
+<span class="nc bnc" id="L454" title="All 2 branches missed.">		if (StringUtils.isEmpty(match)) {</span>
+<span class="nc" id="L455">			return true;</span>
+		}
+<span class="nc bnc" id="L457" title="All 2 branches missed.">		for (String m: match.split(&quot;~&quot;)) {</span>
+<span class="nc bnc" id="L458" title="All 2 branches missed.">			if (m.isEmpty()) {</span>
+<span class="nc" id="L459">				continue;</span>
+			}
+<span class="nc bnc" id="L461" title="All 2 branches missed.">			for (String v: value.split(&quot;~&quot;)) {</span>
+<span class="nc bnc" id="L462" title="All 2 branches missed.">				if (matchFunction.compare(m, v) == 0) {</span>
+<span class="nc" id="L463">					return true;</span>
+				}
+			}
+		}
+<span class="nc" id="L467">		return false;</span>
+	}
+	
+	private static int compareNameParts(String value, String match) {
+<span class="nc" id="L471">		String[] values = value.split(&quot;\\^&quot;);</span>
+<span class="nc" id="L472">		String[] matches = match.split(&quot;\\^&quot;);</span>
+<span class="nc bnc" id="L473" title="All 4 branches missed.">		if (values.length &gt; 0 &amp;&amp; matches.length &gt; 0) {</span>
+<span class="nc" id="L474">			int c = compareNameStrings(values[0], matches[0], 3);</span>
+<span class="nc bnc" id="L475" title="All 2 branches missed.">			if (c != 0) return c;</span>
+		}
+<span class="nc bnc" id="L477" title="All 4 branches missed.">		if (values.length &gt; 1 &amp;&amp; matches.length &gt; 1) {</span>
+<span class="nc" id="L478">			int c = compareNameStrings(values[1], matches[1], 3);</span>
+<span class="nc bnc" id="L479" title="All 2 branches missed.">			if (c != 0) return c;</span>
+		} 
+<span class="nc" id="L481">		return 0;</span>
+	}
+
+	private static int compareFirstComponent(String value, String match) {
+<span class="nc" id="L485">		String[] values = value.split(&quot;\\^&quot;);</span>
+<span class="nc" id="L486">		String[] matches = match.split(&quot;\\^&quot;);</span>
+<span class="nc bnc" id="L487" title="All 4 branches missed.">		if (values.length &gt; 0 &amp;&amp; matches.length &gt; 0) {</span>
+<span class="nc" id="L488">			int c = compareNameStrings(values[0], matches[0], 0);</span>
+<span class="nc bnc" id="L489" title="All 2 branches missed.">			if (c != 0) return c;</span>
+		}
+<span class="nc" id="L491">		return 0;</span>
+	}
+
+	private static int comparePhoneNumber(String value, String match) {
+<span class="nc" id="L495">		value = normalizePhoneNumber(value);</span>
+<span class="nc" id="L496">		match = normalizePhoneNumber(match);</span>
+<span class="nc bnc" id="L497" title="All 2 branches missed.">		if (match.isEmpty()) {</span>
+<span class="nc" id="L498">			return 0;</span>
+		}
+<span class="nc" id="L500">		return Strings.CS.compare(value, match);</span>
+	}
+	
+	private static String normalizePhoneNumber(String value) {
+<span class="nc" id="L504">		String[] values = value.split(&quot;\\^&quot;);</span>
+<span class="nc bnc" id="L505" title="All 2 branches missed.">		if (values.length &gt; 1) {</span>
+<span class="nc bnc" id="L506" title="All 2 branches missed.">			if (values.length &gt; 12) {</span>
+<span class="nc" id="L507">				value = values[12];</span>
+<span class="nc bnc" id="L508" title="All 2 branches missed.">			} else if (values.length &gt; 7) {</span>
+<span class="nc" id="L509">				value = values[6] + values[7];</span>
+			}
+		} else {
+<span class="nc" id="L512">			value = values[0];</span>
+		}
+<span class="nc" id="L514">		StringBuilder b = new StringBuilder();</span>
+<span class="nc bnc" id="L515" title="All 2 branches missed.">		for (int i = 0; i &lt; value.length(); i++) {</span>
+<span class="nc" id="L516">			int c = value.charAt(i);</span>
+<span class="nc bnc" id="L517" title="All 4 branches missed.">			if (Character.isDigit(c) || Character.isAlphabetic(c)) {</span>
+<span class="nc" id="L518">				b.append(c);</span>
+			}
+		}
+<span class="nc" id="L521">		value = b.toString();</span>
+<span class="nc bnc" id="L522" title="All 4 branches missed.">		if (value.length() == 10 &amp;&amp; value.startsWith(&quot;1&quot;)) {</span>
+			// remove leading 1
+<span class="nc" id="L524">			value = value.substring(1);</span>
+		}
+<span class="nc" id="L526">		return value;</span>
+	}
+
+	private static int compareNameStrings(String v, String m, int len) {
+<span class="nc bnc" id="L530" title="All 2 branches missed.">		if (m.isEmpty()) {</span>
+<span class="nc" id="L531">			return 0;</span>
+		}
+<span class="nc" id="L533">		int l = Math.min(v.length(), m.length());</span>
+<span class="nc" id="L534">		v = v.toUpperCase().substring(0, l);</span>
+<span class="nc" id="L535">		m = m.toUpperCase().substring(0, l);</span>
+		
+<span class="nc" id="L537">		l = LevenshteinDistance.getDefaultInstance().apply(v, m);</span>
+<span class="nc bnc" id="L538" title="All 2 branches missed.">		return  l &lt; len ? 0 : l;</span>
+	}
+	
+	private static int compareStreetAddress(String v, String m, int len) {
+<span class="nc bnc" id="L542" title="All 2 branches missed.">		if (m.isEmpty()) {</span>
+<span class="nc" id="L543">			return 0;</span>
+		}
+<span class="nc" id="L545">		String[] vParts = splitAlphaNumeric(v);</span>
+<span class="nc" id="L546">		String[] mParts = splitAlphaNumeric(m);</span>
+<span class="nc bnc" id="L547" title="All 2 branches missed.">		int c = mParts[1].isEmpty() ? 0 : Strings.CS.compare(vParts[1], mParts[1]);</span>
+<span class="nc bnc" id="L548" title="All 2 branches missed.">		if (c != 0) {</span>
+<span class="nc" id="L549">			return c;</span>
+		}
+<span class="nc" id="L551">		return compareNameStrings(vParts[0], mParts[0], len);</span>
+	}
+	
+	private static String[] splitAlphaNumeric(String s) {
+<span class="nc" id="L555">		StringBuilder alpha = new StringBuilder();</span>
+<span class="nc" id="L556">		StringBuilder numeric = new StringBuilder();</span>
+<span class="nc bnc" id="L557" title="All 2 branches missed.">		for (int i = 0; i &lt; s.length(); i++) {</span>
+<span class="nc" id="L558">			int c = s.charAt(i);</span>
+<span class="nc bnc" id="L559" title="All 2 branches missed.">			if (Character.isDigit(c)) {</span>
+<span class="nc" id="L560">				numeric.append(c);</span>
+<span class="nc bnc" id="L561" title="All 2 branches missed.">			} else if (Character.isAlphabetic(c)) {</span>
+<span class="nc" id="L562">				alpha.append(c);</span>
+			} else {
+<span class="nc" id="L564">				numeric.append(c);</span>
+<span class="nc" id="L565">				alpha.append(c);</span>
+			}
+		}
+<span class="nc" id="L568">		return new String[] { alpha.toString(), numeric.toString() };</span>
+	}
+
+	private static int compareAddrParts(String value, String match) {
+<span class="nc" id="L572">		String[] values = value.split(&quot;\\^&quot;);</span>
+<span class="nc" id="L573">		String[] matches = match.split(&quot;\\^&quot;);</span>
+		
+		// Compare zip codes.
+<span class="nc bnc" id="L576" title="All 2 branches missed.">		for (int i = 4; i &gt;= 0; i--) {</span>
+<span class="nc bnc" id="L577" title="All 4 branches missed.">			if (matches.length &lt;= i || StringUtils.isEmpty(matches[i])) {</span>
+<span class="nc" id="L578">				continue;</span>
+			}
+<span class="nc bnc" id="L580" title="All 2 branches missed.">			if (values.length &lt;= i) {</span>
+<span class="nc" id="L581">				return -1;</span>
+			}
+<span class="nc" id="L583">			int c = 0;</span>
+<span class="nc bnc" id="L584" title="All 5 branches missed.">			switch (i) {</span>
+			case 4:
+				// Compare zip code
+<span class="nc" id="L587">				String v = values[4];</span>
+<span class="nc" id="L588">				String m = matches[4];</span>
+<span class="nc" id="L589">				int l = Math.min(v.length(), m.length());</span>
+<span class="nc" id="L590">				v = v.substring(0, l);</span>
+<span class="nc" id="L591">				m = m.substring(0, l);</span>
+<span class="nc" id="L592">				c = Strings.CS.compare(v, m);</span>
+<span class="nc" id="L593">				break;</span>
+			case 3:
+				// Compare state
+<span class="nc" id="L596">				c = Strings.CI.compare(values[i], matches[i]);</span>
+<span class="nc" id="L597">				break;</span>
+			case 2:
+				// Compare City
+<span class="nc" id="L600">				c = compareNameStrings(values[i], matches[i], 3);</span>
+<span class="nc" id="L601">				break;</span>
+			case 0:
+				// Compare Street address
+<span class="nc" id="L604">				c = compareStreetAddress(values[0], matches[0], 5);</span>
+<span class="nc" id="L605">				break;</span>
+			default:
+				break;
+			}
+<span class="nc bnc" id="L609" title="All 2 branches missed.">			if (c != 0) {</span>
+<span class="nc" id="L610">				return c;</span>
+			}
+		}
+		
+<span class="nc" id="L614">		return 0;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

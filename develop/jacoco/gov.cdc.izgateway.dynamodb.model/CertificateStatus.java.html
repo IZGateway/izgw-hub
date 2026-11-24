@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CertificateStatus.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.dynamodb.model</a> &gt; <span class="el_source">CertificateStatus.java</span></div><h1>CertificateStatus.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.dynamodb.model;
+
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbConvertedBy;
+import java.io.Serializable;
+import java.security.cert.X509Certificate;
+import java.sql.Timestamp;
+import java.util.Date;
+
+import gov.cdc.izgateway.model.DateConverter;
+import gov.cdc.izgateway.model.DynamoDbAudit;
+import gov.cdc.izgateway.model.DynamoDbEntity;
+import gov.cdc.izgateway.model.ICertificateStatus;
+import gov.cdc.izgateway.utils.X500Utils;
+
+
+/**
+ * This class records status of a given certificate wrt to OCSP checks
+ * 
+ * @author Audacious Inquiry
+ */
+@SuppressWarnings(&quot;serial&quot;)
+@Data
+@EqualsAndHashCode(callSuper=true)
+@DynamoDbBean
+public class CertificateStatus extends DynamoDbAudit implements DynamoDbEntity, Serializable, ICertificateStatus {
+	/** certificateId is the SHA-1 Message Digest of the Certificate
+	 *  It is guaranteed to be unique across all certificates within the
+	 *  limits of the hash function (2^160 possible unique values, resulting 
+	 *  in a very low likelihood of collisions). Serial Number is only guaranteed
+	 *  to be unique within the context of a Certificate Authority.
+	 *  
+	 *  Given we are testing certificates from multiple CAs, we use the certificateId
+	 *  instead of the serial number.
+	 */
+    private String certificateId;
+
+    /** We collect the common name so that if a human needs to track down a problem
+     *  they will have an easier time of it.
+     */
+    private String commonName;
+    
+    /** The serial number of the certificate. */
+    private String certSerialNumber;
+
+    /** The time of the last check. */
+    private Date lastCheckedTimeStamp;
+    /** The time of the next check. */
+    private Date nextCheckTimeStamp;
+    /** The status from the last check. */
+    private String lastCheckStatus;
+
+    @Override
+    public String toString() {
+<span class="nc" id="L57">    	return String.format(&quot;%s(%s) last checked at %tD %tT.%TL: %s&quot;, </span>
+    			commonName, certificateId, lastCheckedTimeStamp, lastCheckedTimeStamp, lastCheckedTimeStamp, lastCheckStatus);
+    }
+    
+    /**
+     * Create a PhizCertificateStatus object representing the current certificate.
+     * @param cert The certificate to initialize from.
+     * @return A PhizCertificateStatus object representing the certificate
+     */
+    public static CertificateStatus create(X509Certificate cert) {
+<span class="nc bnc" id="L67" title="All 2 branches missed.">    	if (cert == null) {</span>
+<span class="nc" id="L68">    		throw new NullPointerException(&quot;cert parameter cannot be null&quot;);</span>
+    	}
+<span class="nc" id="L70">    	return new CertificateStatus(cert);</span>
+    }
+    
+    /**
+     * Create a new CertificateStatus entity
+     */
+<span class="fc" id="L76">    public CertificateStatus() {</span>
+<span class="fc" id="L77">    	setLastCheckStatus(&quot;UNKNOWN&quot;);</span>
+<span class="fc" id="L78">	}</span>
+    /**
+     * Create a new CertificateStatus entity from an existing certificate
+     * @param cert The certificate to copy from
+     */
+<span class="nc" id="L83">    public CertificateStatus(X509Certificate cert) {</span>
+<span class="nc bnc" id="L84" title="All 2 branches missed.">    	if (cert == null) {</span>
+<span class="nc" id="L85">    		throw new NullPointerException(&quot;cert parameter cannot be null&quot;);</span>
+    	}
+<span class="nc" id="L87">    	setLastCheckStatus(&quot;UNKNOWN&quot;);</span>
+<span class="nc" id="L88">		setLastCheckedTimeStamp(new Timestamp(0)); // Start of epoch, effectively never previously checked.</span>
+<span class="nc" id="L89">		setNextCheckTimeStamp(new Timestamp(System.currentTimeMillis() - 100));  // Overdue for a check</span>
+<span class="nc" id="L90">		setCertificateId(ICertificateStatus.computeThumbprint(cert));</span>
+<span class="nc" id="L91">		setCertSerialNumber(cert.getSerialNumber().toString(16));</span>
+<span class="nc" id="L92">		setCommonName(X500Utils.getCommonName(cert));</span>
+<span class="nc" id="L93">    }</span>
+    /**
+     * Create a new CertificateStatus entity from an existing CertificateStatus entity
+     * @param s The certificate status to copy from
+     */
+<span class="nc" id="L98">    public CertificateStatus(ICertificateStatus s) {</span>
+<span class="nc" id="L99">    	setLastCheckStatus(s.getLastCheckStatus());</span>
+<span class="nc" id="L100">    	setLastCheckedTimeStamp(s.getLastCheckedTimeStamp());</span>
+<span class="nc" id="L101">    	setNextCheckTimeStamp(s.getNextCheckTimeStamp());</span>
+<span class="nc" id="L102">    	setCertificateId(s.getCertificateId());</span>
+<span class="nc" id="L103">    	setCertSerialNumber(s.getCertSerialNumber());</span>
+<span class="nc" id="L104">    	setCommonName(s.getCommonName());</span>
+<span class="nc" id="L105">    }</span>
+
+	@Override
+	public String getPrimaryId() {
+<span class="nc" id="L109">		return certificateId;</span>
+	}
+
+	// Add support for timestamps
+    @DynamoDbConvertedBy(DateConverter.class)
+    public Date getLastCheckedTimeStamp() {
+<span class="nc" id="L115">    	return lastCheckedTimeStamp;</span>
+    }
+
+    @DynamoDbConvertedBy(DateConverter.class)
+    public Date getNextCheckTimeStamp() {
+<span class="nc" id="L120">    	return nextCheckTimeStamp;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

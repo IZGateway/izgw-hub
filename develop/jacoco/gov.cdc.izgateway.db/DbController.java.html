@@ -1,0 +1,856 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DbController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.db</a> &gt; <span class="el_source">DbController.java</span></div><h1>DbController.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.db;
+
+import java.io.IOException;
+import java.net.InetAddress;
+import java.text.ParseException;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
+
+import jakarta.annotation.security.RolesAllowed;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import gov.cdc.izgateway.common.BadRequestException;
+import gov.cdc.izgateway.common.ResourceNotFoundException;
+import gov.cdc.izgateway.configuration.DynamoDbConfig;
+import gov.cdc.izgateway.hub.security.ApiKeyPrincipalProvider;
+import gov.cdc.izgateway.db.RefreshQueueService.RefreshRequest;
+import gov.cdc.izgateway.dynamodb.model.Destination;
+import gov.cdc.izgateway.dynamodb.model.MessageHeader;
+import gov.cdc.izgateway.logging.event.EventId;
+import gov.cdc.izgateway.logging.markers.Markers2;
+import gov.cdc.izgateway.model.ICertificateStatus;
+import gov.cdc.izgateway.model.IDestination;
+import gov.cdc.izgateway.model.IEndpointStatus;
+import gov.cdc.izgateway.model.IMessageHeader;
+import gov.cdc.izgateway.repository.IHostRepository;
+import gov.cdc.izgateway.security.AccessControlRegistry;
+import gov.cdc.izgateway.security.Roles;
+import gov.cdc.izgateway.service.IAccessControlService;
+import gov.cdc.izgateway.service.ICertificateStatusService;
+import gov.cdc.izgateway.service.IDestinationService;
+import gov.cdc.izgateway.service.IJurisdictionService;
+import gov.cdc.izgateway.service.IMessageHeaderService;
+import gov.cdc.izgateway.utils.DateUtil;
+import gov.cdc.izgateway.utils.SystemUtils;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+
+import software.amazon.awssdk.enhanced.dynamodb.document.EnhancedDocument;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
+import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
+import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
+
+
+/**
+ * This class provides APIs to manage information in the database.
+ * 
+ * @author Audacious Inquiry
+ *
+ */
+<span class="fc" id="L90">@Slf4j</span>
+@RestController
+@CrossOrigin
+@RolesAllowed({ Roles.ADMIN, Roles.OPERATIONS })
+@RequestMapping({ &quot;/rest&quot;})
+@Lazy(false)
+public class DbController {
+	private static final String JSON_MEDIA_TYPE = &quot;application/json&quot;;
+	private static final String HTTP_STATUS_OK = HttpServletResponse.SC_OK + &quot;&quot;;
+	private static final String HTTP_STATUS_BAD_REQUEST = HttpServletResponse.SC_BAD_REQUEST + &quot;&quot;;
+	private static final String HTTP_STATUS_NOT_FOUND = HttpServletResponse.SC_NOT_FOUND + &quot;&quot;;
+	private static final String MESSAGE_HEADER_INFO_VALUES_DESCRIPTION = &quot;The Message Header information values&quot;;
+	private static final String MESSAGE_HEADER_BY_MSH_DESCRIPTION =
+			&quot;Returns the Message Header Values for HL7 Message for the given MSH3 or MSH4 value&quot;;
+	private static final String HEADER_ID_PATH = &quot;/headers/{id}&quot;;
+	private static final String IDENTIFIER_CANNOT_BE_CHANGED_DESCRIPTION = &quot;The identifier cannot be changed.&quot;;
+	private static final String MAINTENANCE_STATUS_DESCRIPTION = &quot;The maintenance status for of the destination.&quot;;
+	private static final String DESTINATION_DOES_NOT_EXIST_DESCRIPTION = &quot;The destination does not exist&quot;;
+	private static final String MAINTENANCE_ID_PATH = &quot;/maint/{id}&quot;;
+	private static final String DESTINATION_ENTITY_TYPE = &quot;Destination&quot;;
+<span class="fc" id="L110">	private static final long DEFAULT_MAINT_PERIOD = TimeUnit.MINUTES.toMillis(30);</span>
+<span class="fc" id="L111">	private static final String REGION = Objects.toString(System.getenv(&quot;AWS_REGION&quot;), &quot;unknown&quot;);</span>
+
+	/**
+	 * Configuration for the DB Controller.
+	 * 
+	 * @author Audacious Inquiry
+	 */
+	@Configuration
+	@Getter
+	public static class DbControllerConfiguration {
+		private final IMessageHeaderService messageHeaderService;
+		private final IDestinationService destinationService;
+		private final IAccessControlService accessControlService;
+		private final IJurisdictionService jurisdictionService;
+		private final ICertificateStatusService&lt;ICertificateStatus&gt; certificateStatusService;
+		/**
+		 * Construct a new DB Controller Configuration
+		 * 
+		 * @param messageHeaderService	The service supporting message headers
+		 * @param destinationService	The service supporting with destinations
+		 * @param accessControlService	The service supporting access controls
+		 * @param jurisdictionService	The service supporting jurisdictions
+		 * @param certificateStatusService	The service supporting certificate status
+		 */
+		@Autowired
+		public DbControllerConfiguration(
+				final IMessageHeaderService messageHeaderService,
+				final IDestinationService destinationService,
+				final IAccessControlService accessControlService,
+				final IJurisdictionService jurisdictionService,
+				final ICertificateStatusService&lt;ICertificateStatus&gt; certificateStatusService
+<span class="fc" id="L142">				) {</span>
+<span class="fc" id="L143">			this.messageHeaderService = messageHeaderService;</span>
+<span class="fc" id="L144">			this.destinationService = destinationService;</span>
+<span class="fc" id="L145">			this.accessControlService = accessControlService;</span>
+<span class="fc" id="L146">			this.jurisdictionService = jurisdictionService;</span>
+<span class="fc" id="L147">			this.certificateStatusService = certificateStatusService;</span>
+<span class="fc" id="L148">		}</span>
+		
+		/**
+		 * Reload every cached configuration value from the datastore.
+		 * &lt;p&gt;
+		 * Public so that {@link RefreshQueueService} can apply a received refresh command
+		 * without calling back into {@link DbController}. See IGDD-3599.
+		 * &lt;/p&gt;
+		 */
+		public void refresh() {
+<span class="nc" id="L158">			this.messageHeaderService.refresh();</span>
+<span class="nc" id="L159">			this.destinationService.refresh();</span>
+<span class="nc" id="L160">			this.accessControlService.refresh();</span>
+<span class="nc" id="L161">			this.jurisdictionService.refresh();</span>
+<span class="nc" id="L162">			this.certificateStatusService.refresh();</span>
+<span class="nc" id="L163">		}</span>
+	}
+	private final IHostRepository hostService;
+	private final DbControllerConfiguration configuration;
+	/** Cached region for THIS host */
+	private final RefreshQueueService refreshQueueService;
+	private final DynamoDbClient ddbClient;
+	private final String tableName;
+
+	// Local instance rather than an autowired bean: LogController already defines its own
+	// specialized ObjectMapper @Bean (Logstash serialization), and this endpoint's raw-item-to-
+	// JSON conversion has no need to share it -- matches ADSController's existing local
+	// `new ObjectMapper()` precedent for ad hoc JSON handling.
+<span class="fc" id="L176">	private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();</span>
+
+	/**
+	 * Entity types servable via {@link #getDataByType(String)}/{@link #getDataByTypeAndKey(String, String)}.
+	 * An allowlist rather than a denylist of excluded types, so a new entity type introduced later
+	 * (in either this codebase or izg-configuration-console, which shares this table) is 404'd by
+	 * default instead of silently becoming servable.
+	 *
+	 * &lt;p&gt;Includes the 13 types with a Java model in this codebase, plus three written directly by
+	 * izg-configuration-console's TypeScript code with no Java model at all ({@code ApiKeyDomain},
+	 * {@code ApiKeyDomainOwner}, {@code Sender}) -- these are exactly the entity types this endpoint
+	 * exists to make inspectable, since the migration-verification test harness in
+	 * {@code izgw-db-migration} otherwise has no way to check Hub-side data for them.&lt;/p&gt;
+	 *
+	 * &lt;p&gt;Deliberately excludes every audit/change-request entity type sharing this table
+	 * ({@code DestinationChangeRequest}, {@code DestinationAudit}, {@code AllowedUserAudit},
+	 * {@code AccessGroupAudit}, {@code DenyListAudit}, {@code AdsFileTypeAudit}) -- these must never
+	 * be servable via this endpoint.&lt;/p&gt;
+	 */
+<span class="fc" id="L195">	private static final Set&lt;String&gt; ALLOWED_ENTITY_TYPES = Set.of(</span>
+		&quot;AccessControl&quot;, &quot;AccessGroup&quot;, &quot;AllowedUser&quot;, &quot;ApiKeyCredential&quot;, &quot;CertificateStatus&quot;,
+		DESTINATION_ENTITY_TYPE, &quot;DenyListRecord&quot;, &quot;Event&quot;, &quot;EndpointStatus&quot;, &quot;FileType&quot;, &quot;Jurisdiction&quot;,
+		&quot;MessageHeader&quot;, &quot;OrganizationRecord&quot;, &quot;SourceAttackExceptionRecord&quot;,
+		&quot;ApiKeyDomain&quot;, &quot;ApiKeyDomainOwner&quot;, &quot;Sender&quot;
+	);
+
+	/**
+	 * Field names to strip from a raw item before it is returned, keyed by entityType. Extend this
+	 * map when a new sensitive field is found, rather than adding new redact-by-type branches.
+	 *
+	 * &lt;p&gt;{@code Destination.password} is the only field here that is actually secret, and is
+	 * redacted for that reason. {@code Destination.username} and {@code Destination.passExpiry}
+	 * are NOT secrets, but are redacted anyway purely for consistency with the rest of this
+	 * codebase's existing treatment of the three as a set ({@code AbstractDestination.maskCredentials()}
+	 * nulls all three; {@code AbstractDestination} marks all three {@code @JsonIgnore}) -- this
+	 * endpoint bypasses Jackson bean serialization entirely (raw {@code AttributeValue} -&gt;
+	 * {@code EnhancedDocument.toJson()}), so those existing protections don't apply here on their
+	 * own. {@code ApiKeyDomain.challengeUuid} is also redacted, and this one IS a secret: it is the
+	 * DNS TXT domain-ownership challenge token issued while a domain is {@code pending_challenge},
+	 * and leaking it would let someone who does not own the domain complete that domain's ownership
+	 * verification.&lt;/p&gt;
+	 */
+<span class="fc" id="L218">	private static final Map&lt;String, Set&lt;String&gt;&gt; REDACTED_FIELDS = Map.of(</span>
+<span class="fc" id="L219">		DESTINATION_ENTITY_TYPE, Set.of(&quot;password&quot;, &quot;username&quot;, &quot;passExpiry&quot;),</span>
+<span class="fc" id="L220">		&quot;ApiKeyDomain&quot;, Set.of(&quot;challengeUuid&quot;)</span>
+	);
+
+	/**
+	 * Construct a new DBController class.
+	 *
+	 * @param hostService	The service use to access running hosts
+	 * @param config	The configuration providing access to db services
+	 * @param registry	The access control registry managing these APIs
+	 * @param refreshQueueService	The service that sends refresh requests to the other instances
+	 * @param ddbClient	The raw DynamoDB client, used for the generic entity-type read endpoint
+	 * @param ddbConfig	The DynamoDB configuration, used to resolve the table name
+	 */
+	@Autowired
+	public DbController(
+		IHostRepository hostService,
+		DbControllerConfiguration config,
+		AccessControlRegistry registry,
+		RefreshQueueService refreshQueueService,
+		DynamoDbClient ddbClient,
+		DynamoDbConfig ddbConfig
+<span class="fc" id="L241">	) {</span>
+<span class="fc" id="L242">		this.hostService = hostService;</span>
+<span class="fc" id="L243">		this.configuration = config;</span>
+<span class="fc" id="L244">		this.refreshQueueService = refreshQueueService;</span>
+<span class="fc" id="L245">		this.ddbClient = ddbClient;</span>
+<span class="fc" id="L246">		this.tableName = ddbConfig.getDynamodbTable();</span>
+<span class="fc" id="L247">		registry.register(this);</span>
+<span class="fc" id="L248">	}</span>
+	
+	/**
+	 * Refresh the configuration from the database.
+	 */
+	protected void refresh() {
+<span class="nc" id="L254">		configuration.refresh();</span>
+<span class="nc" id="L255">	}</span>
+	/**
+	 * Report on content in the MessageHeader records in the system configuration.
+	 * 
+	 * @param include	The list of headers headers to match
+	 * @return	A map containing the header information.
+	 */
+	@Operation(summary = &quot;Get Message Header Info entries&quot;,
+			description = &quot;Returns the Message Header Values for HL7 Message for all endpoints&quot;)
+	@ApiResponse(responseCode = HTTP_STATUS_OK, description = MESSAGE_HEADER_INFO_VALUES_DESCRIPTION,
+	    content = @Content(mediaType = JSON_MEDIA_TYPE,
+	     schema = @Schema(implementation = MessageHeader.Map.class))
+	)
+	@GetMapping(&quot;/headers&quot;)
+	public IMessageHeader.Map getMessageHeaders(@RequestParam(defaultValue = &quot;&quot;) String include) {
+<span class="nc" id="L270">		IMessageHeader.Map result = new IMessageHeader.Map();</span>
+<span class="nc" id="L271">		Stream&lt;IMessageHeader&gt; all = configuration.getMessageHeaderService().getAllMessageHeaders().stream();</span>
+<span class="nc bnc" id="L272" title="All 2 branches missed.">		if (!StringUtils.isEmpty(include)) {</span>
+<span class="nc" id="L273">			List&lt;String&gt; includes = Arrays.asList(include.split(&quot;[\\s,;]+&quot;));</span>
+<span class="nc" id="L274">			all = all.filter(h -&gt; includes.contains(h.getMsh()));</span>
+		}
+<span class="nc" id="L276">		all.forEach(h -&gt; result.put(h.getMsh(), h));</span>
+<span class="nc" id="L277">		return result;</span>
+	}
+
+	/**
+	 * Get Message Header Info entry for a given endpoint
+	 * 
+	 * @param id The MSH3 or MSH4 value to retrieve an entry for
+	 * @return	The message header record for the specified MSH value.
+	 */
+	@Operation(summary = &quot;Get Message Header Info entry for a given endpoint&quot;,
+			description = MESSAGE_HEADER_BY_MSH_DESCRIPTION)
+	@ApiResponse(responseCode = HTTP_STATUS_OK, description = MESSAGE_HEADER_INFO_VALUES_DESCRIPTION,
+	    content = @Content(mediaType = JSON_MEDIA_TYPE,
+	     schema = @Schema(implementation = MessageHeader.class))
+	)
+	@ApiResponse(responseCode = HTTP_STATUS_NOT_FOUND, description = &quot;No MSH3 or MSH4 entry exists for the specified value&quot;,
+		content = @Content)
+	@GetMapping(HEADER_ID_PATH)
+	public IMessageHeader getMessageHeadersById(
+			@Schema(description = &quot;The MSH3 or MSH4 value to retrieve an entry for&quot;)
+			@PathVariable String id) {
+<span class="nc" id="L298">		IMessageHeader.Map l = getMessageHeaders(id);</span>
+<span class="nc bnc" id="L299" title="All 4 branches missed.">		if (l.isEmpty() || !l.containsKey(id)) {</span>
+<span class="nc" id="L300">			throw new ResourceNotFoundException(&quot;Resource &quot; + id + &quot; not found&quot;);</span>
+		}
+<span class="nc" id="L302">		return l.get(id);</span>
+	}
+
+	/**
+	 * Update the facility ID, username and password of a message header record.
+	 * @param id The MSH-3 or MSH-4 value of the record.
+	 * @param newValues The new values. The MSH value must be the same as {@code id}.
+	 * @return The updated message header record.
+	 */
+	@Operation(summary = &quot;Update the username and password for the specified MSH-3 value&quot;,
+			description = MESSAGE_HEADER_BY_MSH_DESCRIPTION)
+	@ApiResponse(responseCode = HTTP_STATUS_OK, description = MESSAGE_HEADER_INFO_VALUES_DESCRIPTION,
+	    content = @Content(mediaType = JSON_MEDIA_TYPE,
+	     schema = @Schema(implementation = MessageHeader.class))
+	)
+	@ApiResponse(responseCode = HTTP_STATUS_BAD_REQUEST, description = IDENTIFIER_CANNOT_BE_CHANGED_DESCRIPTION,
+		content = @Content)
+	@PostMapping(HEADER_ID_PATH)
+	public IMessageHeader setMessageHeadersById(@PathVariable String id, @RequestBody MessageHeader newValues) {
+		IMessageHeader old;
+<span class="nc" id="L322">		old = getMessageHeadersById(id);</span>
+<span class="nc bnc" id="L323" title="All 2 branches missed.">		if (!id.equals(newValues.getMsh())) {</span>
+<span class="nc" id="L324">			throw new BadRequestException(String.format(&quot;Identifier (%s) does not match %s&quot;, newValues.getMsh(), id));</span>
+		}
+
+		// Copy only what can be changed. This cannot create a new MessageHeaderInfo
+		// just yet. That should be reserved for Config Console.
+<span class="nc" id="L329">		old.setFacilityId(newValues.getFacilityId());</span>
+<span class="nc" id="L330">		old.setUsername(newValues.getUsername());</span>
+<span class="nc" id="L331">		old.setPassword(newValues.getPassword());</span>
+
+<span class="nc" id="L333">		return configuration.getMessageHeaderService().saveAndFlush(old);</span>
+	}
+	
+	/**
+	 * Delete a message header record.
+	 * @param id The MSH-3 or MSH-4 value of the record.
+	 * @return The deleted message header record.
+	 */
+	@Operation(summary = &quot;Delete the header record for the specified MSH-3 value&quot;,
+			description = &quot;Deletes the Message Header and username password values for HL7 Message for the given MSH3 or MSH4 value&quot;)
+	@ApiResponse(responseCode = &quot;200&quot;, description = &quot;The deleted message Header information values&quot;, 
+	    content = @Content(mediaType = &quot;application/json&quot;, 
+	     schema = @Schema(implementation = MessageHeader.class))
+	)
+	@ApiResponse(responseCode = HTTP_STATUS_NOT_FOUND, description = &quot;The header record cannot be found.&quot;, content = @Content)
+	@DeleteMapping(HEADER_ID_PATH)
+	public IMessageHeader deleteMessageHeadersById(@PathVariable String id) {
+<span class="nc" id="L350">		refresh();</span>
+<span class="nc" id="L351">		IMessageHeader old = getMessageHeadersById(id);</span>
+<span class="nc" id="L352">		configuration.getMessageHeaderService().delete(id);</span>
+<span class="nc" id="L353">		return old;</span>
+	}
+	
+	/**
+	 * Create a message header record.
+	 * The record must not exist, and its destination must exist.
+	 * @param newValues The values of the new record.
+	 * @return The created message header record.
+	 */
+	@Operation(summary = &quot;Create a header mapping, setting the username and password for the specified MSH-3 value&quot;,
+			description = MESSAGE_HEADER_BY_MSH_DESCRIPTION)
+	@ApiResponse(responseCode = &quot;201&quot;, description = &quot;The created Message Header information values&quot;, 
+	    content = @Content(mediaType = JSON_MEDIA_TYPE,
+	     schema = @Schema(implementation = MessageHeader.class))
+	)
+	@ApiResponse(responseCode = HTTP_STATUS_BAD_REQUEST, description = IDENTIFIER_CANNOT_BE_CHANGED_DESCRIPTION, content = @Content)
+	@PutMapping(&quot;/headers&quot;)
+	@ResponseStatus(HttpStatus.CREATED)
+	public IMessageHeader createMessageHeadersById(@RequestBody MessageHeader newValues) {
+		try {
+			@SuppressWarnings(&quot;unused&quot;)
+<span class="nc" id="L374">			IMessageHeader old = getMessageHeadersById(newValues.getMsh());</span>
+<span class="nc" id="L375">			throw new BadRequestException(String.format(&quot;A Message Header already exists for %s&quot;, newValues.getMsh()));</span>
+<span class="nc" id="L376">		} catch (ResourceNotFoundException ignored) {</span>
+			// We expect it to be not found.
+		} 
+		// Don't allow a MessageHeader record to reference a non-existant destination.
+<span class="nc" id="L380">		IDestination dest = configuration.getDestinationService().findByDestId(newValues.getDestId());</span>
+<span class="nc bnc" id="L381" title="All 2 branches missed.">		if (dest == null) {</span>
+<span class="nc" id="L382">			throw new ResourceNotFoundException(String.format(&quot;Destination %s does not exist&quot;, newValues.getDestId()));</span>
+		}
+		
+<span class="nc" id="L385">		return configuration.getMessageHeaderService().saveAndFlush(newValues);</span>
+	}
+
+	/**
+	 * Refresh the configuration and report the configuration of all destinations.
+	 * @return A map of safe copies of the destinations, keyed by destination ID.
+	 */
+	@Operation(summary = &quot;Report the configuration for all endpoints&quot;,
+			description = &quot;Returns configuration for all endpoints&quot;)
+	@ApiResponse(responseCode = HTTP_STATUS_OK, description = MESSAGE_HEADER_INFO_VALUES_DESCRIPTION,
+	    content = @Content(mediaType = JSON_MEDIA_TYPE,
+	     schema = @Schema(implementation = IDestination.Map.class))
+	)
+	@ApiResponse(responseCode = HTTP_STATUS_BAD_REQUEST, description = IDENTIFIER_CANNOT_BE_CHANGED_DESCRIPTION,
+		content = @Content)
+	@GetMapping(&quot;/config&quot;)
+	public IDestination.Map getConfig() {
+<span class="nc" id="L402">		refresh();</span>
+<span class="nc" id="L403">		List&lt;IDestination&gt; l = configuration.getDestinationService().getAllDestinations();</span>
+<span class="nc" id="L404">		IDestination.Map l2 = new Destination.Map();</span>
+<span class="nc" id="L405">		l.forEach(d -&gt; l2.put(d.getDestId(), d.safeCopy()));</span>
+<span class="nc" id="L406">		return l2;</span>
+	}
+
+	/**
+	 * Report the configuration of one destination.
+	 * @param id The destination ID.
+	 * @return A safe copy of the destination.
+	 */
+	@Operation(summary = &quot;Report the configuration for the specified endpoint&quot;,
+			description = &quot;Returns configuration for the specified endpoint&quot;)
+	@ApiResponse(responseCode = HTTP_STATUS_OK, description = &quot;The endpoint configuration&quot;,
+	    content = @Content(mediaType = JSON_MEDIA_TYPE,
+	     schema = @Schema(implementation = Destination.class))
+	)
+	@ApiResponse(responseCode = HTTP_STATUS_NOT_FOUND, description = &quot;The endpoint does not exist.&quot;,
+		content = @Content)
+	@GetMapping(&quot;/config/{id}&quot;)
+	public IDestination getConfigById(
+			@Schema(description=&quot;The endpoint to report the configuration for&quot;)
+			@PathVariable String id) {
+<span class="nc" id="L426">		IDestination d = configuration.getDestinationService().findByDestId(id);</span>
+<span class="nc bnc" id="L427" title="All 2 branches missed.">		if (d == null) {</span>
+<span class="nc" id="L428">			throw destinationNotFound(id);</span>
+		}
+<span class="nc" id="L430">		return d.safeCopy();</span>
+	}
+
+	@SuppressWarnings(&quot;serial&quot;)
+	private static class HostMap extends TreeMap&lt;String, String&gt; {}
+	/**
+	 * Refresh the configuration on this instance, and on every other instance when {@code all} is true.
+	 * @param all If {@code &quot;true&quot;}, also send the refresh to every other instance.
+	 * @param reset If true, also reset the circuit breakers.
+	 * @param jti The ID of an API key credential to evict from the credential cache, or null.
+	 * @return The refresh outcome for each instance, keyed {@code region:hostname}.
+	 */
+	@Operation(summary = &quot;Refresh host setup from the database&quot;,
+			description = &quot;Refresh the current or all instances.  Returns refresh status for each instance refreshed.&quot;)
+	@ApiResponse(responseCode = HTTP_STATUS_OK, description = &quot;A map indicating the refresh status for each host.&quot;,
+	    content = @Content(mediaType = JSON_MEDIA_TYPE,
+	     	schema = @Schema(implementation=HostMap.class)
+	    )
+	)
+	@ApiResponse(responseCode = HTTP_STATUS_NOT_FOUND, description = &quot;The endpoint does not exist.&quot;,
+		content = @Content)
+  	@GetMapping(&quot;/refresh&quot;)
+	@RolesAllowed({ Roles.ADMIN, Roles.INTERNAL })
+	public HostMap getRefreshed(
+      @Parameter(description = &quot;If true, also refresh all other instances. Otherwise refresh only the current instance.&quot;, required = false)
+      @RequestParam(name = &quot;all&quot;, defaultValue = &quot;false&quot;) String all,
+      @Parameter(description = &quot;If true, reset circuit breakers as well.&quot;, required = false)
+      @RequestParam(name = &quot;reset&quot;, defaultValue = &quot;false&quot;) boolean reset,
+      @Parameter(description = &quot;If provided, evict this specific API key jti from the credential cache on all instances.&quot;, required = false)
+      @RequestParam(name = &quot;jti&quot;, required = false) String jti
+	) {
+<span class="fc" id="L461">      HostMap results = new HostMap();</span>
+<span class="fc" id="L462">      String me = RefreshQueueService.myHostName();</span>
+<span class="fc" id="L463">      String eventId = MDC.get(EventId.EVENTID_KEY);</span>
+      // Apply on this instance through the same method the remote instances use, so the
+      // serving instance reports a real outcome and writes the same COMMAND_APPLIED
+      // record they do. Calling /rest/reset over HTTP would recurse once that endpoint
+      // distributes. IGDD-3599.
+<span class="fc" id="L468">      String applied = refreshQueueService.applyLocally(</span>
+         new RefreshRequest(reset, eventId, me, REGION, jti, true, null));
+<span class="fc bfc" id="L470" title="All 2 branches covered.">      results.put(REGION + &quot;:&quot; + me, &quot;OK&quot;.equals(applied) ? &quot;OK (Local)&quot; : applied);</span>
+<span class="fc bfc" id="L471" title="All 2 branches covered.">      if (Boolean.parseBoolean(all)) {</span>
+<span class="fc" id="L472">         refreshQueueService.distribute(new RefreshRequest(reset, eventId, me, REGION, jti), results);</span>
+      }
+<span class="fc" id="L474">      return results;</span>
+    }
+
+	// resetEndpoint and callEndpoint were removed by IGDD-3599. They posted to this
+	// instance's own /rest/reset over HTTPS, which failed on every host: the default
+	// HttpURLConnection method is GET, and /rest/reset is registered for POST only, so
+	// AccessControlValve rejected it as an unknown path. Both call sites discarded the
+	// result and reported OK. Commands are now applied in process by
+	// RefreshQueueService.applyLocally.
+
+	/**
+	 * Report the running host instances and their regions.
+	 * @param local If true, return only hosts that resolve and are in this region. If false, return only
+	 * hosts that do not resolve, without this instance. If null, return all hosts.
+	 * @return A list of {@code hostname:region} values.
+	 */
+	@Operation(summary = &quot;Report the running host instances and their regions.&quot;,
+			description = &quot;Refresh the list of running hosts.  Returns a list of hostname:region values.&quot;)
+	@ApiResponse(responseCode = HTTP_STATUS_OK, description = &quot;a list of hostname:region values&quot;,
+	    content = @Content(
+			mediaType = JSON_MEDIA_TYPE,
+	    		array = @ArraySchema(schema = @Schema(implementation = String.class))
+	    )
+	)
+	@GetMapping(&quot;/hosts&quot;)
+	public List&lt;String&gt; getRunningHosts2(
+		@Parameter(required=false, 
+			description=&quot;If true, return only locally accessible hosts, if false, return only non-locally accessible hosts, if omitted return all hosts.&quot;)
+		@RequestParam(name = &quot;local&quot;, required = false) Boolean local) {
+		
+		// A read failure throws HostDiscoveryException and ends this request. Reporting
+		// only the local host would describe a one-instance fleet that does not exist.
+		// IGDD-3599.
+<span class="nc" id="L507">		Map&lt;String, String&gt; m = hostService.getHostsAndRegion();</span>
+
+<span class="nc bnc" id="L509" title="All 2 branches missed.">		for (Iterator&lt;Map.Entry&lt;String, String&gt;&gt; i = m.entrySet().iterator(); i.hasNext();) {</span>
+<span class="nc" id="L510">			filterHosts(local, i); </span>
+		}
+<span class="nc bnc" id="L512" title="All 2 branches missed.">		if (Boolean.FALSE.equals(local)) {</span>
+			// Remove this server 
+<span class="nc" id="L514">			m.remove(RefreshQueueService.myHostName());</span>
+		} else {
+			// Include this server (overwrites data from repository with locally known data) 
+<span class="nc" id="L517">			m.put(RefreshQueueService.myHostName(), REGION);</span>
+		}
+<span class="nc" id="L519">		return m.entrySet().stream().map(e -&gt; e.getKey() + &quot;:&quot; + e.getValue()).toList();</span>
+	}
+
+	/**
+	 * Filter hosts based on local parameter
+	 * @param local If true, keep only hosts in the same region, if false, keep only hosts in other regions, if null, keep all
+	 * @param i The iterator to filter out entries from
+	 */
+	private void filterHosts(Boolean local, Iterator&lt;Map.Entry&lt;String, String&gt;&gt; i) {
+<span class="nc" id="L528">		Map.Entry&lt;String, String&gt; e = i.next();</span>
+<span class="nc bnc" id="L529" title="All 4 branches missed.">		if (e.getValue() == null || e.getValue().isEmpty()) {</span>
+<span class="nc" id="L530">			i.remove();</span>
+<span class="nc bnc" id="L531" title="All 2 branches missed.">		} else if (Boolean.TRUE.equals(local)) {</span>
+			try {
+				// This will throw an exception if not locally reachable
+<span class="nc" id="L534">				InetAddress.getAllByName(e.getKey());</span>
+				// If the region doesn't match ours, remove it
+<span class="nc bnc" id="L536" title="All 2 branches missed.">				if (!REGION.equals(e.getValue())) {</span>
+<span class="nc" id="L537">					i.remove();</span>
+				}
+<span class="nc" id="L539">			} catch (Exception ex) {</span>
+				// Log and remove it
+<span class="nc" id="L541">				log.warn(Markers2.append(ex), &quot;Could not resolve host {}: {}&quot;, e.getKey(), ex.getMessage());</span>
+<span class="nc" id="L542">				i.remove();</span>
+<span class="nc" id="L543">			}</span>
+<span class="nc bnc" id="L544" title="All 2 branches missed.">		} else if (Boolean.FALSE.equals(local)) {</span>
+			// Remove any that are locally reachable
+			try {
+				// This will throw an exception if not locally reachable
+<span class="nc" id="L548">				InetAddress.getAllByName(e.getKey());</span>
+<span class="nc" id="L549">				i.remove();</span>
+<span class="nc" id="L550">			} catch (Exception ex) {</span>
+				// Ignore it
+<span class="nc" id="L552">			}</span>
+		}
+<span class="nc" id="L554">	}</span>
+	
+	/**
+	 * Return status of all destinations scheduled for maintenance
+	 * 
+	 * @return The status of all destinations scheduled for maintenance
+	 */
+	@Operation(summary = &quot;Report status of all destinations scheduled for maintenance&quot;,
+			description = &quot;Returns all destinations scheduled for maintenance.&quot;)
+	@ApiResponse(responseCode = HTTP_STATUS_OK, description = &quot;A map indicating the maintenance status for each destination.&quot;,
+	    content = @Content(
+			mediaType = JSON_MEDIA_TYPE,
+	    		schema = @Schema(implementation = IDestination.Map.class)
+	    )
+	)
+	@GetMapping(&quot;/maint&quot;)
+	public IDestination.Map getMaintenance() {
+<span class="nc" id="L571">		IDestination.Map result = new Destination.Map();</span>
+<span class="nc" id="L572">		IDestination.Map m = getConfig();</span>
+
+<span class="nc bnc" id="L574" title="All 2 branches missed.">		for (IDestination d : m.values()) {</span>
+<span class="nc bnc" id="L575" title="All 2 branches missed.">			if (!StringUtils.isEmpty(d.getMaintReason())) {</span>
+<span class="nc" id="L576">				d = d.safeCopy();</span>
+<span class="nc" id="L577">				result.put(d.getDestId(), d);</span>
+			}
+<span class="nc" id="L579">		}</span>
+<span class="nc" id="L580">		return result;</span>
+	}
+
+	/**
+	 * Report the maintenance status of one destination.
+	 * @param id The destination ID.
+	 * @return A safe copy of the destination, with its maintenance fields.
+	 */
+	@Operation(summary = &quot;Report the maintenance status of specified destination&quot;,
+			description = &quot;Returns maintenance status of the specified destination.&quot;)
+	@ApiResponse(responseCode = HTTP_STATUS_OK, description = MAINTENANCE_STATUS_DESCRIPTION,
+	    content = @Content(
+			mediaType = JSON_MEDIA_TYPE,
+	    		schema = @Schema(implementation = Destination.class)
+	    )
+	)
+	@ApiResponse(responseCode = HTTP_STATUS_NOT_FOUND, description = DESTINATION_DOES_NOT_EXIST_DESCRIPTION, content = @Content)
+	@GetMapping(MAINTENANCE_ID_PATH)
+	public IDestination getMaintenance(
+		@Parameter(description=&quot;The destination to check the maintenance status of&quot;)
+		@PathVariable String id
+	) {
+<span class="nc" id="L602">		return getConfigById(id);</span>
+	}
+
+	/**
+	 * Set the maintenance period and reason of a destination, then refresh all instances.
+	 * @param id The destination ID.
+	 * @param start The start timestamp, or null to start now.
+	 * @param end The end timestamp, null to end 30 minutes after the start, or {@code none} for no end.
+	 * @param reason The reason for maintenance. The value {@code default} uses the standard reason.
+	 * @return A safe copy of the updated destination.
+	 */
+	@Operation(summary = &quot;Update the maintenance status of specified destination&quot;,
+			description = &quot;Updates the maintenance status and returns it for specified destination.&quot;)
+	@ApiResponse(responseCode = HTTP_STATUS_OK, description = MAINTENANCE_STATUS_DESCRIPTION,
+	    content = @Content(
+			mediaType = JSON_MEDIA_TYPE,
+	    		schema = @Schema(implementation = Destination.class)
+	    )
+	)
+	@ApiResponse(responseCode = HTTP_STATUS_NOT_FOUND, description = DESTINATION_DOES_NOT_EXIST_DESCRIPTION, content = @Content)
+	@PostMapping(MAINTENANCE_ID_PATH)
+	public IDestination setMaintenance(
+			@Parameter(description=&quot;The destination to update the maintenance status for&quot;)
+			@PathVariable String id,
+			@Parameter(description = &quot;The requested start timestamp, if omitted, start now.&quot;, required = false)
+			@RequestParam(required = false) String start, 
+			@Parameter(description = &quot;The requested end timestamp, if omitted, end 30 minutes after start.&quot;
+					+ &quot; To make this unspecified, use end=none.&quot;, 
+				required = false)
+			@RequestParam(required = false) String end,
+			@Parameter(description = &quot;The Reason for maintenance&quot;, required = true)
+			@RequestParam(required = true) String reason) {
+		
+		// Force refresh to be certain of using latest data.
+<span class="nc" id="L636">		configuration.getDestinationService().refresh();</span>
+<span class="nc" id="L637">		IDestination dest = configuration.getDestinationService().findByDestId(id);</span>
+<span class="nc bnc" id="L638" title="All 2 branches missed.">		if (dest == null) {</span>
+<span class="nc" id="L639">			throw new ResourceNotFoundException(DESTINATION_ENTITY_TYPE + &quot; &quot; + id + &quot; uknown.&quot;);</span>
+		}
+<span class="nc" id="L641">		Date now = new Date();</span>
+		// If start not present, treat it as now
+<span class="nc" id="L643">		Date startDate = ObjectUtils.getIfNull(getDateParameter(start, &quot;Start&quot;), now);</span>
+<span class="nc" id="L644">		start = String.format(&quot;%tc&quot;, startDate);</span>
+		Date endDate;
+<span class="nc bnc" id="L646" title="All 2 branches missed.">		if (&quot;none&quot;.equalsIgnoreCase(end)) {</span>
+<span class="nc" id="L647">			endDate = null;</span>
+		} else {
+			// If end not present, use default maintenance duration
+<span class="nc" id="L650">			endDate = ObjectUtils.getIfNull(getDateParameter(end, &quot;End&quot;), new Date(startDate.getTime() + DEFAULT_MAINT_PERIOD));</span>
+<span class="nc" id="L651">			end = String.format(&quot;%tc&quot;, endDate);</span>
+		}
+
+
+<span class="nc bnc" id="L655" title="All 2 branches missed.">		if (StringUtils.isBlank(reason)) {</span>
+<span class="nc" id="L656">			throw new IllegalArgumentException(&quot;Reason cannot be empty or blank for Maintenance&quot;);</span>
+		}
+
+<span class="nc bnc" id="L659" title="All 2 branches missed.">		if (&quot;default&quot;.equalsIgnoreCase(reason)) {</span>
+<span class="nc" id="L660">			reason = IEndpointStatus.UNDER_MAINTENANCE;</span>
+		}
+
+<span class="nc bnc" id="L663" title="All 2 branches missed.">		if (endDate != null) {</span>
+<span class="nc bnc" id="L664" title="All 2 branches missed.">			if (endDate.before(startDate)) {</span>
+<span class="nc" id="L665">				throw new IllegalArgumentException(</span>
+<span class="nc" id="L666">						String.format(&quot;Start (%s) must be before End (%s) in Maintenance Period&quot;, start, end));</span>
+			}
+<span class="nc bnc" id="L668" title="All 2 branches missed.">			if (endDate.before(now)) {</span>
+<span class="nc" id="L669">				throw new IllegalArgumentException(</span>
+<span class="nc" id="L670">						String.format(&quot;End (%tc) must be after now (%tc) in Maintenance Period&quot;, endDate, now));</span>
+			}
+		}
+<span class="nc" id="L673">		dest.setMaintReason(reason);</span>
+<span class="nc" id="L674">		dest.setMaintStart(startDate);</span>
+<span class="nc" id="L675">		dest.setMaintEnd(endDate);</span>
+
+<span class="nc" id="L677">		configuration.getDestinationService().saveAndFlush(dest);</span>
+		// Refresh other services.
+<span class="nc" id="L679">		getRefreshed(Boolean.TRUE.toString(), false, null);</span>
+<span class="nc" id="L680">		return getConfigById(id);</span>
+	}
+
+	private Date getDateParameter(String start, String name) {
+		Date startDate;
+		try {
+<span class="nc bnc" id="L686" title="All 2 branches missed.">			startDate = StringUtils.isEmpty(start) ? null : DateUtil.parseDate(start);</span>
+<span class="nc" id="L687">		} catch (ParseException pex) {</span>
+<span class="nc" id="L688">			throw new IllegalArgumentException(String.format(&quot;%s (%s) is not a valid value&quot;, name, start));</span>
+<span class="nc" id="L689">		}</span>
+<span class="nc" id="L690">		return startDate;</span>
+	}
+
+	/**
+	 * Clear the maintenance status of a destination, then refresh all instances.
+	 * @param id The destination ID.
+	 * @return A safe copy of the updated destination.
+	 */
+	@Operation(summary = &quot;Clear the maintenance status of specified destination&quot;,
+			description = &quot;Clear the maintenance status and returns it for specified destination.&quot;)
+	@ApiResponse(responseCode = HTTP_STATUS_OK, description = MAINTENANCE_STATUS_DESCRIPTION,
+	    content = @Content(
+			mediaType = JSON_MEDIA_TYPE,
+	    		schema = @Schema(implementation = Destination.class)
+	    )
+	)
+	@ApiResponse(responseCode = HTTP_STATUS_NOT_FOUND, description = DESTINATION_DOES_NOT_EXIST_DESCRIPTION, content = @Content)
+	@DeleteMapping(MAINTENANCE_ID_PATH)
+	public IDestination clearMaintenance(
+		@Parameter(description=&quot;The destination to clear the maintenance status for&quot;)
+		@PathVariable String id
+	) {
+		// Force refresh to be certain of using latest data.
+<span class="nc" id="L713">		configuration.getDestinationService().refresh();</span>
+<span class="nc" id="L714">		IDestination dest = configuration.getDestinationService().findByDestId(id);</span>
+<span class="nc bnc" id="L715" title="All 2 branches missed.">		if (dest == null) {</span>
+<span class="nc" id="L716">			throw new ResourceNotFoundException(DESTINATION_ENTITY_TYPE + &quot; &quot; + id + &quot; uknown.&quot;);</span>
+		}
+<span class="nc" id="L718">		dest.setMaintReason(null);</span>
+<span class="nc" id="L719">		dest.setMaintStart(null);</span>
+<span class="nc" id="L720">		dest.setMaintEnd(null);</span>
+<span class="nc" id="L721">		configuration.getDestinationService().saveAndFlush(dest);</span>
+		// Refresh other services.
+<span class="nc" id="L723">		getRefreshed(Boolean.TRUE.toString(), false, null);</span>
+<span class="nc" id="L724">		return getConfigById(id);</span>
+	}
+
+	private ResourceNotFoundException destinationNotFound(String id) {
+<span class="nc" id="L728">		return notFound(DESTINATION_ENTITY_TYPE, id);</span>
+	}
+
+	private ResourceNotFoundException notFound(String what, String id) {
+<span class="nc" id="L732">		return new ResourceNotFoundException(String.format(&quot;%s %s not found.&quot;, what, id));</span>
+	}
+
+	/**
+	 * Report all DynamoDB items of an entity type. Only entity types in the allowlist are served.
+	 * Fields that hold secrets are removed.
+	 * @param entityType The entity type.
+	 * @return A map of the items, keyed by sort key.
+	 */
+	@Operation(summary = &quot;Report all entities of the specified type&quot;,
+			description = &quot;Returns every DynamoDB item of the given entity type, keyed by sortKey. &quot;
+					+ &quot;Only entity types in a fixed allowlist are servable; audit/change-request &quot;
+					+ &quot;entity types are never returned. Destination items never include &quot;
+					+ &quot;password/username/passExpiry.&quot;)
+	@ApiResponse(responseCode = HTTP_STATUS_OK, description = &quot;A map of sortKey to the item at that key.&quot;,
+		content = @Content(mediaType = JSON_MEDIA_TYPE))
+	@ApiResponse(responseCode = HTTP_STATUS_NOT_FOUND, description = &quot;The entity type is unknown or not servable via this API.&quot;,
+		content = @Content)
+	@GetMapping(&quot;/data/{entityType}&quot;)
+	@RolesAllowed(Roles.ADMIN)
+	public Map&lt;String, Object&gt; getDataByType(
+			@Schema(description = &quot;The DynamoDB entity type to retrieve, e.g. AllowedUser or ApiKeyDomain&quot;)
+			@PathVariable String entityType) {
+<span class="nc" id="L755">		requireAllowedType(entityType);</span>
+<span class="nc" id="L756">		Map&lt;String, Object&gt; result = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc" id="L757">		QueryRequest request = QueryRequest.builder()</span>
+<span class="nc" id="L758">				.tableName(tableName)</span>
+<span class="nc" id="L759">				.keyConditionExpression(&quot;entityType = :et&quot;)</span>
+<span class="nc" id="L760">				.expressionAttributeValues(Map.of(&quot;:et&quot;, AttributeValue.fromS(entityType)))</span>
+<span class="nc" id="L761">				.build();</span>
+		// queryPaginator transparently walks every LastEvaluatedKey continuation -- no manual
+		// pagination loop needed (see ApiKeyCredentialRepository#findAll for the same pattern).
+<span class="nc bnc" id="L764" title="All 2 branches missed.">		for (QueryResponse page : ddbClient.queryPaginator(request)) {</span>
+<span class="nc bnc" id="L765" title="All 2 branches missed.">			for (Map&lt;String, AttributeValue&gt; item : page.items()) {</span>
+<span class="nc" id="L766">				result.put(item.get(&quot;sortKey&quot;).s(), toJsonObject(redact(entityType, item)));</span>
+<span class="nc" id="L767">			}</span>
+<span class="nc" id="L768">		}</span>
+<span class="nc" id="L769">		return result;</span>
+	}
+
+	// Almost every real sortKey in this table is &quot;#&quot;-delimited (e.g. Destination's
+	// &quot;{destTypeId}#{destId}&quot;, AllowedUser's &quot;{environment}#{destinationId}#{principal}&quot;), and an
+	// unencoded &quot;#&quot; in a URL path starts a fragment rather than being sent to the server, so a
+	// caller sends &quot;!&quot; in its place and this substitutes it back before building the DynamoDB key.
+	// Chosen over &quot;_&quot;/&quot;-&quot; because those legitimately appear inside real key field values (e.g.
+	// domain names); &quot;!&quot; does not collide with anything currently stored.
+	private static final char SORT_KEY_PATH_SUBSTITUTE = '!';
+	private static final char SORT_KEY_REAL_DELIMITER = '#';
+
+	/**
+	 * Report one DynamoDB item. Only entity types in the allowlist are served.
+	 * Fields that hold secrets are removed.
+	 * @param entityType The entity type.
+	 * @param sortKey The sort key. Use {@code !} in place of each {@code #}.
+	 * @return The item.
+	 */
+	@Operation(summary = &quot;Report the specified entity&quot;,
+			description = &quot;Returns the single DynamoDB item for the given entity type and sortKey. &quot;
+					+ &quot;Only entity types in a fixed allowlist are servable; audit/change-request &quot;
+					+ &quot;entity types are never returned. A Destination item never includes &quot;
+					+ &quot;password/username/passExpiry.&quot;)
+	@ApiResponse(responseCode = HTTP_STATUS_OK, description = &quot;The item at the specified entity type and sortKey.&quot;,
+		content = @Content(mediaType = JSON_MEDIA_TYPE))
+	@ApiResponse(responseCode = HTTP_STATUS_NOT_FOUND, description = &quot;The entity type is unknown/not servable, &quot;
+			+ &quot;or no item exists at that sortKey.&quot;, content = @Content)
+	@GetMapping(&quot;/data/{entityType}/{sortKey}&quot;)
+	@RolesAllowed(Roles.ADMIN)
+	public Object getDataByTypeAndKey(
+			@Schema(description = &quot;The DynamoDB entity type to retrieve, e.g. AllowedUser or ApiKeyDomain&quot;)
+			@PathVariable String entityType,
+			@Schema(description = &quot;The sortKey of the specific item to retrieve. Most sortKeys are &quot;
+					+ &quot;\&quot;#\&quot;-delimited (e.g. \&quot;2#dev\&quot;), but \&quot;#\&quot; cannot appear literally in a URL &quot;
+					+ &quot;path -- send \&quot;!\&quot; in its place (e.g. \&quot;2!dev\&quot;); it is substituted back to &quot;
+					+ &quot;\&quot;#\&quot; before querying.&quot;)
+			@PathVariable String sortKey) {
+<span class="nc" id="L807">		requireAllowedType(entityType);</span>
+<span class="nc" id="L808">		String realSortKey = sortKey.replace(SORT_KEY_PATH_SUBSTITUTE, SORT_KEY_REAL_DELIMITER);</span>
+<span class="nc" id="L809">		GetItemResponse resp = ddbClient.getItem(GetItemRequest.builder()</span>
+<span class="nc" id="L810">				.tableName(tableName)</span>
+<span class="nc" id="L811">				.key(Map.of(</span>
+<span class="nc" id="L812">						&quot;entityType&quot;, AttributeValue.fromS(entityType),</span>
+<span class="nc" id="L813">						&quot;sortKey&quot;, AttributeValue.fromS(realSortKey)))</span>
+<span class="nc" id="L814">				.build());</span>
+<span class="nc bnc" id="L815" title="All 2 branches missed.">		if (!resp.hasItem()) {</span>
+<span class="nc" id="L816">			throw notFound(entityType, sortKey);</span>
+		}
+<span class="nc" id="L818">		return toJsonObject(redact(entityType, resp.item()));</span>
+	}
+
+	private void requireAllowedType(String entityType) {
+<span class="nc bnc" id="L822" title="All 2 branches missed.">		if (!ALLOWED_ENTITY_TYPES.contains(entityType)) {</span>
+			// Deliberately the same ResourceNotFoundException (404) used for a missing sortKey,
+			// rather than a 403 -- this avoids revealing which entity types are being deliberately
+			// hidden (e.g. the audit/change-request types) to a caller probing the endpoint.
+<span class="nc" id="L826">			throw new ResourceNotFoundException(&quot;Unknown or restricted entity type: &quot; + entityType);</span>
+		}
+<span class="nc" id="L828">	}</span>
+
+	private Map&lt;String, AttributeValue&gt; redact(String entityType, Map&lt;String, AttributeValue&gt; item) {
+<span class="nc" id="L831">		Set&lt;String&gt; fields = REDACTED_FIELDS.get(entityType);</span>
+<span class="nc bnc" id="L832" title="All 2 branches missed.">		if (fields == null) {</span>
+<span class="nc" id="L833">			return item;</span>
+		}
+<span class="nc" id="L835">		Map&lt;String, AttributeValue&gt; copy = new HashMap&lt;&gt;(item);</span>
+<span class="nc" id="L836">		fields.forEach(copy::remove);</span>
+<span class="nc" id="L837">		return copy;</span>
+	}
+
+	// Converts a raw DynamoDB item straight to a JSON-compatible Object (LinkedHashMap/List/
+	// primitives) via the SDK's own EnhancedDocument -- no per-entity-type Java model needed, which
+	// is what lets this endpoint serve types (ApiKeyDomain, ApiKeyDomainOwner, Sender) that have no
+	// Java model in this codebase at all.
+	private Object toJsonObject(Map&lt;String, AttributeValue&gt; item) {
+		try {
+<span class="nc" id="L846">			return OBJECT_MAPPER.readValue(EnhancedDocument.fromAttributeValueMap(item).toJson(), Object.class);</span>
+<span class="nc" id="L847">		} catch (IOException e) {</span>
+			// EnhancedDocument.toJson() always produces valid JSON for a valid AttributeValue map,
+			// so this is not expected in practice; fails the request rather than returning a
+			// silently-truncated or malformed body.
+<span class="nc" id="L851">			throw new IllegalStateException(&quot;Failed to convert DynamoDB item to JSON&quot;, e);</span>
+		}
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

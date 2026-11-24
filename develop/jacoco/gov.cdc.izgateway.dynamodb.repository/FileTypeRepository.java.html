@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FileTypeRepository.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.dynamodb.repository</a> &gt; <span class="el_source">FileTypeRepository.java</span></div><h1>FileTypeRepository.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.dynamodb.repository;
+
+import org.springframework.beans.factory.annotation.Autowired;
+
+import gov.cdc.izgateway.dynamodb.model.FileType;
+import gov.cdc.izgateway.hub.repository.IFileTypeRepository;
+import gov.cdc.izgateway.repository.DynamoDbRepository;
+import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
+
+/**
+ * Repository for managing {@link FileType} entities in DynamoDB.
+ * Implements business logic for storing, deleting, and retrieving file types.
+ */
+public class FileTypeRepository extends DynamoDbRepository&lt;FileType&gt; implements IFileTypeRepository&lt;FileType&gt; {
+    /**
+     * Constructs a new FileTypeRepository with the given DynamoDB client and table name.
+     * @param client the DynamoDB enhanced client
+     * @param tableName the name of the DynamoDB table
+     */
+    public FileTypeRepository(@Autowired DynamoDbEnhancedClient client, String tableName) {
+<span class="fc" id="L21">        super(FileType.class, client, tableName);</span>
+<span class="fc" id="L22">    }</span>
+
+    /**
+     * Stores the given file type in DynamoDB.
+     * @param fileType the file type to store
+     * @return the stored file type
+     */
+    @Override
+    public FileType store(FileType fileType) {
+<span class="nc" id="L31">        return saveAndFlush(fileType);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

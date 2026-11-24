@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DynamoDbRepositoryFactory.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.dynamodb</a> &gt; <span class="el_source">DynamoDbRepositoryFactory.java</span></div><h1>DynamoDbRepositoryFactory.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.dynamodb;
+import gov.cdc.izgateway.configuration.DynamoDbConfig;
+import lombok.extern.slf4j.Slf4j;
+
+import java.util.ServiceConfigurationError;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+
+import gov.cdc.izgateway.dynamodb.model.Destination;
+import gov.cdc.izgateway.dynamodb.model.Event;
+import gov.cdc.izgateway.dynamodb.model.Jurisdiction;
+import gov.cdc.izgateway.dynamodb.model.MessageHeader;
+import gov.cdc.izgateway.dynamodb.repository.AccessControlRepository;
+import gov.cdc.izgateway.dynamodb.repository.AccessGroupRepository;
+import gov.cdc.izgateway.dynamodb.repository.AllowedUserRepository;
+import gov.cdc.izgateway.dynamodb.repository.CertificateStatusRepository;
+import gov.cdc.izgateway.dynamodb.repository.DestinationRepository;
+import gov.cdc.izgateway.dynamodb.repository.EventRepository;
+import gov.cdc.izgateway.dynamodb.repository.JurisdictionRepository;
+import gov.cdc.izgateway.dynamodb.repository.MessageHeaderRepository;
+import gov.cdc.izgateway.dynamodb.repository.ApiKeyCredentialRepository;
+import gov.cdc.izgateway.dynamodb.repository.DenyListRecordRepository;
+import gov.cdc.izgateway.dynamodb.repository.FileTypeRepository;
+import gov.cdc.izgateway.dynamodb.repository.OrganizationRecordRepository;
+import gov.cdc.izgateway.dynamodb.repository.SourceAttackExceptionRepository;
+import gov.cdc.izgateway.hub.repository.IDestinationRepository;
+import gov.cdc.izgateway.hub.repository.IJurisdictionRepository;
+import gov.cdc.izgateway.hub.repository.IMessageHeaderRepository;
+import gov.cdc.izgateway.hub.repository.RepositoryFactory;
+import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
+import software.amazon.awssdk.regions.providers.DefaultAwsRegionProviderChain;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.ListTablesRequest;
+import software.amazon.awssdk.services.dynamodb.model.ListTablesResponse;
+
+/**
+ * Creates the necessary Beans for DynamoDB repository access
+ * These are the clients that are used to access any DynamoDB repositories
+ * @author Audacious Inquiry
+ */
+@Configuration
+@Primary
+<span class="fc" id="L46">@Slf4j</span>
+public class DynamoDbRepositoryFactory implements RepositoryFactory {
+
+	private static final String DATABASE_EVENT = &quot;Database&quot;;
+	private final String tableName;
+	private final DynamoDbEnhancedClient client;
+	// Used to check for existence of the database
+	private final DynamoDbClient ddbClient;
+	private EventRepository eventRepository;
+	private AccessControlRepository acr;
+	private CertificateStatusRepository csr;
+	private DestinationRepository dr;
+	private JurisdictionRepository jr;
+	private MessageHeaderRepository mhr;
+	private AccessGroupRepository agr;
+	private AllowedUserRepository aur;
+	private ApiKeyCredentialRepository akcr;
+	private DenyListRecordRepository dlr;
+	private FileTypeRepository ftr;
+	private OrganizationRecordRepository orr;
+	private SourceAttackExceptionRepository saer;
+
+	/**
+	 * Create the factory for DynamoDb Repositories
+	 * @param client The Enhanced Client to use to access the repository
+	 * @param ddbClient The DynamoDB Client to use
+	 * @param ddbConfig The DynamoDB configuration
+	 */
+	public DynamoDbRepositoryFactory(
+		@Autowired DynamoDbEnhancedClient client, 
+		@Autowired DynamoDbClient ddbClient,
+		@Autowired DynamoDbConfig ddbConfig
+<span class="fc" id="L78">	) {</span>
+<span class="fc" id="L79">		this.client = client;</span>
+<span class="fc" id="L80">		this.ddbClient = ddbClient;</span>
+<span class="fc" id="L81">		this.tableName = ddbConfig.getDynamodbTable();</span>
+<span class="fc" id="L82">		this.eventRepository = new EventRepository(client, this.tableName);</span>
+		
+<span class="pc bpc" id="L84" title="1 of 2 branches missed.">		if (!ensureDbExists()) {</span>
+<span class="nc" id="L85">			log.error(&quot;Database {} does not exist in {}&quot;, this.tableName,</span>
+<span class="nc" id="L86">					DefaultAwsRegionProviderChain.builder().build().getRegion());</span>
+<span class="nc" id="L87">			throw new ServiceConfigurationError(&quot;Database does not exist &quot; + this.tableName, null);</span>
+		} else {
+<span class="fc" id="L89">			log.info(&quot;Connected to existing {} in {}&quot;, this.tableName,</span>
+<span class="fc" id="L90">					DefaultAwsRegionProviderChain.builder().build().getRegion());</span>
+		}
+<span class="fc" id="L92">	}</span>
+
+	private boolean ensureDbExists() {
+<span class="fc" id="L95">		ListTablesRequest lgtr = ListTablesRequest.builder().build();</span>
+<span class="fc" id="L96">		ListTablesResponse response = ddbClient.listTables(lgtr);</span>
+<span class="pc bpc" id="L97" title="2 of 4 branches missed.">		if (response.hasTableNames() &amp;&amp; response.tableNames().stream().anyMatch(this.tableName::equals)) {</span>
+<span class="pc bpc" id="L98" title="1 of 2 branches missed.">			if (!isDbCreated()) {</span>
+<span class="nc" id="L99">				return false;</span>
+			}
+<span class="fc" id="L101">			log.info(&quot;Connected to existing database: {}&quot;, this.tableName);</span>
+<span class="fc" id="L102">			return true;</span>
+		}
+<span class="nc" id="L104">		log.error(&quot;Database does not exist: {}&quot;, this.tableName);</span>
+<span class="nc" id="L105">		throw new ServiceConfigurationError(&quot;Database does not exist &quot; + this.tableName, null);</span>
+	}
+
+	private boolean isDbCreated() {
+<span class="pc bpc" id="L109" title="1 of 2 branches missed.">		return !eventRepository.findByNameAndTarget(Event.CREATED, DATABASE_EVENT).isEmpty();</span>
+	}
+	
+	/**
+     * Get the DynamoDbRepository for Access Controls
+     * @return	The AccessControlRepository
+     */
+    public AccessControlRepository accessControlRepository() {
+<span class="fc bfc" id="L117" title="All 2 branches covered.">		if (acr == null) {</span>
+<span class="fc" id="L118">    		acr = new AccessControlRepository(client, this.tableName);</span>
+    	}
+<span class="fc" id="L120">    	return acr;</span>
+    }
+
+	/**
+     * Get the DynamoDbRepository for Certificate Status
+     * @return	The CertificateStatusRepository
+     */
+    public CertificateStatusRepository certificateStatusRepository() {
+<span class="fc bfc" id="L128" title="All 2 branches covered.">    	if (csr == null) {</span>
+<span class="fc" id="L129">    		csr = new CertificateStatusRepository(client, this.tableName);</span>
+    	}
+<span class="fc" id="L131">    	return csr;</span>
+    }
+
+    
+	/**
+     * Get the DynamoDbRepository for Destinations
+     * @return	The DestinationRepository
+     */
+    public IDestinationRepository&lt;Destination&gt; destinationRepository() {
+<span class="fc bfc" id="L140" title="All 2 branches covered.">    	if (dr == null) {</span>
+<span class="fc" id="L141">    		dr = new DestinationRepository(client, this.tableName);</span>
+    	}
+<span class="fc" id="L143">    	return dr;</span>
+    }
+
+	/**
+     * Get the DynamoDbRepository for Jurisdictions
+     * @return	The JurisdictionRepository
+     */
+    public IJurisdictionRepository&lt;Jurisdiction&gt; jurisdictionRepository() {
+<span class="pc bpc" id="L151" title="1 of 2 branches missed.">    	if (jr == null) {</span>
+<span class="fc" id="L152">    		jr = new JurisdictionRepository(client, this.tableName);</span>
+    	}
+<span class="fc" id="L154">    	return jr;</span>
+    }
+
+	/**
+     * Get the DynamoDbRepository for Message Headers
+     * @return	The MessageHeaderRepository
+     */
+    public IMessageHeaderRepository&lt;MessageHeader&gt; messageHeaderRepository() {
+<span class="pc bpc" id="L162" title="1 of 2 branches missed.">    	if (mhr == null) {</span>
+<span class="fc" id="L163">    		mhr = new MessageHeaderRepository(client, this.tableName);</span>
+    	}
+<span class="fc" id="L165">    	return mhr;</span>
+    }
+    
+    /**
+     * Get the event repository.  As this is new with DynamoDb support,
+     * no migration is necessary.
+     * 
+     * @return	The event repository.
+     */
+    public EventRepository eventRepository() {
+<span class="fc" id="L175">    	return eventRepository;</span>
+    }
+
+	/**
+	 * Get the DynamoDbRepository for Access Groups
+	 * @return The AccessGroupRepository
+	 */
+	public AccessGroupRepository accessGroupRepository() {
+<span class="fc bfc" id="L183" title="All 2 branches covered.">		if (agr == null) {</span>
+<span class="fc" id="L184">			agr = new AccessGroupRepository(client, this.tableName);</span>
+		}
+<span class="fc" id="L186">		return agr;</span>
+	}
+
+	/**
+	 * Get the DynamoDbRepository for Allowed Users
+	 * @return The AllowedUserRepository
+	 */
+	public AllowedUserRepository allowedUserRepository() {
+<span class="fc bfc" id="L194" title="All 2 branches covered.">		if (aur == null) {</span>
+<span class="fc" id="L195">			aur = new AllowedUserRepository(client, this.tableName);</span>
+		}
+<span class="fc" id="L197">		return aur;</span>
+	}
+
+	/**
+	 * Get the DynamoDbRepository for ApiKeyCredential
+	 * @return The ApiKeyCredentialRepository
+	 */
+	@Bean
+	public ApiKeyCredentialRepository apiKeyCredentialRepository() {
+<span class="pc bpc" id="L206" title="1 of 2 branches missed.">		if (akcr == null) {</span>
+<span class="fc" id="L207">			akcr = new ApiKeyCredentialRepository(client, ddbClient, this.tableName);</span>
+		}
+<span class="fc" id="L209">		return akcr;</span>
+	}
+
+	/**
+	 * Get the DynamoDbRepository for Deny List Records
+	 * @return The DenyListRecordRepository
+	 */
+	public DenyListRecordRepository denyListRecordRepository() {
+<span class="fc bfc" id="L217" title="All 2 branches covered.">		if (dlr == null) {</span>
+<span class="fc" id="L218">			dlr = new DenyListRecordRepository(client, this.tableName);</span>
+		}
+<span class="fc" id="L220">		return dlr;</span>
+	}
+
+	/**
+	 * Get the DynamoDbRepository for File Types
+	 * @return The FileTypeRepository
+	 */
+	public FileTypeRepository fileTypeRepository() {
+<span class="fc bfc" id="L228" title="All 2 branches covered.">		if (ftr == null) {</span>
+<span class="fc" id="L229">			ftr = new FileTypeRepository(client, this.tableName);</span>
+		}
+<span class="fc" id="L231">		return ftr;</span>
+	}
+
+	/**
+	 * Get the DynamoDbRepository for Organization Records
+	 * @return The OrganizationRecordRepository
+	 */
+	public OrganizationRecordRepository organizationRecordRepository() {
+<span class="pc bpc" id="L239" title="1 of 2 branches missed.">		if (orr == null) {</span>
+<span class="fc" id="L240">			orr = new OrganizationRecordRepository(client, this.tableName);</span>
+		}
+<span class="fc" id="L242">		return orr;</span>
+	}
+
+	/**
+	 * Get the DynamoDbRepository for Source Attack Exception Records (IGDD-2805)
+	 * @return The SourceAttackExceptionRepository
+	 */
+	public SourceAttackExceptionRepository sourceAttackExceptionRepository() {
+<span class="pc bpc" id="L250" title="1 of 2 branches missed.">		if (saer == null) {</span>
+<span class="fc" id="L251">			saer = new SourceAttackExceptionRepository(client, this.tableName);</span>
+		}
+<span class="fc" id="L253">		return saer;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Histogram.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.perf.histogram</a> &gt; <span class="el_source">Histogram.java</span></div><h1>Histogram.java</h1><pre class="source lang-java linenums">package gov.cdc.perf.histogram;
+
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.util.List;
+import java.util.Random;
+import java.util.stream.Collectors;
+
+/**
+ * A histogram that is a list of buckets. Each bucket has a value range and a count.
+ */
+public interface Histogram {
+    /** The default random number generator for {@link #randomValue()}. */
+<span class="fc" id="L14">    static final Random RAND = new Random();</span>
+
+    /**
+     * One bucket of the histogram.
+     */
+    public interface Row {
+        /**
+         * Get the low end of the bucket range.
+         * @return The low value (inclusive).
+         */
+        int getLow();
+        /**
+         * Get the high end of the bucket range.
+         * @return The high value (exclusive).
+         */
+        int getHigh();
+        /**
+         * Get the number of values in the bucket.
+         * @return The count.
+         */
+        int getCount();
+    }
+    /**
+     * Get the buckets of the histogram.
+     * @return The list of buckets, from low to high.
+     */
+    List&lt;Row&gt; getRows();
+    /**
+     * Get the sum of the counts in all buckets.
+     * @return The total count.
+     */
+    default int getTotal() {
+<span class="nc" id="L46">        return getRows().stream().collect(Collectors.summingInt(Row::getCount));</span>
+    }
+    /**
+     * Get the difference between the high value of the last bucket and the low value of the first bucket.
+     * @return The range of the histogram.
+     */
+    default int getRange() {
+<span class="nc" id="L53">        List&lt;Row&gt; l = getRows();</span>
+<span class="nc" id="L54">        return l.get(l.size()-1).getHigh() - l.get(0).getLow();</span>
+    }
+
+    /**
+     * Given a histogram return a random variate from the distribution described it.
+     * @param rand The random number generator
+     * @return The random variate or -1 if out of range.
+     */
+    default int randomValue(Random rand) {
+<span class="nc" id="L63">        return randomValue(rand, getTotal());</span>
+    }
+    /**
+     * Given a histogram return a random variate from the distribution described it.
+     *
+     * @return  The selected value.
+     */
+    default int randomValue() {
+<span class="nc" id="L71">        return randomValue(RAND);</span>
+    }
+
+    /**
+     * Given a histogram return a random variate from the distribution described it.
+     * @param rand The random number generator
+     * @param max The upper limit (exclusive) of the random number that selects the bucket
+     * @return The random variate or -1 if out of range.
+     */
+    default int randomValue(Random rand, int max) {
+<span class="nc" id="L81">        int r = rand.nextInt(max);</span>
+<span class="nc bnc" id="L82" title="All 2 branches missed.">        for (Row row: getRows()) {</span>
+<span class="nc" id="L83">            int count = row.getCount();</span>
+<span class="nc bnc" id="L84" title="All 2 branches missed.">            if (r &lt; count) {</span>
+<span class="nc" id="L85">                return row.getLow() + (r * (row.getHigh() - row.getLow())) / row.getCount();</span>
+            }
+<span class="nc" id="L87">            r -= count;</span>
+<span class="nc" id="L88">        }</span>
+<span class="nc" id="L89">        return -1;</span>
+    }
+
+    /**
+     * Compute the Two-sample Kolmogorov–Smirnov test statistic of this histograms compared to that histogram.
+     * Assumes bucket sizes are small enough to ensure an accurate estimate
+     * (@see https://en.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test#Two-sample_Kolmogorov%E2%80%93Smirnov_test)
+     * @param that    The second histogram
+     * @param scales    If non-null, a place to put the scale values (sample sizes) for h1 and h2
+     * @return The KS test statistic
+     * @throws IllegalArgumentException if the bucket sizes are not the same in each histogram
+     */
+    default double ksStatistic(Histogram that, double[] scales) {
+        // scale factor to apply to buckets
+<span class="nc" id="L103">        double scale1 = 0.0;</span>
+<span class="nc" id="L104">        double scale2 = 0.0;</span>
+<span class="nc" id="L105">        List&lt;Row&gt; h1 = getRows();</span>
+<span class="nc" id="L106">        List&lt;Row&gt; h2 = that.getRows();</span>
+
+<span class="nc bnc" id="L108" title="All 2 branches missed.">        if (h1.size() != h2.size()) {</span>
+<span class="nc" id="L109">            throw new IllegalArgumentException(&quot;Histograms are not the same size&quot;);</span>
+        }
+<span class="nc bnc" id="L111" title="All 2 branches missed.">        for (int i = 0; i &lt; h1.size(); i++) {</span>
+<span class="nc" id="L112">            Row h1r = h1.get(i);</span>
+<span class="nc" id="L113">            Row h2r = h2.get(i);</span>
+<span class="nc bnc" id="L114" title="All 4 branches missed.">            if (h1r.getLow() != h2r.getLow() || h1r.getHigh() != h2r.getHigh()</span>
+            ) {
+<span class="nc" id="L116">                throw new IllegalArgumentException(&quot;Buckets differ at position &quot; + i);</span>
+            }
+
+            // Accumulate counts in scale1/scale2 to turn bucket counts here into
+            // probabilities on second pass
+<span class="nc" id="L121">            scale1 += h1r.getCount();</span>
+<span class="nc" id="L122">            scale2 += h2r.getCount();</span>
+        }
+
+<span class="nc" id="L125">        double maxDiff = 0.0;</span>
+<span class="nc" id="L126">        double cumDist1 = 0.0;</span>
+<span class="nc" id="L127">        double cumDist2 = 0.0;</span>
+
+<span class="nc bnc" id="L129" title="All 2 branches missed.">        for (int i = 0; i &lt; h1.size(); i++) {</span>
+<span class="nc" id="L130">            Row h1r = h1.get(i);</span>
+<span class="nc" id="L131">            Row h2r = h2.get(i);</span>
+
+            // Compute difference in cumulative probabilities
+<span class="nc" id="L134">            cumDist1 += h1r.getCount() / scale1;</span>
+<span class="nc" id="L135">            cumDist2 += h2r.getCount() / scale2;</span>
+<span class="nc" id="L136">            double diff = Math.abs(cumDist1 - cumDist2);</span>
+<span class="nc bnc" id="L137" title="All 2 branches missed.">            if (diff &gt; maxDiff) {</span>
+<span class="nc" id="L138">                maxDiff = diff;</span>
+            }
+        }
+        // Store the scale factors (to compute level of significance)
+<span class="nc bnc" id="L142" title="All 2 branches missed.">        if (scales != null) {</span>
+<span class="nc bnc" id="L143" title="All 2 branches missed.">            if (scales.length &gt; 0) {</span>
+<span class="nc" id="L144">                scales[0] = scale1;</span>
+            }
+<span class="nc bnc" id="L146" title="All 2 branches missed.">            if (scales.length &gt; 1) {</span>
+<span class="nc" id="L147">                scales[1] = scale2;</span>
+            }
+        }
+<span class="nc" id="L150">        return maxDiff;</span>
+    }
+    /**
+     * Compute the critical value for the specified alpha level with two sample KS test
+     * @param alpha The alpha level
+     * @param m Number of samples in first set
+     * @param n Number of samples in second set
+     * @return The critical value of the KS statistic at the specified Alpha level
+     */
+    default double ksCriticalValue(double alpha, double m, double n) {
+<span class="nc" id="L160">        return Math.sqrt(- Math.log(alpha) / 2.0) * Math.sqrt((m + n) / (n * m));</span>
+    }
+    /**
+     * Compute the critical value for the specified alpha level with two sample KS test
+     * @param alpha The alpha level
+     * @param sizes An array giving sizes of first and second set
+     * @return The critical value of the KS statistic at the specified Alpha level
+     */
+    default double ksCriticalValue(double alpha, double[] sizes) {
+<span class="nc" id="L169">        return ksCriticalValue(alpha, sizes[0], sizes[1]);</span>
+    }
+    
+    /**
+     * Make a text table with one line for each bucket: the low value, the high value and the fraction of the total count.
+     * @return The text table.
+     */
+    default String _toString() {
+<span class="nc" id="L177">        StringWriter sw = new StringWriter();</span>
+<span class="nc" id="L178">        PrintWriter pw = new PrintWriter(sw);</span>
+<span class="nc" id="L179">        double total = 0;</span>
+<span class="nc bnc" id="L180" title="All 2 branches missed.">        for (Row r: getRows()) {</span>
+<span class="nc" id="L181">            total += r.getCount();</span>
+<span class="nc" id="L182">        }</span>
+<span class="nc bnc" id="L183" title="All 2 branches missed.">        for (Row r: getRows()) {</span>
+<span class="nc" id="L184">            pw.printf(&quot;%5d\t%5d\t%6f%n&quot;, r.getLow(), r.getHigh(), r.getCount() / total);</span>
+<span class="nc" id="L185">        }</span>
+<span class="nc" id="L186">        pw.flush();</span>
+<span class="nc" id="L187">        return sw.toString();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

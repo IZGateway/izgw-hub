@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EventRepository.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.dynamodb.repository</a> &gt; <span class="el_source">EventRepository.java</span></div><h1>EventRepository.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.dynamodb.repository;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+
+import gov.cdc.izgateway.dynamodb.model.Event;
+import gov.cdc.izgateway.repository.DynamoDbRepository;
+import lombok.extern.slf4j.Slf4j;
+import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
+import software.amazon.awssdk.utils.StringUtils;
+
+/**
+ * Class representing the DynamoDb repository for Events.
+ * Event track important activity in the system that may need to be shared between services.
+ * Events create a &quot;lock&quot; on an activity while it is being processed to prevent duplicate processing.
+ * The event has a type and a target. The type is the name of the event, and the target is the specific
+ * instance of that event.
+ * 
+ * @author Audacious Inquiry
+ */
+<span class="fc" id="L22">@Slf4j</span>
+public class EventRepository extends DynamoDbRepository&lt;Event&gt; {
+	private static final long EVENT_WAIT_TIMEOUT_MS = 10000;
+	/**
+	 * Construct a new JurisdictionRepository from the DynamoDb enhanced client.
+	 * @param client The client
+	 * @param tableName The table to use
+	 */
+	public EventRepository(@Autowired DynamoDbEnhancedClient client, String tableName) {
+<span class="fc" id="L31">		super(Event.class, client, tableName);</span>
+<span class="fc" id="L32">	}</span>
+	
+	/**
+	 * Create the event
+	 * @param event	The event
+	 * @return The event, or null if the event already exists.
+	 */
+	public Event create(Event event) {
+<span class="nc bnc" id="L40" title="All 2 branches missed.">		if (hasEventStarted(event.getName(), event.getTarget())) {</span>
+<span class="nc" id="L41">			long waited = 0;</span>
+<span class="nc bnc" id="L42" title="All 2 branches missed.">			while (!hasEventFinished(event.getName(), event.getTarget())) {</span>
+				try {
+<span class="nc" id="L44">					Thread.sleep(100);</span>
+<span class="nc" id="L45">				} catch (InterruptedException e) {</span>
+<span class="nc" id="L46">					Thread.currentThread().interrupt();</span>
+<span class="nc" id="L47">					break;</span>
+<span class="nc" id="L48">				}</span>
+<span class="nc" id="L49">				waited += 100;</span>
+<span class="nc bnc" id="L50" title="All 2 branches missed.">				if (waited &gt;= EVENT_WAIT_TIMEOUT_MS) {</span>
+<span class="nc" id="L51">					String msg = String.format(&quot;Event %s for target %s is still in progress after waiting %d ms&quot;,</span>
+<span class="nc" id="L52">							event.getName(), event.getTarget(), EVENT_WAIT_TIMEOUT_MS);</span>
+<span class="nc" id="L53">					log.error(msg);</span>
+<span class="nc" id="L54">					throw new IllegalStateException(msg);</span>
+				}
+			}
+<span class="nc" id="L57">			return null;</span>
+		}
+<span class="nc" id="L59">		return this.saveIfNotExists(event);</span>
+	}
+	
+	/**
+	 * Update the event
+	 * @param event	The event
+	 * @return The updated event
+	 */
+	public Event update(Event event) {
+<span class="nc" id="L68">		return this.saveAndFlush(event);</span>
+	}
+	
+	/**
+	 * Store the event
+	 * @param event	The event
+	 * @return The updated event
+	 */
+	public Event store(Event event) {
+<span class="nc" id="L77">		return this.saveAndFlush(event);</span>
+	}
+	
+	
+	/**
+	 * Find all events with the given name
+	 * @param name	The name of the event.
+	 * @return	The list of events
+	 */
+	public List&lt;Event&gt; findByName(String name) {
+<span class="nc" id="L87">		return findByType(name + &quot;#&quot;);</span>
+	}
+	
+	/**
+	 * Find all events with the given name and target.
+	 * @param name	The name of the event. 
+	 * @param target	The target of the event.
+	 * @return	The events.
+	 */
+	public List&lt;Event&gt; findByNameAndTarget(String name, String target) {
+<span class="pc bpc" id="L97" title="1 of 2 branches missed.">		if (StringUtils.isEmpty(name)) {</span>
+<span class="nc" id="L98">			throw new IllegalArgumentException(&quot;Name cannot be null or empty&quot;);</span>
+		}
+<span class="pc bpc" id="L100" title="1 of 2 branches missed.">		if (StringUtils.isEmpty(target)) {</span>
+<span class="nc" id="L101">			return findByType(name + &quot;#&quot;);</span>
+		}
+<span class="fc" id="L103">		return findByType(name + &quot;#&quot; + target + &quot;#&quot;);</span>
+	}
+
+	/**
+	 * Determine if a particular event has been started
+	 * @param name	The name of the event
+	 * @param target	The target of the event
+	 * @return	true if the event was started, false if not.
+	 */
+	public boolean hasEventStarted(String name, String target) {
+<span class="nc" id="L113">		List&lt;Event&gt; events = findByNameAndTarget(name, target);</span>
+<span class="nc" id="L114">		long started = System.currentTimeMillis() - EVENT_WAIT_TIMEOUT_MS;</span>
+<span class="nc bnc" id="L115" title="All 4 branches missed.">		return !events.isEmpty() &amp;&amp; events.stream().anyMatch(e -&gt; </span>
+<span class="nc bnc" id="L116" title="All 4 branches missed.">			(e.getStarted() != null &amp;&amp; e.getStarted().getTime() &gt;= started) ||</span>
+<span class="nc bnc" id="L117" title="All 2 branches missed.">			e.getCompleted() != null</span>
+		);
+	}
+	
+	/**
+	 * Determine if a particular event has completed
+	 * @param name	The name of the event
+	 * @param target	The target of the event
+	 * @return	true if the event was completed, false if not.
+	 */
+	public boolean hasEventFinished(String name, String target) {
+<span class="nc" id="L128">		List&lt;Event&gt; events = findByNameAndTarget(name, target);</span>
+<span class="nc bnc" id="L129" title="All 2 branches missed.">		return events.stream().anyMatch(e -&gt; e.getCompleted() != null);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

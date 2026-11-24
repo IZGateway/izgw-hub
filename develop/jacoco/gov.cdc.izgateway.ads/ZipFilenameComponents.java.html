@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ZipFilenameComponents.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.ads</a> &gt; <span class="el_source">ZipFilenameComponents.java</span></div><h1>ZipFilenameComponents.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.ads;
+
+import java.text.ParseException;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
+import org.apache.commons.lang3.time.FastDateFormat;
+
+import lombok.Data;
+
+/**
+ * Parses and validates ZIP filenames for ADS submissions (routine immunization and
+ * annual aggregate reports).
+ * &lt;p&gt;
+ * ZIP filenames follow the format {@code EEE_YYYYMMDD_yyyymmdd_Z.zip}
+ * (entity_startdate_submissiondate_zone), with any additional segments between the
+ * submission date and the trailing zone marker ignored (e.g. an {@code _Agg_} tag).
+ * This class also detects the &quot;test&quot; keyword in any filename to set the
+ * {@link #testfile} flag.
+ * &lt;/p&gt;
+ * &lt;p&gt;
+ * Eligibility for ZIP submission (which report types may use this format) and the
+ * date-matching tolerance are determined by
+ * {@link MetadataBuilder#validateZipMetadata} from the report type's canonical name,
+ * not from anything parsed here.
+ * &lt;/p&gt;
+ * &lt;p&gt;
+ * CSV filename validation is handled separately by
+ * {@link gov.cdc.izgateway.ads.util.CsvFilenameValidator}.
+ * &lt;/p&gt;
+ */
+@Data
+class ZipFilenameComponents {
+<span class="fc" id="L38">	String entityId = &quot;&quot;;</span>
+<span class="fc" id="L39">	String submissionDate = &quot;&quot;;</span>
+<span class="fc" id="L40">	String period = &quot;&quot;;</span>
+<span class="fc" id="L41">	Date date = null;</span>
+	String originalFilename;
+	String filename;
+	String[] parts;
+	List&lt;String&gt; errors;
+<span class="fc" id="L46">	boolean formatError = false;</span>
+<span class="fc" id="L47">	boolean testfile = false;</span>
+
+<span class="fc" id="L49">	private ZipFilenameComponents(String filename, List&lt;String&gt; errors) {</span>
+<span class="pc bpc" id="L50" title="1 of 2 branches missed.">		if (errors == null) {</span>
+<span class="nc" id="L51">			errors = new ArrayList&lt;&gt;();</span>
+		}
+<span class="fc" id="L53">		this.originalFilename = filename;</span>
+<span class="pc bpc" id="L54" title="1 of 2 branches missed.">		if (Strings.CI.contains(filename, &quot;test&quot;)) {</span>
+<span class="nc" id="L55">			testfile = true;</span>
+<span class="nc" id="L56">			filename = Strings.CI.remove(filename, &quot;test&quot;);</span>
+		}
+<span class="fc" id="L58">		this.filename = filename;</span>
+<span class="fc" id="L59">		this.errors = errors;</span>
+<span class="fc" id="L60">		parts = StringUtils.substringBeforeLast(filename, &quot;.&quot;).split(&quot;_&quot;);</span>
+<span class="fc" id="L61">	}</span>
+
+	/**
+	 * Parse a ZIP filename. CSV validation is delegated to
+	 * {@link gov.cdc.izgateway.ads.util.CsvFilenameValidator} and should not be
+	 * passed here.
+	 *
+	 * @param filename the filename to parse
+	 * @param errors   list to which any validation errors are appended
+	 * @return the parsed result (testfile flag is always populated regardless of extension)
+	 */
+	static ZipFilenameComponents parse(String filename, List&lt;String&gt; errors) {
+<span class="fc" id="L73">		ZipFilenameComponents parsed = new ZipFilenameComponents(filename, errors);</span>
+<span class="fc" id="L74">		String ext = StringUtils.substringAfterLast(filename, &quot;.&quot;);</span>
+<span class="pc bpc" id="L75" title="1 of 2 branches missed.">		if (ext.equalsIgnoreCase(&quot;zip&quot;)) {</span>
+<span class="fc" id="L76">			parsed.parseRoutineImmunizationFilename();</span>
+		}
+		// CSV validation is handled by CsvFilenameValidator; no action needed here.
+<span class="fc" id="L79">		return parsed;</span>
+	}
+
+	private void parseRoutineImmunizationFilename() {
+<span class="pc bpc" id="L83" title="1 of 2 branches missed.">		entityId = parts.length &gt; 0 ? parts[0] : &quot;&quot;;</span>
+<span class="pc bpc" id="L84" title="2 of 4 branches missed.">		if (parts.length &lt; 2 || StringUtils.isEmpty(parts[1])) {</span>
+<span class="nc" id="L85">			formatError = true;</span>
+		} else {
+<span class="fc" id="L87">			period = parts[1];</span>
+		}
+<span class="pc bpc" id="L89" title="2 of 4 branches missed.">		if (parts.length &lt; 3 || StringUtils.isEmpty(parts[2])) {</span>
+<span class="nc" id="L90">			formatError = true;</span>
+		} else {
+<span class="fc" id="L92">			submissionDate = parts[2];</span>
+		}
+<span class="pc bpc" id="L94" title="1 of 2 branches missed.">		if (formatError) {</span>
+<span class="nc" id="L95">			errors.add(String.format(</span>
+				&quot;Filename (%s) is in wrong format (It is expected to match EEE_YYYYMMDD_yyyymmdd_Z.zip)&quot;,
+				filename));
+		} else {
+<span class="fc" id="L99">			date = checkPeriod(&quot;yyyyMMdd&quot;);</span>
+		}
+<span class="fc" id="L101">	}</span>
+
+	private Date parseDate(String dateString, String format) {
+<span class="fc" id="L104">		FastDateFormat ft = FastDateFormat.getInstance(format);</span>
+		try {
+<span class="fc" id="L106">			return ft.parse(dateString);</span>
+<span class="nc" id="L107">		} catch (ParseException pex) {</span>
+<span class="nc" id="L108">			errors.add(String.format(&quot;Date (%s) is invalid, it does not match the expected format %s&quot;, period, format));</span>
+<span class="nc" id="L109">			return null;</span>
+		}
+	}
+
+	private Date checkPeriod(String format) {
+<span class="fc" id="L114">		Date start = parseDate(period, format);</span>
+<span class="pc bpc" id="L115" title="1 of 2 branches missed.">		Date end = StringUtils.isNotEmpty(submissionDate) ? parseDate(submissionDate, format) : null;</span>
+
+<span class="pc bpc" id="L117" title="2 of 4 branches missed.">		if (end != null &amp;&amp; end.before(start)) {</span>
+<span class="nc" id="L118">			errors.add(String.format(&quot;Dates (%s %s) are invalid, start is after submission date.&quot;, period, submissionDate));</span>
+		}
+
+		// Fix for Pacific Island Metadata Issue: IGDD-1644
+<span class="fc" id="L122">		Date tomorrow = new Date(System.currentTimeMillis() + Duration.ofDays(1).toMillis());</span>
+<span class="pc bpc" id="L123" title="4 of 8 branches missed.">		if ((start != null &amp;&amp; tomorrow.before(start)) || (end != null &amp;&amp; tomorrow.before(end))) {</span>
+<span class="nc bnc" id="L124" title="All 2 branches missed.">			if (end == null) {</span>
+<span class="nc" id="L125">				errors.add(String.format(&quot;Date (%s) invalid, it cannot be after today&quot;, period));</span>
+			} else {
+<span class="nc" id="L127">				errors.add(String.format(&quot;Dates (%s %s) are invalid, they cannot be after today&quot;, period, submissionDate));</span>
+			}
+		}
+<span class="fc" id="L130">		return start;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

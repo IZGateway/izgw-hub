@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ApiKeyAuthenticationException.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.hub.security</a> &gt; <span class="el_source">ApiKeyAuthenticationException.java</span></div><h1>ApiKeyAuthenticationException.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.hub.security;
+
+/**
+ * Thrown by {@link ApiKeyPrincipalProvider} when a request presents a Bearer-scheme
+ * Authorization header but the token fails authentication for any reason (malformed,
+ * unverifiable signature, expired, revoked, unknown, or a dependency failure that prevents
+ * validation from completing).
+ *
+ * &lt;p&gt;{@link gov.cdc.izgateway.hub.service.HubPrincipalService} uses this to distinguish
+ * &quot;no API key was presented&quot; (still eligible for certificate fallback) from &quot;an API key was
+ * presented but rejected&quot; (must not fall back to certificate authentication).
+ */
+public class ApiKeyAuthenticationException extends RuntimeException {
+    /**
+     * Create the exception.
+     * @param message	The reason that the API key failed authentication
+     */
+    public ApiKeyAuthenticationException(String message) {
+<span class="fc" id="L19">        super(message);</span>
+<span class="fc" id="L20">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

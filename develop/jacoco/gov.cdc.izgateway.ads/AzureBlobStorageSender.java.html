@@ -1,0 +1,496 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AzureBlobStorageSender.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.ads</a> &gt; <span class="el_source">AzureBlobStorageSender.java</span></div><h1>AzureBlobStorageSender.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.ads;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+
+import gov.cdc.izgateway.common.HttpStatusException;
+
+import jakarta.activation.DataHandler;
+import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.http.Header;
+import org.springframework.http.HttpStatus;
+
+import org.springframework.stereotype.Component;
+
+import gov.cdc.izgateway.model.IDestination;
+import gov.cdc.izgateway.security.ClientTlsSupport;
+import gov.cdc.izgateway.security.crypto.CryptoException;
+import gov.cdc.izgateway.security.crypto.CryptoSupport;
+import gov.cdc.izgateway.soap.fault.DestinationConnectionFault;
+import gov.cdc.izgateway.soap.fault.MessageTooLargeFault;
+import gov.cdc.izgateway.soap.fault.MessageTooLargeFault.Direction;
+import gov.cdc.izgateway.soap.fault.SecurityFault;
+
+/**
+ * This class implements the FileSender interface to Azure and the Azurite Azure emulator.
+ */
+@Component
+<span class="fc" id="L46">@Slf4j</span>
+public class AzureBlobStorageSender extends RestfulFileSender implements FileSender {
+	private static final int MAX_THREADS = 4;  // Use no more than 4 threads to upload
+	private static final int CHUNKSIZE = 8*1024*1024; // Chunk in 8 Mb blocks an 8Gb upload will have 1024 chunks 
+	/**
+	 * Chunks are used to track memory regions to read and write.
+	 * @author Audacious Inquiry
+	 */
+<span class="nc" id="L54">	private static record Chunk(byte[] buffer, int offset, int length) { // NOSONAR Array == is OK</span>
+		/** Break a chunk into a list of chunks each bufferSize in length
+		 * This method allows chunks to be read in one size and written
+		 * in another size.
+		 * @param bufferSize	The size of the new chunks to create. 
+		 */
+		List&lt;Chunk&gt; chunks(int bufferSize) {
+<span class="nc" id="L61">			List&lt;Chunk&gt; l = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L62" title="All 2 branches missed.">			for (int i = 0; i &lt; length; i += bufferSize) {</span>
+<span class="nc" id="L63">				l.add(new Chunk(buffer, offset + i, Math.min(bufferSize, length - i)));</span>
+			}
+<span class="nc" id="L65">			return l;</span>
+		}
+	}
+    /**
+     * Create a new storage sender to create an AzureBlob
+     * @param config	The configuration for the sender
+     * @param tlsSupport	ClienTlsSupport object to make the connection
+     */
+    public AzureBlobStorageSender(SenderConfig config, ClientTlsSupport tlsSupport) {
+<span class="fc" id="L74">		super(config, tlsSupport);</span>
+<span class="fc" id="L75">	}</span>
+    @Override
+    protected HttpURLConnection getConnection(String type, IDestination route, Metadata meta, DataHandler data) 
+    		throws IOException, MetadataFault, DestinationConnectionFault, URISyntaxException, SecurityFault 
+    {
+<span class="nc" id="L80">        HttpURLConnection con = null;</span>
+        URL base;
+<span class="nc" id="L82">        String token = null;</span>
+<span class="nc bnc" id="L83" title="All 2 branches missed.">        if (meta != null) {</span>
+<span class="nc" id="L84">            base = getUrl(meta, route);</span>
+<span class="nc" id="L85">            meta.setPath(StringUtils.substringBefore(base.toString(), &quot;?&quot;));</span>
+        } else {
+<span class="nc" id="L87">            base = new URL(route.getDestUri());</span>
+        }
+		try {
+<span class="nc" id="L90">			token = ADSUtils.getAzureToken(CryptoSupport.decrypt(route.getPassword()));</span>
+<span class="nc" id="L91">		} catch (CryptoException e) {</span>
+<span class="nc" id="L92">			throw SecurityFault.decryptionFailure(route, e);</span>
+<span class="nc" id="L93">		}</span>
+<span class="nc" id="L94">    	base = new URL(base + &quot;?&quot; + token);</span>
+    	
+<span class="nc bnc" id="L96" title="All 5 branches missed.">        switch (type) {</span>
+        case &quot;DELETE&quot;:
+<span class="nc" id="L98">            con = getConnection(base);</span>
+<span class="nc" id="L99">            con.setRequestMethod(&quot;DELETE&quot;);</span>
+            // Set the headers from the metadata provided.
+<span class="nc" id="L101">            break;</span>
+            
+        case &quot;PING&quot;:
+            // Remove any query parameters
+<span class="nc" id="L105">            base = new URL(base + &quot;&amp;restype=container&amp;comp=list&amp;maxresults=1&quot;);</span>
+            
+            // Fall through
+            
+        case &quot;LIST&quot;, &quot;GET&quot;:
+<span class="nc" id="L110">            con = getConnection(base);</span>
+            // This is a GET, there is nothing else to write
+<span class="nc" id="L112">            con.setDoOutput(false);</span>
+<span class="nc" id="L113">            con.setRequestMethod(&quot;GET&quot;);</span>
+<span class="nc" id="L114">            break;</span>
+            
+        case &quot;POST&quot;:
+<span class="nc" id="L117">            con = getConnection(base);</span>
+            // We use PUT, so must be able to write to the connection.
+<span class="nc" id="L119">            con.setDoOutput(true);</span>
+
+            // Azure uses PUT for it's CREATE/WRITE API Calls
+            // If the blob already exists, we will overwrite it.
+<span class="nc" id="L123">            con.setRequestMethod(&quot;PUT&quot;);</span>
+<span class="nc" id="L124">   		    con.setRequestProperty(&quot;x-ms-blob-type&quot;, &quot;BlockBlob&quot;);</span>
+<span class="nc" id="L125">            break;</span>
+
+        case &quot;STATUS&quot;:
+        default:
+<span class="nc" id="L129">            return null;</span>
+        }
+        
+        // Set the headers from the metadata provided.
+<span class="nc bnc" id="L133" title="All 2 branches missed.">        if (meta != null) {</span>
+<span class="nc" id="L134">        	meta.setPath(StringUtils.substringBefore(con.getURL().toString(), &quot;?&quot;));</span>
+<span class="nc bnc" id="L135" title="All 2 branches missed.">            for (Header h: getHeaders(meta, data)) {</span>
+<span class="nc" id="L136">                con.addRequestProperty(h.getName(), h.getValue());</span>
+<span class="nc" id="L137">            }</span>
+        }
+        // We always want to read the response.
+<span class="nc" id="L140">        con.setDoInput(true);</span>
+<span class="nc" id="L141">        return con;</span>
+    }
+
+   /**
+     * Copy data stored in DataHandler to the URLConnection.
+     * @return the status of the write.
+     */
+    @Override
+    protected int writeData(HttpURLConnection con, IDestination route, DataHandler data, Metadata meta) throws IOException {
+    	// OK, we have a connection, and we want to write data to it.
+    	// If it fits in a single buffer, we just write it like normal.
+<span class="nc" id="L152">		byte[] buffer = new byte[(int) Math.min(meta.getFileSize(), BUFFERSIZE)];</span>
+
+		// Only write on first block if entire blob can be written.
+<span class="nc bnc" id="L155" title="All 2 branches missed.">		int bytesToSend = meta.getFileSize() &lt;= BUFFERSIZE ? (int)meta.getFileSize() : 0;</span>
+		
+<span class="nc" id="L157">		int result = writeAsSingleBlock(con, route, data, meta, buffer, bytesToSend);</span>
+		
+<span class="nc bnc" id="L159" title="All 2 branches missed.">    	if (bytesToSend != 0) {</span>
+<span class="nc" id="L160">        	return result; </span>
+    	} 
+    	// If the initial write failed, throw an HttpStatusException so that 
+    	// status will be reported.
+<span class="nc bnc" id="L164" title="All 2 branches missed.">    	if (result &gt;= HttpStatus.BAD_REQUEST.value()) {</span>
+<span class="nc" id="L165">    		throw new HttpStatusException(result);</span>
+    	}
+    	
+<span class="nc" id="L168">    	return writeInMultipleBlocks(con.getURL(), route, data, meta, buffer);</span>
+    }
+    
+    /**
+     * Writes the first block of data to the connection and gets the response code.
+     * @param con The connection
+     * @param route The route we are sending to
+     * @param data The data we are sending
+     * @param meta The metadata
+     * @param buffer The buffer to use
+     * @param bytesToSend The number of bytes to write, or 0 to write no data
+     * @return The HTTP response code
+     * @throws IOException If an error occurs when the data is written
+     */
+    protected int writeAsSingleBlock(HttpURLConnection con, IDestination route, DataHandler data, Metadata meta, byte[] buffer, int bytesToSend) throws IOException {
+<span class="nc" id="L183">    	try (OutputStream os = con.getOutputStream();</span>
+<span class="nc" id="L184">            InputStream is = data.getInputStream()) {</span>
+<span class="nc" id="L185">    		int n = 0;</span>
+			try {
+<span class="nc bnc" id="L187" title="All 2 branches missed.">				if ((n = is.read(buffer, 0, bytesToSend)) &gt; 0) {</span>
+<span class="nc" id="L188">					os.write(buffer, 0, n);</span>
+				}
+			} finally {
+<span class="nc" id="L191">	            logProgress(route, meta, n);</span>
+			}
+        }
+<span class="nc" id="L194">        return con.getResponseCode();</span>
+    }
+	private void logProgress(IDestination route, Metadata meta, long count) {
+<span class="nc" id="L197">    	log.info(&quot;ADS write to {} of {} ({}%) of {} bytes&quot;, route.getDestId(), </span>
+<span class="nc" id="L198">    			count, (count * 100.0) / meta.getFileSize(), meta.getFileSize());</span>
+<span class="nc" id="L199">	}</span>
+    
+	/**
+	 * This method appends any additional data beyond BUFFERSIZE to the Blob
+	 * @param url	The URL of the original connection.
+	 * @param route	The route we are sending to
+	 * @param data	The data we are sending
+	 * @param meta	The metadata
+	 * @param buffer	The buffer to use
+	 * @return The result of the request that marks the upload as complete
+	 * @throws IOException If an error occurs when the data is written
+	 */
+	protected int writeInMultipleBlocks(URL url, IDestination route, DataHandler data, Metadata meta, byte[] buffer) throws IOException {
+    	// So here, the connection passed in has already been used, but no data has been written yet.
+<span class="nc" id="L213">		long count = 0;</span>
+		// We need to modify the URL, with slightly different parameters to append blocks.
+<span class="nc" id="L215">    	InputStream is = data.getInputStream();</span>
+<span class="nc" id="L216">    	int status = HttpStatus.CREATED.value();</span>
+    	do {
+<span class="nc" id="L218">    		int n = is.read(buffer);</span>
+			// if we read no data, what do we do here.
+			
+			try {
+<span class="nc" id="L222">				Chunk chunk = new Chunk(buffer, 0, n);</span>
+<span class="nc" id="L223">				status = writeChunks(chunk, url, count, meta.getExtObjectKey());</span>
+<span class="nc" id="L224">				count += n;</span>
+			} finally {
+<span class="nc" id="L226">	            logProgress(route, meta, count);</span>
+			}
+<span class="nc bnc" id="L228" title="All 2 branches missed.">	    	if (status != HttpStatus.CREATED.value()) {</span>
+<span class="nc" id="L229">	    		throw new HttpStatusException(status);</span>
+	    	}
+<span class="nc bnc" id="L231" title="All 2 branches missed.">    	} while (count &lt; meta.getFileSize());</span>
+    	
+<span class="nc" id="L233">    	int numBlockWritten = (int) ((count + CHUNKSIZE - 1) / CHUNKSIZE);</span>
+<span class="nc" id="L234">		return markComplete(url, meta, numBlockWritten);</span>
+    }
+
+	/**
+	 * This method enables a large block to be written in several parallel threads.
+	 * 
+	 * A single connection may only be able to handle a fraction of the available bandwidth 
+	 * to the Azure endpoint, and so it would be better to run uploads of the large buffer in 
+	 * smaller chunks in parallel. To optimize upload speed, we must determine the appropriate 
+	 * chunking by tuning the number of connections used.
+	 * 
+	 * @param chunk	The (big) chunk to upload
+	 * @param url	The url of the blob where it is to be uploaded
+	 * @param count	The number of bytes already written
+	 * @param requestId	The request identifier
+	 * @return	The status of the writes (either all CREATED or status of first failed block)
+	 * @throws IOException	If an error occurs
+	 */
+	private int writeChunks(Chunk chunk, URL url, long count, String requestId) throws IOException {
+<span class="nc" id="L253">		List&lt;Chunk&gt; chunkList = chunk.chunks(CHUNKSIZE);</span>
+<span class="nc" id="L254">		List&lt;Callable&lt;Integer&gt;&gt; taskList = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L255">		int blockId = (int) (count / CHUNKSIZE);</span>
+		// Write in multiple threads.
+<span class="nc bnc" id="L257" title="All 2 branches missed.">		for (int i = 0; i &lt; chunkList.size(); i++) {</span>
+<span class="nc" id="L258">			Chunk cnk = chunkList.get(i);</span>
+<span class="nc" id="L259">			int theBlock = blockId + i;</span>
+<span class="nc" id="L260">			taskList.add(() -&gt; </span>
+<span class="nc" id="L261">				writeWithRetries(</span>
+					cnk,
+					url,
+					theBlock,
+					requestId
+				)
+			);
+<span class="nc" id="L268">			count += cnk.length;</span>
+		}
+<span class="nc" id="L270">		int status = 0;</span>
+<span class="nc" id="L271">		ExecutorService executor = Executors.newFixedThreadPool(MAX_THREADS);</span>
+		try {
+<span class="nc" id="L273">			List&lt;Future&lt;Integer&gt;&gt; futures = executor.invokeAll(taskList);</span>
+<span class="nc bnc" id="L274" title="All 2 branches missed.">			for (Future&lt;Integer&gt; result: futures) {</span>
+<span class="nc" id="L275">				status = result.get();</span>
+<span class="nc bnc" id="L276" title="All 2 branches missed.">		    	if (status != HttpStatus.CREATED.value()) {</span>
+<span class="nc" id="L277">		    		throw new HttpStatusException(status);</span>
+		    	}
+<span class="nc" id="L279">			}</span>
+<span class="nc" id="L280">		} catch (InterruptedException e) {</span>
+<span class="nc" id="L281">			Thread.currentThread().interrupt();</span>
+<span class="nc" id="L282">			throw new RuntimeException(&quot;Upload interrupted&quot;, e);  // NOSONAR</span>
+<span class="nc" id="L283">		} catch (ExecutionException e) {</span>
+<span class="nc" id="L284">			Throwable cause = e.getCause();</span>
+<span class="nc bnc" id="L285" title="All 2 branches missed.">			if (cause instanceof IOException ioex) {</span>
+<span class="nc" id="L286">				throw ioex;</span>
+			}
+<span class="nc bnc" id="L288" title="All 2 branches missed.">			if (cause instanceof RuntimeException rex) {</span>
+<span class="nc" id="L289">				throw rex;</span>
+			}
+<span class="nc" id="L291">			throw new RuntimeException(e);  // NOSONAR Should never get here, but if we do we throw</span>
+		} finally {
+<span class="nc" id="L293">			executor.shutdownNow();</span>
+		}
+<span class="nc" id="L295">		return status;</span>
+	}
+	
+	/**
+	 * Write a chunk to the blob
+	 * @param chunk	The chunk to write
+	 * @param url	The base url for accessing the blob.
+	 * @param blockId	The block being written
+	 * @param requestId	The request identifier
+	 * @return	The status of the write
+	 * @throws IOException	If an unrecoverable IO Exception occurs
+	 */
+	private int writeWithRetries(Chunk chunk, URL url, int blockId, String requestId) throws IOException {
+<span class="nc" id="L308">		return retry(() -&gt; {</span>
+<span class="nc" id="L309">			String blockIdString = encodeBlockId(blockId);</span>
+	
+			// Open a new connection for each block to be appended.
+			//
+			// This does two things:
+			// 1. It enables each write operation to be retryable on an exception
+			// 2. It escapes from firewall attempts to block sockets from sending more
+			//    than N bytes of data, since each append is &lt;= BUFFERSIZE.
+<span class="nc" id="L317">			URL newUrl = new URL(</span>
+<span class="nc" id="L318">				url.toString().replace(&quot;?&quot;, </span>
+					&quot;?comp=block&amp;blockid=&quot; 
+<span class="nc" id="L320">					+ URLEncoder.encode(blockIdString, StandardCharsets.UTF_8) </span>
+					+ &quot;&amp;&quot;
+				)
+			);
+			
+<span class="nc" id="L325">			HttpURLConnection con = getBlobConnection(newUrl, requestId);</span>
+<span class="nc" id="L326">			con.setFixedLengthStreamingMode(chunk.length());</span>
+<span class="nc" id="L327">			con.getOutputStream().write(chunk.buffer(), chunk.offset(), chunk.length());</span>
+			
+<span class="nc" id="L329">			int result = con.getResponseCode();</span>
+<span class="nc bnc" id="L330" title="All 2 branches missed.">			if (result != HttpStatus.CREATED.value()) {</span>
+<span class="nc" id="L331">				InputStream errorStream = con.getErrorStream();</span>
+<span class="nc" id="L332">				throw new HttpException(result, errorStream, null);</span>
+			}
+<span class="nc" id="L334">			return result;</span>
+		});
+	}
+	
+	/**
+	 * Get a connection to a blob
+	 * @param url	The URL for the connection
+	 * @param requestId	The request identifier
+	 * @return	An HttpURLConnection set up to call an Azure Blop API
+	 * @throws IOException	If the connection cannot be opened
+	 */
+	private HttpURLConnection getBlobConnection(URL url, String requestId) throws IOException {
+<span class="nc" id="L346">		HttpURLConnection con = (HttpURLConnection) url.openConnection();</span>
+<span class="nc" id="L347">		con.setRequestMethod(&quot;PUT&quot;);</span>
+<span class="nc" id="L348">		con.setDoInput(true);</span>
+<span class="nc" id="L349">		con.setDoOutput(true);</span>
+<span class="nc" id="L350">		con.setRequestProperty(&quot;x-ms-client-request-id&quot;, requestId);</span>
+<span class="nc" id="L351">		return con;</span>
+	}
+
+	/**
+	 * Base-65 encode a block identifier
+	 * @param blockId	The block number, a 24-bit integer
+	 * @return	The base-64 encoded block identifier (a four character string).
+	 */
+	private String encodeBlockId(int blockId) {
+<span class="nc" id="L360">		byte[] data = { (byte)((blockId &gt;&gt; 16) &amp; 0xFF), (byte)((blockId &gt;&gt; 8) &amp; 0xFF), (byte)(blockId &amp; 0xFF) };</span>
+<span class="nc" id="L361">		return Base64.encodeBase64String(data);</span>
+	}
+
+	/**
+	 * Mark the blob as &quot;Done&quot;
+	 * Adds metadata to the blob with the name &quot;uploaded&quot; and the value=date
+	 * @param url	The request URL.
+	 * @return	The status code.
+	 * @throws IOException On error marking the blob complete
+	 */
+	private int markComplete(URL url, Metadata meta, int numBlocks) throws IOException {
+<span class="nc" id="L372">		return retry(() -&gt; {</span>
+			// Update the URL
+<span class="nc" id="L374">			String urlString = url.toString().replace(&quot;?&quot;, &quot;?comp=blocklist&amp;&quot;); </span>
+			
+<span class="nc" id="L376">			URL newUrl = new URL(urlString);</span>
+<span class="nc" id="L377">			HttpURLConnection con = getBlobConnection(newUrl, meta.getExtObjectKey());</span>
+	
+			// Compute the payload
+<span class="nc" id="L380">			String blockList = getBlockList(numBlocks);</span>
+<span class="nc" id="L381">			byte[] data = blockList.getBytes(StandardCharsets.UTF_8);</span>
+	
+<span class="nc bnc" id="L383" title="All 2 branches missed.">			for (Header h: getHeaders(meta, null, null)) {</span>
+<span class="nc" id="L384">				con.addRequestProperty(h.getName(), h.getValue());</span>
+<span class="nc" id="L385">			}</span>
+            
+			// Write the data
+<span class="nc" id="L388">			con.setFixedLengthStreamingMode(data.length);</span>
+<span class="nc" id="L389">			con.getOutputStream().write(data);</span>
+			
+			// Check the response
+<span class="nc" id="L392">			int result = con.getResponseCode();</span>
+<span class="nc bnc" id="L393" title="All 2 branches missed.">			if (result != HttpStatus.CREATED.value()) {</span>
+<span class="nc" id="L394">				InputStream errorStream = con.getErrorStream();</span>
+<span class="nc" id="L395">				throw new HttpException(result, errorStream, null);</span>
+			}
+<span class="nc" id="L397">			return result;</span>
+		});
+	}
+
+	/**
+	 * Retry a request up to 3 times before failing, with exponential delays
+	 * starting at 100ms.
+	 * @param c	The request
+	 * @return	The result of the request
+	 * @throws IOException If an IOException occurs after 3 retries, or an HttpException is returned.
+	 */
+	private int retry(Callable&lt;Integer&gt; c) throws IOException {
+<span class="nc" id="L409">		long delay = 100;</span>
+<span class="nc" id="L410">		int retriesRemaining = 3;</span>
+		while (true) {
+			try {
+<span class="nc" id="L413">				return c.call();</span>
+<span class="nc" id="L414">			} catch (HttpException ex) {</span>
+<span class="nc" id="L415">				throw ex;</span>
+<span class="nc" id="L416">			} catch (IOException ioex) {</span>
+<span class="nc bnc" id="L417" title="All 2 branches missed.">				if (retriesRemaining-- &lt;= 0) {</span>
+<span class="nc" id="L418">					throw ioex;</span>
+				}
+				try {
+<span class="nc" id="L421">					Thread.sleep(delay);</span>
+<span class="nc" id="L422">				} catch (InterruptedException e) {</span>
+<span class="nc" id="L423">					Thread.currentThread().interrupt();</span>
+<span class="nc" id="L424">				}</span>
+<span class="nc" id="L425">			} catch (RuntimeException rex) {</span>
+<span class="nc" id="L426">				throw rex;</span>
+<span class="nc" id="L427">			} catch (Exception ex) {</span>
+<span class="nc" id="L428">				throw new RuntimeException(&quot;Unexpected Exception&quot;, ex); // NOSONAR Technically, this cannot happen</span>
+<span class="nc" id="L429">			}</span>
+		}
+	}
+	
+	private String getBlockList(int numBlocks) {
+<span class="nc" id="L434">		StringBuilder b = new StringBuilder();</span>
+<span class="nc" id="L435">		b.append(&quot;&lt;?xml version='1.0' encoding='utf-8'?&gt;\n&quot;);  </span>
+<span class="nc" id="L436">		b.append(&quot;&lt;BlockList&gt;\n&quot;);</span>
+<span class="nc bnc" id="L437" title="All 2 branches missed.">		for (int blockNum = 0; blockNum &lt; numBlocks; blockNum++) {</span>
+<span class="nc" id="L438">			b.append(&quot; &lt;Latest&gt;&quot;);</span>
+<span class="nc" id="L439">			b.append(encodeBlockId(blockNum));</span>
+<span class="nc" id="L440">			b.append(&quot;&lt;/Latest&gt;\n&quot;);</span>
+		}
+<span class="nc" id="L442">		b.append(&quot;&lt;/BlockList&gt;\n&quot;);</span>
+<span class="nc" id="L443">		return b.toString();</span>
+	}
+	
+        
+	@Override
+	protected void setExpiration(HttpURLConnection con, Date date) {
+<span class="nc" id="L449">		con.setRequestProperty(&quot;x-ms-expiry-option&quot;, &quot;RelativeTonow&quot;);</span>
+<span class="nc" id="L450">		con.setRequestProperty(&quot;x-ms-expiry-time&quot;, Long.toString(config.getMaxAgeInMinutes() * 60000l));  </span>
+<span class="nc" id="L451">	}</span>
+
+	private static int blobSizeComparator(AzureBlob b1, AzureBlob b2) {
+<span class="nc" id="L454">		long sign = b1.getLength() - b2.getLength();</span>
+<span class="nc bnc" id="L455" title="All 2 branches missed.">		if (sign &lt; 0) {</span>
+<span class="nc" id="L456">			return -1;</span>
+		}
+<span class="nc bnc" id="L458" title="All 2 branches missed.">		return sign &gt; 0 ? 1 : 0;</span>
+	}
+	
+	@Override
+	protected void checkForSpace(HttpURLConnection con, long fileSize) throws MessageTooLargeFault {
+<span class="nc" id="L463">		long diskFreeSpace = getDiskFreeSpace();</span>
+<span class="nc bnc" id="L464" title="All 2 branches missed.">		if (fileSize + getMaxUploadSize() &lt;= diskFreeSpace) {</span>
+			// There's enough room
+<span class="nc" id="L466">			return;</span>
+		}
+		
+<span class="nc" id="L469">		AzureBlob[] b = AzureBlob.listBlobs(con, getSslSocketFactory());</span>
+<span class="nc" id="L470">		Arrays.sort(b, AzureBlobStorageSender::blobSizeComparator);</span>
+<span class="nc bnc" id="L471" title="All 2 branches missed.">		for (AzureBlob nextToDelete: b) {</span>
+<span class="nc" id="L472">			nextToDelete.delete(con, getSslSocketFactory());</span>
+<span class="nc bnc" id="L473" title="All 2 branches missed.">			if (fileSize + getMaxUploadSize() &lt; getDiskFreeSpace()) {</span>
+				// There's enough room
+<span class="nc" id="L475">				return;</span>
+			}
+		}
+		
+		// Still not enough room for this upload and the next, see if there is room for this one
+<span class="nc" id="L480">		long freeDiskSpace = getDiskFreeSpace(); </span>
+<span class="nc bnc" id="L481" title="All 2 branches missed.">		if (fileSize &lt; freeDiskSpace) {</span>
+<span class="nc" id="L482">			log.warn(&quot;Running low on storage: {} free&quot;, freeDiskSpace);</span>
+<span class="nc" id="L483">			return;</span>
+		}
+		
+		// Not enough room
+<span class="nc" id="L487">		log.error(&quot;Out of storage for upload: {} free&quot;, freeDiskSpace);</span>
+<span class="nc" id="L488">		throw new MessageTooLargeFault(Direction.REQUEST, freeDiskSpace, fileSize);</span>
+	}
+
+	@Override
+	protected String getSubmissionStatus(HttpURLConnection con) {
+<span class="nc" id="L493">		throw new UnsupportedOperationException();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

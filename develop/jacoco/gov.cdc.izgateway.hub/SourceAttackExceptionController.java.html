@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SourceAttackExceptionController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.hub</a> &gt; <span class="el_source">SourceAttackExceptionController.java</span></div><h1>SourceAttackExceptionController.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.hub;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+
+import gov.cdc.izgateway.dynamodb.model.SourceAttackExceptionRecord;
+import gov.cdc.izgateway.hub.service.accesscontrol.AccessControlService;
+import gov.cdc.izgateway.security.AccessControlRegistry;
+import gov.cdc.izgateway.security.Roles;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import jakarta.annotation.security.RolesAllowed;
+import lombok.Data;
+
+/**
+ * Admin API for managing source-attack lockout exceptions (IGDD-2805).
+ * &lt;p&gt;
+ * A sender with a configured exception is not added to the deny list when a source attack is
+ * detected for it; the triggering message is still rejected. See
+ * {@code openspec/changes/igdd-2805-source-attack-lockout/design.md}.
+ * &lt;/p&gt;
+ */
+@RestController
+@CrossOrigin
+@RolesAllowed({ Roles.ADMIN })
+@RequestMapping({ &quot;/rest/sourceAttackExceptions&quot; })
+@Lazy(false)
+public class SourceAttackExceptionController {
+    private final AccessControlService accessControlService;
+
+    /**
+     * Request body for creating a source-attack exception.
+     */
+    @Data
+    public static class CreateExceptionRequest {
+        @Schema(description = &quot;The sender's common name&quot;)
+        private String sender;
+        @Schema(description = &quot;Operator justification for the exception&quot;)
+        private String reason;
+
+        /**
+         * Create the request. Jackson sets the fields from the request body.
+         */
+<span class="fc" id="L58">        public CreateExceptionRequest() {</span>
+            // Nothing to initialize.
+<span class="fc" id="L60">        }</span>
+    }
+
+    /**
+     * Create the controller.
+     * @param registry	The registry for managing access control to methods
+     * @param accessControlService	The access control service
+     */
+    @Autowired
+<span class="fc" id="L69">    public SourceAttackExceptionController(AccessControlRegistry registry, AccessControlService accessControlService) {</span>
+<span class="fc" id="L70">        registry.register(this);</span>
+<span class="fc" id="L71">        this.accessControlService = accessControlService;</span>
+<span class="fc" id="L72">    }</span>
+
+    /**
+     * List the source-attack lockout exceptions.
+     * @return All senders that are exempt from source-attack auto-lockout
+     */
+    @Operation(summary = &quot;List source-attack lockout exceptions&quot;,
+            description = &quot;Returns all senders currently exempted from source-attack auto-lockout&quot;)
+    @ApiResponse(responseCode = &quot;200&quot;, description = &quot;The configured exceptions&quot;,
+        content = @Content(mediaType = &quot;application/json&quot;,
+         schema = @Schema(implementation = SourceAttackExceptionRecord.class)))
+    @GetMapping
+    public List&lt;SourceAttackExceptionRecord&gt; list() {
+<span class="fc" id="L85">        return accessControlService.listSourceAttackExceptions();</span>
+    }
+
+    /**
+     * Create a source-attack lockout exception.
+     * @param request	The sender and the reason for the exception
+     * @return The created exception
+     */
+    @Operation(summary = &quot;Create a source-attack lockout exception&quot;,
+            description = &quot;Exempts a sender from source-attack auto-lockout. Does not affect whether a &quot;
+                    + &quot;flagged message is accepted or rejected.&quot;)
+    @ApiResponse(responseCode = &quot;200&quot;, description = &quot;The created exception&quot;,
+        content = @Content(mediaType = &quot;application/json&quot;,
+         schema = @Schema(implementation = SourceAttackExceptionRecord.class)))
+    @ApiResponse(responseCode = &quot;400&quot;, description = &quot;sender or reason was blank&quot;, content = @Content)
+    @PostMapping
+    public SourceAttackExceptionRecord create(@RequestBody CreateExceptionRequest request) {
+<span class="fc" id="L102">        return accessControlService.createSourceAttackException(request.getSender(), request.getReason());</span>
+    }
+
+    /**
+     * Remove the source-attack lockout exception for a sender.
+     * @param sender	The sender's common name
+     */
+    @Operation(summary = &quot;Remove a source-attack lockout exception&quot;,
+            description = &quot;The sender will again be added to the deny list on the next detected source attack&quot;)
+    @ApiResponse(responseCode = &quot;204&quot;, description = &quot;The exception was removed, or did not exist&quot;, content = @Content)
+    @DeleteMapping(&quot;/{sender}&quot;)
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable String sender) {
+<span class="fc" id="L115">        accessControlService.deleteSourceAttackException(sender);</span>
+<span class="fc" id="L116">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

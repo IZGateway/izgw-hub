@@ -1,0 +1,487 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AccessControlMigrator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.hub.service.accesscontrol</a> &gt; <span class="el_source">AccessControlMigrator.java</span></div><h1>AccessControlMigrator.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.hub.service.accesscontrol;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import com.opencsv.CSVReader;
+import com.opencsv.CSVReaderBuilder;
+import com.opencsv.enums.CSVReaderNullFieldIndicator;
+import com.opencsv.exceptions.CsvValidationException;
+
+import gov.cdc.izgateway.Application;
+import gov.cdc.izgateway.dynamodb.model.AccessControl;
+import gov.cdc.izgateway.dynamodb.model.AccessGroup;
+import gov.cdc.izgateway.dynamodb.model.AllowedUser;
+import gov.cdc.izgateway.dynamodb.model.DenyListRecord;
+import gov.cdc.izgateway.dynamodb.model.Event;
+import gov.cdc.izgateway.dynamodb.model.FileType;
+import gov.cdc.izgateway.dynamodb.model.OrganizationRecord;
+import gov.cdc.izgateway.dynamodb.repository.AccessGroupRepository;
+import gov.cdc.izgateway.dynamodb.repository.AllowedUserRepository;
+import gov.cdc.izgateway.dynamodb.repository.DenyListRecordRepository;
+import gov.cdc.izgateway.dynamodb.repository.EventRepository;
+import gov.cdc.izgateway.dynamodb.repository.FileTypeRepository;
+import gov.cdc.izgateway.dynamodb.repository.OrganizationRecordRepository;
+import gov.cdc.izgateway.hub.repository.IAccessControlRepository;
+import gov.cdc.izgateway.hub.repository.IAccessGroupRepository;
+import gov.cdc.izgateway.hub.repository.IAllowedUserRepository;
+import gov.cdc.izgateway.hub.repository.IDenyListRecordRepository;
+import gov.cdc.izgateway.hub.repository.IFileTypeRepository;
+import gov.cdc.izgateway.hub.repository.IOrganizationRecordRepository;
+import gov.cdc.izgateway.hub.repository.RepositoryFactory;
+import gov.cdc.izgateway.logging.markers.Markers2;
+import gov.cdc.izgateway.model.IAccessControl;
+import gov.cdc.izgateway.repository.DynamoDbRepository;
+import gov.cdc.izgateway.repository.IRepository;
+import gov.cdc.izgateway.security.Roles;
+import gov.cdc.izgateway.service.IAccessControlService;
+import gov.cdc.izgateway.utils.SystemUtils;
+import lombok.extern.slf4j.Slf4j;
+
+import java.io.FileReader;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Date;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.ServiceConfigurationError;
+import java.util.Set;
+
+/**
+ * Implements the IAccessControlService for IZ Gateway.
+ * 
+ * 
+ * @author Audacious Inquiry
+ */
+<span class="fc" id="L60">@Slf4j</span>
+@Service
+public class AccessControlMigrator {
+
+	private final IAccessControlRepository&lt;AccessControl&gt; accessControlRepository;
+    private final IAccessGroupRepository&lt;AccessGroup&gt; accessGroupRepository;
+    private final IAllowedUserRepository&lt;AllowedUser&gt; allowedUserRepository;
+    private final IDenyListRecordRepository&lt;DenyListRecord&gt; denyListRecordRepository;
+    private final IFileTypeRepository&lt;FileType&gt; fileTypeRepository;
+    private final IOrganizationRecordRepository&lt;OrganizationRecord&gt; organizationRecordRepository;
+	private final EventRepository eventRepository;
+	private final List&lt;IRepository&lt;?&gt;&gt; repositoriesToMigrate;
+
+	@Value(&quot;${server.hostname:dev.izgateway.org}&quot;)
+	private String serverName;
+	@Value(&quot;${hub.migration-data:access-controls.csv}&quot;)
+	private String migrationData;
+	
+    /**
+     * Create a new AccessControlService
+     * @param factory The repository factory to use
+     */
+    @Autowired
+<span class="fc" id="L83">    public AccessControlMigrator(RepositoryFactory factory) {</span>
+<span class="fc" id="L84">        this.accessControlRepository = factory.accessControlRepository();</span>
+<span class="fc" id="L85">        this.accessGroupRepository = factory.accessGroupRepository();</span>
+<span class="fc" id="L86">        this.allowedUserRepository = factory.allowedUserRepository();</span>
+<span class="fc" id="L87">        this.denyListRecordRepository = factory.denyListRecordRepository();</span>
+<span class="fc" id="L88">        this.fileTypeRepository = factory.fileTypeRepository();</span>
+<span class="fc" id="L89">        this.organizationRecordRepository = factory.organizationRecordRepository();</span>
+<span class="fc" id="L90">        factory.destinationRepository();</span>
+<span class="fc" id="L91">        this.eventRepository = factory.eventRepository();</span>
+<span class="fc" id="L92">        factory.certificateStatusRepository();</span>
+<span class="fc" id="L93">        this.repositoriesToMigrate = Arrays.asList(accessGroupRepository, allowedUserRepository, denyListRecordRepository, fileTypeRepository, organizationRecordRepository);</span>
+<span class="fc" id="L94">    }</span>
+    
+	/**
+     * Configure service to update itself periodically after initialization.
+	 * @return True if migration was performed or already migrated, false if migration was skipped or failed.
+     */
+    public boolean checkForMigration() {
+<span class="fc" id="L101">    	boolean[] furtherMigrationNeeded = { false };</span>
+    	try {
+<span class="fc" id="L103">    		DynamoDbRepository.setServerName(serverName);</span>
+<span class="pc bpc" id="L104" title="1 of 2 branches missed.">    		if (!Application.isSkipMigrations()) { // Prevent unit tests from causing migrations</span>
+<span class="nc" id="L105">				repositoriesToMigrate.stream().filter(r -&gt; r.findAll().isEmpty()).forEach(r -&gt; {</span>
+<span class="nc" id="L106">					log.info(&quot;Migrating data to {}&quot;, r.getClass().getSimpleName());</span>
+<span class="nc" id="L107">					furtherMigrationNeeded[0] |= migrateToNewAccessControlModel(r);</span>
+<span class="nc" id="L108">				});</span>
+				// Only migrate from CSV if any of the repositories needed migration
+<span class="nc bnc" id="L110" title="All 2 branches missed.">				if (furtherMigrationNeeded[0]) {</span>
+<span class="nc" id="L111">					migrateFromCSV();</span>
+<span class="nc" id="L112">					log.info(&quot;Access Control update from CSV completed&quot;);</span>
+    			}
+<span class="nc" id="L114">	    		return true;</span>
+			}
+<span class="fc" id="L116">	    	return false;</span>
+<span class="nc" id="L117">    	} catch (ServiceConfigurationError e) {</span>
+<span class="nc" id="L118">    		log.error(Markers2.append(e), &quot;Error during Access Control migration: {}&quot;, e.getMessage());</span>
+<span class="nc" id="L119">    		return false;  // Use old model access control data if migration failed.</span>
+    	}
+    }
+    
+    /**
+     * Migrate existing access control records to the new model.
+     * 
+     * @param r The repository to migrate to
+     * @throws ServiceConfigurationError if there is an error during migration
+     */
+	private boolean migrateToNewAccessControlModel(IRepository&lt;?&gt; r) {
+		// To force a re-migration, delete &quot;Migration&quot; events for the specified repository type in DynamoDb 
+<span class="nc" id="L131">		Event migrationEvent = eventRepository.create(new Event(Event.MIGRATION, r.getClass().getSimpleName())); </span>
+<span class="nc bnc" id="L132" title="All 2 branches missed.">		if (migrationEvent == null) {</span>
+<span class="nc" id="L133">			log.info(&quot;Migration already performed for {}&quot;, r.getClass().getSimpleName());</span>
+<span class="nc" id="L134">			return false;</span>
+		}
+		
+<span class="nc" id="L137">		List&lt;Event&gt; l = eventRepository.findByNameAndTarget(&quot;Created&quot;, &quot;Database&quot;);</span>
+<span class="nc bnc" id="L138" title="All 2 branches missed.">		Event creationEvent = l.isEmpty() ? migrationEvent : l.get(0);</span>
+<span class="nc" id="L139">		String reportedBy = serverName + &quot;@&quot; + creationEvent.getReportedBy();</span>
+<span class="nc" id="L140">		List&lt;String&gt; adsUsers = List.of(&quot;ads&quot;, &quot;adspilot&quot;);</span>
+<span class="nc" id="L141">		boolean success = false;</span>
+		try {
+<span class="nc" id="L143">			List&lt;? extends IAccessControl&gt; recordsToMigrate = accessControlRepository.findAll();</span>
+<span class="nc bnc" id="L144" title="All 2 branches missed.">			if (r instanceof AccessGroupRepository agr) {</span>
+<span class="nc" id="L145">				agr.migrateAccessControls(recordsToMigrate.stream()</span>
+<span class="nc" id="L146">					.filter(ac -&gt; IAccessControlService.GROUP_CATEGORY.equals(ac.getCategory()))		// It's a group</span>
+<span class="nc bnc" id="L147" title="All 2 branches missed.">					.filter(ac -&gt; !&quot;blacklist&quot;.equals(ac.getName()) &amp;&amp;  // but not the blacklist</span>
+<span class="nc bnc" id="L148" title="All 2 branches missed.">								  !adsUsers.contains(ac.getName()))		// Or an ADS User group</span>
+<span class="nc" id="L149">					.toList(),</span>
+					reportedBy, 
+<span class="nc" id="L151">					migrationEvent.getStarted(),</span>
+<span class="nc" id="L152">					getEnvironmentsToPopulate()</span>
+				);
+<span class="nc" id="L154">				success = true;</span>
+<span class="nc" id="L155">				return true;</span>
+			} 
+<span class="nc bnc" id="L157" title="All 2 branches missed.">			if (r instanceof AllowedUserRepository aur) {</span>
+				// Only ADS Users use access controls today
+<span class="nc" id="L159">				aur.migrateAccessControls(recordsToMigrate.stream()</span>
+<span class="nc" id="L160">						.filter(ac -&gt; IAccessControlService.GROUP_CATEGORY.equals(ac.getCategory()))		// It's a group</span>
+<span class="nc" id="L161">						.filter(ac -&gt; adsUsers.contains(ac.getName()))		// It's an ADS User group</span>
+<span class="nc" id="L162">						.toList(), </span>
+						reportedBy, 
+<span class="nc" id="L164">						migrationEvent.getStarted()</span>
+				);
+<span class="nc" id="L166">				success = true;</span>
+<span class="nc" id="L167">				return true;</span>
+			} 
+<span class="nc bnc" id="L169" title="All 2 branches missed.">			if (r instanceof DenyListRecordRepository dlr) {</span>
+<span class="nc" id="L170">				dlr.migrateAccessControls(recordsToMigrate.stream()</span>
+<span class="nc" id="L171">					.filter(ac -&gt; IAccessControlService.GROUP_CATEGORY.equals(ac.getCategory()))		// It's a group</span>
+<span class="nc" id="L172">					.filter(ac -&gt; &quot;blacklist&quot;.equals(ac.getName()))		// it's the denylist</span>
+<span class="nc" id="L173">					.toList(), </span>
+					reportedBy, 
+<span class="nc" id="L175">					migrationEvent.getStarted()</span>
+				);
+<span class="nc" id="L177">				success = true;</span>
+<span class="nc" id="L178">				return true;</span>
+			} 
+<span class="nc bnc" id="L180" title="All 2 branches missed.">			if (r instanceof FileTypeRepository ftr) {</span>
+<span class="nc" id="L181">				List&lt;FileType&gt; fileTypes = recordsToMigrate.stream()</span>
+<span class="nc" id="L182">					.filter(ac -&gt; IAccessControlService.ROUTE_CATEGORY.equals(ac.getCategory()))		// It's a group</span>
+<span class="nc" id="L183">					.map(ac -&gt; new FileType(ac, migrationEvent.getReportedBy(), migrationEvent.getCompleted())).toList();</span>
+<span class="nc" id="L184">				fileTypes.forEach(ft -&gt; { ft.setCreatedBy(migrationEvent.getReportedBy()); ft.setCreatedOn(migrationEvent.getStarted()); });</span>
+<span class="nc" id="L185">				ftr.migrate(fileTypes);</span>
+<span class="nc" id="L186">				success = true;</span>
+<span class="nc" id="L187">				return true;</span>
+			} 
+<span class="nc bnc" id="L189" title="All 2 branches missed.">			if (r instanceof OrganizationRecordRepository) {</span>
+				// No migration needed for Organization Records
+<span class="nc" id="L191">				success = true;</span>
+<span class="nc" id="L192">				return true;</span>
+			} 
+<span class="nc" id="L194">			log.error(&quot;Unrecognized repository type for migration: {}&quot;, r.getClass().getSimpleName());</span>
+<span class="nc" id="L195">			throw new ServiceConfigurationError(&quot;Unrecognized repository type for migration: &quot; + r.getClass().getSimpleName());</span>
+		} finally {
+<span class="nc" id="L197">			migrationEvent.setCompleted(new Date());</span>
+<span class="nc bnc" id="L198" title="All 2 branches missed.">			if (success) {</span>
+<span class="nc" id="L199">				eventRepository.update(migrationEvent);</span>
+			} else {
+<span class="nc" id="L201">				eventRepository.delete(migrationEvent);</span>
+			}
+		}
+	}
+	
+	private static int[] getEnvironmentsToPopulate() throws ServiceConfigurationError {
+<span class="nc bnc" id="L207" title="All 4 branches missed.">		switch (SystemUtils.getDestType()) {</span>
+		case SystemUtils.DESTTYPE_PROD, SystemUtils.DESTTYPE_ONBOARD:
+<span class="nc" id="L209">			return new int[] { SystemUtils.DESTTYPE_PROD, SystemUtils.DESTTYPE_ONBOARD };</span>
+		case SystemUtils.DESTTYPE_STAGE:
+<span class="nc" id="L211">			return new int[] { SystemUtils.DESTTYPE_STAGE };</span>
+		case SystemUtils.DESTTYPE_DEV, SystemUtils.DESTTYPE_TEST:
+<span class="nc" id="L213">			return new int[] { SystemUtils.DESTTYPE_DEV, SystemUtils.DESTTYPE_TEST };</span>
+		default:
+<span class="nc" id="L215">			throw new ServiceConfigurationError(&quot;Unknown environment type: &quot; + SystemUtils.getDestType());</span>
+		}
+	}
+
+	/**
+	 * Migrate access controls from access-controls.csv to allowed users.
+	 * @throws ServiceConfigurationError if there is an error reading the CSV file
+	 */
+	private boolean migrateFromCSV() throws ServiceConfigurationError {
+<span class="nc" id="L224">		Event migrationEvent = eventRepository.create(new Event(Event.MIGRATION, &quot;ImportAllowedUsers&quot;)); </span>
+<span class="nc" id="L225">		boolean success = false;</span>
+<span class="nc bnc" id="L226" title="All 2 branches missed.">		if (migrationEvent == null) {</span>
+<span class="nc" id="L227">			log.info(&quot;Migration already performed for ImportAllowedUsers&quot;);</span>
+<span class="nc" id="L228">			success = true;</span>
+<span class="nc" id="L229">			return false;</span>
+		}
+		try (
+<span class="nc" id="L232">			FileReader isr = new FileReader(migrationData, StandardCharsets.UTF_8);</span>
+<span class="nc" id="L233">			CSVReader csvr = new CSVReaderBuilder(isr).withSkipLines(1).withFieldAsNull(CSVReaderNullFieldIndicator.BOTH).build();</span>
+		) {
+<span class="nc" id="L235">			int[] environments = getEnvironmentsToPopulate();</span>
+			
+<span class="nc" id="L237">			createAllowedUsers(csvr, environments);</span>
+<span class="nc" id="L238">			addDevOpsPrincipals(csvr);</span>
+<span class="nc" id="L239">			addUsersGroup(environments);</span>
+<span class="nc" id="L240">			success = true;</span>
+<span class="nc" id="L241">			return true;</span>
+<span class="nc" id="L242">		} catch (Exception e) {</span>
+<span class="nc" id="L243">			log.error(Markers2.append(e), &quot;Error reading access-controls.csv&quot;);</span>
+<span class="nc" id="L244">			throw new ServiceConfigurationError(&quot;Error reading access-controls.csv&quot;, e);</span>
+		} finally {
+<span class="nc bnc" id="L246" title="All 2 branches missed.">			if (success) {</span>
+<span class="nc" id="L247">				log.info(&quot;Migration to Allowed Users from CSV completed successfully&quot;);</span>
+<span class="nc" id="L248">				migrationEvent.setCompleted(new Date());</span>
+<span class="nc" id="L249">				eventRepository.update(migrationEvent);</span>
+			} else {
+<span class="nc" id="L251">				log.info(&quot;Migration to Allowed Users from CSV failed&quot;);</span>
+<span class="nc" id="L252">				eventRepository.delete(migrationEvent);</span>
+			}
+		}
+	}
+
+	private void createAllowedUsers(CSVReader csvr, int[] environments) throws IOException {
+<span class="nc" id="L258">		Map&lt;String, OrganizationRecord&gt; orgMap = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc" id="L259">		Map&lt;String, AllowedUser&gt; allowedUserMap = new LinkedHashMap&lt;&gt;();</span>
+		String[] row;
+		try {
+			while (true) {
+				// Type,Source,Can Access,Id,Organization Name,Onboarding Cert Common Name,Prod Cert Common Name,Other Cert 1,Other Cert 2
+				try {
+<span class="nc" id="L265">					row = csvr.readNext();</span>
+<span class="nc" id="L266">				} catch (CsvValidationException e) {</span>
+<span class="nc" id="L267">					log.error(Markers2.append(e), &quot;CSV is invalid for access-controls.csv at line: {}&quot;, e.getLineNumber());</span>
+<span class="nc" id="L268">					continue;</span>
+<span class="nc" id="L269">				}</span>
+<span class="nc bnc" id="L270" title="All 4 branches missed.">				if (row == null || row[0] == null) {</span>
+<span class="nc" id="L271">					return;</span>
+				}
+<span class="nc" id="L273">				createOrganizationAndUser(environments, orgMap, allowedUserMap, row);</span>
+			}
+		} finally {
+<span class="nc" id="L276">			organizationRecordRepository.migrate(orgMap.values());</span>
+<span class="nc" id="L277">			allowedUserRepository.migrate(allowedUserMap.values());</span>
+		}
+	}
+
+	private void createOrganizationAndUser(int[] environments, Map&lt;String, OrganizationRecord&gt; orgMap,
+			Map&lt;String, AllowedUser&gt; allowedUserMap, String[] row) {
+		// Type,Source,Can Access,Id,Organization Name,Onboarding Cert Common Name,Prod Cert Common Name,Other Cert 1,Other Cert 2
+<span class="nc" id="L284">		String type = row[0];</span>
+<span class="nc bnc" id="L285" title="All 2 branches missed.">		String orgName = row.length &lt; 1 ? null : row[1];</span>
+<span class="nc bnc" id="L286" title="All 2 branches missed.">		String destinationId = row.length &lt; 3 ? null : row[3];</span>
+<span class="nc" id="L287">		String[] finalRow = row;</span>
+<span class="nc" id="L288">		orgMap.computeIfAbsent(orgName, </span>
+<span class="nc" id="L289">				k -&gt; createOrgRecord(type, orgName, Arrays.asList(finalRow).subList(5, finalRow.length)));</span>
+		
+<span class="nc bnc" id="L291" title="All 2 branches missed.">		for (int env : environments) {</span>
+<span class="nc" id="L292">			List&lt;Integer&gt; certsToProcess = null;</span>
+<span class="nc bnc" id="L293" title="All 2 branches missed.">			if (List.of(SystemUtils.DESTTYPE_PROD, SystemUtils.DESTTYPE_DEV).contains(env)) {</span>
+<span class="nc" id="L294">				certsToProcess = List.of(6);</span>
+			} else {
+<span class="nc" id="L296">				certsToProcess = List.of(5, 7, 8);</span>
+			}
+<span class="nc bnc" id="L298" title="All 2 branches missed.">			for (int certToProcess : certsToProcess) {</span>
+<span class="nc bnc" id="L299" title="All 2 branches missed.">				String certCommonName = row.length &lt;= certToProcess ? null : row[certToProcess];</span>
+<span class="nc bnc" id="L300" title="All 4 branches missed.">				if (certCommonName == null || certCommonName.isBlank()) {</span>
+<span class="nc" id="L301">					continue;</span>
+				}
+<span class="nc" id="L303">				String key = String.format(&quot;%s#%s#%s&quot;, env, destinationId, certCommonName);</span>
+<span class="nc" id="L304">				allowedUserMap.computeIfAbsent(key, k -&gt; createAllowedUserRecord(env, destinationId, certCommonName));				</span>
+<span class="nc" id="L305">			}</span>
+		}
+<span class="nc" id="L307">	}</span>
+	
+
+	private void addUsersGroup(int[] environments) {
+<span class="nc bnc" id="L311" title="All 2 branches missed.">		for (int env: environments) {</span>
+<span class="nc" id="L312">			AccessGroup g = accessGroupRepository.findByTypeAndName(env, Roles.USERS);</span>
+<span class="nc bnc" id="L313" title="All 2 branches missed.">			if (g == null) {</span>
+<span class="nc" id="L314">				g = new AccessGroup();</span>
+<span class="nc" id="L315">				g.setEnvironment(env);</span>
+<span class="nc" id="L316">				g.setGroupName(Roles.USERS);</span>
+<span class="nc" id="L317">				g.getRoles().add(Roles.USERS);</span>
+			}
+			// Add the wildcard user to the users group
+<span class="nc" id="L320">			g.getUsers().add(&quot;*&quot;);</span>
+<span class="nc" id="L321">			accessGroupRepository.store(g);</span>
+		}
+		
+<span class="nc" id="L324">	}</span>
+
+<span class="nc" id="L326">	private static class CertLists {</span>
+<span class="nc" id="L327">		Set&lt;String&gt; monitoringCert = new LinkedHashSet&lt;&gt;();</span>
+<span class="nc" id="L328">		Set&lt;String&gt; devOpsStaff = new LinkedHashSet&lt;&gt;();</span>
+<span class="nc" id="L329">		Set&lt;String&gt; preprodCerts = new LinkedHashSet&lt;&gt;();</span>
+<span class="nc" id="L330">		Set&lt;String&gt; onboardingCerts = new LinkedHashSet&lt;&gt;();</span>
+<span class="nc" id="L331">		Set&lt;String&gt; prodCerts = new LinkedHashSet&lt;&gt;();</span>
+<span class="nc" id="L332">		Set&lt;String&gt; developmentCerts = new LinkedHashSet&lt;&gt;();</span>
+<span class="nc" id="L333">		Set&lt;String&gt; cicdCerts = Set.of(&quot;cicd.testing.izgateway.org&quot;);</span>
+	}
+	private void addDevOpsPrincipals(CSVReader csvr) throws IOException  {
+<span class="nc" id="L336">		CertLists certLists = collectOperationsUserData(csvr);</span>
+		
+<span class="nc bnc" id="L338" title="All 2 branches missed.">		if (SystemUtils.getDestType() == SystemUtils.DESTTYPE_STAGE) {</span>
+<span class="nc" id="L339">			addSystemCerts(certLists.monitoringCert, SystemUtils.DESTTYPE_STAGE, Roles.SOAP);</span>
+<span class="nc" id="L340">			addSystemCerts(certLists.devOpsStaff, SystemUtils.DESTTYPE_STAGE, Roles.ADMIN);</span>
+<span class="nc" id="L341">			addSystemCerts(certLists.preprodCerts, SystemUtils.DESTTYPE_STAGE, Roles.INTERNAL);</span>
+<span class="nc" id="L342">			addToDenyList(certLists.onboardingCerts, SystemUtils.DESTTYPE_STAGE);</span>
+<span class="nc" id="L343">			addToDenyList(certLists.prodCerts, SystemUtils.DESTTYPE_STAGE);</span>
+<span class="nc" id="L344">			addToDenyList(certLists.developmentCerts, SystemUtils.DESTTYPE_STAGE);</span>
+<span class="nc" id="L345">			addToDenyList(certLists.cicdCerts, SystemUtils.DESTTYPE_STAGE);</span>
+		}
+		
+<span class="nc bnc" id="L348" title="All 4 branches missed.">		if (SystemUtils.getDestType() == SystemUtils.DESTTYPE_ONBOARD || SystemUtils.getDestType() == SystemUtils.DESTTYPE_PROD) {</span>
+<span class="nc" id="L349">			addSystemCerts(certLists.monitoringCert, SystemUtils.DESTTYPE_PROD, Roles.SOAP);</span>
+<span class="nc" id="L350">			addSystemCerts(certLists.devOpsStaff, SystemUtils.DESTTYPE_PROD, Roles.ADMIN);</span>
+<span class="nc" id="L351">			addSystemCerts(certLists.onboardingCerts, SystemUtils.DESTTYPE_PROD, Roles.INTERNAL);</span>
+<span class="nc" id="L352">			addToDenyList(certLists.preprodCerts, SystemUtils.DESTTYPE_PROD);</span>
+<span class="nc" id="L353">			addToDenyList(certLists.prodCerts, SystemUtils.DESTTYPE_PROD);</span>
+<span class="nc" id="L354">			addToDenyList(certLists.developmentCerts, SystemUtils.DESTTYPE_PROD);</span>
+<span class="nc" id="L355">			addToDenyList(certLists.cicdCerts, SystemUtils.DESTTYPE_PROD);</span>
+			
+<span class="nc" id="L357">			addSystemCerts(certLists.monitoringCert, SystemUtils.DESTTYPE_ONBOARD, Roles.SOAP);</span>
+<span class="nc" id="L358">			addSystemCerts(certLists.devOpsStaff, SystemUtils.DESTTYPE_ONBOARD, Roles.ADMIN);</span>
+<span class="nc" id="L359">			addSystemCerts(certLists.prodCerts, SystemUtils.DESTTYPE_ONBOARD, Roles.INTERNAL);</span>
+<span class="nc" id="L360">			addToDenyList(certLists.preprodCerts, SystemUtils.DESTTYPE_ONBOARD);</span>
+<span class="nc" id="L361">			addToDenyList(certLists.onboardingCerts, SystemUtils.DESTTYPE_ONBOARD);</span>
+<span class="nc" id="L362">			addToDenyList(certLists.developmentCerts, SystemUtils.DESTTYPE_ONBOARD);</span>
+<span class="nc" id="L363">			addToDenyList(certLists.cicdCerts, SystemUtils.DESTTYPE_ONBOARD);</span>
+		}
+		
+<span class="nc bnc" id="L366" title="All 4 branches missed.">		if (SystemUtils.getDestType() == SystemUtils.DESTTYPE_DEV || SystemUtils.getDestType() == SystemUtils.DESTTYPE_TEST) {</span>
+<span class="nc" id="L367">			addSystemCerts(certLists.monitoringCert, SystemUtils.DESTTYPE_DEV, Roles.SOAP);</span>
+<span class="nc" id="L368">			addSystemCerts(certLists.devOpsStaff, SystemUtils.DESTTYPE_DEV, Roles.ADMIN);</span>
+<span class="nc" id="L369">			addSystemCerts(certLists.cicdCerts, SystemUtils.DESTTYPE_DEV, Roles.ADMIN);</span>
+<span class="nc" id="L370">			addSystemCerts(certLists.developmentCerts, SystemUtils.DESTTYPE_DEV, Roles.INTERNAL);</span>
+<span class="nc" id="L371">			addToDenyList(certLists.preprodCerts, SystemUtils.DESTTYPE_DEV);</span>
+<span class="nc" id="L372">			addToDenyList(certLists.onboardingCerts, SystemUtils.DESTTYPE_DEV);</span>
+<span class="nc" id="L373">			addToDenyList(certLists.prodCerts, SystemUtils.DESTTYPE_DEV);</span>
+			
+<span class="nc" id="L375">			addSystemCerts(certLists.monitoringCert, SystemUtils.DESTTYPE_TEST, Roles.SOAP);</span>
+<span class="nc" id="L376">			addSystemCerts(certLists.devOpsStaff, SystemUtils.DESTTYPE_TEST, Roles.ADMIN);</span>
+<span class="nc" id="L377">			addSystemCerts(certLists.cicdCerts, SystemUtils.DESTTYPE_TEST, Roles.ADMIN);</span>
+<span class="nc" id="L378">			addSystemCerts(certLists.developmentCerts, SystemUtils.DESTTYPE_TEST, Roles.INTERNAL);</span>
+<span class="nc" id="L379">			addToDenyList(certLists.preprodCerts, SystemUtils.DESTTYPE_TEST);</span>
+<span class="nc" id="L380">			addToDenyList(certLists.onboardingCerts, SystemUtils.DESTTYPE_TEST);</span>
+<span class="nc" id="L381">			addToDenyList(certLists.prodCerts, SystemUtils.DESTTYPE_TEST);</span>
+		}
+<span class="nc" id="L383">	}</span>
+
+	private CertLists collectOperationsUserData(CSVReader csvr) throws IOException {
+<span class="nc" id="L386">		CertLists certLists = new CertLists();</span>
+		try {
+			// Skip header line
+<span class="nc" id="L389">			csvr.readNext();</span>
+<span class="nc" id="L390">		} catch (CsvValidationException e) {</span>
+<span class="nc" id="L391">			log.error(Markers2.append(e), &quot;CSV malformed for access-controls.csv at line: {}&quot;, e.getLineNumber());</span>
+<span class="nc" id="L392">		}</span>
+		String[] row;
+		while (true) {
+			// Type,Principal,Organization
+			try {
+<span class="nc" id="L397">				row = csvr.readNext();</span>
+<span class="nc" id="L398">			} catch (CsvValidationException e) {</span>
+<span class="nc" id="L399">				log.error(Markers2.append(e), &quot;CSV is invalid for access-controls.csv at line: {}&quot;, e.getLineNumber());</span>
+<span class="nc" id="L400">				continue;</span>
+<span class="nc" id="L401">			}</span>
+<span class="nc bnc" id="L402" title="All 4 branches missed.">			if (row == null || row.length &lt; 2) {</span>
+<span class="nc" id="L403">				return certLists;</span>
+			}
+<span class="nc" id="L405">			String type = row[0];</span>
+<span class="nc bnc" id="L406" title="All 2 branches missed.">			String principal = row.length &lt; 2 ? null : row[1];</span>
+<span class="nc bnc" id="L407" title="All 2 branches missed.">			String organization = row.length &lt; 3 ? null : row[2];</span>
+<span class="nc" id="L408">			createOrganization(type, principal, organization);</span>
+<span class="nc bnc" id="L409" title="All 7 branches missed.">			switch (type.toLowerCase()) {</span>
+<span class="nc" id="L410">			case &quot;monitoring&quot;:	certLists.monitoringCert.add(principal); break;</span>
+<span class="nc" id="L411">			case &quot;staff&quot;:		certLists.devOpsStaff.add(principal); break;</span>
+<span class="nc" id="L412">			case &quot;preprod&quot;:		certLists.preprodCerts.add(principal); break;</span>
+<span class="nc" id="L413">			case &quot;onboarding&quot;:	certLists.onboardingCerts.add(principal); break;</span>
+<span class="nc" id="L414">			case &quot;prod&quot;:		certLists.prodCerts.add(principal); break;</span>
+<span class="nc" id="L415">			case &quot;development&quot;:	certLists.developmentCerts.add(principal); break;</span>
+			default:
+<span class="nc" id="L417">				log.error(&quot;Unrecognized type {} in access-controls.csv&quot;, type);</span>
+			}
+<span class="nc" id="L419">		}</span>
+	}
+
+	private void createOrganization(String type, String principal, String organization) {
+<span class="nc" id="L423">		OrganizationRecord orgRecord = this.organizationRecordRepository.find(organization);</span>
+<span class="nc bnc" id="L424" title="All 2 branches missed.">		if (orgRecord == null) {</span>
+<span class="nc" id="L425">			orgRecord = createOrgRecord(type, organization, List.of(principal));</span>
+<span class="nc bnc" id="L426" title="All 2 branches missed.">		} else if (!orgRecord.getPrincipalNames().contains(principal)) {</span>
+<span class="nc" id="L427">			orgRecord.addPrincipalName(principal);</span>
+		}
+<span class="nc" id="L429">		organizationRecordRepository.store(orgRecord);</span>
+<span class="nc" id="L430">	}</span>
+
+	/**
+	 * Give the specified principals access to IZ Gateway REST and SOAP APIs  
+	 * @param principalsToAllow	The principals to allow
+	 * @param destType	The destination type they are being allowed to
+	 * @param role The role to assign
+	 */
+	private void addSystemCerts(Collection&lt;String&gt; principalsToAllow, int destType, String role) {
+<span class="nc" id="L439">		AccessGroup g = accessGroupRepository.findByTypeAndName(destType, role);</span>
+<span class="nc bnc" id="L440" title="All 2 branches missed.">		if (g == null) {</span>
+<span class="nc" id="L441">			g = new AccessGroup();</span>
+<span class="nc" id="L442">			g.setEnvironment(destType);</span>
+<span class="nc" id="L443">			g.setGroupName(role);</span>
+<span class="nc" id="L444">			g.getRoles().add(role);</span>
+<span class="nc" id="L445">			accessGroupRepository.store(g);</span>
+		}
+<span class="nc" id="L447">		g.getUsers().addAll(principalsToAllow);</span>
+<span class="nc" id="L448">		accessGroupRepository.store(g);</span>
+<span class="nc" id="L449">	}</span>
+
+	/**
+	 * Given the specified principals, add them to the deny list.
+	 * @param principalsToDeny	The principals to deny
+	 * @param destType	The destination type they are being denied from
+	 */
+	private void addToDenyList(Set&lt;String&gt; principalsToDeny, int destType) {
+<span class="nc bnc" id="L457" title="All 2 branches missed.">		for (String principal : principalsToDeny) {</span>
+<span class="nc" id="L458">			DenyListRecord dlr = new DenyListRecord();</span>
+<span class="nc" id="L459">			dlr.setEnvironment(destType);</span>
+<span class="nc" id="L460">			dlr.setPrincipal(principal);</span>
+<span class="nc" id="L461">			denyListRecordRepository.store(dlr);</span>
+<span class="nc" id="L462">		}</span>
+<span class="nc" id="L463">	}</span>
+
+	private OrganizationRecord createOrgRecord(String type, String orgName, Collection&lt;String&gt; finalRow) {
+<span class="nc" id="L466">		OrganizationRecord org = new OrganizationRecord();</span>
+<span class="nc" id="L467">		org.setType(type);</span>
+<span class="nc" id="L468">		org.setOrganizationName(orgName);</span>
+<span class="nc bnc" id="L469" title="All 2 branches missed.">		for (String certCn : finalRow) {</span>
+<span class="nc bnc" id="L470" title="All 4 branches missed.">			if (certCn != null &amp;&amp; !certCn.isBlank()) {</span>
+<span class="nc" id="L471">				org.addPrincipalName(certCn);</span>
+			}
+<span class="nc" id="L473">		}</span>
+<span class="nc" id="L474">		return org;</span>
+	}
+	
+	private AllowedUser createAllowedUserRecord(int env, String destinationId, String principal) {
+<span class="nc" id="L478">		AllowedUser u = new AllowedUser();</span>
+<span class="nc" id="L479">		u.setEnvironment(env);</span>
+<span class="nc" id="L480">		u.setDestinationId(destinationId);</span>
+<span class="nc" id="L481">		u.setPrincipal(principal);</span>
+<span class="nc" id="L482">		u.setEnabled(true);</span>
+<span class="nc" id="L483">		u.setValidatedOn(u.getUpdatedOn());</span>
+<span class="nc" id="L484">		return u;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

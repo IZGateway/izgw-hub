@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>IntegrityCheck.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.ads</a> &gt; <span class="el_source">IntegrityCheck.java</span></div><h1>IntegrityCheck.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.ads;
+
+
+import org.apache.commons.lang3.StringUtils;
+import org.bouncycastle.util.encoders.Base64;
+import org.springframework.web.multipart.MultipartFile;
+
+import gov.cdc.izgateway.logging.markers.Markers2;
+import jakarta.activation.DataHandler;
+import lombok.extern.slf4j.Slf4j;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.ServiceConfigurationError;
+
+/**
+ * Utility class to compute integrity check data
+ * 
+ */
+<span class="nc" id="L25">@Slf4j</span>
+public class IntegrityCheck {
+    
+<span class="nc" id="L28">    private static final byte[] MSOXML_FILE_MAGIC = { 0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00 };</span>
+<span class="nc" id="L29">    private static final byte[] MSOOLE_FILE_MAGIC = { (byte) 0xD0, (byte) 0xCF, 0x11, (byte) 0xE0, (byte) 0xA1, (byte) 0xB1, 0x1A, (byte) 0xE1 };</span>
+<span class="nc" id="L30">    private static final byte[] ZIP_FILE_MAGIC = { 0x50, 0x4B, 0x03, 0x04 };</span>
+<span class="nc" id="L31">    private static final Map&lt;String, byte[]&gt; MAGIC_NUMBERS = new HashMap&lt;&gt;();</span>
+    static {
+<span class="nc" id="L33">        MAGIC_NUMBERS.put(&quot;&quot;, MSOXML_FILE_MAGIC);</span>
+<span class="nc" id="L34">        MAGIC_NUMBERS.put(&quot;&quot;, MSOOLE_FILE_MAGIC);</span>
+<span class="nc" id="L35">        MAGIC_NUMBERS.put(&quot;&quot;, ZIP_FILE_MAGIC);</span>
+<span class="nc" id="L36">    }</span>
+
+    /** The MD5 Hash of the data.  While MD5 is considered insecure for many security functions,
+     * it is still perfectly accepable for use as a data integrity check.
+     */
+    private final byte[] hash;
+    /** Length of data is basic integrity check */
+    private final long length;
+
+    /** Mime Type */
+    private final String mimeType;
+    
+    /** Construct a new integity check object
+     * @param hash The hash code value
+     * @param length The length of the content
+     * @param mimeType The mime type of the content
+     */
+<span class="nc" id="L53">    public IntegrityCheck(byte[] hash, long length, String mimeType) {</span>
+<span class="nc" id="L54">        this.hash = hash;</span>
+<span class="nc" id="L55">        this.length = length;</span>
+<span class="nc" id="L56">        this.mimeType = mimeType;</span>
+<span class="nc" id="L57">    }</span>
+
+    /**
+     * Compute the length of the data. Attempts to get it from the MultipartFile if it
+     * exists, otherwise, computes an IntegrityCheck from the file data.
+     * 
+     * @param data The DataHandler
+     * @return	The length of content in the data handler
+     * @throws IOException	If an IO Exception occurs
+     */
+    public static IntegrityCheck getLength(DataHandler data) throws IOException {
+<span class="nc bnc" id="L68" title="All 2 branches missed.">    	if (data.getContent() instanceof MultipartFile mp) {</span>
+<span class="nc" id="L69">    		long fileSize = mp.getSize();</span>
+<span class="nc" id="L70">    		return new IntegrityCheck(new byte[0], fileSize, null);</span>
+    	}
+<span class="nc" id="L72">    	return getIntegrityCheck(data);</span>
+    }
+    /** 
+     * Compute MD5 Hash and length of DataHandler content 
+     * @param data  The data handler
+     * @return An IntegrityCheck object containing the MD5 Hash and length
+     * @throws IOException If an error occurs when the data is read
+     */
+    public static IntegrityCheck getIntegrityCheck(DataHandler data) throws IOException {
+        MessageDigest md;
+        try {
+<span class="nc" id="L83">            md = MessageDigest.getInstance(&quot;MD5&quot;);</span>
+<span class="nc" id="L84">        } catch (NoSuchAlgorithmException e) {</span>
+<span class="nc" id="L85">            log.error(Markers2.append(e), &quot;No MD5 Algorithm available: {}&quot;, e);</span>
+<span class="nc" id="L86">            throw new ServiceConfigurationError(&quot;Misconfigured System&quot;);</span>
+<span class="nc" id="L87">        }</span>
+<span class="nc" id="L88">        byte[] buffer = new byte[1048576];</span>
+<span class="nc" id="L89">        byte[] magic = null;</span>
+        InputStream is;
+<span class="nc" id="L91">        long fileSize = 0;</span>
+<span class="nc" id="L92">        is = data.getInputStream();</span>
+<span class="nc" id="L93">        int read = 0;</span>
+<span class="nc bnc" id="L94" title="All 2 branches missed.">        while ((read = is.read(buffer)) &gt; 0) {</span>
+<span class="nc bnc" id="L95" title="All 2 branches missed.">            if (magic == null) {</span>
+<span class="nc" id="L96">                magic = Arrays.copyOf(buffer, 8);</span>
+            }
+<span class="nc" id="L98">            fileSize += read;</span>
+<span class="nc" id="L99">            md.update(buffer, 0, read);</span>
+        }
+<span class="nc bnc" id="L101" title="All 2 branches missed.">        if (magic == null) {</span>
+<span class="nc" id="L102">        	return new IntegrityCheck(new byte[0], fileSize, null);</span>
+        }
+<span class="nc" id="L104">        byte[] hash = md.digest();</span>
+<span class="nc" id="L105">        String mimeType = null;</span>
+<span class="nc bnc" id="L106" title="All 2 branches missed.">        for (Map.Entry&lt;String, byte[]&gt; e: MAGIC_NUMBERS.entrySet()) {</span>
+<span class="nc" id="L107">            byte[] key = e.getValue();</span>
+<span class="nc bnc" id="L108" title="All 2 branches missed.">            if (Arrays.compare(magic, 0, key.length, key, 0, key.length) == 0) {</span>
+<span class="nc" id="L109">                mimeType = e.getKey();</span>
+<span class="nc" id="L110">                break;</span>
+            }
+<span class="nc" id="L112">        }</span>
+<span class="nc" id="L113">        return new IntegrityCheck(hash, fileSize, mimeType); </span>
+    }
+
+    
+    /**
+     * Gets the MD5 hash of the content.
+     * @return the hash code.
+     */
+    public byte[] getHash() {
+<span class="nc" id="L122">        return hash;</span>
+    }
+
+    /**
+     * Gets the length of the content in bytes.
+     * @return the length.
+     */
+    public long getLength() {
+<span class="nc" id="L130">        return length;</span>
+    }
+
+    /**
+     * Gets the MD5 hash as a Base64 string.
+     * @return the MD5 hash.
+     */
+    public String toString() {
+<span class="nc" id="L138">        return Base64.toBase64String(hash);</span>
+    }
+    
+    /** 
+     * Gets the MIME type that the magic number of the content identifies.
+     * @return the mimeType.
+     */
+    public String getMimeType() {
+<span class="nc" id="L146">        return mimeType;</span>
+    }
+
+    
+    /** 
+     * Tells if the content has a MIME type.
+     * @return true if there is a mimeType value
+     */
+    public boolean hasMimeType() {
+<span class="nc bnc" id="L155" title="All 2 branches missed.">        return !StringUtils.isBlank(mimeType);</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

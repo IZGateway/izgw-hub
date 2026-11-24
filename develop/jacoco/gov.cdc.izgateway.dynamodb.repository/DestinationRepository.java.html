@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DestinationRepository.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.dynamodb.repository</a> &gt; <span class="el_source">DestinationRepository.java</span></div><h1>DestinationRepository.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.dynamodb.repository;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+
+import gov.cdc.izgateway.dynamodb.model.Destination;
+import gov.cdc.izgateway.hub.repository.IDestinationRepository;
+import gov.cdc.izgateway.repository.DynamoDbRepository;
+import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
+
+/**
+ * Class representing the DynamoDb repository for Destinations.
+ * 
+ * @author Audacious Inquiry
+ */
+public class DestinationRepository extends DynamoDbRepository&lt;Destination&gt; implements IDestinationRepository&lt;Destination&gt; {
+	/**
+	 * Construct a new DestinationRepository from the DynamoDb enhanced client.
+	 * @param client The client
+	 * @param tableName The table to use
+	 */
+	public DestinationRepository(@Autowired DynamoDbEnhancedClient client, String tableName) {
+<span class="fc" id="L24">		super(Destination.class, client, tableName);</span>
+<span class="fc" id="L25">	}</span>
+	
+	@Override
+	public List&lt;Destination&gt; findAllByDestTypeId(int destType) {
+<span class="fc" id="L29">		return this.findByType(Integer.toString(destType) + &quot;#&quot;);</span>
+	}
+
+	@Override
+	public Destination store(Destination dest) {
+<span class="nc bnc" id="L34" title="All 2 branches missed.">		if (dest == null) {</span>
+<span class="nc" id="L35">			throw new NullPointerException(&quot;Entity cannot be null&quot;);</span>
+		}
+<span class="nc" id="L37">		return saveAndFlush(dest);</span>
+	}
+
+	@Override
+	public Destination newDestination() {
+<span class="nc" id="L42">		return new Destination();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

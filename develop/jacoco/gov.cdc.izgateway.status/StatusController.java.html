@@ -1,0 +1,370 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StatusController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.status</a> &gt; <span class="el_source">StatusController.java</span></div><h1>StatusController.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.status;
+
+import com.fasterxml.jackson.annotation.JsonUnwrapped;
+
+import gov.cdc.izgateway.common.ResourceNotFoundException;
+import gov.cdc.izgateway.db.RefreshQueueService;
+import gov.cdc.izgateway.db.RefreshQueueService.RefreshRequest;
+import gov.cdc.izgateway.dynamodb.model.EndpointStatus;
+import gov.cdc.izgateway.hub.service.DestinationService;
+import gov.cdc.izgateway.hub.service.StatusCheckerService;
+import gov.cdc.izgateway.logging.event.EventId;
+import gov.cdc.izgateway.model.IDestination;
+import gov.cdc.izgateway.model.IEndpointStatus;
+import gov.cdc.izgateway.security.AccessControlRegistry;
+import gov.cdc.izgateway.security.Roles;
+import gov.cdc.izgateway.service.impl.EndpointStatusService;
+import gov.cdc.izgateway.utils.ExecUtils;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import jakarta.annotation.security.RolesAllowed;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
+import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * REST endpoints under {@code /rest} that report destination status and status history,
+ * and reset circuit breakers.
+ */
+@RestController
+@CrossOrigin
+@RolesAllowed({Roles.USERS, Roles.ADMIN})
+@RequestMapping({&quot;/rest&quot;})
+@Lazy(false)
+public class StatusController {
+    private final EndpointStatusService  endpointStatusService;
+	private final StatusCheckerService checkerService;
+	private final DestinationService destinationService;
+	private final RefreshQueueService refreshQueueService;
+    /**
+     * Make the controller and register it for access control. Spring supplies the arguments.
+     * @param endpointStatusService The service that keeps the endpoint status.
+     * @param checkerService The service that checks destinations.
+     * @param registry The access control registry.
+     * @param destinationService The service that gets the destinations.
+     * @param refreshQueueService The service that sends reset requests to the other instances.
+     */
+    @Autowired
+<span class="fc" id="L58">    public StatusController(EndpointStatusService endpointStatusService, StatusCheckerService checkerService, AccessControlRegistry registry, DestinationService destinationService, RefreshQueueService refreshQueueService) {</span>
+<span class="fc" id="L59">        this.endpointStatusService = endpointStatusService;</span>
+<span class="fc" id="L60">        this.checkerService = checkerService;</span>
+<span class="fc" id="L61">        this.destinationService = destinationService;</span>
+<span class="fc" id="L62">        this.refreshQueueService = refreshQueueService;</span>
+<span class="fc" id="L63">        registry.register(this);</span>
+<span class="fc" id="L64">    }</span>
+
+    /**
+     * Get the status history of the destinations.
+     * @param include A comma or space separated list of destination IDs, or null for all destinations.
+     * @param status Only include entries with this status. A leading {@code !} excludes entries with the status. Null or empty includes all entries.
+     * @param count The number of history entries for each destination, from 1 to 4.
+     * @return The status history, keyed by destination ID.
+     */
+    @Operation(summary = &quot;Get the status history&quot;,
+            description = &quot;Returns the status history of the destinations&quot;)
+    @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Success&quot;,
+            content = @Content(mediaType = &quot;application/json&quot;,
+                    schema = @Schema(implementation= EndpointStatus.Map.class)
+            )
+    )
+    @GetMapping(&quot;/statushistory&quot;)
+    public Map&lt;String, List&lt;IEndpointStatus&gt;&gt; searchStatusHistory(
+    		@RequestParam(name = &quot;include&quot;, required = false) String include,
+    		@RequestParam(name = &quot;status&quot;, required = false) String status,
+            @RequestParam(name = &quot;count&quot;, defaultValue = &quot;1&quot;) int count) {
+<span class="nc bnc" id="L85" title="All 2 branches missed.">        if (count &lt;= 0) {</span>
+<span class="nc" id="L86">            count = 1;</span>
+<span class="nc bnc" id="L87" title="All 2 branches missed.">        } else if (count &gt; 4) {</span>
+<span class="nc" id="L88">            count = 4;</span>
+        }
+<span class="nc bnc" id="L90" title="All 2 branches missed.">        String[] includeArray = include != null ? include.split(&quot;[\\s,]+&quot;) : </span>
+<span class="nc" id="L91">        	destinationService.getAllDestinations().stream().map(t -&gt; t.getDestinationId()).toArray(String[]::new);</span>
+<span class="nc" id="L92">        List&lt;String&gt; included = Arrays.asList(includeArray);</span>
+<span class="nc" id="L93">        included.sort(String::compareTo);</span>
+<span class="nc" id="L94">        List&lt;? extends IEndpointStatus&gt; found = endpointStatusService.find(count, includeArray);</span>
+
+<span class="nc" id="L96">        Map&lt;String, List&lt;IEndpointStatus&gt;&gt; t = collectHistory(status, included, found);</span>
+<span class="nc" id="L97">        addMisssingHistory(includeArray, t);</span>
+<span class="nc" id="L98">        return t;</span>
+    }
+
+	private Map&lt;String, List&lt;IEndpointStatus&gt;&gt; collectHistory(String status, List&lt;String&gt; included,
+			List&lt;? extends IEndpointStatus&gt; found) {
+<span class="nc" id="L103">		Map&lt;String, List&lt;IEndpointStatus&gt;&gt; t = new TreeMap&lt;&gt;();</span>
+<span class="nc bnc" id="L104" title="All 2 branches missed.">        for (IEndpointStatus f : found) {</span>
+<span class="nc bnc" id="L105" title="All 4 branches missed.">            if (included.isEmpty() || included.contains(f.getDestId())) {</span>
+                // To check for history values of a certain status, specify ?status=&lt;DesiredStatus&gt; in the URL
+                // To check for history values of not having a certain status, specifiy ?status=!&lt;Desired Status&gt; in the URL
+            	// This enables quick checks for those endpoints with a status of other than connected.
+<span class="nc bnc" id="L109" title="All 2 branches missed.">                if (!StringUtils.isEmpty(status)) {</span>
+<span class="nc bnc" id="L110" title="All 2 branches missed.">                	boolean test = !status.startsWith(&quot;!&quot;);</span>
+<span class="nc bnc" id="L111" title="All 2 branches missed.">                	if (Strings.CI.equals(f.getStatus(), status) != test) {</span>
+<span class="nc" id="L112">                		continue;</span>
+                	}
+                }
+                
+<span class="nc" id="L116">                List&lt;IEndpointStatus&gt; l = t.computeIfAbsent(f.getDestId(), k -&gt; new ArrayList&lt;&gt;());</span>
+<span class="nc" id="L117">                l.add(f);</span>
+            }
+<span class="nc" id="L119">        }</span>
+<span class="nc" id="L120">		return t;</span>
+	}
+
+	private void addMisssingHistory(String[] includeArray, Map&lt;String, List&lt;IEndpointStatus&gt;&gt; t) {
+		// Some destinations will not have a status history (they are not routinely checked b/c they
+        // are for internal testing, so report it as unknown (see IGDD-2156).
+<span class="nc bnc" id="L126" title="All 2 branches missed.">        for (String dest: includeArray) {</span>
+<span class="nc bnc" id="L127" title="All 2 branches missed.">        	if (!t.containsKey(dest)) {</span>
+<span class="nc" id="L128">        		IDestination d = destinationService.findByDestId(dest);</span>
+<span class="nc bnc" id="L129" title="All 2 branches missed.">        		if (d != null) {</span>
+<span class="nc" id="L130">        			IEndpointStatus ds = endpointStatusService.getEndpointStatus(d);</span>
+<span class="nc" id="L131">            		t.put(dest, Collections.singletonList(ds));</span>
+        		}
+        	}
+        }
+<span class="nc" id="L135">	}</span>
+    
+    /**
+     * Get the status history of one destination.
+     * @param id The destination ID.
+     * @param count The number of history entries, from 1 to 4.
+     * @return The status history of the destination.
+     * @throws ResourceNotFoundException When the destination does not exist.
+     */
+    @Operation(summary = &quot;Get the status history for a destination&quot;,
+            description = &quot;Returns the status history of the destination&quot;)
+    @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Success&quot;,
+            content = @Content(mediaType = &quot;application/json&quot;,
+                    schema = @Schema(implementation= EndpointStatus.class)
+            )
+    )
+    @GetMapping(&quot;/statushistory/{id}&quot;)
+	public List&lt;IEndpointStatus&gt; searchStatusHistoryById(
+			@PathVariable String id,
+			@RequestParam(name = &quot;count&quot;, defaultValue = &quot;1&quot;) int count) {
+<span class="nc bnc" id="L155" title="All 2 branches missed.">		if (destinationService.findByDestId(id) == null) {</span>
+<span class="nc" id="L156">			throw new ResourceNotFoundException(String.format(&quot;Destination %s does not exist&quot;, id));</span>
+		}
+<span class="nc" id="L158">		Map&lt;String, List&lt;IEndpointStatus&gt;&gt; t = searchStatusHistory(id, null, count);</span>
+<span class="nc" id="L159">		return t.get(id);</span>
+	}
+
+	/**
+	 * Delete a status history. Status history is updated as servers are connected
+	 * to by the status checker. Deleting the statushistory deletes the most
+	 * recently stored history value from the local server. If the server is NOT
+	 * connecting because of a circuit-breaker failure, this will clear the failure
+	 * until the next time the circuit breaker is thrown.
+	 * 
+	 * @param id          The destination whose history should be removed.
+	 */
+    @Operation(summary = &quot;Delete the status history for a destination&quot;,
+            description = &quot;Delete the status history of the destination&quot;)
+    @ApiResponse(responseCode = &quot;204&quot;, description = &quot;Success&quot;, content = @Content)
+	@DeleteMapping(&quot;/statushistory/{id}&quot;)
+	@ResponseStatus(value = HttpStatus.NO_CONTENT)
+	@RolesAllowed(Roles.ADMIN)
+	public void deleteStatusHistory(@PathVariable String id) {
+<span class="nc bnc" id="L178" title="All 2 branches missed.">		if (destinationService.findByDestId(id) == null) {</span>
+<span class="nc" id="L179">			throw new ResourceNotFoundException(String.format(&quot;Destination %s does not exist&quot;, id));</span>
+		}
+<span class="nc" id="L181">		endpointStatusService.removeById(id);</span>
+<span class="nc" id="L182">	}</span>
+    
+    /**
+     * Refresh the destinations, check each destination now, and return the status.
+     * @return The status, keyed by destination ID.
+     */
+    @GetMapping(&quot;/status&quot;)
+    @Operation(summary = &quot;Get the status for all destinations&quot;, 
+    	description = &quot;Check the status of all destinations&quot;)
+    @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Success&quot;, 
+   		content = @Content(mediaType = &quot;application/json&quot;,
+   			schema = @Schema(implementation=EndpointStatus.Map.class))
+  	)
+	public Map&lt;String, IEndpointStatus&gt; getStatus() {
+<span class="nc" id="L196">    	destinationService.refresh();</span>
+<span class="nc" id="L197">		List&lt;IDestination&gt; l = destinationService.getAllDestinations();</span>
+<span class="nc" id="L198">		Map&lt;String, IEndpointStatus&gt; l2 = new TreeMap&lt;&gt;();</span>
+<span class="nc" id="L199">		ExecUtils.execAll(l, dest -&gt; l2.put(dest.getDestId(),</span>
+<span class="nc" id="L200">				checkerService.checkDestination(dest)), 2, TimeUnit.MINUTES);</span>
+<span class="nc" id="L201">		return l2;</span>
+	}
+
+	
+	/**
+	 * Check one destination now and return its status.
+	 * @param id The destination ID.
+	 * @return The status of the destination.
+	 * @throws ResourceNotFoundException When the destination does not exist.
+	 */
+	@GetMapping(&quot;/status/{id}&quot;)
+    @Operation(summary = &quot;Get the status for the destination&quot;, 
+		description = &quot;Check the status of the destination&quot;)
+	@ApiResponse(responseCode = &quot;200&quot;, description = &quot;Success&quot;, 
+		content = @Content(mediaType = &quot;application/json&quot;,
+			schema = @Schema(implementation=EndpointStatus.class))
+	)
+	public IEndpointStatus getStatusById(@PathVariable String id) {
+<span class="nc" id="L219">		IDestination d = destinationService.findByDestId(id);</span>
+<span class="nc bnc" id="L220" title="All 2 branches missed.">		if (d == null) {</span>
+<span class="nc" id="L221">			throw new ResourceNotFoundException(String.format(&quot;Destination %s not found&quot;, id));</span>
+		}
+<span class="nc" id="L223">		checkerService.checkDestination(d);</span>
+<span class="nc" id="L224">		return checkerService.updateDestinationStatus(d);</span>
+	}
+	
+	/**
+	 * Response for a reset of every destination.
+	 *
+	 * @param destinations	The status of each destination on this instance
+	 * @param hosts	The outcome for each instance, keyed {@code region:hostname}
+	 * @param regions	One status per region: {@code complete}, {@code partial} or {@code failed}
+	 */
+<span class="fc" id="L234">	public record ResetAllResponse(</span>
+			Map&lt;String, IEndpointStatus&gt; destinations,
+			Map&lt;String, String&gt; hosts,
+			Map&lt;String, String&gt; regions) {
+	}
+
+	/**
+	 * Response for a reset of one destination.
+	 * &lt;p&gt;
+	 * The status fields are unwrapped to the top level, so every field this endpoint
+	 * returned before keeps its name and meaning. See IGDD-3599, design decision D5.
+	 * &lt;/p&gt;
+	 */
+	public static class ResetOneResponse {
+		@JsonUnwrapped
+		private final IEndpointStatus status;
+		private final Map&lt;String, String&gt; hosts;
+		private final Map&lt;String, String&gt; regions;
+
+<span class="fc" id="L253">		ResetOneResponse(IEndpointStatus status, Map&lt;String, String&gt; hosts, Map&lt;String, String&gt; regions) {</span>
+<span class="fc" id="L254">			this.status = status;</span>
+<span class="fc" id="L255">			this.hosts = hosts;</span>
+<span class="fc" id="L256">			this.regions = regions;</span>
+<span class="fc" id="L257">		}</span>
+
+		/**
+		 * Get the destination status.
+		 * @return The destination status, serialized at the top level
+		 */
+		public IEndpointStatus getStatus() {
+<span class="fc" id="L264">			return status;</span>
+		}
+
+		/**
+		 * Get the outcome for each instance.
+		 * @return The outcome for each instance, keyed {@code region:hostname}
+		 */
+		public Map&lt;String, String&gt; getHosts() {
+<span class="fc" id="L272">			return hosts;</span>
+		}
+
+		/**
+		 * Get the status of each region.
+		 * @return One status per region
+		 */
+		public Map&lt;String, String&gt; getRegions() {
+<span class="fc" id="L280">			return regions;</span>
+		}
+	}
+
+	/**
+	 * Reset the circuit breakers of all destinations on this instance and on every other instance.
+	 * @return The status of each destination on this instance, and the outcome for each instance and region.
+	 */
+	@PostMapping(&quot;/reset&quot;)
+	@RolesAllowed(Roles.ADMIN)
+	@Operation(summary = &quot;Reset the circuit breakers on every instance&quot;,
+			description = &quot;Reset the circuit breaker for all destinations on every Hub instance &quot;
+					+ &quot;in every region. Returns 200 even when an instance fails; read the hosts &quot;
+					+ &quot;and regions members for the outcome.&quot;)
+	@ApiResponse(responseCode = &quot;200&quot;, description = &quot;Success&quot;,
+	content = @Content(mediaType = &quot;application/json&quot;,
+		schema = @Schema(implementation=ResetAllResponse.class))
+	)
+	public ResetAllResponse resetCircuitBreakers() {
+<span class="fc" id="L299">		Map&lt;String, String&gt; hosts = applyEverywhere(null);</span>
+<span class="fc" id="L300">		Map&lt;String, IEndpointStatus&gt; l2 = new TreeMap&lt;&gt;();</span>
+<span class="fc" id="L301">		endpointStatusService.findAll().forEach(s -&gt; l2.put(s.getDestId(), s));</span>
+<span class="fc" id="L302">		return new ResetAllResponse(l2, hosts, RefreshQueueService.summarizeByRegion(hosts));</span>
+	}
+
+	/**
+	 * Reset the circuit breaker of one destination on this instance and on every other instance.
+	 * @param id The destination ID.
+	 * @return The status of the destination after the reset, and the outcome for each instance and region.
+	 * @throws ResourceNotFoundException When the destination does not exist or has no status.
+	 */
+	@PostMapping(&quot;/reset/{id}&quot;)
+	@Operation(summary = &quot;Reset the circuit breaker for a single destination on every instance&quot;,
+			description = &quot;Reset the circuit breaker for the specified destination on every Hub &quot;
+					+ &quot;instance in every region. Returns 200 even when an instance fails; read the &quot;
+					+ &quot;hosts and regions members for the outcome.&quot;)
+	@ApiResponse(responseCode = &quot;200&quot;, description = &quot;Success&quot;,
+		content = @Content(mediaType = &quot;application/json&quot;,
+			schema = @Schema(implementation = ResetOneResponse.class))
+	)
+	@RolesAllowed(Roles.ADMIN)
+	public ResetOneResponse resetCircuitBreakerById(@PathVariable String id) {
+<span class="fc bfc" id="L322" title="All 2 branches covered.">		if (destinationService.findByDestId(id) == null) {</span>
+<span class="fc" id="L323">			throw new ResourceNotFoundException(String.format(&quot;Destination %s not found&quot;, id));</span>
+		}
+		// findById reads without mutating and without synthesising a default, so this
+		// keeps the &quot;no status, no message sent&quot; behavior while leaving the only reset
+		// to applyEverywhere. Resetting here as well would mean a local failure throws
+		// a 500 instead of being reported, and would pin the response body to a status
+		// captured before the fan-out.
+<span class="fc" id="L330">		IEndpointStatus existing = endpointStatusService.findById(id);</span>
+<span class="fc bfc" id="L331" title="All 2 branches covered.">		if (existing == null) {</span>
+<span class="fc" id="L332">			throw new ResourceNotFoundException(String.format(&quot;No status found for destination %s&quot;, id));</span>
+		}
+<span class="fc" id="L334">		Map&lt;String, String&gt; hosts = applyEverywhere(id);</span>
+		// Read again, so the body reflects the state after the reset. The scheduled
+		// status refresh replaces the whole cache rather than mutating it, so a refresh
+		// landing inside the wait would otherwise leave this holding a detached object.
+<span class="fc" id="L338">		IEndpointStatus status = endpointStatusService.findById(id);</span>
+<span class="pc bpc" id="L339" title="1 of 2 branches missed.">		return new ResetOneResponse(status == null ? existing : status, hosts,</span>
+<span class="fc" id="L340">				RefreshQueueService.summarizeByRegion(hosts));</span>
+	}
+
+	/**
+	 * Send the reset to every other instance and collect the outcome.
+	 * &lt;p&gt;
+	 * The local reset already happened before this runs. Only the remote instances are
+	 * messaged, and the local outcome is recorded directly. Commands travel over SQS,
+	 * never by calling this endpoint again. See IGDD-3599, design decision D4.
+	 * &lt;/p&gt;
+	 *
+	 * @param destId	The destination to reset, or null for every destination
+	 * @return The outcome for each instance, keyed {@code region:hostname}
+	 */
+	private Map&lt;String, String&gt; applyEverywhere(String destId) {
+<span class="fc" id="L355">		String me = RefreshQueueService.myHostName();</span>
+<span class="fc" id="L356">		String myRegion = RefreshQueueService.getRegion();</span>
+<span class="fc" id="L357">		String eventId = MDC.get(EventId.EVENTID_KEY);</span>
+<span class="fc" id="L358">		RefreshRequest command = new RefreshRequest(true, eventId, me, myRegion, null, false, destId);</span>
+<span class="fc" id="L359">		Map&lt;String, String&gt; hosts = new TreeMap&lt;&gt;();</span>
+		// Apply on this instance through the same method the remote instances use, and
+		// record what happened rather than assuming it worked. distribute() skips the
+		// caller, so without this line the instance that serves the request is the one
+		// instance that never resets.
+<span class="fc" id="L364">		String applied = refreshQueueService.applyLocally(command);</span>
+<span class="fc bfc" id="L365" title="All 2 branches covered.">		hosts.put(myRegion + &quot;:&quot; + me, &quot;OK&quot;.equals(applied) ? &quot;OK (Local)&quot; : applied);</span>
+<span class="fc" id="L366">		refreshQueueService.distribute(command, hosts);</span>
+<span class="fc" id="L367">		return hosts;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

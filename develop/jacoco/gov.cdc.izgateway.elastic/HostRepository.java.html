@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>HostRepository.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.elastic</a> &gt; <span class="el_source">HostRepository.java</span></div><h1>HostRepository.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.elastic;
+import gov.cdc.izgateway.configuration.AppProperties;
+import gov.cdc.izgateway.logging.markers.Markers2;
+import gov.cdc.izgateway.repository.IHostRepository;
+import gov.cdc.izgateway.utils.SystemUtils;
+import lombok.extern.slf4j.Slf4j;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.security.NoSuchAlgorithmException;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Date;
+import java.util.GregorianCalendar;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TimeZone;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.time.FastDateFormat;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import javax.net.ssl.HttpsURLConnection;
+
+/**
+ * The HostRepository retrieves a list of all hosts that have reported in the last few minutes.
+ *  
+ * @author Audacious Inquiry
+ */
+<span class="fc" id="L39">@Slf4j</span>
+@Repository
+public class HostRepository extends ElasticRepository implements IHostRepository {
+
+<span class="fc" id="L43">	private final ObjectMapper mapper = new ObjectMapper();</span>
+	private final String serverName;
+	private static final String HOSTS_QUERY = &quot;hostsquery.json&quot;;
+<span class="fc" id="L46">	private static final TimeZone UTC_TIMEZONE = TimeZone.getTimeZone(&quot;UTC&quot;);</span>
+<span class="fc" id="L47">	private static final FastDateFormat FORMATTER = FastDateFormat.getInstance(&quot;yyyy-MM-dd'T'HH:mm:ss.SSSX&quot;, UTC_TIMEZONE);</span>
+	
+	/**
+	 * Constructor for HostRepository.
+	 * 
+	 * @param config	The Elastic configuration
+	 * @param appConfig	The application configuration
+	 */
+	public HostRepository(@Autowired ElasticConfiguration config, AppProperties appConfig) {
+<span class="fc" id="L56">		super(config, HOSTS_QUERY);</span>
+<span class="fc" id="L57">		serverName = appConfig.getServerName();</span>
+<span class="fc bfc" id="L58" title="All 2 branches covered.">		if (!config.isConfigured()) {</span>
+<span class="fc" id="L59">			log.warn(&quot;Host reporting not configured with ElasticSearch endpoint, API Key or index&quot;);</span>
+		}
+<span class="fc" id="L61">	}</span>
+	
+	@Override
+	@SuppressWarnings(&quot;java:S6204&quot;)
+	public List&lt;String&gt; findAll() {
+<span class="nc" id="L66">		Map&lt;String, String&gt; map = getHostsAndRegion();</span>
+<span class="nc" id="L67">		return map.keySet().stream().collect(Collectors.toList());</span>
+	}
+	
+	/**
+	 * List the instances that reported in the last few minutes, and their regions.
+	 * &lt;p&gt;
+	 * An empty map means that host reporting is switched off, not that no instance is
+	 * running. A read failure throws {@link HostDiscoveryException} instead of
+	 * returning an empty map, so that a caller which fans a command out to every
+	 * instance can tell the two apart. See IGDD-3599.
+	 * &lt;/p&gt;
+	 *
+	 * @return The known instances, keyed by host name, with the region as the value
+	 * @throws HostDiscoveryException If the list cannot be read from Elasticsearch
+	 */
+	@Override
+	public Map&lt;String, String&gt; getHostsAndRegion() {
+<span class="fc" id="L84">		Date from = new Date();</span>
+
+<span class="fc bfc" id="L86" title="All 2 branches covered.">		if (!config.isConfigured()) {</span>
+<span class="fc" id="L87">			return Collections.emptyMap();</span>
+		}
+<span class="fc" id="L89">		String request = getRequest(from);</span>
+		try {
+<span class="fc" id="L91">			HttpsURLConnection con = config.getConnection();</span>
+<span class="fc" id="L92">			OutputStream os = con.getOutputStream();</span>
+<span class="fc" id="L93">			os.write(request.getBytes(StandardCharsets.UTF_8));</span>
+<span class="pc bpc" id="L94" title="1 of 2 branches missed.">			if (con.getResponseCode() == 200) {</span>
+<span class="fc" id="L95">				InputStream is = con.getInputStream();</span>
+<span class="fc" id="L96">				String result = IOUtils.toString(is, StandardCharsets.UTF_8);</span>
+<span class="fc" id="L97">				return parseResult(result);</span>
+			} else {
+<span class="nc" id="L99">				InputStream err = con.getErrorStream();</span>
+<span class="nc" id="L100">				String error = IOUtils.toString(err, StandardCharsets.UTF_8);</span>
+<span class="nc" id="L101">				throw new IOException(error);</span>
+			}
+<span class="fc" id="L103">		} catch (IOException e) {</span>
+<span class="fc" id="L104">			log.error(Markers2.append(e), &quot;IOException getting host list: \n{}&quot;, e.getMessage());</span>
+<span class="fc" id="L105">			throw new HostDiscoveryException(&quot;IOException getting host list: &quot; + e.getMessage(), e);</span>
+<span class="nc" id="L106">		} catch (NoSuchAlgorithmException e) {</span>
+<span class="nc" id="L107">			log.error(Markers2.append(e), &quot;TLS Error getting host list: \n{}&quot;, e.getMessage());</span>
+<span class="nc" id="L108">			throw new HostDiscoveryException(&quot;TLS error getting host list: &quot; + e.getMessage(), e);</span>
+		}
+	}
+	
+	/**
+	 * Parse aggregate status data from ElasticSearch into host list.
+	 * &lt;p&gt;
+	 * A response that cannot be parsed is a failed read, not a short host list.
+	 * {@code getNode} raises when the response does not hold the expected path, and
+	 * this used to log that and return whatever it had collected. A caller that fans a
+	 * command out would then send to an incomplete list and report success. A valid
+	 * response that holds no buckets still returns an empty map, so a quiet fleet
+	 * stays distinguishable from a broken response. See IGDD-3599.
+	 * &lt;/p&gt;
+	 *
+	 * @param result	The response body from Elasticsearch
+	 * @return The instances in the response, keyed by host name
+	 * @throws HostDiscoveryException If the response cannot be parsed
+	 */
+	private Map&lt;String, String&gt;  parseResult(String result) {
+<span class="fc" id="L128">		Map&lt;String, String&gt;  hosts = new TreeMap&lt;&gt;();</span>
+		try {
+<span class="fc" id="L130">			JsonNode node = getNode(&quot;aggregations.0.buckets&quot;, mapper.readTree(result));</span>
+<span class="fc bfc" id="L131" title="All 2 branches covered.">			for (int i = 0; i &lt; node.size(); i++) {</span>
+<span class="fc" id="L132">				String value = node.get(i).get(&quot;key&quot;).asText();</span>
+<span class="pc bpc" id="L133" title="1 of 2 branches missed.">				if (value != null) {</span>
+<span class="fc" id="L134">					JsonNode regionNode = getNode(&quot;1.buckets&quot;, node.get(i));</span>
+<span class="fc bfc" id="L135" title="All 2 branches covered.">					for (int j = 0; j &lt; regionNode.size(); j++) {</span>
+<span class="fc" id="L136">						String region = regionNode.get(j).get(&quot;key&quot;).asText();</span>
+<span class="pc bpc" id="L137" title="1 of 2 branches missed.">						if (region != null) {</span>
+<span class="fc" id="L138">							hosts.put(value, region);</span>
+						}
+					}
+				}
+			}
+<span class="fc" id="L143">		} catch (Exception e) {</span>
+<span class="fc" id="L144">			log.error(Markers2.append(e), &quot;Error retrieving host list: {}&quot;, e.getMessage());</span>
+<span class="fc" id="L145">			throw new HostDiscoveryException(&quot;Error parsing host list: &quot; + e.getMessage(), e);</span>
+<span class="fc" id="L146">		}</span>
+<span class="fc" id="L147">		return hosts;</span>
+	}
+
+	/**
+	 * Compute the request we need to submit from the template and return it as a String.
+	 * @param now 
+	 * @param include 
+	 * @return	The request that needs to be submitted to elastic.
+	 */
+	private String getRequest(Date now) {
+<span class="fc" id="L157">		Calendar cal = new GregorianCalendar();</span>
+<span class="fc" id="L158">		cal.setTime(now);</span>
+<span class="fc" id="L159">		cal.setTimeZone(UTC_TIMEZONE);</span>
+		// Look back three minutes.
+<span class="fc" id="L161">		cal.add(Calendar.MINUTE, -3);</span>
+<span class="fc" id="L162">		Date startTime = cal.getTime();</span>
+<span class="fc" id="L163">		Map&lt;String, String&gt; map = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L164">		map.put(&quot;start&quot;, FORMATTER.format(startTime));</span>
+<span class="fc" id="L165">		map.put(&quot;environment&quot;, SystemUtils.getDestTag());</span>
+<span class="fc" id="L166">		map.put(&quot;serverName&quot;, serverName);</span>
+<span class="fc" id="L167">		return populateTemplate(map);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

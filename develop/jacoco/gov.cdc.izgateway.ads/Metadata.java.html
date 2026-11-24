@@ -1,0 +1,460 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang=""><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Metadata.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">IZ Gateway Hub 2.19.0-IZGW-SNAPSHOT</a> &gt; <a href="index.source.html" class="el_package">gov.cdc.izgateway.ads</a> &gt; <span class="el_source">Metadata.java</span></div><h1>Metadata.java</h1><pre class="source lang-java linenums">package gov.cdc.izgateway.ads;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.time.FastDateFormat;
+
+import java.io.Serializable;
+import java.util.Date;
+
+/**
+ * Object used to store metadata.  JSON Names are the same values as would be used
+ * in the Azure metadata.
+ * 
+ * Data Element Name		Data Element Description	Purpose	Optionality	Level 
+ * meta_destination_id	Set to - &quot;NDLP&quot;	Establishes that this file should be directed to CDC NDLP.	Required	File Level
+ * 
+ * meta_ext_source	Set to - &quot;IZGW&quot;	Establishes where data came from.	Required	File Level
+ * 
+ * meta_ext_sourceversion	V2022-12-31	Aligns with version of the specification.	Required	File Level
+ * 
+ * meta_ext_event	Set to:
+ * o    &quot;routineImmunization&quot; - for Routine Immunization files
+ * o    &quot;influenzaVaccination&quot; - for Influenza files	Determines storage container for IZGW to submit files on NDLP Storage Account	Required	File Level
+ * 
+ * meta_ext_entity	This is the three digit entity code.  See tab - Submitting Entity Codes, e.g., 
+ * o 	NYA (New York State)
+ * o 	CV1 (CVS Health Corporation)
+ * o 	DD2 (Department of Defense)	Drives metrics for vaccine admin progress at  entity grouping level.	Required	File Level
+ * 
+ * meta_username	Username of user who submitted the file to the IZGW.  If this is a system to system submission then this should be the service account.	This field is used for troubleshooting.	Required	File Level
+ * 
+ * meta_ext_objectkey	81bc2718-aef5-479b-8d67-955a2e75ac53 	This field is used to track back to the source filename / objectid.	Required	File Level
+ * 
+ * meta_ext_filename	The name of the file submitted to the IZGW.  File and extension should be named in accordance with guidelines outlined in the DUA.	Tracking the name of the file that was submitted.	Required	File Level
+ * 
+ * meta_ext_submissionperiod	This is the actual time period associated with submission for this file:
+ * o    YYYYQ#  - For Routine Immunization quarterly 
+ *       submissions (e.g., 2022Q1)
+ * o    YYYY-MON - for Influenza Vaccination monthly 
+ *       submissions (e.g., 2023-FEB)	Tracks frequency associated with file submission, as well as the actual file submission timeframe based on the frequency requirements associated with the program (i.e., Quarterly for Routine Immunizations, and Monthly for Influenza Vaccinations)	Required	File Level
+ *       
+ * meta_schema_version	This is an optional metadata field used for DEX Uploads.  It represents the version of the metadata  associated with the file being uploaded to DEX. If the optional meta_schema_version metadata field is not provided, then the earliest version found in the metadata config file for the given meta_destination_id will be used.	Indicates the version of metadata for the file being uploaded to DEX. 	Optional	File Level
+ * 
+ *  
+ */
+
+@JsonPropertyOrder({ 
+    &quot;data_producer_id&quot;,
+    &quot;data_stream_id&quot;,
+    &quot;data_stream_route&quot;,
+	&quot;meta_destination_id&quot;, 
+	&quot;meta_ext_entity&quot;, 
+	&quot;meta_ext_event&quot;, 
+	&quot;meta_ext_event_type&quot;, 
+	&quot;meta_ext_file_timestamp&quot;,
+	&quot;meta_ext_filename&quot;,
+	&quot;meta_ext_objectkey&quot;,
+	&quot;meta_ext_source&quot;, 
+	&quot;meta_ext_sourceversion&quot;, 
+	&quot;meta_ext_submissionperiod&quot;, 
+	&quot;meta_schema_version&quot;, 
+	&quot;meta_username&quot;, 
+	&quot;izgw_event_id&quot;,
+	&quot;izgw_filesize&quot;, 
+	&quot;izgw_ipaddress&quot;, 
+	&quot;izgw_path&quot;, 
+	&quot;izgw_route_id&quot;,
+	&quot;izgw_submission_location&quot;,
+	&quot;izgw_submission_status&quot;,
+	&quot;izgw_uploaded_timestamp&quot;,
+    &quot;sender_id&quot;
+})
+public interface Metadata extends Serializable {
+	
+	/** The metadata name of the flag that marks a file as a test file. */
+	public static final String TESTFILE = &quot;meta_ext_testfile&quot;;
+	/** The date pattern for RFC 2616 (HTTP) dates in metadata. */
+	public static final String RFC2616_DATE_FORMAT_PATTERN = &quot;EEE, dd MMM yyyy HH:mm:ss zzz&quot;;
+	/** The date format for RFC 2616 (HTTP) dates in metadata. */
+<span class="fc" id="L83">	public static final FastDateFormat RFC2616_DATE_FORMAT = FastDateFormat.getInstance(RFC2616_DATE_FORMAT_PATTERN);</span>
+	/** The first DEX metadata source version. */
+	public static final String DEX_VERSION1 = &quot;V2023-09-01&quot;;
+	/** The second DEX metadata source version. */
+	public static final String DEX_VERSION2 = &quot;V2024-09-04&quot;;
+
+	/**
+	 * Gets the DEX metadata version (version). DEX requires this field.
+	 * @return &quot;1.0&quot; for {@link #DEX_VERSION1}, else &quot;2.0&quot;
+	 */
+	@JsonProperty(&quot;version&quot;)
+	default String getVersion() {
+<span class="pc bpc" id="L95" title="1 of 2 branches missed.">		switch (StringUtils.defaultString(getExtSourceVersion())) {</span>
+		case DEX_VERSION1:
+<span class="nc" id="L97">			return &quot;1.0&quot;;</span>
+		case DEX_VERSION2:
+		default:
+<span class="fc" id="L100">			return &quot;2.0&quot;;</span>
+		}
+	}
+	
+    /**
+     * Gets the destination ID (meta_destination_id).
+     * @return the destination ID
+     */
+    @JsonProperty(&quot;meta_destination_id&quot;)
+    String getDestinationId();
+    /**
+     * Sets the destination ID (meta_destination_id).
+     * @param destId the destination ID
+     */
+    void setDestinationId(String destId);
+    
+    /**
+     * Gets the source of the data (meta_ext_source).
+     * @return the source
+     */
+    @JsonProperty(&quot;meta_ext_source&quot;)
+    String getExtSource();
+    /**
+     * Sets the source of the data (meta_ext_source).
+     * @param extSource the source
+     */
+    void setExtSource(String extSource);
+    /**
+     * Gets the sender ID (sender_id). DEX requires this field. The value is IZGW.
+     * @return the sender ID, which is the same as the source
+     */
+    @JsonProperty(&quot;sender_id&quot;)
+    default String getSenderId() {
+<span class="nc" id="L133">    	return getExtSource();</span>
+    }
+
+    /**
+     * Gets the version of the specification (meta_ext_sourceversion).
+     * @return the source version
+     */
+    @JsonProperty(&quot;meta_ext_sourceversion&quot;)
+    String getExtSourceVersion();
+    /**
+     * Sets the version of the specification (meta_ext_sourceversion).
+     * @param extSourceVersion the source version
+     */
+    void setExtSourceVersion(String extSourceVersion);
+    
+    /**
+     * Gets the event, which selects the storage container (meta_ext_event).
+     * @return the event
+     */
+    @JsonProperty(&quot;meta_ext_event&quot;)
+    String getExtEvent();
+    /**
+     * Sets the event, which selects the storage container (meta_ext_event).
+     * @param extEvent the event
+     */
+    void setExtEvent(String extEvent);
+
+    /**
+     * Gets the event type (meta_ext_event_type). This field is new in DEX 2.0.
+     * The values are usually the same as meta_ext_event, but other submission
+     * types can also go through to NDLP.
+     * @return the event type
+     */
+    @JsonProperty(&quot;meta_ext_event_type&quot;)
+    String getExtEventType();
+    /**
+     * Sets the event type (meta_ext_event_type).
+     * @param extEventTyype the event type
+     */
+    void setExtEventType(String extEventTyype);
+    /**
+     * Gets the data stream ID (data_stream_id). The value comes from meta_ext_event
+     * through the camelCase to kebab-case conversion in
+     * {@code MetadataBuilder.computeDataStreamId()}. {@link MetadataImpl} overrides
+     * this method to return a stored value first, so a value set during deserialization wins.
+     * @return the data stream ID
+     */
+    @JsonProperty(&quot;data_stream_id&quot;)
+    default String getDataStreamId() {
+<span class="fc" id="L182">        return MetadataBuilder.computeDataStreamId(getExtEvent());</span>
+    }
+    
+    /**
+     * Gets the submitting entity code (meta_ext_entity).
+     * @return the entity code
+     */
+    @JsonProperty(&quot;meta_ext_entity&quot;)
+    String getExtEntity();
+    /**
+     * Sets the submitting entity code (meta_ext_entity).
+     * @param extEntity the entity code
+     */
+    void setExtEntity(String extEntity);
+    /**
+     * Gets the data producer ID (data_producer_id). DEX requires this field.
+     * @return the data producer ID, which is the same as meta_ext_entity
+     */
+    @JsonProperty(&quot;data_producer_id&quot;)
+    default String getDataProducerId() {
+<span class="nc" id="L202">    	return getExtEntity();</span>
+    }
+    /**
+     * Gets the jurisdiction (jurisdiction). DEX requires this field.
+     * @return the jurisdiction, which is the same as meta_ext_entity
+     */
+    @JsonProperty(&quot;jurisdiction&quot;)
+    default String getJurisdiction() {
+<span class="nc" id="L210">    	return getExtEntity();</span>
+    }
+    
+    /**
+     * Gets the name of the user or service account that submitted the file (meta_username).
+     * @return the user name
+     */
+    @JsonProperty(&quot;meta_username&quot;)
+    String getUsername();
+    /**
+     * Sets the name of the user or service account that submitted the file (meta_username).
+     * @param username the user name
+     */
+    void setUsername(String username);
+    
+    /**
+     * Gets the object key that identifies the source file (meta_ext_objectkey).
+     * @return the object key
+     */
+    @JsonProperty(&quot;meta_ext_objectkey&quot;)
+    String getExtObjectKey();
+    /**
+     * Sets the object key that identifies the source file (meta_ext_objectkey).
+     * @param extObjectKey the object key
+     */
+    void setExtObjectKey(String extObjectKey);
+    
+    /**
+     * Gets the name of the submitted file (meta_ext_filename).
+     * @return the file name
+     */
+    @JsonProperty(&quot;meta_ext_filename&quot;)
+    String getFilename();
+    /**
+     * Sets the name of the submitted file (meta_ext_filename).
+     * @param filename the file name
+     */
+    void setFilename(String filename);
+    /**
+     * Gets the received file name (received_filename). DEX requires this field.
+     * @return the original name of the uploaded file
+     */
+    @JsonProperty(&quot;received_filename&quot;)
+    default String getReceivedFilename() {
+<span class="nc" id="L254">    	return getFilename();</span>
+    }
+    /**
+     * Gets the data stream route (data_stream_route). DEX requires this field.
+     * @return &quot;csv&quot; for CSV files, else &quot;other&quot;
+     */
+    @JsonProperty(&quot;data_stream_route&quot;) 
+    default String getDataStreamRoute() {
+<span class="nc" id="L262">    	String v = StringUtils.defaultString(getFilename());</span>
+<span class="nc bnc" id="L263" title="All 2 branches missed.">    	if (v.toLowerCase().endsWith(&quot;.csv&quot;)) {</span>
+<span class="nc" id="L264">    		return &quot;csv&quot;;</span>
+    	}
+<span class="nc" id="L266">    	return &quot;other&quot;;</span>
+    }
+    
+    /**
+     * Gets the submission period of the file (meta_ext_submissionperiod).
+     * @return the submission period
+     */
+    @JsonProperty(&quot;meta_ext_submissionperiod&quot;)
+    String getPeriod();
+    /**
+     * Sets the submission period of the file (meta_ext_submissionperiod).
+     * @param period the submission period
+     */
+    void setPeriod(String period);
+    
+    /**
+     * Gets the metadata schema version (meta_schema_version).
+     * @return the schema version
+     */
+    @JsonProperty(&quot;meta_schema_version&quot;)
+    String getSchemaVersion();
+    /**
+     * Sets the metadata schema version (meta_schema_version).
+     * @param version the schema version
+     */
+    void setSchemaVersion(String version);
+    
+    /**
+     * Tells if the file is a test file (meta_ext_testfile).
+     * @return true if the file is a test file
+     */
+    @JsonProperty(TESTFILE)
+    boolean isTestFile();
+    /**
+     * Sets the flag that marks the file as a test file (meta_ext_testfile).
+     * @param testFile true if the file is a test file
+     */
+    void setTestFile(boolean testFile);
+    
+    // Our additions to NDLP Specification
+    /**
+     * Gets the ID of the destination route (izgw_route_id).
+     * @return the route ID
+     */
+    @JsonProperty(&quot;izgw_route_id&quot;)
+    String getRouteId();
+    /**
+     * Sets the ID of the destination route (izgw_route_id).
+     * @param routeId the route ID
+     */
+    void setRouteId(String routeId);
+    
+    /**
+     * Gets the path of the file at the destination (izgw_path).
+     * @return the path
+     */
+    @JsonProperty(&quot;izgw_path&quot;)
+    String getPath();
+    /**
+     * Sets the path of the file at the destination (izgw_path).
+     * @param path the path
+     */
+    void setPath(String path);
+    
+    /**
+     * Gets the IP address of the submitter (izgw_ipaddress).
+     * @return the IP address
+     */
+    @JsonProperty(&quot;izgw_ipaddress&quot;)
+    String getIpAddress();
+    /**
+     * Sets the IP address of the submitter (izgw_ipaddress).
+     * @param ipAddress the IP address
+     */
+    void setIpAddress(String ipAddress);
+    
+    /**
+     * Gets the size of the file in bytes (izgw_filesize).
+     * @return the file size
+     */
+    @JsonProperty(&quot;izgw_filesize&quot;)
+    long getFileSize();
+    /**
+     * Sets the size of the file in bytes (izgw_filesize).
+     * @param fileSize the file size
+     */
+    void setFileSize(long fileSize);
+    
+    /**
+     * Gets the date and time of the upload (izgw_uploaded_timestamp).
+     * @return the upload date
+     */
+    @JsonProperty(&quot;izgw_uploaded_timestamp&quot;)
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = RFC2616_DATE_FORMAT_PATTERN)
+    Date getUploadedDate();
+    /**
+     * Sets the date and time of the upload (izgw_uploaded_timestamp).
+     * @param uploadedDate the upload date
+     */
+    void setUploadedDate(Date uploadedDate);
+    
+    /**
+     * Gets the file timestamp (meta_ext_file_timestamp). This is the same as the upload date.
+     * @return the file timestamp
+     */
+    @JsonProperty(&quot;meta_ext_file_timestamp&quot;)
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = RFC2616_DATE_FORMAT_PATTERN)
+    default Date getFileTimestamp() {
+<span class="nc" id="L374">    	return getUploadedDate();</span>
+    }
+    
+    /**
+     * Gets the IZ Gateway event ID of the request (izgw_event_id).
+     * @return the event ID
+     */
+    @JsonProperty(&quot;izgw_event_id&quot;)
+    String getEventId();
+    /**
+     * Sets the IZ Gateway event ID of the request (izgw_event_id).
+     * @param eventId the event ID
+     */
+    void setEventId(String eventId);
+    
+    /**
+     * Gets the submission status (izgw_submission_status).
+     * @return the submission status
+     */
+    @JsonProperty(&quot;izgw_submission_status&quot;)
+    String getSubmissionStatus();
+    /**
+     * Sets the submission status (izgw_submission_status).
+     * @param status the submission status
+     */
+    void setSubmissionStatus(String status);
+    
+    /**
+     * Gets the submission location (izgw_submission_location).
+     * @return the submission location
+     */
+    @JsonProperty(&quot;izgw_submission_location&quot;)
+    String getSubmissionLocation();
+    /**
+     * Sets the submission location (izgw_submission_location).
+     * @param location the submission location
+     */
+    void setSubmissionLocation(String location);
+
+
+    /**
+     * Compares the metadata fields of this object with the fields of another object.
+     * @param o the object to compare
+     * @return true if o is a Metadata object with the same field values
+     */
+    default boolean isEqual(Object o) {
+<span class="nc bnc" id="L420" title="All 2 branches missed.">        if (!(o instanceof Metadata)) {</span>
+<span class="nc" id="L421">            return false;</span>
+        }
+<span class="nc" id="L423">        Metadata that = (Metadata)o;</span>
+<span class="nc" id="L424">        return </span>
+<span class="nc bnc" id="L425" title="All 2 branches missed.">            equals(this.getRouteId(), that.getRouteId()) &amp;&amp;</span>
+<span class="nc bnc" id="L426" title="All 2 branches missed.">            equals(this.getDestinationId(), that.getDestinationId()) &amp;&amp;</span>
+<span class="nc bnc" id="L427" title="All 2 branches missed.">            equals(this.getPeriod(), that.getPeriod()) &amp;&amp;</span>
+<span class="nc bnc" id="L428" title="All 2 branches missed.">            equals(this.getExtEntity(), that.getExtEntity()) &amp;&amp;</span>
+<span class="nc bnc" id="L429" title="All 2 branches missed.">            equals(this.getExtEvent(), that.getExtEvent()) &amp;&amp;</span>
+<span class="nc bnc" id="L430" title="All 2 branches missed.">            equals(this.getExtEventType(), that.getExtEventType()) &amp;&amp;</span>
+<span class="nc bnc" id="L431" title="All 2 branches missed.">            equals(this.getExtObjectKey(), that.getExtObjectKey()) &amp;&amp;</span>
+<span class="nc bnc" id="L432" title="All 2 branches missed.">            equals(this.getExtSource(), that.getExtSource()) &amp;&amp;</span>
+<span class="nc bnc" id="L433" title="All 2 branches missed.">            equals(this.getExtSourceVersion(), that.getExtSourceVersion()) &amp;&amp;</span>
+<span class="nc bnc" id="L434" title="All 2 branches missed.">            equals(this.getFilename(), that.getFilename()) &amp;&amp;</span>
+<span class="nc bnc" id="L435" title="All 2 branches missed.">            this.getFileSize() == that.getFileSize() &amp;&amp;</span>
+<span class="nc bnc" id="L436" title="All 2 branches missed.">            equals(this.getUploadedDate(), that.getUploadedDate()) &amp;&amp;</span>
+<span class="nc bnc" id="L437" title="All 2 branches missed.">            equals(this.getUsername(), that.getUsername()) &amp;&amp;</span>
+<span class="nc bnc" id="L438" title="All 2 branches missed.">            equals(this.getIpAddress(), that.getIpAddress()) &amp;&amp;</span>
+<span class="nc bnc" id="L439" title="All 2 branches missed.">            equals(this.getFilename(), that.getExtEntity()) &amp;&amp;</span>
+<span class="nc bnc" id="L440" title="All 2 branches missed.">            equals(this.getPath(), that.getPath()) &amp;&amp;</span>
+<span class="nc bnc" id="L441" title="All 2 branches missed.">            equals(this.getEventId(), that.getEventId());</span>
+    }
+    
+    /**
+     * Compares two objects for equality. Two null values are equal.
+     * @param a the first object
+     * @param b the second object
+     * @return true if the objects are equal
+     */
+    default boolean equals(Object a, Object b) {
+<span class="nc bnc" id="L451" title="All 2 branches missed.">        if (a == b) {</span>
+<span class="nc" id="L452">            return true;</span>
+        }
+<span class="nc bnc" id="L454" title="All 4 branches missed.">        if (a == null || b == null) {</span>
+<span class="nc" id="L455">            return false;</span>
+        }
+<span class="nc" id="L457">        return a.equals(b);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>
