@@ -15,8 +15,12 @@ import java.nio.charset.StandardCharsets;
 
 import javax.net.ssl.HttpsURLConnection;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
 
+import gov.cdc.izgateway.logging.event.EventId;
 import gov.cdc.izgateway.service.IDestinationService;
 
 /**
@@ -28,6 +32,27 @@ import gov.cdc.izgateway.service.IDestinationService;
  * </p>
  */
 class ElasticStatusRepositoryTests {
+
+	/**
+	 * The event id that a request thread carries in production.
+	 * <p>
+	 * The repository logs errors in these tests. All test classes run in one JVM and share
+	 * the in-memory log, and ApplicationTests checks that each event there has an event id
+	 * in the form digits.digits. Without this id, the result of ApplicationTests depends on
+	 * the order of the test classes (IGDD-2974).
+	 * </p>
+	 */
+	private static final String EVENT_ID = "1000.1";
+
+	@BeforeEach
+	void setEventId() {
+		MDC.put(EventId.EVENTID_KEY, EVENT_ID);
+	}
+
+	@AfterEach
+	void removeEventId() {
+		MDC.remove(EventId.EVENTID_KEY);
+	}
 
 	/**
 	 * A response with no status records, which is a valid answer.
