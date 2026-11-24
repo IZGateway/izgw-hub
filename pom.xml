@@ -476,6 +476,12 @@
 					<useSystemClassLoader>true</useSystemClassLoader>
 					<reuseForks>true</reuseForks>
 					<testFailureIgnore>false</testFailureIgnore>
+					<!-- IGDD-2974: All test classes run in one JVM and share the
+					     in-memory log, so the order of the classes can change a
+					     result. The default order comes from the file system, and it
+					     changes when a test file is added. Alphabetical order is the
+					     same on every machine. -->
+					<runOrder>alphabetical</runOrder>
 					<!-- IGDD-2974:
 					     @{argLine} keeps the JaCoCo agent that jacoco:prepare-agent
 					     puts in the argLine property. Before, a plain argLine
