@@ -268,10 +268,6 @@
 			<artifactId>bctls-fips</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>org.codehaus.janino</groupId>
-			<artifactId>janino</artifactId>
-		</dependency>
-		<dependency>
 			<groupId>org.codehaus.woodstox</groupId>
 			<artifactId>stax2-api</artifactId>
 		</dependency>
@@ -483,6 +479,12 @@
 					<useSystemClassLoader>true</useSystemClassLoader>
 					<reuseForks>true</reuseForks>
 					<testFailureIgnore>false</testFailureIgnore>
+					<!-- IGDD-2974: All test classes run in one JVM and share the
+					     in-memory log, so the order of the classes can change a
+					     result. The default order comes from the file system, and it
+					     changes when a test file is added. Alphabetical order is the
+					     same on every machine. -->
+					<runOrder>alphabetical</runOrder>
 					<argLine>--add-opens=java.base/java.lang.reflect=ALL-UNNAMED
 						--add-opens=java.base/java.net=ALL-UNNAMED</argLine>
 					<includes>
